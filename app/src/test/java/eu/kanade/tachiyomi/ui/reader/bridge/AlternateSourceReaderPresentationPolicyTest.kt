@@ -65,12 +65,18 @@ class AlternateSourceReaderPresentationPolicyTest {
 
     @Test
     fun `terminal phases expose no contextual actions and a retained primary pair can switch`() {
-        assertEquals(AlternateSourceReaderContextActions(), AlternateSourceReaderPresentationPolicy.contextActions(
-            AlternateSourceReaderMachineState(phase = AlternateSourceReaderPhase.PRIMARY),
-        ))
-        assertEquals(AlternateSourceReaderContextActions(), AlternateSourceReaderPresentationPolicy.contextActions(
-            AlternateSourceReaderMachineState(phase = AlternateSourceReaderPhase.ENDED),
-        ))
+        assertEquals(
+            AlternateSourceReaderContextActions(),
+            AlternateSourceReaderPresentationPolicy.contextActions(
+                AlternateSourceReaderMachineState(phase = AlternateSourceReaderPhase.PRIMARY),
+            ),
+        )
+        assertEquals(
+            AlternateSourceReaderContextActions(),
+            AlternateSourceReaderPresentationPolicy.contextActions(
+                AlternateSourceReaderMachineState(phase = AlternateSourceReaderPhase.ENDED),
+            ),
+        )
         assertTrue(
             AlternateSourceReaderPresentationPolicy.contextActions(
                 AlternateSourceReaderMachineState(

@@ -146,8 +146,11 @@ object AlternateSourceReaderPresentationPolicy {
     fun contextActions(state: AlternateSourceReaderMachineState): AlternateSourceReaderContextActions =
         when (state.phase) {
             AlternateSourceReaderPhase.PRIMARY ->
-                if (state.session == null) AlternateSourceReaderContextActions()
-                else AlternateSourceReaderContextActions(returnToPrimary = true)
+                if (state.session == null) {
+                    AlternateSourceReaderContextActions()
+                } else {
+                    AlternateSourceReaderContextActions(returnToPrimary = true)
+                }
             AlternateSourceReaderPhase.ENDED -> AlternateSourceReaderContextActions()
             AlternateSourceReaderPhase.RESOLVING_ENTRY,
             AlternateSourceReaderPhase.RESOLVING_CORRECTION,
