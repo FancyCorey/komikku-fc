@@ -3,6 +3,7 @@ package tachiyomi.data.tracker
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -240,6 +241,39 @@ class LocalTrackerRepositoryTest {
     }
 
     @Test
+    fun `pending progress advances monotonically until a source chapter is resolved`() = runTest {
+        val repository = repository()
+        repository.upsertWork(work().copy(status = LocalTrackedWorkStatus.PLANNED))
+
+        repository.recordPendingProgress("work-1", 1, 5.0, "Chapter 5", 4_000)
+        repository.recordPendingProgress("work-1", 1, 3.0, "Chapter 3", 5_000)
+        repository.recordPendingProgress("work-1", 1, 5.0, "Older chapter 5", 3_000)
+
+        val retained = repository.getWork("work-1")!!
+        assertEquals(5.0, retained.lastChapterNumber)
+        assertEquals("Chapter 5", retained.lastChapterLabel)
+        assertEquals(4_000L, retained.lastProgressAt)
+        assertEquals(LocalTrackedWorkStatus.READING, retained.status)
+        assertEquals(4_000L, retained.startDate)
+    }
+
+    @Test
+    fun `pending progress cannot replace a resolved source chapter`() = runTest {
+        val repository = repository()
+        repository.upsertWork(work())
+        repository.upsertSource(source())
+        repository.recordProgress("work-1", 1, 12.0, "/chapter-12", "Chapter 12", 4_000)
+
+        repository.recordPendingProgress("work-1", 1, 20.0, "Chapter 20", 5_000)
+
+        val retained = repository.getWork("work-1")!!
+        assertEquals(12.0, retained.lastChapterNumber)
+        assertEquals("/chapter-12", retained.lastChapterUrl)
+        assertEquals("Chapter 12", retained.lastChapterLabel)
+        assertEquals(4_000L, retained.lastProgressAt)
+    }
+
+    @Test
     fun `advancing chapter does not regress work update timestamp`() = runTest {
         val repository = repository()
         repository.upsertWork(work())
@@ -372,6 +406,23 @@ class LocalTrackerRepositoryTest {
         assertEquals(LocalTrackedWorkSourceConfirmation.SUGGESTED, retained.confirmation)
         assertTrue(retained.inheritanceOptedOut)
         assertEquals(3_000, retained.updatedAt)
+    }
+
+    @Test
+    fun `newer source metadata cannot erase an explicit progress sharing opt out`() = runTest {
+        val repository = repository()
+        repository.upsertWork(work())
+        repository.upsertSource(source())
+        repository.setInheritanceOptedOut("work-1", 1, "/example", optedOut = true, updatedAt = 2_000)
+
+        repository.upsertSource(source().copy(title = "Updated title", updatedAt = 3_000))
+
+        val retained = repository.getSources("work-1").single()
+        assertEquals("Updated title", retained.title)
+        assertTrue(retained.inheritanceOptedOut)
+
+        repository.setInheritanceOptedOut("work-1", 1, "/example", optedOut = false, updatedAt = 4_000)
+        assertFalse(repository.getSources("work-1").single().inheritanceOptedOut)
     }
 
     @Test

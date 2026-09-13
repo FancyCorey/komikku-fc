@@ -2,9 +2,9 @@
 
 // KMK -->
 object KmkRecsReleaseNotes {
-    const val VERSION_CODE = 785
-    const val VERSION_NAME = "KMK-Recs v0.8.21-fix2"
-    const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.21-fix2"
+    const val VERSION_CODE = 786
+    const val VERSION_NAME = "KMK-Recs v0.8.22"
+    const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.22"
 
     /** Projects the retained historical notes into the current public product name. */
     fun displayMarkdown(): String = MARKDOWN.replace("KMK-Recs", "Komikku FC")
@@ -21,6 +21,60 @@ object KmkRecsReleaseNotes {
     // ...") that is now expressed by its category heading instead. See the v0.8.10-fix9
     // implementation report for the exact conversion approach and verification.
     val MARKDOWN = """
+        ## KMK-Recs v0.8.22
+
+        Smoother rating and local-tracking workflows for manga with multiple source versions.
+
+        #### What's Changed
+
+        ##### New
+        - **Manga ratings:** rate alternate versions from the same workflow, with already-rated versions left out of the follow-up list.
+        - **Automatic local status:** new local tracking starts as Plan to read, Reading, or Completed from the manga's real reading state; On hold and Dropped remain manual choices.
+        - **Automatic primary version:** when you have not chosen a primary for a confirmed group, Rated Manga shows the version you have read most, then the one you rated first. This can be turned off, and a manual primary always wins.
+
+        ##### Improve
+        - **Future updates:** update checks use this fork's releases. Installing over an existing app still requires a compatible package and signing certificate; read the published release's installation instructions.
+        - **Clearer settings:** Tracking and recommendation settings now explain their effect in everyday language, including which manga versions are affected, where progress comes from, and what will happen when you turn a setting on. Tracking settings layout also stays readable on tablets.
+        - **Local chapter picker:** Local Tracking now uses the same scrollable chapter picker as external trackers, with manual entry still available for decimal or unusual chapter numbers.
+        - **Group management:** merge every selected group and its members in one action, with the same actions available from the overflow menu and More menu.
+        - **Cross-version progress:** confirmed source versions share the latest safely mapped reading progress so chapter lists and Resume stay aligned.
+        - **Local progress correction:** tap the local chapter value to correct your saved chapter, including zero, decimal numbers, and sources whose chapters do not begin at one.
+        - **Confirmed local versions:** tap the local tracker title to browse its confirmed source versions; finding and adding more versions remains a separate global search action.
+        - **Per-version progress choice:** each confirmed version can independently join or leave local reading-progress sharing without losing that choice during later status updates.
+        - **Progress from connected trackers:** when enabled, a higher chapter reported by a connected tracker brings local progress forward. Sending chapters you read to those accounts is a separate setting and off by default; manual Mark as read updates have their own Always, Ask, or Never choice.
+        - **Tracker refresh:** imported progress marks available chapters through the matching point as read, keeping the chapter list and Resume caught up when the match succeeds.
+        - **Different chapter numbering:** when a source begins at a later chapter number, whole-number tracker progress can follow a complete consecutive reading order, so the matching chapters are marked read instead of leaving Resume at the beginning. Gapped and fractional chapter sequences are left unchanged rather than guessed.
+        - **Chapter-number matching control:** Tracking settings can now turn reading-order matching off for imported tracker progress and use chapter numbers only, while exact chapter matches continue to sync normally.
+        - **Automatic workflow defaults:** rating propagation, linked-version local tracking, automatic local status, tracker-to-local updates, tracking from ratings, and progress sharing across confirmed versions start enabled and remain independently configurable.
+        - **Refresh reliability:** tracker replay now waits for refreshed chapter rows, retains progress when a linked source is still loading, and stops cleanly when navigation cancels the refresh.
+        - **Alternate-source boundary:** alternate-source reading preserves discoverability and switching without implicitly adding the manga to the library or leaving favorite/badge decoration on ordinary manga cards; rated/version and matching cards keep only their own workflow indicators, and selection-mode search long-presses no longer change library state.
+        - **Alternate-source library choice:** while reading an alternate source, Add to library is an explicit overflow action; dismissing the flow leaves the source outside the library.
+        - **Tracking navigation:** Local Tracking now has a settings gear that returns to the tracking sheet, and an active alternate-source reader exposes a persistent source-switch action.
+        - **Alternate-source chapters:** the chapter picker selects the closest chapter to the one you are reading and shows scanlation groups so duplicate chapter numbers are easier to distinguish.
+        - **Alternate-source chooser:** the reader now identifies the source you are currently reading from before listing alternate matches, so switching sources is easier to understand.
+        - **Switching sources:** the reader keeps a two-way source switch available for the whole reading session. It opens the closest matching chapter and keeps the saved source links available from either side. A temporary mapping conflict can now be retried with the selected source and chapter instead of reopening the chooser in a loop.
+        - **Settings clarity:** settings use the original Komikku row layout and plain-language labels, so switches stay beside their setting and testing options explain what they do.
+        - **Reader quality check:** every Best Version card now offers View in Reader, including cards whose preview samples failed, so you can inspect the full chapter and return to this comparison screen.
+        - **Direct Tracking settings:** opening settings from the tracker uses the available width without an unrelated settings category pane beside it.
+
+        ##### Fix
+        - **App updates:** update checks now compare Komikku FC release versions correctly, ignore unfinished releases, and download an APK rather than a release information file.
+        - **Best Version preview timeout:** a sample image that stays unresolved now produces a visible Preview failed message with Retry instead of leaving a blank preview area.
+        - **Best Version fullscreen readability:** the preview title and source now sit on a dark header scrim so they remain readable over light manga pages.
+        - **Completion rating flow:** completion prompts appear only for a new final-chapter completion and do not return during rereads after a rating is saved.
+        - **For You chapter minimum:** fresh manga whose source chapter list has not been loaded locally are no longer mistaken for zero-chapter manga and removed from For You. The setting now filters only candidates with a known local chapter count below the selected minimum, so a high threshold does not collapse a source row to one or two cards.
+        - **For You source results:** the source card now makes the difference clear between the current refresh count and the rolling Top Picks contribution used by a “Great fit” badge.
+        - **Alternate-version selection:** selection shading and markers are cleared when leaving the selection workflow and no longer remain on ordinary manga cards.
+        - **Settings switch layout:** switches stay beside their labels instead of dropping below them in narrow phone, tablet, and split-screen settings panes. Long labels and descriptions still wrap within the available space.
+        - **Linked-version refresh safety:** opening linked versions while refreshing no longer publishes stale results after the dialog closes or lets a disappearing source escape as an app-level crash.
+        - **Tracking preference boundaries:** turning off linked-version local tracking now prevents rating and tracker-refresh paths from attaching or consolidating other confirmed versions, while a rated manga can still start its own local tracking when that separate setting is enabled.
+        - **Restored progress:** restoring Local Tracking now reconciles saved chapter progress with local chapter rows so read markers and Resume are restored together.
+        - **Local tracker chapter display:** fractional progress now shows clean chapter numbers such as 4.1 instead of exposing floating-point storage digits.
+        - **Local tracking while reading:** setting the reading status or start date no longer replaces the chapter you just finished with older progress.
+        - **Shared tracker refresh:** refreshing a linked version now applies its shared Local Tracking progress even without a separate rating group, including sources with several translations of the same chapter.
+        - **Tracking sheet refresh:** opening the tracking sheet now reconciles Local Tracking progress before displaying the chapter list, keeping the saved chapter and read markers together when reconciliation succeeds.
+        - **Local source identity:** installed extensions can no longer replace the built-in Local source used by on-device manga.
+
         ## KMK-Recs v0.8.21-fix2
 
         Local tracking gains a full status/list workflow, and rating actions across the reader completion prompt, manga detail, and Rated Manga are fenced against duplicate taps.
@@ -38,7 +92,7 @@ object KmkRecsReleaseNotes {
 
         ## KMK-Recs v0.8.21
 
-        Focused recommendation controls, forward-facing Komikku FC naming, native-library packaging compatibility for current Android devices, and a complete status record for the accepted Komikku FC change set.
+        Focused recommendations, Komikku FC naming, and native-library packaging changes for newer Android devices.
 
         #### What's Changed
 
@@ -46,12 +100,12 @@ object KmkRecsReleaseNotes {
         - **For You focus:** temporarily focus recommendations on one or more existing genre groups from the For You surface, then clear the focus or explicitly show all results again. Durable taste, Not Interested, source, language, quality, library, and exposure rules remain authoritative.
 
         ##### Improve
-        - **Accepted current scope:** the release record covers the shared Love/Like/Dislike/Not interested preference family, recommendation eligibility and correction, contextual settings navigation, Best Version image reliability, delayed-action acknowledgement and duplicate fencing, search-action clarity, extension chapter recovery, cross-source identity and preference carryover, tag and metadata diagnostics, same-number chapter-line continuity, and the applicable reusable review surfaces. Each item remains subject to its registered host, runtime, privacy, accessibility, localization, or human gate; this list is scope traceability, not a claim that an unopened gate has shipped.
-        - **Documentation and comparison:** the accepted Komikku FC naming, plain-language documentation, upstream/intended/actual comparison, and diagram-readability work are recorded with their retained-scope and review status rather than being silently omitted from the release record.
+        - **Feature information:** the guides explain ratings, recommendation filters, settings navigation, comparing versions, source recovery, linked manga, chapter matching, and tag information. See each guide for its available actions and limitations.
+        - **Documentation and comparison:** Komikku FC guides use reader-facing explanations and diagrams alongside the original Komikku workflows.
 
         ##### Planned
-        - **Local internal tracker:** the accepted AniList/MAL-style local tracker proposal remains a separately contracted feature. It requires explicit local statuses and lists, distinction from release-status groups and Library membership, opt-in grouping behavior, source relinking and confidence, backup/restore/migration/privacy rules, and explicit non-automatic external-tracker synchronization before it can be described as shipped.
-        - **Focused recommendation modes and expanded review modes:** temporary genre/theme/tag/mood focus, exclusions, explainable ranking, and reusable view modes remain contract- and applicability-gated where the current build does not yet provide the complete behavior.
+        - **Local tracking:** planned at this point in the history and added in later entries. See v0.8.21-fix2 and v0.8.22 for local status, chapter progress, backup, and sharing controls.
+        - **More focus choices:** broader theme, tag, and mood focus choices were planned beyond the existing genre-group focus. A planned choice is not an available setting.
 
         ##### Fix
         - **Android compatibility:** rebuilt the bundled native libraries with 16 KB ELF load-segment alignment and verified the universal APK with the deterministic alignment checker.
@@ -183,6 +237,7 @@ object KmkRecsReleaseNotes {
 
         ##### Fix
         - **Find Best Version:** a single slow or hanging source could previously leave the whole comparison screen stuck on a loading spinner, even after every other source's preview had already finished. Each candidate now has a bounded timeout, so the screen always reaches a usable state.
+        - **Find Best Version:** when no alternate match is found, the confirmation action now clearly says it keeps the current version.
         - **Reader:** after rating a manga from the "finished latest chapter" prompt, a continuation offering to rate other versions is now shown reliably, with wording that doesn't claim confirmed other versions exist unless they do.
 
         ## KMK-Recs v0.8.17
@@ -624,7 +679,7 @@ object KmkRecsReleaseNotes {
 
         ##### Improve
         - Loved/Liked/Disliked Rated Manga views now show grouped (duplicate-collapsed) display by default. You can still switch to a flat list, and that choice now survives background refreshes.
-        - Recommendation Settings now shows how often each source has contributed to your Top Picks (e.g. "Great fit · 5"), when it has contributed at least once.
+        - Recommendation Settings now shows how often each source has contributed to your Top Picks (e.g. "Great fit · Top Picks 5"), when it has contributed at least once.
         - Clarified that OCR ships in the same build as KMK-Recs (it was never actually a separate build, despite older docs saying so) — this is now documented accurately, including its local-only storage and backup/export exclusion.
 
         ##### Fix

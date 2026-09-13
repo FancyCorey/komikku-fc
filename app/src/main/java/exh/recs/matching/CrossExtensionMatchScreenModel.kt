@@ -38,6 +38,7 @@ import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.manga.model.toMangaUpdate
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.domain.taste.interactor.GetCrossSourceIdentityDecisions
+import tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks
 import tachiyomi.domain.taste.interactor.GetMangaTaste
 import tachiyomi.domain.taste.interactor.SetMangaTasteBatch
 import tachiyomi.domain.taste.interactor.UpsertCrossSourceMangaLinks
@@ -57,6 +58,14 @@ import java.util.Locale
 import java.util.UUID
 
 data class MangaIdentityKey(val source: Long, val url: String)
+
+internal object CrossExtensionMatchRatingTargetPolicy {
+    /** Other-version rating may only write selected candidates that are currently unrated. */
+    fun unratedOnly(
+        selected: Set<MangaIdentityKey>,
+        rated: Set<MangaIdentityKey>,
+    ): Set<MangaIdentityKey> = selected - rated
+}
 
 sealed interface CrossExtensionMatchMode {
     // KMK v0.8.21-fix3: R1 correction -- Not Interested is Rating(MangaRating.NOT_INTERESTED),
@@ -95,6 +104,7 @@ class CrossExtensionMatchScreenModel(
     // KMK <--
     // KMK --> v0.7.0: Phase 4 – persistent cross-source link groups
     private val upsertCrossSourceMangaLinks: UpsertCrossSourceMangaLinks = Injekt.get(),
+    private val getCrossSourceMangaLinks: GetCrossSourceMangaLinks = Injekt.get(),
     private val getCrossSourceIdentityDecisions: GetCrossSourceIdentityDecisions = Injekt.get(),
     private val identityController: CrossSourceIdentityDecisionController = CrossSourceIdentityDecisionController(),
     private val localTrackerRepository: LocalTrackerRepository = Injekt.get(),
@@ -168,7 +178,11 @@ class CrossExtensionMatchScreenModel(
     ) {
         searchJob?.cancel()
         val origin = originManga ?: return
-        val sources = requestedSources ?: searcher.getMatchingSources()
+        // "Other Versions" is a user-facing global discovery surface. It must use the same
+        // enabled-language/disabled-source scope and first-page result behavior as normal global
+        // search; the exact-title preference is applied later by CrossSourceMatchSelectionPolicy.
+        val searchScope = SameMangaSearchScope.GLOBAL
+        val sources = requestedSources ?: searcher.getGlobalSearchSources()
         val preselectionMode = SameMangaPreselectionMode.resolve(
             sourcePreferences.sameMangaMatchPreselectionMode().get(),
             sourcePreferences.sameMangaMatchPreselectResults().get(),
@@ -202,13 +216,20 @@ class CrossExtensionMatchScreenModel(
         }
 
         searchJob = ioCoroutineScope.launch {
-            searcher.search(queries, settings, origin, sources) { sourceResult ->
-                updateItem(
-                    sourceResult.source,
-                    sourceResult.result.toMatchItemResult(),
-                    settings.preselectionMode,
-                )
-            }
+            searcher.search(
+                queries = queries,
+                settings = settings,
+                originManga = origin,
+                sources = sources,
+                onResult = { sourceResult ->
+                    updateItem(
+                        sourceResult.source,
+                        sourceResult.result.toMatchItemResult(),
+                        settings.preselectionMode,
+                    )
+                },
+                scope = searchScope,
+            )
         }
     }
 
@@ -337,11 +358,27 @@ class CrossExtensionMatchScreenModel(
                 // insert. Resolve by the stable source/URL identity immediately before
                 // mutation so first-write rating/tracking uses the authoritative local
                 // manga row, including newly selected unrated candidates.
-                val targets = selectedTargets
+                val resolvedTargets = selectedTargets
                     .map { manga ->
                         getMangaInteractor.await(manga.url, manga.source) ?: manga
                     }
                     .distinctBy { MangaIdentityKey(it.source, it.url) }
+                val ratedKeys = if (mode is CrossExtensionMatchMode.Rating) {
+                    resolvedTargets
+                        .filter { manga ->
+                            getMangaTaste.await(manga.source, manga.url)?.rating
+                                ?.let(MangaRating::fromValue) != null
+                        }
+                        .map { MangaIdentityKey(it.source, it.url) }
+                        .toSet()
+                } else {
+                    emptySet()
+                }
+                val allowedKeys = CrossExtensionMatchRatingTargetPolicy.unratedOnly(
+                    selected = resolvedTargets.map { manga -> MangaIdentityKey(manga.source, manga.url) }.toSet(),
+                    rated = ratedKeys,
+                )
+                val targets = resolvedTargets.filter { MangaIdentityKey(it.source, it.url) in allowedKeys }
                 val origin = originManga
                 if (origin != null) {
                     val identityResult = identityController.mutateAll(
@@ -471,32 +508,27 @@ class CrossExtensionMatchScreenModel(
                 }
                 // KMK --> v0.7.0: Phase 4 – persist selected matches as a cross-source link group
                 if (origin != null && targets.isNotEmpty()) {
-                    val groupId = UUID.randomUUID().toString()
+                    val groupMembers = listOf(origin) + targets
+                    val existingGroupIds = groupMembers.mapNotNull { manga ->
+                        getCrossSourceMangaLinks.awaitBySourceUrl(manga.source, manga.url)?.groupId
+                    }.distinct().sorted()
+                    val groupId = existingGroupIds.firstOrNull() ?: UUID.randomUUID().toString()
+                    val existingMembers = existingGroupIds.flatMap { id ->
+                        getCrossSourceMangaLinks.awaitByGroupId(id)
+                    }
                     val now = System.currentTimeMillis()
-                    val links = buildList {
-                        add(
+                    val links = (
+                        existingMembers + groupMembers.map { manga ->
                             CrossSourceMangaLink(
-                                source = origin.source,
-                                url = origin.url,
+                                source = manga.source,
+                                url = manga.url,
                                 groupId = groupId,
-                                title = origin.title,
+                                title = manga.title,
                                 createdAt = now,
                                 updatedAt = now,
-                            ),
-                        )
-                        for (target in targets) {
-                            add(
-                                CrossSourceMangaLink(
-                                    source = target.source,
-                                    url = target.url,
-                                    groupId = groupId,
-                                    title = target.title,
-                                    createdAt = now,
-                                    updatedAt = now,
-                                ),
                             )
                         }
-                    }
+                        ).distinctBy { it.source to it.url }.map { it.copy(groupId = groupId, updatedAt = now) }
                     upsertCrossSourceMangaLinks.await(links)
                 }
                 if (

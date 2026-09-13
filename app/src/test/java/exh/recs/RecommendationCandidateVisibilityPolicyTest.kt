@@ -136,12 +136,30 @@ class RecommendationCandidateVisibilityPolicyTest {
     }
 
     @Test
+    fun `manga with an explicit zero chapter count is hidden by a positive minimum`() {
+        val m = manga(id = 7L)
+        assertEquals(
+            CandidateVisibility.HIDDEN_MIN_CHAPTERS,
+            evaluate(manga = m, minChapterCount = 10, chapterCounts = mapOf(7L to 0L)),
+        )
+    }
+
+    @Test
     fun `manga with unknown chapter count is not filtered by min-chapter rule`() {
         val m = manga(id = 7L)
         // No entry in chapterCounts → unknown → fail open
         assertEquals(
             CandidateVisibility.VISIBLE,
             evaluate(manga = m, minChapterCount = 10, chapterCounts = emptyMap()),
+        )
+    }
+
+    @Test
+    fun `missing entry in a partial successful lookup remains unknown`() {
+        val m = manga(id = 7L)
+        assertEquals(
+            CandidateVisibility.VISIBLE,
+            evaluate(manga = m, minChapterCount = 10, chapterCounts = mapOf(8L to 0L)),
         )
     }
 

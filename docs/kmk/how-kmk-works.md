@@ -1,6 +1,6 @@
-# How KMK works
+# How Komikku FC works
 
-This page explains how KMK fits into Komikku. Read it when you want to understand which part of the app owns a feature, where data is stored, or how failures are contained. For instructions, use the [user guide](user-guide.md). For a closer look at one feature, use the [feature guides](feature-guides/README.md).
+This page explains how Komikku FC fits into Komikku. Read it when you want to understand which part of the app owns a feature, where data is stored, or how failures are contained. For instructions, use the [user guide](user-guide.md). For a closer look at one feature, use the [feature guides](feature-guides/README.md).
 
 ## System boundary
 
@@ -16,7 +16,7 @@ flowchart LR
     App --> Android["Android lifecycle, storage, and document APIs"]
 ```
 
-Komikku continues to own navigation, the library, the reader, downloads, tracking, backup, and extension loading. KMK adds discovery and preference features inside those existing parts of the app. Installed extensions can access their own online services; KMK does not add a separate server.
+Komikku continues to own navigation, the library, the reader, downloads, tracking, backup, and extension loading. Komikku FC adds discovery and preference features inside those existing parts of the app. Installed extensions can access their own online services; Komikku FC does not add a separate server.
 
 ## Where features live
 
@@ -105,12 +105,12 @@ The schedule is local, optional, and off by default. The reader checks it when i
 
 ```mermaid
 flowchart TD
-    App["Komikku KMK"] --> Local["Ratings, history, settings, and OCR index stay on the device"]
+    App["Komikku FC"] --> Local["Ratings, history, settings, and OCR index stay on the device"]
     App --> Sources["Online catalogue work goes through installed source extensions"]
     App --> Sharing["Evaluation Mode can hide source labels before a screenshot is shared"]
     App --> Files["Exports and backups use Android's user-chosen document destination"]
 ```
 
-KMK does not add a separate account or recommendation server. Ratings, recommendation settings, reading history, Action History, and the OCR index are stored locally. Installed source extensions still handle their own online catalogue requests.
+Komikku FC does not add a separate account or recommendation server. Ratings, recommendation settings, reading history, Action History, and the OCR index are stored locally. Installed source extensions still handle their own online catalogue requests.
 
-Evaluation Mode changes visible source labels without changing saved identifiers, requests, or actions. OCR text can be rebuilt from downloaded pages, so it is left out of backup and sync and can be cleared without deleting those pages. Backups can include KMK data that is harder to recreate, such as ratings, recommendation settings, linked versions, and source evaluations.
+Evaluation Mode changes visible source labels without changing saved identifiers, requests, or actions. OCR text can be rebuilt from downloaded pages, so it is left out of backup and sync and can be cleared without deleting those pages. Backups can include Komikku FC data that is harder to recreate, such as ratings, recommendation settings, linked versions, and source evaluations.

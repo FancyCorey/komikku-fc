@@ -34,7 +34,7 @@ class AlternateSourceReaderStateMachineTest {
     }
 
     @Test
-    fun `ordinary failure degrades with the readable session and successful return clears it`() {
+    fun `ordinary failure degrades with the readable session and successful return keeps the switch pair`() {
         val alternate = AlternateSourceReaderMachineState(
             phase = AlternateSourceReaderPhase.ALTERNATE,
             generation = 1L,
@@ -55,13 +55,20 @@ class AlternateSourceReaderStateMachineTest {
         assertEquals(alternate.session, failed.session)
 
         val retry = AlternateSourceReaderStateMachine.reduce(failed, AlternateSourceReaderEvent.BeginReturn).state
+        val primarySession = requireNotNull(alternate.session).copy(
+            currentRoute = requireNotNull(alternate.session).primaryResumeRoute,
+            lastSafeRouteFingerprint = AlternateSourceReaderRouteFingerprint.of(
+                requireNotNull(alternate.session).primaryResumeRoute,
+            ),
+        )
         val ended = AlternateSourceReaderStateMachine.reduce(
             retry,
-            AlternateSourceReaderEvent.ReturnResolved(retry.generation),
+            AlternateSourceReaderEvent.ReturnResolved(retry.generation, primarySession),
         ).state
-        assertEquals(AlternateSourceReaderPhase.ENDED, ended.phase)
-        assertNull(ended.session)
+        assertEquals(AlternateSourceReaderPhase.PRIMARY, ended.phase)
+        assertEquals(primarySession, ended.session)
         assertNull(ended.failureReason)
+        assertTrue(AlternateSourceReaderStateMachine.reduce(ended, AlternateSourceReaderEvent.BeginReturn).applied)
     }
 
     @Test

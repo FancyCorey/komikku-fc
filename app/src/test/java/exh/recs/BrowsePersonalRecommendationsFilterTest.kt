@@ -107,6 +107,18 @@ class BrowsePersonalRecommendationsFilterTest {
     }
 
     @Test
+    fun `unloaded chapter count does not remove fresh candidates before scoring`() {
+        val zero = manga(id = 13L)
+        val eligible = manga(id = 14L)
+        val result = filter(
+            listOf(zero, eligible),
+            minChapterCount = 10,
+            chapterCounts = mapOf(14L to 10L),
+        )
+        assertEquals(listOf(13L, 14L), result.map { it.id })
+    }
+
+    @Test
     fun `seen rule still applies alongside the known filter`() {
         val seen = manga(id = 20L, source = 1L, url = "/m/20")
         val known = manga(id = 21L)

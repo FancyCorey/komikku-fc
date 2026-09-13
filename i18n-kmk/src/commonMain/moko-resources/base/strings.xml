@@ -128,9 +128,20 @@
     <string name="download_cache_renew_interval_24hour">1 day</string>
     <string name="download_cache_renew_interval_info">If set to "manual", either refresh each manga or using the "Reindex downloads" action in "Advanced"</string>
     <!-- Tracking section -->
-    <string name="pref_auto_sync_progress_from_trackers">Auto sync progress from Trackers</string>
-    <string name="pref_auto_inherit_local_progress">Sync progress across confirmed manga versions</string>
-    <string name="pref_auto_inherit_local_progress_summary">When enabled, confirmed versions use mapped local read progress without changing external tracker accounts.</string>
+    <string name="pref_auto_sync_progress_from_trackers">Sync reading progress from connected trackers</string>
+    <string name="pref_auto_sync_progress_from_trackers_summary">When you refresh a tracked manga, use newer progress from your connected trackers.</string>
+    <string name="pref_auto_update_manga_sync_summary">Send your read chapters to connected tracking services. This is off by default.</string>
+    <string name="pref_auto_sync_local_tracking_from_trackers">Update local progress from trackers</string>
+    <string name="local_tracking_chapter_dialog_title">Edit local chapter progress</string>
+    <string name="local_tracking_chapter_picker_hint">Scroll to choose a chapter, or enter a decimal number below.</string>
+    <string name="local_tracking_chapter_error">Enter a valid chapter number of zero or greater.</string>
+    <string name="pref_auto_sync_local_tracking_from_trackers_summary">When a tracker shows that you have read farther, update local progress to the same chapter.</string>
+    <string name="pref_auto_create_local_tracking_from_rating">Start tracking when you rate a manga</string>
+    <string name="pref_auto_create_local_tracking_from_rating_summary">Rating a manga also starts local tracking so the app can remember your chapter progress.</string>
+    <string name="pref_auto_inherit_local_progress">Share progress across linked versions</string>
+    <string name="pref_auto_inherit_local_progress_summary">When you link the same manga from different sources, keep the read chapter the same on each one. This does not change your tracker accounts.</string>
+    <string name="pref_match_tracker_progress_by_reading_order">Match progress when chapter numbers differ</string>
+    <string name="pref_match_tracker_progress_by_reading_order_summary">When importing progress from a tracker, use reading order if this source starts at a later chapter number. Turn this off to use chapter numbers only.</string>
     <string name="sync_progress_from_trackers_up_to_chapter">Sync progress from Trackers up to chapter %d</string>
     <string name="pref_track_on_add_library">Open track menu on adding to library</string>
     <!-- Sync section -->
@@ -294,14 +305,14 @@
     <string name="rec_top_picks_title">Top Picks</string>
     <string name="rec_top_picks_subtitle">Your best matches across sources</string>
     <string name="rec_top_picks_matched">Matched: %1$s</string>
-    <string name="rec_hide_known_manga">Hide known manga</string>
-    <string name="rec_hide_known_manga_summary">Hide manga already rated, in library, or started locally.</string>
+    <string name="rec_hide_known_manga">Hide manga you already know</string>
+    <string name="rec_hide_known_manga_summary">Hide manga you have already rated, added to your library, or started reading.</string>
     <string name="rec_source_languages">Recommendation languages</string>
     <!-- KMK v0.8.13-fix1: moved from For You to Source Priority, see RecommendationSourcePrioritySettingsScreen -->
-    <string name="rec_source_languages_summary">Choose languages and source order for For You. Top 3 sources get more results.</string>
+    <string name="rec_source_languages_summary">Choose the languages and sources For You searches. The first three sources show more results.</string>
     <!-- KMK v0.8.13-fix1 --> <string name="rec_source_priority_languages_header">Source languages</string>
     <string name="rec_source_priority">Source priority</string>
-    <string name="rec_source_priority_summary">Top 3 sources get more results. Drag to reorder.</string>
+    <string name="rec_source_priority_summary">Choose which sources For You checks first. The first three show more results. Drag to change the order.</string>
     <string name="rec_source_boosted">Boosted</string>
     <string name="rec_reset_source_order">Reset priority</string>
     <string name="kmk_recs_whats_new">Komikku FC What\'s new</string>
@@ -400,23 +411,23 @@
     <!-- KMK v0.8.18-fix1 --> <string name="source_evaluation_go_to_for_you">Go to For You</string>
     <!-- KMK --> <string name="source_evaluation_settings_header">Source Evaluation</string>
     <!-- KMK --> <string name="source_evaluation_open_button">Open Source Evaluation</string>
-    <!-- KMK v0.8.14: "probe" replaced with plain "test" per the copy audit --> <string name="source_evaluation_settings_desc">Temporarily install non-installed extensions to test their content and learn how well they match your taste profile.</string>
+    <!-- KMK v0.8.14: "probe" replaced with plain "test" per the copy audit --> <string name="source_evaluation_settings_desc">Temporarily add sources you have not installed to see how well they match your taste.</string>
     <!-- KMK --> <string name="source_evaluation_options">Evaluation Options</string>
     <!-- KMK v0.8.11 section headers and search-entry text -->
     <!-- KMK --> <string name="source_evaluation_section_run">Run evaluation</string>
     <!-- KMK --> <string name="source_evaluation_section_installer">Installer and cleanup</string>
-    <!-- KMK --> <string name="source_evaluation_section_reassessment">Reassessment</string>
+    <!-- KMK --> <string name="source_evaluation_section_reassessment">Check older results again</string>
     <!-- KMK --> <string name="source_evaluation_section_diagnostics">Diagnostics and recovery</string>
     <!-- KMK --> <string name="source_evaluation_rec_quality_explainer">Checks whether promising evaluated sources can return usable For You search results. This is separate from the catalogue evaluation above.</string>
-    <!-- KMK --> <string name="rec_search_entry_batch_size_summary">How many sources one evaluation run tests</string>
+    <!-- KMK --> <string name="rec_search_entry_batch_size_summary">How many sources are checked in one evaluation</string>
     <!-- KMK --> <string name="rec_search_entry_reassess_outdated_title">Reassess outdated sources</string>
-    <!-- KMK --> <string name="rec_search_entry_reassess_outdated_summary">Re-evaluate sources whose results are outdated</string>
+    <!-- KMK --> <string name="rec_search_entry_reassess_outdated_summary">Check sources again when their previous results are old</string>
     <!-- KMK --> <string name="rec_search_entry_evaluation_diagnostics_title">Evaluation diagnostics</string>
-    <!-- KMK --> <string name="rec_search_entry_evaluation_diagnostics_summary">Quarantined extensions, blocked packages, and source runtime health</string>
-    <!-- KMK --> <string name="rec_search_entry_installer_mode_summary">How extensions are temporarily installed and cleaned up during evaluation</string>
-    <!-- KMK --> <string name="source_evaluation_batch_size">Batch size (sources to evaluate)</string>
+    <!-- KMK --> <string name="rec_search_entry_evaluation_diagnostics_summary">See blocked sources, failed extensions, and source problems</string>
+    <!-- KMK --> <string name="rec_search_entry_installer_mode_summary">Choose how temporary source extensions are installed and removed during evaluation</string>
+    <!-- KMK --> <string name="source_evaluation_batch_size">Sources to check at once</string>
     <!-- KMK --> <string name="source_evaluation_large_batch_warning">Large batch: evaluation will take a long time and install/uninstall many extensions.</string>
-    <!-- KMK --> <string name="source_evaluation_installer_mode">Installer mode</string>
+    <!-- KMK --> <string name="source_evaluation_installer_mode">How temporary sources are installed</string>
     <!-- KMK --> <string name="source_evaluation_installer_warning">This installer mode requires Android confirmation dialogs for each install and uninstall. Keep batches small.</string>
     <!-- KMK --> <string name="source_evaluation_installer_unavailable">Selected installer is not available. Switch to Private installer.</string>
     <!-- KMK --> <string name="source_evaluation_skip_evaluated">Skip already-evaluated sources</string>
@@ -880,7 +891,7 @@
     <!-- KMK --> <string name="rec_source_fit_mixed">Mixed</string>
     <!-- KMK --> <string name="rec_source_fit_too_little_data">Too little data</string>
     <!-- KMK --> <string name="rec_suggest_source_order_button">Suggest priority order based on fit</string>
-    <!-- KMK --> <string name="rec_suggest_source_order_note">Sources with at least 3 runs are sorted by how well they match your taste. You can reorder further after applying.</string>
+    <!-- KMK --> <string name="rec_suggest_source_order_note">Sources checked at least three times are ordered by how well their results match your taste. You can change the order afterward.</string>
     <!-- KMK v0.7.14: suggestion expand/collapse toggle -->
     <!-- KMK --> <string name="rec_suggestions_show_fewer">Show fewer</string>
     <!-- KMK -->
@@ -890,7 +901,7 @@
     <!-- KMK v0.8.14 --> <string name="rec_settings_refresh_hint_short">Refresh recommendations after changing ratings, tags, source order, or filters.</string>
     <!-- KMK v0.8.14 --> <string name="rec_settings_display_performance_header">Display and performance</string>
     <!-- KMK v0.8.14 --> <string name="rec_settings_versions_quality_header">Ratings, versions, and quality</string>
-    <!-- KMK v0.8.14 --> <string name="rec_settings_versions_quality_summary">Manage rating prompts, matching defaults, other versions, and preview quality</string>
+    <!-- KMK v0.8.14 --> <string name="rec_settings_versions_quality_summary">Choose rating prompts, linked versions, and preview quality.</string>
     <!-- KMK v0.7.14: Loved Manga sort modes -->
     <!-- KMK --> <string name="loved_manga_sort_recent">Most recent</string>
     <!-- KMK --> <string name="loved_manga_sort_oldest">Oldest first</string>
@@ -900,7 +911,7 @@
     <!-- KMK --> <string name="rec_settings_ratings_known_manga_header">Ratings and known manga</string>
     <!-- KMK v0.8.3: renamed from "Management", now scoped to installed/hidden/disliked/quality-marked source rows and recovery actions, per the Recommendation Settings section reorganization -->
     <!-- KMK --> <string name="rec_settings_management_header">Source management</string>
-    <!-- KMK --> <string name="rec_settings_discovery_cache_header">Discovery and cache management</string>
+    <!-- KMK --> <string name="rec_settings_discovery_cache_header">Search, details, and history</string>
     <!-- KMK v0.7.38: For You discovery memory reset -->
     <!-- KMK --> <string name="rec_reset_discovery_history">Reset For You discovery history</string>
     <!-- KMK --> <string name="rec_reset_discovery_history_summary">Clears the list of manga discovered from For You sources. Ratings, seen manga, and source settings are not affected.</string>
@@ -949,24 +960,28 @@
     <!-- KMK v0.8.11 --> <string name="source_quality_marked_poor_badge">Marked poor quality</string>
     <!-- KMK v0.8.11 --> <string name="source_quality_marked_explicit_badge">Marked too explicit</string>
     <!-- KMK --> <string name="same_manga_match_results_per_source_title">Results per source</string>
-    <!-- KMK --> <string name="same_manga_match_results_per_source_summary">Max results per source for Love/Like/Dislike/Seen/Favorite/Best-version searches. Does not affect normal global search.</string>
+    <!-- KMK --> <string name="same_manga_match_results_per_source_summary">Choose how many possible matches to show from each source when the app looks for other versions. This does not change normal search.</string>
     <!-- KMK --> <string name="same_manga_match_preselect_title">Select matches by default</string>
-    <!-- KMK v0.8.21-fix2: default selection is explicit and reversible. --> <string name="same_manga_match_preselect_summary">Choose which other versions are selected when comparison opens.</string>
+    <!-- KMK v0.8.21-fix2: default selection is explicit and reversible. --> <string name="same_manga_match_preselect_summary">Choose which possible matches are selected for you when the results open.</string>
     <string name="same_manga_match_preselect_all">All matches</string>
     <string name="same_manga_match_preselect_none">No matches</string>
     <string name="same_manga_match_preselect_exact_name">Exact title matches</string>
-    <string name="chapter_completion_rating_prompt_title">Chapter completion rating prompt</string>
-    <string name="chapter_completion_rating_prompt_summary">Offer rating actions when you leave after finishing the latest chapter.</string>
+    <string name="chapter_completion_rating_prompt_title">Ask for a rating after finishing</string>
+    <string name="chapter_completion_rating_prompt_summary">Ask whether you want to rate a manga after you finish its latest available chapter.</string>
     <string name="rated_manga_action_placement_title">Use top-right rating actions</string>
-    <string name="rated_manga_action_placement_summary">When enabled, open rating actions from the top-right selection control. When disabled, show actions on each rated manga card.</string>
-    <string name="chapter_completion_rating_other_versions_prompt_title">Offer rating other versions</string>
-    <string name="chapter_completion_rating_other_versions_prompt_summary">After a new rating, offer to apply it to other versions of the same manga.</string>
-    <string name="confirmed_tracked_version_rating_propagation_title">Propagate ratings to confirmed tracked versions</string>
-    <string name="confirmed_tracked_version_rating_propagation_summary">When enabled, rating one version also rates confirmed versions that are already locally tracked.</string>
-    <string name="confirmed_tracked_version_local_tracking_propagation_title">Propagate local tracking to confirmed versions</string>
-    <string name="confirmed_tracked_version_local_tracking_propagation_summary">When enabled, tracking one version also tracks confirmed versions in the same manga group.</string>
-    <string name="identity_review_title">Version identity</string>
-    <string name="identity_review_summary">Review versions you confirmed, rejected, or need to check.</string>
+    <string name="rated_manga_action_placement_summary">Choose whether rating actions appear in the top-right menu or directly on each rated manga card.</string>
+    <string name="chapter_completion_rating_other_versions_prompt_title">Ask about other versions</string>
+    <string name="chapter_completion_rating_other_versions_prompt_summary">After you rate a manga, ask whether you want to give the same rating to versions from other sources.</string>
+    <string name="confirmed_tracked_version_rating_propagation_title">Rate linked versions together</string>
+    <string name="confirmed_tracked_version_rating_propagation_summary">When you rate one version, also give that rating to its linked versions from other sources that you track.</string>
+    <string name="confirmed_tracked_version_local_tracking_propagation_title">Track linked versions together</string>
+    <string name="confirmed_tracked_version_local_tracking_propagation_summary">When you start tracking one version, also start tracking its linked versions from other sources.</string>
+    <string name="automatic_local_tracking_status_inference_title">Choose reading status automatically</string>
+    <string name="automatic_local_tracking_status_inference_summary">Set Plan to read, Reading, or Completed from your chapter progress. You can still choose On hold or Dropped yourself.</string>
+    <string name="automatic_rated_group_primary_title">Choose a primary version automatically</string>
+    <string name="automatic_rated_group_primary_summary">When you have not chosen one, show the linked version you have read most. If none have been read, show the one you rated first.</string>
+    <string name="identity_review_title">Review same-manga matches</string>
+    <string name="identity_review_summary">Review which versions from different sources are treated as the same manga.</string>
     <string name="identity_review_confirmed">Confirmed</string>
     <string name="identity_review_rejected">Rejected</string>
     <string name="identity_review_legacy">Legacy</string>
@@ -1000,6 +1015,7 @@
     <!-- KMK --> <string name="best_version_confirm_candidates_title">Confirm candidates</string>
     <!-- KMK --> <string name="best_version_confirm_candidates_summary">Deselect any wrong matches, then confirm.</string>
     <!-- KMK --> <string name="best_version_confirm_action">Confirm and load chapters</string>
+    <!-- KMK --> <string name="best_version_keep_current_action">Keep current version</string>
     <!-- KMK --> <string name="best_version_no_candidates">No candidates found across installed sources.</string>
     <!-- KMK --> <string name="best_version_loading_chapters">Fetching chapter lists…</string>
     <!-- KMK --> <string name="best_version_select_chapter_title">Select chapter to compare</string>
@@ -1204,22 +1220,22 @@
     <string name="rec_settings_focus_empty">No saved focus modes yet. Create one from the Focus button on the For You page.</string>
     <!-- KMK v0.7.26: minimum chapter count filter -->
     <!-- KMK --> <string name="rec_latest_exploration">Explore new releases</string>
-    <!-- KMK --> <string name="rec_latest_exploration_summary">Share of sources also checked for latest titles</string>
-    <!-- KMK --> <string name="rec_latest_exploration_value">Exploration share</string>
+    <!-- KMK --> <string name="rec_latest_exploration_summary">Choose how much For You looks beyond your usual source order for newer manga.</string>
+    <!-- KMK --> <string name="rec_latest_exploration_value">New-release coverage</string>
     <!-- KMK --> <string name="rec_latest_exploration_off">Off</string>
     <!-- KMK --> <string name="rec_latest_exploration_percent">%1$d%%</string>
-    <!-- KMK --> <string name="rec_exposure_window">Repeat-title cooldown</string>
-    <!-- KMK --> <string name="rec_exposure_window_summary">For You lowers untouched titles that have already appeared, so repeated cards are delayed without being hidden. This sets how long that soft delay lasts.</string>
-    <!-- KMK --> <string name="rec_exposure_window_value">Cooldown window</string>
+    <!-- KMK --> <string name="rec_exposure_window">Wait before showing a title again</string>
+    <!-- KMK --> <string name="rec_exposure_window_summary">After a title appears, For You can wait before showing it again. This controls how long it waits.</string>
+    <!-- KMK --> <string name="rec_exposure_window_value">Wait time</string>
     <!-- KMK -->
     <!-- KMK --> <string name="rec_numeric_value_range">Enter a value between %1$d and %2$d.</string>
     <!-- KMK --> <string name="action_jump_to_last_read">Jump to last read</string>
     <!-- KMK --> <string name="jump_to_last_read_unavailable">That chapter is hidden by the current filter</string>
     <!-- KMK --> <string name="rec_exposure_clear">Clear repeat history</string>
-    <!-- KMK --> <string name="rec_exposure_clear_summary">Repeat history stores which For You titles were shown and when, so repeated untouched titles can be reordered lower.</string>
+    <!-- KMK --> <string name="rec_exposure_clear_summary">For You remembers which titles it has already shown so it can avoid repeating them too soon.</string>
     <!-- KMK --> <string name="rec_exposure_clear_confirm">This clears only For You repeat history. Previously shown titles become eligible for normal ordering again. It does not delete titles or change ratings, library, or tracking.</string>
     <!-- KMK --> <string name="rec_min_chapter_count">Minimum chapter count</string>
-    <!-- KMK --> <string name="rec_min_chapter_count_summary">Hide results with fewer known chapters</string>
+    <!-- KMK --> <string name="rec_min_chapter_count_summary">Only show manga with at least this many chapters in For You.</string>
     <!-- KMK --> <string name="rec_min_chapter_count_off">Off</string>
     <!-- KMK v0.7.27: Best Version quality signal history -->
     <!-- KMK --> <string name="quality_signal_history_title">Best Version History</string>
@@ -1231,16 +1247,16 @@
     <!-- KMK --> <string name="quality_signal_history_delete_record">Remove this decision</string>
     <!-- KMK --> <string name="quality_signal_history_delete_all_button">Clear all history</string>
     <!-- KMK --> <string name="quality_signal_history_delete_all_title">Clear Best Version history?</string>
-    <!-- KMK --> <string name="quality_signal_history_delete_all_message">This removes all stored Best Version decisions. It does not affect ratings, library entries, or cross-source links.</string>
+    <!-- KMK --> <string name="quality_signal_history_delete_all_message">This removes all stored Best Version decisions. It does not affect ratings, library entries, or links between manga versions from different sources.</string>
     <!-- KMK --> <string name="quality_signal_history_record_count">%1$d decision(s)</string>
 
     <!-- KMK v0.7.29: A1 — last-checked timestamp in source priority item -->
     <!-- KMK --> <string name="rec_source_last_checked">Last checked: %1$s</string>
 
     <!-- KMK v0.7.30: B — cross-source link group management -->
-    <!-- KMK --> <string name="link_group_management_title">Manage Cross-Source Links</string>
-    <!-- KMK --> <string name="link_group_management_empty">No cross-source links yet. Link groups are created when you mark "Same manga" across sources.</string>
-    <!-- KMK --> <string name="link_group_management_error">Failed to load cross-source links.</string>
+    <!-- KMK --> <string name="link_group_management_title">Manage linked manga versions</string>
+    <!-- KMK --> <string name="link_group_management_empty">No linked versions yet. Versions are linked when you mark "Same manga" across sources.</string>
+    <!-- KMK --> <string name="link_group_management_error">Could not load linked manga versions.</string>
     <!-- KMK --> <string name="link_group_management_delete_group">Remove entire link group</string>
     <!-- KMK --> <string name="link_group_management_remove_link">Remove</string>
 
@@ -1248,11 +1264,11 @@
     <!-- KMK --> <string name="source_evaluation_rec_error_kind">Error kind: %1$s</string>
     <!-- KMK v0.7.44: failure-kind labels (previously hardcoded English in EvaluationResultRow) -->
     <!-- KMK --> <string name="source_evaluation_rec_error_kind_no_taste_evidence">No taste evidence</string>
-    <!-- KMK --> <string name="source_evaluation_rec_error_kind_ext_list_unavailable">Ext list unavailable</string>
-    <!-- KMK --> <string name="source_evaluation_rec_error_kind_ext_not_found">Ext not found</string>
-    <!-- KMK --> <string name="source_evaluation_rec_error_kind_ext_ambiguous">Ext ambiguous</string>
+    <!-- KMK --> <string name="source_evaluation_rec_error_kind_ext_list_unavailable">Source list unavailable</string>
+    <!-- KMK --> <string name="source_evaluation_rec_error_kind_ext_not_found">Source not found</string>
+    <!-- KMK --> <string name="source_evaluation_rec_error_kind_ext_ambiguous">Source match unclear</string>
     <!-- KMK --> <string name="source_evaluation_rec_error_kind_install_failed">Install failed/timed out</string>
-    <!-- KMK --> <string name="source_evaluation_rec_error_kind_ext_did_not_load">Ext did not load</string>
+    <!-- KMK --> <string name="source_evaluation_rec_error_kind_ext_did_not_load">Source could not load</string>
     <!-- KMK --> <string name="source_evaluation_rec_error_kind_source_not_found">Source not found</string>
     <!-- KMK --> <string name="source_evaluation_rec_error_kind_source_ambiguous">Source ambiguous</string>
     <!-- KMK --> <string name="source_evaluation_rec_error_kind_search_error">Search error</string>
@@ -1264,7 +1280,7 @@
     <!-- KMK --> <string name="source_evaluation_rec_error_kind_private_required">Private installer required</string>
     <!-- KMK -->
     <!-- KMK v0.7.45: Final Feature B — compact Top Picks contribution count on the fit badge -->
-    <!-- KMK --> <string name="rec_source_fit_with_top_picks_count">%1$s · %2$d</string>
+    <!-- KMK v0.8.22 --> <string name="rec_source_fit_with_top_picks_count">%1$s · Top Picks %2$d</string>
     <!-- KMK v0.7.44: compact row expand/collapse diagnostics -->
     <!-- KMK v0.8.15-fix1: renamed from "Show details"/"Hide details"; this toggle is specifically For You search-compatibility/error-kind information, distinct from the catalogue-evidence "Details" toggle below. See the plan's clarified Details/Errors/Install action model. --> <string name="source_evaluation_row_show_details">Errors</string>
     <!-- KMK v0.8.15-fix1 --> <string name="source_evaluation_row_hide_details">Hide errors</string>
@@ -1285,31 +1301,31 @@
     <!-- KMK --> <string name="source_evaluation_profile_changed_since_last_run">Your taste profile has changed since the last evaluation. Consider running again for updated results.</string>
 
     <!-- KMK v0.7.34: J — configurable enrichment cap -->
-    <!-- KMK --> <string name="rec_enrichment_cap_title">Enrichment cap (per source)</string>
-    <!-- KMK v0.8.15: shortened to a plain first-view summary (was "Number of For You candidates per source to enrich with full metadata. Boosted sources always get 2×. Higher values are more accurate but slower."; accurate but technical, and the "×" mojibake'd on-device as "2Ã—"). --> <string name="rec_enrichment_cap_summary">How many results get extra details before ranking (boosted sources get 2x this amount). Higher is slower but can improve matches.</string>
+    <!-- KMK --> <string name="rec_enrichment_cap_title">Extra details per source</string>
+    <!-- KMK v0.8.15: plain-language settings copy. --> <string name="rec_enrichment_cap_summary">Choose how many results from each source receive extra details before they are ordered. Higher values may improve results but take longer.</string>
 
     <!-- KMK EC-04 2026-09-01: configurable discovery-effort policy. Rationale is disclosed in the
          summary because the three levels were chosen from a real, measured trade-off (see
          DiscoveryEffortLevel's KDoc and the ec_04_discovery_effort_measurement_2026_09_01 receipt),
          not arbitrary numbers; users deciding between them deserve the same honesty. -->
-    <string name="rec_discovery_effort_title">Discovery effort</string>
-    <string name="rec_discovery_effort_summary">How many extra source pages a For You refresh explores beyond the first, to find more unique manga over time. More pages can surface more results but uses more data and takes longer per refresh.</string>
+    <string name="rec_discovery_effort_title">Search more pages</string>
+    <string name="rec_discovery_effort_summary">Choose whether For You checks more than the first page from each source. More pages can find more manga but use more data and take longer.</string>
     <string name="rec_discovery_effort_off">Off</string>
-    <string name="rec_discovery_effort_off_description">Only the first page. No extra requests.</string>
+    <string name="rec_discovery_effort_off_description">Check only the first page.</string>
     <string name="rec_discovery_effort_standard">Standard</string>
-    <string name="rec_discovery_effort_standard_description">One extra page per refresh (the default).</string>
+    <string name="rec_discovery_effort_standard_description">Check one more page for each source.</string>
     <string name="rec_discovery_effort_extended">Extended</string>
-    <string name="rec_discovery_effort_extended_description">Up to three extra pages per refresh.</string>
-    <string name="rec_discovery_candidate_budget_title">Additional candidate budget</string>
-    <string name="rec_discovery_candidate_budget_summary">Maximum candidates processed by additional-page discovery per source and refresh. Set to 0 to disable additional candidate work.</string>
+    <string name="rec_discovery_effort_extended_description">Check up to three more pages for each source.</string>
+    <string name="rec_discovery_candidate_budget_title">Extra results to check</string>
+    <string name="rec_discovery_candidate_budget_summary">Limit the extra manga For You checks on additional pages. Set to 0 to turn this off.</string>
 
     <!-- KMK v0.8.2: configurable For You results-per-source display budget -->
     <!-- KMK --> <string name="rec_result_budget_title">Results per source</string>
-    <!-- KMK --> <string name="rec_result_budget_summary">Manga cards shown per For You source row. Your top 3 boosted sources always show at least 20. Larger values may take longer to load and use more storage.</string>
+    <!-- KMK --> <string name="rec_result_budget_summary">Choose how many manga cards to show in each For You source row. More cards can take longer to load and use more storage.</string>
 
     <!-- KMK v0.8.6: configurable group-recommendation initial-preview budget per extension -->
-    <!-- KMK --> <string name="rec_group_preview_budget_title">Initial results per extension</string>
-    <!-- KMK v0.8.15: shortened first-view summary (was "Manga cards shown for each extension in a group recommendation preview. Open a source to keep loading more. Larger values may take longer to load."; accurate but too internal). --> <string name="rec_group_preview_budget_summary">How many manga to show first for each source in group recommendations. Open a source to load more.</string>
+    <!-- KMK --> <string name="rec_group_preview_budget_title">Results shown first per source</string>
+    <!-- KMK v0.8.15: plain-language settings copy. --> <string name="rec_group_preview_budget_summary">Choose how many manga to show first for each source in group recommendations. Open a source to see more.</string>
 
     <!-- KMK v0.8.10: Rated Manga local search -->
     <!-- KMK --> <string name="rated_manga_search_hint">Search title or source</string>
@@ -1333,7 +1349,7 @@
     <!-- KMK --> <string name="rated_manga_action_view_linked_versions">View linked versions</string>
     <!-- KMK --> <string name="rated_manga_action_set_primary_version">Set as primary version</string>
     <!-- KMK --> <string name="rated_manga_action_select_all_in_group">Select all in group</string>
-    <!-- KMK --> <string name="rated_manga_action_merge_selected_into_group">Merge selected into group</string>
+    <!-- KMK --> <string name="rated_manga_action_merge_selected_into_group">Merge selected</string>
     <!-- KMK --> <string name="rated_manga_action_remove_from_group">Remove from group</string>
     <!-- KMK --> <string name="rated_manga_action_ungroup">Ungroup</string>
     <!-- KMK --> <string name="rated_manga_selection_bar_change">Change</string>
@@ -1459,14 +1475,14 @@
          strings are kept only for historical release-note text, not active index/search use. -->
     <!-- KMK --> <string name="rec_settings_index_for_you">For You</string>
     <!-- KMK v0.8.13-fix1 --> <string name="rec_settings_index_for_you_summary">What appears on For You: visibility, results, and refresh</string>
-    <!-- KMK v0.8.13-fix1 --> <string name="rec_settings_index_source_priority_summary">Languages, source order, and source preferences</string>
+    <!-- KMK v0.8.13-fix1 --> <string name="rec_settings_index_source_priority_summary">Choose languages, source order, and source preferences</string>
     <!-- KMK --> <string name="rec_settings_index_source_priority">Source priority</string>
-    <!-- KMK v0.8.12 --> <string name="rec_settings_index_matching_versions">Matching and versions</string>
-    <!-- KMK v0.8.12 --> <string name="rec_settings_index_matching_versions_summary">Same manga matching and Best Version preview settings</string>
+    <!-- KMK v0.8.12 --> <string name="rec_settings_index_matching_versions">Other versions and Best Version</string>
+    <!-- KMK v0.8.12 --> <string name="rec_settings_index_matching_versions_summary">Choose how the app finds other source versions and compares them</string>
     <!-- KMK --> <string name="rec_settings_index_taste_tags">Taste and tags</string>
     <!-- KMK --> <string name="rec_settings_index_evaluation">Source Evaluation</string>
     <!-- KMK --> <string name="rec_settings_index_discovery">Sources to Try</string>
-    <!-- KMK --> <string name="rec_settings_index_diagnostics">Management and Diagnostics</string>
+    <!-- KMK --> <string name="rec_settings_index_diagnostics">Advanced and troubleshooting</string>
     <!-- KMK v0.8.18: right-edge quick-access panel handle -->
     <!-- KMK --> <string name="rec_settings_quick_access_handle">Recommendation Settings quick access</string>
     <!-- KMK v0.8.20 --> <string name="rec_settings_quick_access_group">Recommendation Settings sections</string>
@@ -1475,7 +1491,7 @@
          diagnostics, this screen is now source-scope only (order/enable/like/dislike/preview), so the
          old name no longer described its contents. Kept only for historical release-note text. -->
     <!-- KMK v0.8.14 --> <string name="rec_settings_index_sources_languages">Sources and languages</string>
-    <!-- KMK v0.8.14 --> <string name="rec_settings_index_sources_languages_summary">Which sources/languages are searched and how they are ordered</string>
+    <!-- KMK v0.8.14 --> <string name="rec_settings_index_sources_languages_summary">Choose which sources and languages are searched, and their order</string>
     <!-- KMK v0.8.14-fix1 --> <string name="rec_settings_index_for_you_sources">For You Sources</string>
     <!-- KMK v0.8.14-fix1 --> <string name="rec_settings_index_for_you_sources_summary">Choose which sources appear on For You and how they are ordered</string>
     <!-- KMK v0.8.14-fix1: dedicated index-row subtitles, distinct from the destination screens' own
@@ -1483,10 +1499,10 @@
     <!-- Keep index summaries short and goal-oriented. -->
     <string name="rec_settings_index_discovery_summary">Install source suggestions based on your taste.</string>
     <!-- Keep index summaries short and goal-oriented. -->
-    <string name="rec_settings_index_management_summary">Languages, version matching, quality checks, cache, and diagnostics.</string>
+    <string name="rec_settings_index_management_summary">Language, other-version, source-quality, storage, and troubleshooting options.</string>
     <!-- KMK v0.8.14 --> <string name="rec_settings_index_taste_filters">Taste and Filters</string>
     <!-- Keep index summaries short and goal-oriented. -->
-    <!-- KMK v0.8.14 --> <string name="rec_settings_index_taste_filters_summary">Ratings, hidden manga, chapter filters, and tag preferences.</string>
+    <!-- KMK v0.8.14 --> <string name="rec_settings_index_taste_filters_summary">Ratings, hidden manga, minimum chapters, and tag preferences.</string>
     <!-- KMK v0.8.16-fix1: dedicated short user-goal subtitle for the Source Evaluation index row;
          the row previously reused source_evaluation_settings_desc ("Temporarily install non-installed
          extensions to test their content..."), which reads like an installer implementation warning
@@ -1495,8 +1511,8 @@
     <string name="rec_settings_index_evaluation_summary">Find sources that match your taste.</string>
     <!-- KMK v0.8.14-fix1: language controls moved here from For You sources; see
          RecommendationDiagnosticsSettingsScreen. -->
-    <string name="rec_settings_management_languages_header">Recommendation languages</string>
-    <string name="rec_settings_management_languages_summary">Which languages are searched across every For You source</string>
+    <string name="rec_settings_management_languages_header">Languages for recommendations</string>
+    <string name="rec_settings_management_languages_summary">Choose the languages For You can search.</string>
 
     <!-- KMK v0.8.20-fix1: source_evaluation_outdated_all_unreachable/_some_unreachable/_excluded_toggle
          removed. The pre-run excluded-outdated disclosure they backed was removed from the primary
@@ -1602,10 +1618,10 @@
     <!-- KMK --> <string name="saf_export_registration_failed_unrecoverable">Couldn\'t track the exported file for cleanup, and automatic removal failed</string>
 
     <!-- KMK v0.8.19: evaluation mode, visual-only source/repo/dislike/tag obfuscation for public screenshots and screen recordings -->
-    <!-- KMK --> <string name="evaluation_mode_title">Evaluation mode</string>
-    <!-- KMK --> <string name="evaluation_mode_summary">Hide source, repository, extension, and tag names in shared screenshots without changing manga titles, saved data, or app behavior.</string>
-    <!-- KMK H2A0 --> <string name="developer_options_title">Developer options</string>
-    <!-- KMK H2A0 --> <string name="developer_options_summary">Allow advanced diagnostic details when they are available. This is separate from Evaluation mode.</string>
+    <!-- KMK --> <string name="evaluation_mode_title">Hide technical names in screenshots</string>
+    <!-- KMK --> <string name="evaluation_mode_summary">Replace source, extension, repository, and tag names with simple placeholders in shared screenshots. Manga titles and saved data stay unchanged.</string>
+    <!-- KMK H2A0 --> <string name="developer_options_title">Show troubleshooting details</string>
+    <!-- KMK H2A0 --> <string name="developer_options_summary">Show extra information that can help diagnose problems. You do not need this for normal use.</string>
     <!-- KMK H2A0 --> <string name="developer_options_warning_title">Enable developer options?</string>
     <!-- KMK H2A0 --> <string name="developer_options_warning_message">This setting is intended for troubleshooting and may reveal detailed technical information in diagnostic views. It is not needed for normal use. Do not enable it before sharing screenshots or recordings.</string>
     <!-- KMK H2A0 --> <string name="developer_options_warning_confirm">Enable</string>
@@ -1615,29 +1631,29 @@
     <!-- KMK --> <string name="evaluation_mode_blocked_tag_label">Dislike Tag %1$d</string>
 
     <!-- KMK debug-build-only fixture selector for deterministic Source Evaluation error routes -->
-    <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_title">Source Evaluation debug fixture</string>
-    <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_summary">Debug builds only. Use a fixed result to test Source Evaluation states without contacting real sources or installing extensions.</string>
+    <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_title">Source check sample data</string>
+    <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_summary">Testing builds only. Use prepared results to check Source Evaluation screens without contacting real sources or installing extensions.</string>
     <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_off">Off (normal evaluation)</string>
     <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_candidate_load_error">Candidate load error</string>
     <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_connectivity_lost">Connectivity lost</string>
     <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_per_source_error">Per-source error</string>
 
     <!-- KMK Corrective pass 2026-08-03: separate debug-build-only fixture selector for the Browse paging source, intentionally distinct from source_evaluation_debug_fixture_mode_* above so the two debug fixtures cannot cross-activate each other. -->
-    <!-- KMK --> <string name="browse_debug_fixture_mode_title">Browse debug fixture</string>
-    <!-- KMK --> <string name="browse_debug_fixture_mode_summary">Debug builds only. Use a fixed Browse failure to test the error state without querying a real source.</string>
+    <!-- KMK --> <string name="browse_debug_fixture_mode_title">Browse sample data</string>
+    <!-- KMK --> <string name="browse_debug_fixture_mode_summary">Testing builds only. Use prepared Browse results to check the error screen without contacting a real source.</string>
     <!-- KMK --> <string name="browse_debug_fixture_mode_off">Off (normal browsing)</string>
     <!-- KMK --> <string name="browse_debug_fixture_mode_source_unavailable">Source unavailable</string>
 
     <!-- KMK: debug-only Sources To Try fixture; never available in release builds. -->
-    <!-- KMK --> <string name="sources_to_try_debug_fixture_mode_title">Sources To Try debug fixture</string>
-    <!-- KMK --> <string name="sources_to_try_debug_fixture_mode_summary">Debug builds only. Show one fixed suggestion to test the Sources To Try install and rollback flow.</string>
+    <!-- KMK --> <string name="sources_to_try_debug_fixture_mode_title">Sources To Try sample data</string>
+    <!-- KMK --> <string name="sources_to_try_debug_fixture_mode_summary">Testing builds only. Show a prepared suggestion to check installing and undoing a source.</string>
     <!-- KMK --> <string name="sources_to_try_debug_fixture_mode_off">Off (normal suggestions)</string>
-    <!-- KMK --> <string name="sources_to_try_debug_fixture_mode_suggestion_visible">Show deterministic suggestion</string>
+    <!-- KMK --> <string name="sources_to_try_debug_fixture_mode_suggestion_visible">Show a prepared suggestion</string>
     <!-- KMK --> <string name="sources_to_try_debug_fixture_mode_empty">Show truthful empty state</string>
-    <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_title">For You debug fixture</string>
-    <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_summary">Debug builds only. Use generic, deterministic recommendations without contacting real sources or changing your library.</string>
+    <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_title">For You sample data</string>
+    <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_summary">Testing builds only. Use prepared recommendations without contacting real sources or changing your library.</string>
     <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_off">Off (normal For You)</string>
-    <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_top_picks">Show deterministic Top Picks</string>
+    <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_top_picks">Show prepared Top Picks</string>
     <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_top_picks_partial_failure">Show Top Picks with two unavailable sources</string>
 
     <!-- KMK v0.8.20-fix1: explicit confirmation before a reader-schedule window is removed. -->
@@ -1646,7 +1662,7 @@
     <!-- KMK --> <string name="reading_schedule_delete_window_confirm">Remove window</string>
 
     <!-- KMK v0.8.20-fix1: count-based per-source metadata/tag diagnostics. -->
-    <!-- KMK --> <string name="rec_source_metadata_tag_diagnostics_header">Source metadata and tag diagnostics</string>
+    <!-- KMK --> <string name="rec_source_metadata_tag_diagnostics_header">Source details and tag checks</string>
     <!-- KMK -->
     <!-- KMK --> <string name="rec_source_metadata_tag_diagnostics_no_data">No source evaluation data is available yet. Run Source Evaluation to collect it.</string>
     <!-- KMK --> <string name="rec_source_metadata_tag_diagnostics_row_summary">%1$s, %2$s, %3$s, %4$s</string>
@@ -1670,6 +1686,7 @@
     <!-- KMK: Alternate Source Reading Bridge reader controls. -->
     <!-- KMK --> <string name="alternate_source_reader_gap_action">Read the missing section from another source</string>
     <!-- KMK --> <string name="alternate_source_reader_choose_source_title">Choose an alternate source</string>
+    <!-- KMK --> <string name="alternate_source_reader_current_source">Currently reading from: %1$s</string>
     <!-- KMK --> <string name="alternate_source_reader_choose_chapter_title">Choose the matching chapter</string>
     <!-- KMK --> <string name="alternate_source_reader_loading">Checking available alternatives…</string>
     <!-- KMK --> <string name="alternate_source_reader_empty">No usable alternatives were found.</string>
@@ -1686,8 +1703,8 @@
     <!-- KMK --> <string name="alternate_source_reader_confirm_skip_message">The current chapter will remain open while you choose another match.</string>
     <!-- KMK --> <string name="alternate_source_reader_resolving_entry">Opening the alternate chapter…</string>
     <!-- KMK --> <string name="alternate_source_reader_resolving_correction">Updating the chapter mapping…</string>
-    <!-- KMK --> <string name="alternate_source_reader_resolving_return">Returning to the primary source…</string>
-    <!-- KMK --> <string name="alternate_source_reader_return">Return to primary source</string>
+    <!-- KMK --> <string name="alternate_source_reader_resolving_return">Switching source…</string>
+    <!-- KMK --> <string name="alternate_source_reader_return">Switch source</string>
     <!-- KMK --> <string name="alternate_source_reader_correct">Correct chapter mapping</string>
     <!-- KMK --> <string name="alternate_source_reader_skip">This chapter is not the match</string>
     <!-- KMK --> <string name="alternate_source_reader_uncertain_notice">Chapter alignment is uncertain. Return or correct the mapping from the reader menu if needed.</string>
@@ -1746,6 +1763,7 @@
     <string name="local_tracking_date_order_error">The finish date cannot be before the start date.</string>
     <string name="local_tracking_reconcile">Reconcile with external trackers</string>
     <string name="local_tracking_other_versions">Track other versions</string>
+    <string name="local_tracking_share_progress_with_version">Keep reading progress in sync</string>
     <string name="local_tracking_reconcile_title">Reconcile tracking data</string>
     <string name="local_tracking_reconcile_notice">Review each tracker before importing locally or exporting remotely. No title match writes data automatically.</string>
     <string name="local_tracking_no_metadata">No supported metadata available</string>

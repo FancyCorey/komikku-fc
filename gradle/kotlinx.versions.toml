@@ -1,4 +1,5 @@
 [versions]
+# Runtime libraries use Kotlin 2.4; settings supplies the compatible R8 compiler.
 kotlin_version = "2.4.0"
 serialization_version = "1.11.0"
 xml_serialization_version = "0.91.3"

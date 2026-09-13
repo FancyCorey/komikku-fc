@@ -1,6 +1,6 @@
 # Privacy and data
 
-KMK is an Android app, not an online recommendation service. Recommendations, ratings, recently shown cards, source evaluations, linked versions, and OCR data are stored locally through the app's database and settings. Installed extensions and configured trackers can still contact their own services when you use them.
+Komikku FC is an Android app, not an online recommendation service. Recommendations, ratings, recently shown cards, source evaluations, linked versions, and OCR data are stored locally through the app's database and settings. Installed extensions and configured trackers can still contact their own services when you use them.
 
 ## Local data
 
@@ -21,7 +21,7 @@ A release maintainer must provide this fork's own Google Drive OAuth configurati
 
 ## Backups and exports
 
-Backups include supported KMK state that is difficult to recreate, such as ratings, recommendation preferences, links, and source evaluation. They do not erase remote side effects, uninstall extensions, restore the clipboard, or replace a device backup.
+Backups include supported Komikku FC state that is difficult to recreate, such as ratings, recommendation preferences, links, and source evaluation. They do not erase remote side effects, uninstall extensions, restore the clipboard, or replace a device backup.
 
 Exports use Android's document APIs. Cleanup is limited to the exact document created by the operation and never scans an arbitrary folder for similarly named files.
 

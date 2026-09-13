@@ -30,13 +30,19 @@ fun buildConfigString(value: String): String =
 fun configuredGoogleDriveValue(propertyName: String, fallback: String): String =
     buildConfigString(providers.gradleProperty(propertyName).orNull ?: fallback)
 
+val supportedAbis = listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+val validationAbi = providers.gradleProperty("kmk.validation.abi").orNull
+require(validationAbi == null || validationAbi in supportedAbis) {
+    "kmk.validation.abi must be one of ${supportedAbis.joinToString()}"
+}
+
 android {
     namespace = "eu.kanade.tachiyomi"
 
     defaultConfig {
         applicationId = "app.komikku"
 
-        versionCode = 93 // Android package versionCode. Komikku FC feature versions are tracked separately in KmkRecsReleaseNotes.
+        versionCode = 94 // Increase for each public APK release; feature versions are tracked in KmkRecsReleaseNotes.
         versionName = "1.14.1"
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getCommitCount()}\"")
@@ -207,9 +213,9 @@ android {
     splits {
         abi {
             isEnable = true
-            isUniversalApk = true
+            isUniversalApk = validationAbi == null
             reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            include(*(validationAbi?.let(::listOf) ?: supportedAbis).toTypedArray())
         }
     }
 
@@ -512,4 +518,18 @@ buildscript {
     dependencies {
         classpath(kotlinx.gradle)
     }
+}
+
+val verifyAndroidCompiler = tasks.register("verifyAndroidCompiler") {
+    doLast {
+        val version = com.android.tools.r8.Version.getVersionString()
+        check(version.substringBefore(" ") == "9.1.31") {
+            "Expected Kotlin 2.4-compatible R8 9.1.31, found $version"
+        }
+        logger.lifecycle("Android bytecode compiler: R8 $version")
+    }
+}
+
+tasks.matching { it.name == "assembleKmkPublicTest" }.configureEach {
+    dependsOn(verifyAndroidCompiler)
 }

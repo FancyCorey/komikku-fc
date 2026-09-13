@@ -82,6 +82,8 @@ class LovedMangaScreenModelLegacyPreferenceIsolationTest {
         setMangaTaste: SetMangaTaste,
         setMangaTasteBatch: SetMangaTasteBatch = mockk(relaxed = true),
         confirmedTrackedMangaTasteTargets: ConfirmedTrackedMangaTasteTargets = mockk(relaxed = true),
+        confirmedMangaGroupTargets: ConfirmedMangaGroupTargets = mockk(relaxed = true),
+        confirmedGroupLocalTrackingPropagator: ConfirmedGroupLocalTrackingPropagator = mockk(relaxed = true),
     ): LovedMangaScreenModel {
         val getMangaTaste = mockk<GetMangaTaste>(relaxed = true)
         every { getMangaTaste.subscribeAll() } returns emptyFlow()
@@ -100,12 +102,13 @@ class LovedMangaScreenModelLegacyPreferenceIsolationTest {
             upsertCrossSourceMangaLinks = mockk<UpsertCrossSourceMangaLinks>(relaxed = true),
             deleteCrossSourceMangaLink = mockk<DeleteCrossSourceMangaLink>(relaxed = true),
             sourcePreferences = sourcePreferences,
+            mangaRepository = mockk(relaxed = true),
             deleteCrossSourceGroupCompletely = mockk<DeleteCrossSourceGroupCompletely>(relaxed = true),
             groupUndoService = mockk<GroupUndoService>(relaxed = true),
             identityController = mockk<CrossSourceIdentityDecisionController>(relaxed = true),
             confirmedTrackedMangaTasteTargets = confirmedTrackedMangaTasteTargets,
-            confirmedMangaGroupTargets = mockk<ConfirmedMangaGroupTargets>(relaxed = true),
-            confirmedGroupLocalTrackingPropagator = mockk<ConfirmedGroupLocalTrackingPropagator>(relaxed = true),
+            confirmedMangaGroupTargets = confirmedMangaGroupTargets,
+            confirmedGroupLocalTrackingPropagator = confirmedGroupLocalTrackingPropagator,
         )
     }
 
@@ -211,5 +214,39 @@ class LovedMangaScreenModelLegacyPreferenceIsolationTest {
             sourcePreferences.seenRecommendationMangaKeys().get(),
             "no rollback coordination across MangaTaste and the legacy preference should exist -- there is nothing to roll back",
         )
+    }
+
+    @Test
+    fun `rating still creates primary tracking when linked-version tracking is disabled`() = runTest {
+        val sourcePreferences = SourcePreferences(FakePreferenceStore()).also {
+            it.confirmedTrackedVersionLocalTrackingPropagationEnabled().set(false)
+        }
+        val setMangaTaste = mockk<SetMangaTaste>(relaxed = true)
+        val groupTargets = mockk<ConfirmedMangaGroupTargets>(relaxed = true)
+        val propagator = mockk<ConfirmedGroupLocalTrackingPropagator>(relaxed = true)
+        val model = buildModel(
+            sourcePreferences = sourcePreferences,
+            setMangaTaste = setMangaTaste,
+            confirmedMangaGroupTargets = groupTargets,
+            confirmedGroupLocalTrackingPropagator = propagator,
+        )
+        val origin = Manga.create().copy(id = 30L, source = 3L, url = "/manga/primary", ogTitle = "Primary")
+        val confirmed = origin.copy(id = 31L, source = 4L, url = "/manga/linked")
+        val originTaste = taste(source = origin.source, url = origin.url, mangaId = origin.id)
+        coEvery { groupTargets.await(origin) } returns listOf(origin, confirmed)
+        forceState(
+            model,
+            LovedMangaScreenModel.State.Success(
+                entries = listOf(LovedMangaEntry(taste = originTaste, manga = origin)),
+                groupDuplicates = false,
+                selectedKeys = setOf(RatedMangaKey.of(originTaste)),
+            ),
+        )
+
+        model.changeSelectedRating(MangaRating.LOVE)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { groupTargets.await(origin) }
+        coVerify(exactly = 1) { propagator.ensureTrackedForRating(listOf(origin, confirmed)) }
     }
 }

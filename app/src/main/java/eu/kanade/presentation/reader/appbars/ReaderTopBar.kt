@@ -3,6 +3,7 @@ package eu.kanade.presentation.reader.appbars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,6 +27,7 @@ fun ReaderTopBar(
     onReturnToPrimarySource: (() -> Unit)?,
     onCorrectAlternateSourceMapping: (() -> Unit)?,
     onSkipAlternateSourceChapter: (() -> Unit)?,
+    onAddAlternateSourceToLibrary: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     AppBar(
@@ -81,8 +83,9 @@ fun ReaderTopBar(
                         }
                         onReturnToPrimarySource?.let {
                             add(
-                                AppBar.OverflowAction(
+                                AppBar.Action(
                                     title = stringResource(KMR.strings.alternate_source_reader_return),
+                                    icon = Icons.Outlined.SwapHoriz,
                                     onClick = it,
                                 ),
                             )
@@ -99,6 +102,14 @@ fun ReaderTopBar(
                             add(
                                 AppBar.OverflowAction(
                                     title = stringResource(KMR.strings.alternate_source_reader_skip),
+                                    onClick = it,
+                                ),
+                            )
+                        }
+                        onAddAlternateSourceToLibrary?.let {
+                            add(
+                                AppBar.OverflowAction(
+                                    title = stringResource(MR.strings.add_to_library),
                                     onClick = it,
                                 ),
                             )

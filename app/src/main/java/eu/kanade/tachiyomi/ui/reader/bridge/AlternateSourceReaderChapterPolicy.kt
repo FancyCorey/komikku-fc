@@ -2,9 +2,31 @@ package eu.kanade.tachiyomi.ui.reader.bridge
 
 import eu.kanade.tachiyomi.source.model.SChapter
 import tachiyomi.domain.chapter.service.ChapterRecognition
+import kotlin.math.abs
 
 /** Shapes a source chapter response for the alternate-source chooser. */
 object AlternateSourceReaderChapterPolicy {
+
+    /** Selects the exact current number first, then the nearest available lower-tied number. */
+    fun recommendedChapter(
+        chapters: List<AlternateSourceReaderChapterCandidate>,
+        currentChapterNumber: Float,
+    ): AlternateSourceReaderChapterCandidate? {
+        if (!currentChapterNumber.isFinite() || currentChapterNumber < 0f) return null
+        return chapters.firstOrNull {
+            it.chapterNumber.isFinite() &&
+                it.chapterNumber >= 0f &&
+                it.chapterNumber == currentChapterNumber
+        }
+            ?: chapters
+                .asSequence()
+                .filter { it.chapterNumber.isFinite() && it.chapterNumber >= 0f }
+                .minWithOrNull(
+                    compareBy<AlternateSourceReaderChapterCandidate> {
+                        abs(it.chapterNumber.toDouble() - currentChapterNumber.toDouble())
+                    }.thenBy { it.chapterNumber },
+                )
+    }
 
     /**
      * Resolves source-number sentinels from chapter labels, removes only duplicate URLs, and

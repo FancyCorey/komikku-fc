@@ -45,6 +45,12 @@ class SameMangaBestVersionCandidateSearchGateway(
         sources: List<Source>,
         onResult: suspend (SameMangaSourceResult) -> Unit,
     ) {
-        delegate.search(queries, settings, originManga, sources, onResult)
+        delegate.search(
+            queries = queries,
+            settings = settings,
+            originManga = originManga,
+            sources = sources,
+            onResult = onResult,
+        )
     }
 }

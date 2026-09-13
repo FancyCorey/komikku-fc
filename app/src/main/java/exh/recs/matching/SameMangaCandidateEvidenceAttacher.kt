@@ -12,8 +12,8 @@ object SameMangaCandidateEvidenceAttacher {
 
     /**
      * Live source search can return unrelated rows when a source's search endpoint is broad.
-     * Keep those rows out of contextual choosers while preserving the explicit global-search
-     * escape hatch for users who need to choose a differently named work manually.
+     * Contextual matchers filter those rows, while explicit global-search surfaces can retain
+     * them for manual inspection and selection.
      */
     fun isPlausible(origin: Manga, candidate: Manga): Boolean {
         val assessment = SameMangaIdentityEvidencePolicy.assess(
@@ -29,6 +29,7 @@ object SameMangaCandidateEvidenceAttacher {
         origin: Manga,
         candidates: List<Manga>,
         confirmedKeys: Set<MangaIdentityKey> = emptySet(),
+        retainAllCandidates: Boolean = false,
     ): SameMangaCandidateResult.Success {
         if (candidates.isEmpty()) return SameMangaCandidateResult.Success(emptyList())
 
@@ -37,7 +38,7 @@ object SameMangaCandidateEvidenceAttacher {
             .distinctBy { MangaIdentityKey(it.source, it.url) }
             .filter { manga ->
                 val key = MangaIdentityKey(manga.source, manga.url)
-                key in confirmedKeys || isPlausible(origin, manga)
+                retainAllCandidates || key in confirmedKeys || isPlausible(origin, manga)
             }
             .mapIndexed { index, manga ->
                 AssessedCandidate(

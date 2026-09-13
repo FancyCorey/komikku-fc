@@ -36,7 +36,8 @@ class TrackPreferences(
 
     fun anilistScoreType() = preferenceStore.getString("anilist_score_type", Anilist.POINT_10)
 
-    fun autoUpdateTrack() = preferenceStore.getBoolean("pref_auto_update_manga_sync_key", true)
+    /** Sends reading progress to external tracker accounts. This remains an explicit opt-in. */
+    fun autoUpdateTrack() = preferenceStore.getBoolean("pref_auto_update_manga_sync_key", false)
 
     fun trackOnAddingToLibrary() = preferenceStore.getBoolean("track_on_adding_to_library", true)
 
@@ -55,11 +56,27 @@ class TrackPreferences(
     // KMK -->
     fun autoSyncProgressFromTrackers() = preferenceStore.getBoolean("pref_auto_sync_progress_from_trackers_key", true)
 
+    fun autoSyncLocalTrackingFromTrackers() = preferenceStore.getBoolean(
+        "pref_auto_sync_local_tracking_from_trackers_key",
+        true,
+    )
+
+    fun autoCreateLocalTrackingFromRating() = preferenceStore.getBoolean(
+        "pref_auto_create_local_tracking_from_rating_key",
+        true,
+    )
+
     /**
      * Controls whether read progress may be inherited by other user-confirmed local versions.
      * Enabled by default so confirmed versions follow the same automatic progress behavior as
      * external trackers; users can still disable propagation from Tracking settings.
      */
     fun autoInheritLocalProgress() = preferenceStore.getBoolean("pref_auto_inherit_local_progress_key", true)
+
+    /** Allows tracker progress to follow reading order when a source uses offset chapter numbers. */
+    fun matchTrackerProgressByReadingOrder() = preferenceStore.getBoolean(
+        "pref_match_tracker_progress_by_reading_order_key",
+        true,
+    )
     // KMK <--
 }

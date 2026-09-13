@@ -73,13 +73,17 @@ class ReleaseServiceImpl(
     }
     // KMK <--
 
-    private fun getDownloadLink(release: GithubRelease, isFoss: Boolean): String? {
-        val map = release.assets.associate { asset ->
+    internal fun getDownloadLink(
+        release: GithubRelease,
+        isFoss: Boolean,
+        supportedAbis: List<String> = Build.SUPPORTED_ABIS.toList(),
+    ): String? {
+        val map = release.assets.filter { it.name.endsWith(".apk", ignoreCase = true) }.associate { asset ->
             BUILD_TYPES.find { "-$it" in asset.name } to asset.downloadLink
         }
 
         return if (!isFoss) {
-            map[Build.SUPPORTED_ABIS[0]] ?: map[null]
+            supportedAbis.firstNotNullOfOrNull { map[it] } ?: map[null]
         } else {
             map[FOSS]
         }

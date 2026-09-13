@@ -217,6 +217,29 @@ class LocalTrackerRepositoryImpl(
         }
     }
 
+    override suspend fun recordPendingProgress(
+        workId: String,
+        source: Long,
+        chapterNumber: Double,
+        chapterLabel: String,
+        progressAt: Long,
+    ) {
+        require(workId.isNotBlank())
+        require(source > 0L)
+        require(chapterNumber >= 0.0)
+        require(chapterLabel.isNotBlank())
+        require(progressAt > 0L)
+        handler.await {
+            local_trackerQueries.recordPendingProgress(
+                workId = workId,
+                source = source,
+                chapterNumber = chapterNumber,
+                chapterLabel = chapterLabel,
+                progressAt = progressAt,
+            )
+        }
+    }
+
     override suspend fun upsertSource(source: LocalTrackedWorkSource) {
         require(source.workId.isNotBlank())
         require(source.source > 0L && source.url.isNotBlank() && source.title.isNotBlank())

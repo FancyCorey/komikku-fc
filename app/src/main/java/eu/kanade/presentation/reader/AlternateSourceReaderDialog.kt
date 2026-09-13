@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
@@ -18,6 +21,8 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -54,6 +59,9 @@ fun AlternateSourceReaderDialog(
         AlternateSourceReaderPresentation.Hidden -> Unit
         is AlternateSourceReaderPresentation.ChoosingSource -> SelectionDialog(
             title = stringResource(KMR.strings.alternate_source_reader_choose_source_title),
+            subtitle = presentation.currentSourceLabel?.let {
+                stringResource(KMR.strings.alternate_source_reader_current_source, it)
+            },
             content = presentation.content,
             onDismiss = onDismiss,
             onSelect = onSelectSource,
@@ -70,6 +78,7 @@ fun AlternateSourceReaderDialog(
             selectedToken = presentation.selectedToken,
             onConfirm = onConfirmChapter,
             retryAction = onRetry,
+            bringSelectedIntoView = true,
         )
         is AlternateSourceReaderPresentation.ConfirmPair -> ConfirmationDialog(
             title = stringResource(KMR.strings.alternate_source_reader_confirm_pair_title),
@@ -132,6 +141,7 @@ fun AlternateSourceReaderDialog(
 @Composable
 private fun SelectionDialog(
     title: String,
+    subtitle: String? = null,
     content: AlternateSourceReaderLoadState<AlternateSourceReaderCandidateRow>,
     onDismiss: () -> Unit,
     onSelect: (AlternateSourceReaderOpaqueToken) -> Unit,
@@ -140,10 +150,38 @@ private fun SelectionDialog(
     extraAction: (() -> Unit)? = null,
     inAppAction: (() -> Unit)? = null,
     retryAction: (() -> Unit)? = null,
+    bringSelectedIntoView: Boolean = false,
 ) {
+    val selectedListState = rememberLazyListState()
+    LaunchedEffect(bringSelectedIntoView, selectedToken, content) {
+        if (bringSelectedIntoView) {
+            val selectedContent =
+                content as? AlternateSourceReaderLoadState.Content<AlternateSourceReaderCandidateRow>
+            val selectedIndex = selectedContent
+                ?.items
+                ?.indexOfFirst { it.token == selectedToken }
+                ?: -1
+            if (selectedIndex >= 0) {
+                val partialFailureOffset = if (selectedContent?.hasPartialFailure == true) 1 else 0
+                selectedListState.scrollToItem(selectedIndex + partialFailureOffset)
+            }
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title)
+                subtitle?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
         confirmButton = {
             FlowRow(
                 horizontalArrangement = Arrangement.End,
@@ -183,67 +221,52 @@ private fun SelectionDialog(
             }
         },
         text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 420.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                when (content) {
-                    AlternateSourceReaderLoadState.Loading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                        Text(stringResource(KMR.strings.alternate_source_reader_loading))
-                    }
-                    AlternateSourceReaderLoadState.Empty -> Text(
-                        stringResource(KMR.strings.alternate_source_reader_empty),
-                    )
-                    is AlternateSourceReaderLoadState.Failed -> Text(stringResource(content.reason.resource))
-                    is AlternateSourceReaderLoadState.Content -> {
-                        if (content.hasPartialFailure) {
+            if (bringSelectedIntoView && content is AlternateSourceReaderLoadState.Content) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp),
+                    state = selectedListState,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (content.hasPartialFailure) {
+                        item {
                             Text(
                                 text = stringResource(KMR.strings.alternate_source_reader_partial),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        content.items.forEach { row ->
-                            val label = row.primaryLabel ?: row.genericLabel?.let { generic ->
-                                stringResource(
-                                    when (generic.kind) {
-                                        AlternateSourceReaderGenericLabelKind.SOURCE ->
-                                            KMR.strings.alternate_source_reader_generic_source
-                                        AlternateSourceReaderGenericLabelKind.CHAPTER ->
-                                            KMR.strings.alternate_source_reader_generic_chapter
-                                    },
-                                    generic.ordinal,
+                    }
+                    items(content.items, key = { it.token.value }) { row ->
+                        CandidateRow(row, selectedToken, onSelect)
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    when (content) {
+                        AlternateSourceReaderLoadState.Loading -> {
+                            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                            Text(stringResource(KMR.strings.alternate_source_reader_loading))
+                        }
+                        AlternateSourceReaderLoadState.Empty -> Text(
+                            stringResource(KMR.strings.alternate_source_reader_empty),
+                        )
+                        is AlternateSourceReaderLoadState.Failed -> Text(stringResource(content.reason.resource))
+                        is AlternateSourceReaderLoadState.Content -> {
+                            if (content.hasPartialFailure) {
+                                Text(
+                                    text = stringResource(KMR.strings.alternate_source_reader_partial),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                            }.orEmpty()
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .defaultMinSize(minHeight = 48.dp)
-                                    .selectable(
-                                        selected = row.token == selectedToken,
-                                        role = Role.RadioButton,
-                                        onClick = { onSelect(row.token) },
-                                    )
-                                    .semantics { stateDescription = label }
-                                    .padding(vertical = 8.dp),
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    RadioButton(
-                                        selected = row.token == selectedToken,
-                                        onClick = null,
-                                    )
-                                    Text(label, style = MaterialTheme.typography.bodyLarge)
-                                }
-                                row.secondaryLabel?.let {
-                                    Text(
-                                        text = it,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
+                            }
+                            content.items.forEach { row ->
+                                CandidateRow(row, selectedToken, onSelect)
                             }
                         }
                     }
@@ -251,6 +274,59 @@ private fun SelectionDialog(
             }
         },
     )
+}
+
+@Composable
+private fun CandidateRow(
+    row: AlternateSourceReaderCandidateRow,
+    selectedToken: AlternateSourceReaderOpaqueToken?,
+    onSelect: (AlternateSourceReaderOpaqueToken) -> Unit,
+) {
+    val label = row.primaryLabel ?: row.genericLabel?.let { generic ->
+        stringResource(
+            when (generic.kind) {
+                AlternateSourceReaderGenericLabelKind.SOURCE -> KMR.strings.alternate_source_reader_generic_source
+                AlternateSourceReaderGenericLabelKind.CHAPTER -> KMR.strings.alternate_source_reader_generic_chapter
+            },
+            generic.ordinal,
+        )
+    }.orEmpty()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
+            .selectable(
+                selected = row.token == selectedToken,
+                role = Role.RadioButton,
+                onClick = { onSelect(row.token) },
+            )
+            .semantics { stateDescription = label }
+            .padding(vertical = 8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+        ) {
+            RadioButton(
+                selected = row.token == selectedToken,
+                onClick = null,
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(top = 12.dp),
+            ) {
+                Text(label, style = MaterialTheme.typography.bodyLarge)
+                row.secondaryLabel?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable

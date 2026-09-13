@@ -98,9 +98,10 @@ class RecommendationMinChapterCountPolicyTest {
 
     @Test
     fun `an unknown count fails open and stays visible`() {
-        // Not present in the map at all, and the explicit 0L "unknown" sentinel -- both must fail open.
+        // A missing map entry means the source list has not been loaded and must fail open.
         assertEquals(CandidateVisibility.VISIBLE, visibility(1L, 20, mapOf(2L to 5L)))
-        assertEquals(CandidateVisibility.VISIBLE, visibility(1L, 20, mapOf(1L to 0L)))
+        // An explicit zero is known evidence and must respect the selected minimum.
+        assertEquals(CandidateVisibility.HIDDEN_MIN_CHAPTERS, visibility(1L, 20, mapOf(1L to 0L)))
     }
 
     @Test

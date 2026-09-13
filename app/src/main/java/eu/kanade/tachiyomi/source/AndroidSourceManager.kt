@@ -94,16 +94,17 @@ class AndroidSourceManager(
                 // SY <--
                 .collectLatest { (state, browseFixtureMode) ->
                     val (extensions, enableExhentai, isHentaiEnabled) = state
+                    val localSource = LocalSource(
+                        context,
+                        Injekt.get(),
+                        Injekt.get(),
+                        // SY -->
+                        sourcePreferences.allowLocalSourceHiddenFolders()::get,
+                        // SY <--
+                    )
                     val mutableMap = ConcurrentHashMap<Long, Source>(
                         mapOf(
-                            LocalSource.ID to LocalSource(
-                                context,
-                                Injekt.get(),
-                                Injekt.get(),
-                                // SY -->
-                                sourcePreferences.allowLocalSourceHiddenFolders()::get,
-                                // SY <--
-                            ),
+                            LocalSource.ID to localSource,
                         ),
                     ).apply {
                         if (shouldExposeDebugBrowseFixture(BuildConfig.DEBUG, browseFixtureMode)) {
@@ -127,8 +128,12 @@ class AndroidSourceManager(
                     }
                     extensions.forEach { extension ->
                         extension.sources.mapNotNull { it.toInternalSource(/* KMK --> */isHentaiEnabled/* KMK <-- */) }.forEach {
-                            mutableMap[it.id] = it
-                            registerStubSource(StubSource.from(it))
+                            // ID 0 is reserved for the built-in Local source. An installed
+                            // extension must never replace that route in the source registry.
+                            if (it.id != LocalSource.ID) {
+                                mutableMap[it.id] = it
+                                registerStubSource(StubSource.from(it))
+                            }
                         }
                     }
                     sourcesMapFlow.value = mutableMap

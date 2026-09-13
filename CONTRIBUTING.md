@@ -1,22 +1,22 @@
-Looking to report a bug or request a feature? Start with the fork's [issue forms](https://github.com/FancyCorey/komikku-KMK/issues/new/choose). The forms explain what information helps and which source or extension problems are outside the app's control.
+Looking to report a bug or request a feature? Start with the fork's [issue forms](https://github.com/FancyCorey/komikku-fc/issues/new/choose). The forms explain what information helps and which source or extension problems are outside the app's control.
 
 ---
 
-Thanks for your interest in contributing to Komikku KMK. This fork builds on Komikku, TachiyomiSY, and Mihon, so changes should preserve inherited behavior unless the proposal deliberately and clearly changes it.
+Thanks for your interest in contributing to Komikku FC. This fork builds on Komikku, TachiyomiSY, and Mihon. Keep their existing behavior intact unless a proposed change explicitly addresses it.
 
 
 # Code contributions
 
 Pull requests are welcome!
 
-If you're interested in taking on [an open KMK issue](https://github.com/FancyCorey/komikku-KMK/issues), please comment on it so others are aware.
+If you're interested in taking on [an open Komikku FC issue](https://github.com/FancyCorey/komikku-fc/issues), please comment on it so others are aware.
 You do not need to ask for permission nor an assignment.
 
 For a large change, open or join an issue first so the expected behavior, compatibility boundary, and validation can be agreed before substantial work begins.
 
 ## Prerequisites
 
-Before you start, please note that the ability to use following technologies is **required** and that existing contributors will not actively teach them to you.
+Code contributions use Android and Kotlin. Familiarity with the following will help you get started:
 
 - Basic [Android development](https://developer.android.com/)
 - [Kotlin](https://kotlinlang.org/)
@@ -28,12 +28,12 @@ Before you start, please note that the ability to use following technologies is 
 
 ## Getting help
 
-- Use a KMK issue for questions about this fork's behavior or contribution scope.
-- Use the [upstream Komikku contribution documentation](https://komikku-app.github.io/docs/contribute) for inherited project structure and general Android development guidance. Do not ask upstream maintainers to support KMK-only changes.
+- Use a Komikku FC issue for questions about this fork's behavior or contribution scope.
+- Use the [upstream Komikku contribution documentation](https://komikku-app.github.io/docs/contribute) for shared project structure and Android development guidance. Report fork-specific problems here rather than asking upstream maintainers to support them.
 
 # Translations
 
-Translations inherited from Komikku are managed through upstream [Weblate](https://hosted.weblate.org/engage/komikku-app/). See the [upstream translation guide](https://komikku-app.github.io/docs/contribute#translation) for those strings. A pull request that adds or changes KMK-specific text must update the default string resource and preserve the existing localization structure; it must not rewrite generated upstream translations casually.
+Translations inherited from Komikku are managed through upstream [Weblate](https://hosted.weblate.org/engage/komikku-app/). See the [upstream translation guide](https://komikku-app.github.io/docs/contribute#translation) for those strings. Changes to Komikku FC-specific text should update the default string resource and follow the existing localization structure. Leave generated upstream translations unchanged.
 
 
 # Downstream forks
@@ -54,17 +54,5 @@ When creating a fork, remember to:
 
 
 ### Supporting Cloud Sync - Google Drive Implementation
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project
-3. Go to API & Services -> Library -> Google Drive API and click enable
-4. Go to API & Services -> Oauth consent screen
-5. Create it, fill in the app name, user support email, and developer contact information
-6. In the next screen, click add or remove scopes, and add the `.../auth/drive.appdata` and `.../auth/drive.file` scopes
-7. Don't add any test users and go back to the dashboard
-8. Click publish
-9. Go to API & Services -> Credentials
-10. Click Create credentials -> Oauth client ID
-11. Select Android, give it a name, and set `eu.kanade.google.oauth` as the package name
-12. To get the SHA-1 key, run `keytool -printcert -jarfile app-standard-universal-release.apk` on your apk, and copy the listed SHA-1
-13. Expand advanced settings, and enable Custom URL scheme
-14. After that just download the json, name it to `client_secrets.json` and put it in `app/src/main/assets/`
+
+Google Drive support is optional. A distributing fork must configure its own client for its package and signing identity rather than reuse another project's credentials. See [Build and verification](docs/kmk/build-and-verify.md) and [Release channels](docs/kmk/release-channels.md) for the build configuration. Keep client configuration and signing secrets out of commits.

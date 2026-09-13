@@ -29,13 +29,25 @@ import tachiyomi.domain.taste.model.CrossSourceRecordKey
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
+/** Search scope used by the shared candidate searcher.
+ *
+ * [MATCHING] is intentionally bounded and follows the recommendation source controls. [GLOBAL]
+ * mirrors the app's normal global-search source set and first-page behavior so user-facing
+ * "Other Versions" discovery is not narrowed by recommendation settings or exact-title matching.
+ */
+enum class SameMangaSearchScope {
+    MATCHING,
+    GLOBAL,
+}
+
 /**
  * Shared bounded same-manga candidate search used by
  * [CrossExtensionMatchScreenModel] and [BestVersionCompareScreenModel].
  *
- * Applies recommendation-language filtering, source priority ordering,
- * per-source result cap, origin filtering, and multi-query deduplication.
- * Does NOT affect normal global search.
+ * Applies recommendation-language filtering, source priority ordering, an optional per-source
+ * result cap, origin filtering, and multi-query deduplication. The GLOBAL scope mirrors the
+ * normal global-search source set for user-facing cross-source discovery; it does not change the
+ * normal global search screen itself.
  */
 class SameMangaCandidateSearcher(
     private val sourcePreferences: SourcePreferences = Injekt.get(),
@@ -59,23 +71,58 @@ class SameMangaCandidateSearcher(
     }
 
     /**
-     * Searches [sources] (or all matching sources if null) with [queries] using the configured
-     * per-source cap from [SameMangaMatchSettings]. The [originManga] is excluded from results.
-     * Returns one [SameMangaSourceResult] per source.
+     * Returns the same source scope used by the app's normal global search: enabled languages,
+     * disabled-source exclusions, and pinned-source ordering. Recommendation-language filters and
+     * the recommendation priority list are deliberately not applied here.
+     */
+    fun getGlobalSearchSources(): List<Source> {
+        val enabledLanguages = sourcePreferences.enabledLanguages().get()
+        val disabledSources = sourcePreferences.disabledSources().get()
+        val pinnedSources = sourcePreferences.pinnedSources().get()
+        return sourceManager.getVisibleSources()
+            .filter { it.lang in enabledLanguages && "${it.id}" !in disabledSources }
+            .sortedWith(
+                compareBy(
+                    { "${it.id}" !in pinnedSources },
+                    { "${it.name.lowercase(java.util.Locale.ROOT)} (${it.lang})" },
+                ),
+            )
+    }
+
+    /**
+     * Searches [sources] (or the source scope selected by [scope]) with [queries]. Matching
+     * searches use the configured per-source cap; global searches return the complete first page
+     * from each source. The [originManga] is excluded from results. Returns one
+     * [SameMangaSourceResult] per source.
      */
     suspend fun search(
         queries: List<String>,
         settings: SameMangaMatchSettings,
         originManga: Manga,
-        sources: List<Source> = getMatchingSources(),
+        sources: List<Source>? = null,
+        scope: SameMangaSearchScope = SameMangaSearchScope.MATCHING,
         onResult: suspend (SameMangaSourceResult) -> Unit,
     ) = coroutineScope {
-        val cap = SameMangaMatchSettings.clampResultCap(settings.resultsPerSource)
+        val cap = when (scope) {
+            SameMangaSearchScope.MATCHING -> SameMangaMatchSettings.clampResultCap(settings.resultsPerSource)
+            // Normal global search renders the complete first page from each enabled source.
+            SameMangaSearchScope.GLOBAL -> null
+        }
+        val searchSources = sources ?: when (scope) {
+            SameMangaSearchScope.MATCHING -> getMatchingSources()
+            SameMangaSearchScope.GLOBAL -> getGlobalSearchSources()
+        }
 
-        sources.map { source ->
+        searchSources.map { source ->
             async {
                 currentCoroutineContext().ensureActive()
-                val result = searchOneSource(source, queries, cap, originManga)
+                val result = searchOneSource(
+                    source = source,
+                    queries = queries,
+                    cap = cap,
+                    originManga = originManga,
+                    retainAllCandidates = scope == SameMangaSearchScope.GLOBAL,
+                )
                 currentCoroutineContext().ensureActive()
                 onResult(SameMangaSourceResult(source, result))
             }
@@ -85,8 +132,9 @@ class SameMangaCandidateSearcher(
     private suspend fun searchOneSource(
         source: Source,
         queries: List<String>,
-        cap: Int,
+        cap: Int?,
         originManga: Manga,
+        retainAllCandidates: Boolean,
     ): SameMangaCandidateResult {
         // KMK v0.8.10-fix4: routed through SourceRuntime instead of a local
         // catch(Exception)/catch(Error) pair -- one shared boundary classifies both,
@@ -112,7 +160,7 @@ class SameMangaCandidateSearcher(
             var lastError: Throwable? = null
             for (query in queries) {
                 currentCoroutineContext().ensureActive()
-                if (seen.size >= cap) break
+                if (cap != null && seen.size >= cap) break
                 var searchResult = attempt(query)
                 // KMK v0.8.21-fix4: R2/AUG-05 correction -- the reproduced live failure was a
                 // transient HTTP 502 during this exact discovery search with no retry of any kind,
@@ -152,7 +200,7 @@ class SameMangaCandidateSearcher(
                             .let { networkToLocalManga(it) }
                             .filterNot { it.source == originManga.source && it.url == originManga.url }
                         for (manga in resolved) {
-                            if (seen.size >= cap) break
+                            if (cap != null && seen.size >= cap) break
                             val pair = CrossSourceIdentityDecisionPolicy.canonicalPair(
                                 CrossSourceRecordKey(originManga.source, originManga.url),
                                 CrossSourceRecordKey(manga.source, manga.url),
@@ -175,6 +223,7 @@ class SameMangaCandidateSearcher(
                     origin = originManga,
                     candidates = seen.values.toList(),
                     confirmedKeys = confirmedKeys,
+                    retainAllCandidates = retainAllCandidates,
                 )
                 lastError != null -> SameMangaCandidateResult.Error(lastError)
                 else -> SameMangaCandidateResult.Success(emptyList())

@@ -70,6 +70,11 @@ SELECT *
 FROM mangas
 WHERE _id = :id;
 
+getMangaByIds:
+SELECT *
+FROM mangas
+WHERE _id IN :ids;
+
 -- TODO: this should ideally never really have more than 1 result
 getMangaByUrlAndSource:
 SELECT *
@@ -109,7 +114,16 @@ AND (
 getChapterCountsByMangaIds:
 SELECT M._id, (SELECT count(*) FROM chapters C WHERE C.manga_id = M._id) AS chapter_count
 FROM mangas M
-WHERE M._id IN :mangaIds;
+WHERE M._id IN :mangaIds
+  AND EXISTS (SELECT 1 FROM chapters C WHERE C.manga_id = M._id);
+
+getReadChapterCountsByMangaIds:
+SELECT M._id, count(C._id) AS read_chapter_count
+FROM mangas M
+JOIN chapters C ON C.manga_id = M._id
+WHERE M._id IN :mangaIds
+  AND (C.read = 1 OR C.last_page_read > 0)
+GROUP BY M._id;
 -- KMK <--
 
 getAllManga:

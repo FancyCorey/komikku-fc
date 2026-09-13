@@ -23,6 +23,9 @@ object ChapterCompletionRatingPolicy {
         NO_OP_ALREADY_RATED,
     }
 
+    /** Completion prompts are offered only when no applicable version has a committed rating. */
+    fun shouldShowPrompt(existingRatings: List<MangaRating?>): Boolean = existingRatings.none { it != null }
+
     fun decide(
         existingRatings: List<MangaRating?>,
         selectedRating: MangaRating,

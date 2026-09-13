@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://github.com/FancyCorey/komikku-KMK">
+<a href="https://github.com/FancyCorey/komikku-fc">
   <img width="160" height="160" src="./.github/readme-images/app-icon.png" alt="Komikku FC app icon"/>
 </a>
 
@@ -10,9 +10,9 @@ A free, open-source manga reader based on
 [Komikku](https://github.com/komikku-app/komikku), with additional tools for
 personal recommendations, source comparison, ratings, and local tracking.
 
-[![Latest release](https://img.shields.io/github/v/release/FancyCorey/komikku-KMK?label=Download&labelColor=06599d&color=043b69)](https://github.com/FancyCorey/komikku-KMK/releases/latest)
-[![Build status](https://img.shields.io/github/actions/workflow/status/FancyCorey/komikku-KMK/build_push.yml?label=Build)](https://github.com/FancyCorey/komikku-KMK/actions/workflows/build_push.yml)
-[![License: Apache-2.0](https://img.shields.io/github/license/FancyCorey/komikku-KMK)](./LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/FancyCorey/komikku-fc?label=Download&labelColor=06599d&color=043b69)](https://github.com/FancyCorey/komikku-fc/releases/latest)
+[![Build status](https://img.shields.io/github/actions/workflow/status/FancyCorey/komikku-fc/build_push.yml?label=Build)](https://github.com/FancyCorey/komikku-fc/actions/workflows/build_push.yml)
+[![License: Apache-2.0](https://img.shields.io/github/license/FancyCorey/komikku-fc)](./LICENSE)
 
 **Requires Android 8.0 or newer.**
 
@@ -47,7 +47,7 @@ categories, themes, backups, updates, and supported external trackers.
 ## Core Functionality
 
 The [visual guide](./docs/kmk/visual-guide/README.md) includes more screenshots
-and walkthroughs. These examples introduce three main KMK workflows:
+and walkthroughs. These examples introduce three main Komikku FC workflows:
 
 | For You recommendations | Compare manga versions | Reading schedule |
 | --- | --- | --- |
@@ -55,17 +55,28 @@ and walkthroughs. These examples introduce three main KMK workflows:
 
 ## Get Started
 
-1. Open the [latest release](https://github.com/FancyCorey/komikku-KMK/releases/latest).
+Browse the [user guide](./docs/kmk/user-guide.md) for instructions or the
+[feature guides](./docs/kmk/feature-guides/README.md) for a closer look at individual tools.
+
+1. Open the [latest release](https://github.com/FancyCorey/komikku-fc/releases/latest).
 2. Read its compatibility, signing, and update notes.
 3. Download the APK intended for your device.
 4. Back up your existing library before replacing or migrating an installation.
+
+## Keeping Up to Date
+
+Use **More > About > Check for updates** to look for a newer published release.
+Background checks need network access, and update notifications need Android
+notification permission. Keep the same public installation when updating;
+development builds are separate apps. See the [release notes](./docs/kmk/release-notes.md#app-updates)
+for update compatibility details.
 
 ## Help and Bug Reports
 
 The general [Komikku FAQ](https://komikku-app.github.io/docs/faq/general) is
 still useful for shared reader behavior. For a Komikku FC problem, search this
-repository's [open issues](https://github.com/FancyCorey/komikku-KMK/issues)
-and [release notes](https://github.com/FancyCorey/komikku-KMK/releases) first.
+repository's [open issues](https://github.com/FancyCorey/komikku-fc/issues)
+and [release notes](https://github.com/FancyCorey/komikku-fc/releases) first.
 
 When reporting a bug, include:
 
@@ -74,7 +85,7 @@ When reporting a bug, include:
 - what you expected and what happened instead; and
 - a screenshot or crash log when it helps explain the issue.
 
-[Open a Komikku FC issue](https://github.com/FancyCorey/komikku-KMK/issues/new/choose).
+[Open a Komikku FC issue](https://github.com/FancyCorey/komikku-fc/issues/new/choose).
 Do not report Komikku FC-specific behavior to the upstream Komikku project.
 
 ## Contributing

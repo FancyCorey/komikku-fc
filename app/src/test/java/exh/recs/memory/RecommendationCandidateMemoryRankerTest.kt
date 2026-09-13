@@ -243,6 +243,36 @@ class RecommendationCandidateMemoryRankerTest {
     }
 
     @Test
+    fun `cached candidate with an explicit zero chapter count is hidden`() {
+        val m = actionManga(id = 81L)
+        val result = mergeWithMinChapters(
+            newResults = listOf(rec(m)),
+            minChapterCount = 10,
+            chapterCounts = mapOf(81L to 0L),
+        )
+        assertTrue(result.none { it.manga.id == 81L }) { "Known zero-chapter candidate must be hidden" }
+    }
+
+    @Test
+    fun `remembered candidate with an explicit zero chapter count is hidden`() {
+        val m = actionManga(id = 82L)
+        val result = RecommendationCandidateMemoryRanker.merge(
+            remembered = listOf(m to memEntry(m.source, m.url, m.id)),
+            newResults = emptyList(),
+            profile = scoringProfile,
+            aliasMap = emptyAliasMap,
+            tasteByKey = emptyTasteByKey,
+            visibility = defaultVisibility,
+            seenKeys = emptySet(),
+            knownIds = emptySet(),
+            limit = 100,
+            minChapterCount = 10,
+            chapterCounts = mapOf(82L to 0L),
+        )
+        assertTrue(result.none { it.manga.id == 82L }) { "Known zero-chapter candidate must be hidden" }
+    }
+
+    @Test
     fun `memory candidate with unknown chapter count stays visible - fail open`() {
         val m = actionManga(id = 9L)
         // No entry for id 9 → unknown count → fail open (visible).

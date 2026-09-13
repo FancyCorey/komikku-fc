@@ -1093,6 +1093,9 @@ class ReaderActivity : BaseActivity() {
             onSkipAlternateSourceChapter = viewModel::requestSkipAlternateSourceChapter.takeIf {
                 alternateSourceActions.skipChapter
             },
+            onAddAlternateSourceToLibrary = viewModel::addCurrentMangaToLibrary.takeIf {
+                alternateSourceActions.addToLibrary && state.manga?.favorite != true
+            },
 
             viewer = state.viewer,
             onNextChapter = ::loadNextChapter,

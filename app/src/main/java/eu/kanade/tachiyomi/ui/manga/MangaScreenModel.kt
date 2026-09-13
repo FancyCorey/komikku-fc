@@ -39,6 +39,7 @@ import eu.kanade.domain.manga.model.downloadedFilter
 import eu.kanade.domain.manga.model.toSManga
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.track.interactor.AddTracks
+import eu.kanade.domain.track.interactor.RecordLocalTrackedChapterProgress
 import eu.kanade.domain.track.interactor.RefreshTracks
 import eu.kanade.domain.track.interactor.TrackChapter
 import eu.kanade.domain.track.model.AutoTrackState
@@ -174,6 +175,7 @@ import tachiyomi.domain.taste.model.MangaTaste
 import tachiyomi.domain.track.interactor.GetTracks
 import tachiyomi.domain.track.interactor.InsertTrack
 import tachiyomi.domain.track.model.Track
+import tachiyomi.domain.tracker.model.LocalTrackedWork
 import tachiyomi.domain.tracker.repository.LocalTrackerRepository
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.kmk.KMR
@@ -204,6 +206,7 @@ class MangaScreenModel(
     // KMK <--
     private val trackerManager: TrackerManager = Injekt.get(),
     private val trackChapter: TrackChapter = Injekt.get(),
+    private val recordLocalTrackedChapterProgress: RecordLocalTrackedChapterProgress = Injekt.get(),
     private val downloadManager: DownloadManager = Injekt.get(),
     private val downloadCache: DownloadCache = Injekt.get(),
     private val getMangaAndChapters: GetMangaWithChapters = Injekt.get(),
@@ -583,7 +586,10 @@ class MangaScreenModel(
                     )
                 }
                 // KMK -->
-                launch { syncTrackers() }
+                // Chapter rows must be loaded before tracker reconciliation. Otherwise a linked
+                // source can report progress while its local chapter table is still empty, and
+                // the replay has no chapter to mark read until a later refresh.
+                syncTrackers()
                 launch { fetchRelatedMangasFromSource() }
                 // KMK <--
             }
@@ -651,8 +657,17 @@ class MangaScreenModel(
     }
 
     private suspend fun syncTrackers() {
-        if (!trackPreferences.autoSyncProgressFromTrackers().get()) return
-        refreshTrackers(enhancedTrackersOnly = false)
+        if (trackPreferences.autoSyncProgressFromTrackers().get()) {
+            refreshTrackers(enhancedTrackersOnly = false)
+        }
+        // Local replay also runs on load and when external tracker syncing is disabled.
+        try {
+            recordLocalTrackedChapterProgress.synchronize()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN, e) { "Local tracking progress reconciliation failed" }
+        }
     }
     // KMK <--
 
@@ -665,7 +680,9 @@ class MangaScreenModel(
                 fetchChapters = true,
             )
             // KMK -->
-            launch { syncTrackers() }
+            // Await reconciliation after the source refresh so external progress can be mapped
+            // onto the newly loaded chapter rows before the screen exposes the refreshed state.
+            syncTrackers()
             // KMK <--
             updateSuccessState { it.copy(isRefreshingData = false) }
         }
@@ -1767,6 +1784,9 @@ class MangaScreenModel(
                 )
                 setMangaTasteBatch.await(targetMangas, rating)
                 exh.util.EvaluationModeJournalRecorder.commit(journalEntries)
+                if (rating != MangaRating.NOT_INTERESTED) {
+                    confirmedGroupLocalTrackingPropagator.ensureTrackedForRating(targetMangas)
+                }
                 propagateConfirmedLocalTracking(manga)
             } catch (e: Throwable) {
                 eu.kanade.tachiyomi.source.rethrowIfFatal(e)
@@ -2028,7 +2048,11 @@ class MangaScreenModel(
                 // KMK <--
                 val supportedTrackerIds = supportedTrackers.map { it.id }.toHashSet()
                 val supportedTrackerTracks = mangaTracks.filter { it.trackerId in supportedTrackerIds }
-                Triple(supportedTrackerTracks, supportedTrackers, localWorkId)
+                Triple(
+                    supportedTrackerTracks,
+                    supportedTrackers,
+                    resolveConfirmedLocalWorkId(manga, localWorkId),
+                )
             }
                 // SY -->
                 .map { (tracks, supportedTrackers, localWorkId) ->
@@ -2073,6 +2097,22 @@ class MangaScreenModel(
                     }
                 }
         }
+    }
+
+    /** Keeps the manga screen's local-tracking indicator aligned with confirmed sibling sources. */
+    private suspend fun resolveConfirmedLocalWorkId(manga: Manga, exactWorkId: String?): String? {
+        if (exactWorkId != null ||
+            !sourcePreferences.confirmedTrackedVersionLocalTrackingPropagationEnabled().get()
+        ) {
+            return exactWorkId
+        }
+        val candidates = confirmedMangaGroupTargets.await(manga).mapNotNull { target ->
+            localTrackerRepository.getWorkIdBySourceUrl(target.source, target.url)
+                ?.let { id -> localTrackerRepository.getWork(id)?.let { id to it } }
+        }
+        return candidates.minWithOrNull(
+            compareBy<Pair<String, LocalTrackedWork>> { it.second.createdAt }.thenBy { it.first },
+        )?.first
     }
 
     // SY -->

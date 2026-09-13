@@ -40,6 +40,7 @@ fun GlobalSearchCardRow(
     // KMK -->
     selection: List<Manga>,
     isSelected: ((Manga) -> Boolean)? = null,
+    showLibraryState: Boolean = true,
     // KMK <--
 ) {
     if (titles.isEmpty()) {
@@ -61,6 +62,7 @@ fun GlobalSearchCardRow(
                 onLongClick = { onLongClick(title) },
                 // KMK -->
                 isSelected = isSelected?.invoke(title) ?: selection.fastAny { selected -> selected.id == title.id },
+                showLibraryState = showLibraryState,
                 // KMK <--
             )
         }
@@ -77,6 +79,7 @@ internal fun MangaItem(
     // KMK -->
     isSelected: Boolean = false,
     usePanoramaCover: Boolean? = null,
+    showLibraryState: Boolean = true,
     // KMK <--
 ) {
     // KMK -->
@@ -95,7 +98,7 @@ internal fun MangaItem(
             titleMaxLines = 3,
             coverData = cover,
             coverBadgeStart = {
-                InLibraryBadge(enabled = isFavorite)
+                InLibraryBadge(enabled = showLibraryState && isFavorite)
             },
             // KMK -->
             isSelected = isSelected,
@@ -103,7 +106,7 @@ internal fun MangaItem(
             usePanoramaCover = panoramaCover,
             fitToPanoramaCover = true,
             // KMK <--
-            coverAlpha = if (isFavorite) CommonMangaItemDefaults.BrowseFavoriteCoverAlpha else 1f,
+            coverAlpha = if (showLibraryState && isFavorite) CommonMangaItemDefaults.BrowseFavoriteCoverAlpha else 1f,
             onClick = onClick,
             onLongClick = onLongClick,
         )

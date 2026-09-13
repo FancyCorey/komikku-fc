@@ -1,6 +1,7 @@
 package eu.kanade.domain.track.interactor
 
 import eu.kanade.domain.track.model.toDbTrack
+import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.tachiyomi.data.track.EnhancedTracker
 import eu.kanade.tachiyomi.data.track.Tracker
 import kotlinx.coroutines.CancellationException
@@ -11,12 +12,14 @@ import tachiyomi.domain.chapter.interactor.UpdateChapter
 import tachiyomi.domain.chapter.model.toChapterUpdate
 import tachiyomi.domain.track.interactor.InsertTrack
 import tachiyomi.domain.track.model.Track
+import tachiyomi.domain.tracker.model.TrackerChapterProgressMappingPolicy
 import kotlin.math.max
 
 class SyncChapterProgressWithTrack(
     private val updateChapter: UpdateChapter,
     private val insertTrack: InsertTrack,
     private val getChaptersByMangaId: GetChaptersByMangaId,
+    private val trackPreferences: TrackPreferences,
 ) {
     /**
      * Sync chapter progress with the [EnhancedTracker]
@@ -62,15 +65,22 @@ class SyncChapterProgressWithTrack(
          * Some mangas has name such as Volume 2 Chapter 1 which will corrupt the order
          * if we sort by chapterNumber.
          */
-        val chapterUpdates = dbChapters
-            .takeWhile { chapter ->
-                lastCheckChapter = checkingChapter
-                checkingChapter = chapter.chapterNumber
-                chapter.chapterNumber >= lastCheckChapter && chapter.chapterNumber <= remoteTrack.lastChapterRead
-            }
-            .filter { chapter -> !chapter.read }
-            // KMK <--
-            .map { it.copy(read = true).toChapterUpdate() }
+        val sourceTarget = TrackerChapterProgressMappingPolicy.resolve(
+            chapters = dbChapters,
+            trackerProgress = remoteTrack.lastChapterRead,
+            allowReadingOrderFallback = trackPreferences.matchTrackerProgressByReadingOrder().get(),
+        )
+        val chapterUpdates = sourceTarget?.let { target ->
+            dbChapters
+                .takeWhile { chapter ->
+                    lastCheckChapter = checkingChapter
+                    checkingChapter = chapter.chapterNumber
+                    chapter.chapterNumber >= lastCheckChapter && chapter.chapterNumber <= target.chapterNumber
+                }
+                .filter { chapter -> !chapter.read }
+                .map { it.copy(read = true).toChapterUpdate() }
+        }.orEmpty()
+        // KMK <--
 
         // only take into account continuous reading
         val localLastRead = sortedChapters.takeWhile { it.read }.lastOrNull()?.chapterNumber ?: 0F

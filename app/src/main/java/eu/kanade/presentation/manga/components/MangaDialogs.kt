@@ -1,5 +1,7 @@
 package eu.kanade.presentation.manga.components
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -7,9 +9,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,20 +37,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.domain.track.model.LocalTrackingActionPolicy
 import eu.kanade.presentation.track.TrackDateSelector
+import eu.kanade.presentation.track.formatLocalChapterNumber
 import eu.kanade.tachiyomi.util.system.isReleaseBuildType
 import kotlinx.collections.immutable.toImmutableList
 import tachiyomi.core.common.preference.CheckboxState
 import tachiyomi.domain.manga.interactor.FetchInterval
+import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.tracker.model.LocalTrackedWork
 import tachiyomi.domain.tracker.model.LocalTrackedWorkStatus
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.kmk.KMR
 import tachiyomi.presentation.core.components.LabeledCheckbox
+import tachiyomi.presentation.core.components.WheelNumberPicker
 import tachiyomi.presentation.core.components.WheelTextPicker
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.pluralStringResource
@@ -54,6 +64,116 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import kotlin.math.absoluteValue
+
+data class LocalTrackingVersion(
+    val title: String,
+    val sourceName: String,
+    val mangaId: Long?,
+    val source: Long,
+    val url: String,
+    val sharesReadingProgress: Boolean,
+    val manga: Manga? = null,
+)
+
+@Composable
+fun LocalTrackingVersionsDialog(
+    versions: List<LocalTrackingVersion>,
+    onVersionClick: (Long) -> Unit,
+    onProgressSharingChange: (LocalTrackingVersion, Boolean) -> Unit,
+    onDismissRequest: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text(stringResource(KMR.strings.local_tracking_other_versions)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                versions.forEach { version ->
+                    LocalTrackingVersionCard(
+                        version = version,
+                        onClick = { version.mangaId?.let(onVersionClick) },
+                        onProgressSharingChange = { enabled -> onProgressSharingChange(version, enabled) },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(MR.strings.action_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun LocalTrackingVersionCard(
+    version: LocalTrackingVersion,
+    onClick: () -> Unit,
+    onProgressSharingChange: (Boolean) -> Unit,
+) {
+    val manga = version.manga
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+            .clickable(enabled = version.mangaId != null, onClick = onClick)
+            .padding(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        manga?.thumbnailUrl?.let { coverUrl ->
+            MangaCover.Book(
+                data = coverUrl,
+                modifier = Modifier.height(96.dp),
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = version.title,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = version.sourceName,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            manga?.author?.takeIf { it.isNotBlank() }?.let { author ->
+                Text(
+                    text = author,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            manga?.description?.takeIf { it.isNotBlank() }?.let { description ->
+                Text(
+                    text = description,
+                    modifier = Modifier.padding(top = 8.dp),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            LabeledCheckbox(
+                label = stringResource(KMR.strings.local_tracking_share_progress_with_version),
+                checked = version.sharesReadingProgress,
+                onCheckedChange = onProgressSharingChange,
+            )
+        }
+    }
+}
 
 @Composable
 fun DeleteChaptersDialog(
@@ -314,6 +434,77 @@ fun LocalTrackDetailsDialog(
         )
     }
 }
+
+@Composable
+fun LocalTrackChapterDialog(
+    currentChapter: Double?,
+    onSave: (Double?) -> Unit,
+    onDismissRequest: () -> Unit,
+) {
+    var chapterText by rememberSaveable(currentChapter) {
+        mutableStateOf(formatLocalChapterNumber(currentChapter ?: 0.0))
+    }
+    var selectedChapter by rememberSaveable(currentChapter) {
+        mutableIntStateOf((currentChapter ?: 0.0).toInt().coerceIn(0, LOCAL_CHAPTER_PICKER_MAX))
+    }
+    var validationMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    val invalidChapterMessage = stringResource(KMR.strings.local_tracking_chapter_error)
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text(stringResource(KMR.strings.local_tracking_chapter_dialog_title)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(KMR.strings.local_tracking_chapter_picker_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                WheelNumberPicker(
+                    items = (0..LOCAL_CHAPTER_PICKER_MAX).toImmutableList(),
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    startIndex = selectedChapter,
+                    onSelectionChanged = { index ->
+                        selectedChapter = index
+                        chapterText = index.toString()
+                        validationMessage = null
+                    },
+                )
+                OutlinedTextField(
+                    value = chapterText,
+                    onValueChange = { value ->
+                        chapterText = value.filter { it.isDigit() || it == '.' }
+                        validationMessage = null
+                    },
+                    label = { Text(stringResource(MR.strings.chapters)) },
+                    supportingText = validationMessage?.let { message -> { Text(message) } },
+                    isError = validationMessage != null,
+                    singleLine = true,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(MR.strings.action_cancel))
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val value = chapterText.trim().takeIf(String::isNotEmpty)?.toDoubleOrNull()
+                    if ((chapterText.isNotBlank() && value == null) || value?.let { !it.isFinite() || it < 0.0 } == true) {
+                        validationMessage = invalidChapterMessage
+                    } else {
+                        onSave(value)
+                    }
+                },
+            ) {
+                Text(stringResource(MR.strings.action_save))
+            }
+        },
+    )
+}
+
+private const val LOCAL_CHAPTER_PICKER_MAX = 10_000
 
 private enum class LocalDateField {
     START,

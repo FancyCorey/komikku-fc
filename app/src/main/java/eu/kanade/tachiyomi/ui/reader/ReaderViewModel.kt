@@ -12,6 +12,7 @@ import eu.kanade.domain.base.BasePreferences
 import eu.kanade.domain.chapter.interactor.SyncChaptersWithSource
 import eu.kanade.domain.chapter.model.toDbChapter
 import eu.kanade.domain.manga.interactor.SetMangaViewerFlags
+import eu.kanade.domain.manga.interactor.UpdateManga
 import eu.kanade.domain.manga.model.readerOrientation
 import eu.kanade.domain.manga.model.readingMode
 import eu.kanade.domain.source.interactor.GetIncognitoState
@@ -39,6 +40,7 @@ import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderCandidateGatewa
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderCandidateRequest
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderCandidateRow
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderChapterDiscovery
+import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderChapterPolicy
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderCommandResult
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderContextActions
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderCoordinator
@@ -197,6 +199,7 @@ class ReaderViewModel @JvmOverloads constructor(
     private val trackChapter: TrackChapter = Injekt.get(),
     private val recordLocalTrackedChapterProgress: RecordLocalTrackedChapterProgress = Injekt.get(),
     private val getManga: GetManga = Injekt.get(),
+    private val updateManga: UpdateManga = Injekt.get(),
     private val getChapter: GetChapter = Injekt.get(),
     private val getChaptersByMangaId: GetChaptersByMangaId = Injekt.get(),
     private val getNextChapters: GetNextChapters = Injekt.get(),
@@ -298,17 +301,22 @@ class ReaderViewModel @JvmOverloads constructor(
     private val alternateSourceChapterTokens = mutableMapOf<AlternateSourceReaderOpaqueToken, AlternateSourceChapterSelection>()
     private var retainedAlternateSourceMangaSelection: AlternateSourceMangaSelection? = null
     private var retainedAlternateSourceSelection: AlternateSourceChapterSelection? = null
+    private var alternateSourceConflictRetryUsed = false
     private var selectedAlternateSourceToken: AlternateSourceReaderOpaqueToken? = null
 
     private data class AlternateSourceMangaSelection(
         val request: AlternateSourceReaderCandidateRequest,
         val candidate: AlternateSourceReaderMangaCandidate,
+        val returnBridgeKey: AlternateSourceBridgeKey? = null,
+        val returnSessionId: String? = null,
     )
 
     private data class AlternateSourceChapterSelection(
         val request: AlternateSourceReaderCandidateRequest,
         val candidate: AlternateSourceReaderMangaCandidate,
         val chapterUrl: String,
+        val returnBridgeKey: AlternateSourceBridgeKey? = null,
+        val returnSessionId: String? = null,
     )
 
     /**
@@ -612,6 +620,13 @@ class ReaderViewModel @JvmOverloads constructor(
         if (!isGenuine) return
 
         val mangaId = route.manga.id
+        // Completion prompts are onboarding for unrated manga, not a reread-time rating editor.
+        // Apply the same confirmed-group target resolution used by the rating action so a rating
+        // saved on another confirmed version suppresses the prompt for this version too.
+        val existingRatings = ratingTargets(route.manga).map { target ->
+            getMangaTasteForRatingPrompt.await(target.source, target.url)?.rating?.let(MangaRating::fromValue)
+        }
+        if (!ChapterCompletionRatingPolicy.shouldShowPrompt(existingRatings)) return
         // KMK v0.8.10: record the pending completion only — do NOT interrupt the reader. The
         // dialog is shown later, when the reader is actually left (see
         // takePendingChapterCompletionRatingPromptForExit / ReaderActivity.finish()).
@@ -714,7 +729,10 @@ class ReaderViewModel @JvmOverloads constructor(
                 try {
                     setMangaTasteBatch.await(targets, rating)
                     exh.util.EvaluationModeJournalRecorder.commit(journalEntries)
-                    propagateConfirmedLocalTracking(targets)
+                    if (rating != MangaRating.NOT_INTERESTED) {
+                        confirmedGroupLocalTrackingPropagator.ensureTrackedForRating(targets)
+                    }
+                    propagateConfirmedLocalTracking(currentManga)
                 } catch (e: Throwable) {
                     rethrowIfFatal(e)
                     resolveChapterCompletionPromptAction(mangaId) { Dialog.ChapterCompletionRating(mangaId, isProcessing = false) }
@@ -756,17 +774,16 @@ class ReaderViewModel @JvmOverloads constructor(
     }
 
     private suspend fun ratingTargets(manga: Manga): List<Manga> = if (
-        sourcePreferencesForRatingPrompt.confirmedTrackedVersionRatingPropagationEnabled().get() ||
-        sourcePreferencesForRatingPrompt.confirmedTrackedVersionLocalTrackingPropagationEnabled().get()
+        sourcePreferencesForRatingPrompt.confirmedTrackedVersionRatingPropagationEnabled().get()
     ) {
         confirmedMangaGroupTargets.await(manga)
     } else {
         listOf(manga)
     }
 
-    private suspend fun propagateConfirmedLocalTracking(targets: List<Manga>) {
+    private suspend fun propagateConfirmedLocalTracking(manga: Manga) {
         if (!sourcePreferencesForRatingPrompt.confirmedTrackedVersionLocalTrackingPropagationEnabled().get()) return
-        confirmedGroupLocalTrackingPropagator.propagateIfAnyTracked(targets)
+        confirmedGroupLocalTrackingPropagator.propagateIfAnyTracked(confirmedMangaGroupTargets.await(manga))
     }
 
     // KMK v0.8.21-fix3: R1 correction -- this previously wrote ONLY to the legacy
@@ -801,7 +818,7 @@ class ReaderViewModel @JvmOverloads constructor(
                     )
                     setMangaTasteBatch.await(targets, MangaRating.NOT_INTERESTED)
                     exh.util.EvaluationModeJournalRecorder.commit(journalEntries)
-                    propagateConfirmedLocalTracking(targets)
+                    propagateConfirmedLocalTracking(currentManga)
                     if (decision == ChapterCompletionRatingPolicy.Decision.APPLY_WITH_FOLLOW_UP) {
                         val groupLink = getCrossSourceMangaLinks.awaitBySourceUrl(currentManga.source, currentManga.url)
                         val hasConfirmedGroup = groupLink?.let { link ->
@@ -1304,11 +1321,22 @@ class ReaderViewModel @JvmOverloads constructor(
             mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.ChoosingSource(
                 content = content,
                 selectedToken = selectedAlternateSourceToken,
+                currentSourceLabel = originManga?.let { origin ->
+                    if (sourcePreferencesForRatingPrompt.evaluationMode().get()) {
+                        EvaluationModeFormatter.sourceLabel(origin.source)
+                    } else {
+                        sourceManager.get(origin.source)?.name
+                    }
+                },
             )
         }
     }
 
     fun openAlternateSourceChooserForCurrentChapter() {
+        if (alternateSourceContextActions.value.returnToPrimary) {
+            requestReturnToPrimarySource()
+            return
+        }
         val route = activeRoute ?: return
         val current = route.viewerChapters?.currChapter ?: return
         openAlternateSourceChooser(
@@ -1325,8 +1353,10 @@ class ReaderViewModel @JvmOverloads constructor(
 
     fun canOfferAlternateSourceChooser(): Boolean =
         !isChapterNavigationBlockedBySchedule() &&
-            alternateSourceReaderState.value.phase == AlternateSourceReaderPhase.PRIMARY &&
-            alternateSourceReaderState.value.session == null &&
+            (
+                alternateSourceReaderState.value.phase == AlternateSourceReaderPhase.PRIMARY ||
+                    alternateSourceContextActions.value.returnToPrimary
+                ) &&
             activeRoute?.viewerChapters?.currChapter?.chapter?.id != null
 
     fun searchAlternateSourceCandidates() {
@@ -1398,24 +1428,51 @@ class ReaderViewModel @JvmOverloads constructor(
         retainedAlternateSourceMangaSelection = selection
         launchAlternateSourceCandidateWork {
             alternateSourceChapterTokens.clear()
+            retainedAlternateSourceSelection = null
             mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.ChoosingChapter(
                 sourceToken = token,
                 content = AlternateSourceReaderLoadState.Loading,
             )
             val discovery = alternateSourceReaderCandidateGateway.chapters(selection.candidate)
+            var recommendedToken: AlternateSourceReaderOpaqueToken? = null
             val content = when (discovery) {
                 is AlternateSourceReaderChapterDiscovery.Available -> {
+                    val originChapter = getChapter.await(selection.request.precedingPrimaryChapterId)
+                        ?: throw IllegalStateException("Reading chapter unavailable")
+                    val originNumber = originChapter.chapterNumber.toFloat()
+                    val recommended = AlternateSourceReaderChapterPolicy.recommendedChapter(discovery.chapters, originNumber)
+                    if (selection.returnBridgeKey != null &&
+                        originNumber.isFinite() && originNumber >= 0f &&
+                        discovery.chapters.count { it.chapterNumber == originNumber } == 1
+                    ) {
+                        runAlternateSourceSelection(
+                            AlternateSourceChapterSelection(
+                                selection.request,
+                                selection.candidate,
+                                requireNotNull(recommended).url,
+                                selection.returnBridgeKey,
+                                selection.returnSessionId,
+                            ),
+                        )
+                        return@launchAlternateSourceCandidateWork
+                    }
                     val rows = discovery.chapters.map { chapter ->
                         val chapterToken = newAlternateSourceToken()
                         alternateSourceChapterTokens[chapterToken] = AlternateSourceChapterSelection(
                             request = selection.request,
                             candidate = selection.candidate,
                             chapterUrl = chapter.url,
+                            returnBridgeKey = selection.returnBridgeKey,
+                            returnSessionId = selection.returnSessionId,
                         )
+                        if (chapter == recommended && recommendedToken == null) {
+                            recommendedToken = chapterToken
+                        }
                         AlternateSourceReaderPresentationPolicy.chapterCandidateRow(
                             token = chapterToken,
                             name = chapter.name,
                             chapterNumber = chapter.chapterNumber,
+                            scanlator = chapter.scanlator,
                         )
                     }
                     AlternateSourceReaderLoadState.Content(rows, hasPartialFailure = false)
@@ -1428,13 +1485,19 @@ class ReaderViewModel @JvmOverloads constructor(
                     AlternateSourceReaderRecoveryReason.FAILED,
                 )
             }
-            mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.ChoosingChapter(token, content)
+            retainedAlternateSourceSelection = recommendedToken?.let(alternateSourceChapterTokens::get)
+            mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.ChoosingChapter(
+                token,
+                content,
+                selectedToken = recommendedToken,
+            )
         }
     }
 
     fun selectAlternateSourceChapter(token: AlternateSourceReaderOpaqueToken) {
         val selection = alternateSourceChapterTokens[token] ?: return
         retainedAlternateSourceSelection = selection
+        alternateSourceConflictRetryUsed = false
         val current = alternateSourcePresentation.value as? AlternateSourceReaderPresentation.ChoosingChapter ?: return
         mutableAlternateSourcePresentation.value = current.copy(selectedToken = token)
     }
@@ -1485,8 +1548,49 @@ class ReaderViewModel @JvmOverloads constructor(
     }
 
     fun requestReturnToPrimarySource() {
-        launchAlternateSourceCommand(AlternateSourceReaderResolvingPurpose.RETURN, explicitUserCommand = true) {
-            returnToPrimarySource()
+        if (isChapterNavigationBlockedBySchedule()) return
+        val session = alternateSourceReaderState.value.session ?: return
+        val current = activeRoute?.viewerChapters?.currChapter?.chapter?.id ?: return
+        val request = currentAlternateSourceCandidateRequest(current, null) ?: return
+        launchAlternateSourceCandidateWork {
+            val target = if (session.currentRoute.role == AlternateSourceReaderRouteRole.PRIMARY) {
+                Injekt.get<GetMangaByUrlAndSourceId>().await(
+                    session.bridgeKey.alternate.url,
+                    session.bridgeKey.alternate.source,
+                )
+            } else {
+                getManga.await(session.primaryResumeRoute.mangaId)
+            } ?: throw IllegalStateException("Source manga unavailable")
+            val candidate = AlternateSourceReaderMangaCandidate(
+                manga = target,
+                sourceLabel = sourceManager.get(target.source)?.name,
+                origin = eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderCandidateOrigin.CURRENT_BRIDGE,
+                requiresPairConfirmation = false,
+            )
+            val token = newAlternateSourceToken()
+            alternateSourceMangaTokens[token] = AlternateSourceMangaSelection(request, candidate, session.bridgeKey, session.sessionId)
+            selectAlternateSourceCandidate(token)
+        }
+    }
+
+    /** Explicitly keeps the currently read alternate source in the user's library. */
+    fun addCurrentMangaToLibrary() {
+        val currentManga = manga ?: return
+        val alternateState = alternateSourceReaderState.value
+        if (alternateState.phase != AlternateSourceReaderPhase.ALTERNATE &&
+            alternateState.phase != AlternateSourceReaderPhase.DEGRADED
+        ) {
+            return
+        }
+        val session = alternateState.session ?: return
+        if (session.currentRoute.role != AlternateSourceReaderRouteRole.ALTERNATE ||
+            session.currentRoute.mangaId != currentManga.id
+        ) {
+            return
+        }
+        if (currentManga.favorite) return
+        viewModelScope.launchNonCancellable {
+            updateManga.awaitUpdateFavorite(currentManga.id, true)
         }
     }
 
@@ -1534,12 +1638,27 @@ class ReaderViewModel @JvmOverloads constructor(
 
     private suspend fun selectAlternateSourceChapter(
         selection: AlternateSourceChapterSelection,
-    ): AlternateSourceReaderCommandResult = selectAlternateSourceChapter(
-        bridgeKey = selection.bridgeKey(),
-        precedingChapterId = selection.request.precedingPrimaryChapterId,
-        followingChapterId = selection.request.followingPrimaryChapterId,
-        alternateChapterUrl = selection.chapterUrl,
-    )
+    ): AlternateSourceReaderCommandResult = if (selection.returnBridgeKey != null) {
+        val request = selection.request
+        val current = currentAlternateSourceCandidateRequest(request.precedingPrimaryChapterId, null)
+        if (current?.primaryRoute?.copy(pageIndex = 0) != request.primaryRoute.copy(pageIndex = 0)) {
+            AlternateSourceReaderCommandResult.Stale
+        } else {
+            alternateSourceReaderCoordinator.manualReturnToChapter(
+                selection.returnBridgeKey,
+                requireNotNull(selection.returnSessionId),
+                request.primaryRoute.chapterUrl,
+                selection.chapterUrl,
+            )
+        }
+    } else {
+        selectAlternateSourceChapter(
+            bridgeKey = selection.bridgeKey(),
+            precedingChapterId = selection.request.precedingPrimaryChapterId,
+            followingChapterId = selection.request.followingPrimaryChapterId,
+            alternateChapterUrl = selection.chapterUrl,
+        )
+    }
 
     private fun launchAlternateSourceCandidateWork(block: suspend () -> Unit) {
         val generation = ++alternateSourceCandidateGeneration
@@ -1608,7 +1727,20 @@ class ReaderViewModel @JvmOverloads constructor(
                 }
             }
             is AlternateSourceReaderResultPresentation.Recoverable -> {
-                if (mapped.invalidateTokens) clearAlternateSourceSelectionTokens(keepRequest = true)
+                if (mapped.invalidateTokens) {
+                    clearAlternateSourceSelectionTokens(keepRequest = true)
+                } else if (
+                    result is AlternateSourceReaderCommandResult.Conflict &&
+                    retainedAlternateSourceSelection != null
+                ) {
+                    if (alternateSourceConflictRetryUsed) {
+                        // One replay is enough to recover from a transient bridge race. If the
+                        // same choice still conflicts, require a fresh mapping decision.
+                        clearAlternateSourceSelectionTokens(keepRequest = true)
+                    } else {
+                        alternateSourceConflictRetryUsed = true
+                    }
+                }
                 mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.RecoverableFailure(
                     mapped.reason,
                     mapped.canRetry,
@@ -1673,6 +1805,7 @@ class ReaderViewModel @JvmOverloads constructor(
         alternateSourceChapterTokens.clear()
         retainedAlternateSourceMangaSelection = null
         retainedAlternateSourceSelection = null
+        alternateSourceConflictRetryUsed = false
         selectedAlternateSourceToken = null
         if (!keepRequest) lastAlternateSourceCandidateRequest = null
     }
@@ -2069,7 +2202,7 @@ class ReaderViewModel @JvmOverloads constructor(
                 route = route,
                 chapter = selectedChapter,
                 bridgeKey = session.bridgeKey,
-                role = AlternateSourceReaderRouteRole.ALTERNATE,
+                role = session.currentRoute.role,
                 pageIndex = page.index,
             )?.let { exactRoute ->
                 viewModelScope.launch {

@@ -46,7 +46,9 @@ data class AlternateSourceReaderSession(
     companion object {
         const val CURRENT_SCHEMA_VERSION = 1
         const val MAX_PAGE_INDEX = 1_000_000
-        const val MAX_TRANSITIONS = 32
+        // Kept as a compatibility bound for old serialized states; active reader sessions are
+        // no longer stopped after an arbitrary number of source switches.
+        const val MAX_TRANSITIONS = Int.MAX_VALUE
         const val MAX_FAILED_RESOLUTIONS = 2
         private const val SHA_256_HEX_LENGTH = 64
         private val uuidPattern = Regex(
@@ -115,7 +117,7 @@ data class AlternateSourceReaderSession(
             if (session.primaryResumeRoute.role != AlternateSourceReaderRouteRole.PRIMARY) return false
             if (session.activeTargetId != null && !uuidPattern.matches(session.activeTargetId)) return false
             if (session.bridgeUpdatedAt <= 0L || session.mappingUpdatedAt <= 0L) return false
-            if (session.transitionCount !in 0..MAX_TRANSITIONS) return false
+            if (session.transitionCount < 0) return false
             if (session.failedResolutionCount !in 0..MAX_FAILED_RESOLUTIONS) return false
             if (!fingerprintPattern.matches(session.lastSafeRouteFingerprint)) return false
             if (session.lastSafeRouteFingerprint != AlternateSourceReaderRouteFingerprint.of(session.currentRoute)) return false

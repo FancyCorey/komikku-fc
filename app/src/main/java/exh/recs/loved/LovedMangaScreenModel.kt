@@ -19,10 +19,15 @@ import exh.recs.matching.CrossSourceIdentityAuthorizationResolver
 import exh.recs.share.RecommendationBundleExporter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.domain.manga.repository.MangaRepository
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.domain.taste.interactor.ClearMangaTaste
 import tachiyomi.domain.taste.interactor.DeleteCrossSourceMangaLink
@@ -99,6 +104,7 @@ class LovedMangaScreenModel(
     private val upsertCrossSourceMangaLinks: UpsertCrossSourceMangaLinks = Injekt.get(),
     private val deleteCrossSourceMangaLink: DeleteCrossSourceMangaLink = Injekt.get(),
     private val sourcePreferences: SourcePreferences = Injekt.get(),
+    private val mangaRepository: MangaRepository = Injekt.get(),
     // KMK <--
     // KMK v0.8.20: atomic ungroup + group-action Undo Journal
     private val deleteCrossSourceGroupCompletely: tachiyomi.domain.taste.interactor.DeleteCrossSourceGroupCompletely = Injekt.get(),
@@ -119,7 +125,19 @@ class LovedMangaScreenModel(
     init {
         // KMK --> v0.7.29: subscribe to live updates so the screen reacts to taste changes without manual refresh
         screenModelScope.launch {
-            getMangaTaste.subscribeAll().collectLatest { allTastes -> load(allTastes) }
+            combine(
+                getMangaTaste.subscribeAll(),
+                sourcePreferences.automaticRatedGroupPrimaryEnabled().changes().onStart {
+                    emit(sourcePreferences.automaticRatedGroupPrimaryEnabled().get())
+                },
+            ) { tastes, automaticPrimaryEnabled -> tastes to automaticPrimaryEnabled }
+                .flatMapLatest { (allTastes, automaticPrimaryEnabled) ->
+                    mangaRepository.getReadChapterCountsByMangaIdsAsFlow(allTastes.map { it.mangaId })
+                        .map { readChapterCounts -> Triple(allTastes, automaticPrimaryEnabled, readChapterCounts) }
+                }
+                .collectLatest { (allTastes, automaticPrimaryEnabled, readChapterCounts) ->
+                    load(allTastes, automaticPrimaryEnabled, readChapterCounts)
+                }
         }
         // KMK <--
     }
@@ -160,7 +178,11 @@ class LovedMangaScreenModel(
         return true
     }
 
-    private suspend fun load(allTastes: List<MangaTaste>) {
+    private suspend fun load(
+        allTastes: List<MangaTaste>,
+        automaticPrimaryEnabled: Boolean,
+        readChapterCounts: Map<Long, Long>,
+    ) {
         try {
             // KMK --> v0.7.3: fail-safe source id lookup; empty set → hides all rather than showing uninstalled entries
             // sourceManager.getVisibleSources() is a synchronous, in-memory lookup, not a suspend call.
@@ -212,9 +234,15 @@ class LovedMangaScreenModel(
                 .sortedByDescending { it.updatedAt }
             // KMK <--
 
+            val mangaById = try {
+                mangaRepository.getMangaByIds(lovedTastes.map { it.mangaId }).associateBy { it.id }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                emptyMap()
+            }
             val entries = lovedTastes.map { taste ->
-                val manga = getManga.await(taste.mangaId)
-                    ?: getManga.await(taste.url, taste.source)
+                val manga = mangaById[taste.mangaId] ?: getManga.await(taste.url, taste.source)
                 LovedMangaEntry(taste = taste, manga = manga)
             }
 
@@ -241,6 +269,8 @@ class LovedMangaScreenModel(
                     linkGroupByKey = linkGroupByKey,
                     confirmedLinkGroupByKey = confirmedLinkGroupByKey,
                     primaryByGroupId = primaryByGroupId,
+                    readChapterCounts = readChapterCounts,
+                    automaticPrimaryEnabled = automaticPrimaryEnabled,
                     selectionMode = selectionMode,
                     selectedKeys = selectedKeys,
                 )
@@ -405,9 +435,8 @@ class LovedMangaScreenModel(
     }
 
     private suspend fun propagateConfirmedLocalTracking(manga: List<Manga>) {
-        if (!sourcePreferences.confirmedTrackedVersionLocalTrackingPropagationEnabled().get()) return
         manga.distinctBy { it.source to it.url }.forEach { origin ->
-            confirmedGroupLocalTrackingPropagator.propagateIfAnyTracked(
+            confirmedGroupLocalTrackingPropagator.ensureTrackedForRating(
                 confirmedMangaGroupTargets.await(origin),
             )
         }
@@ -584,7 +613,7 @@ class LovedMangaScreenModel(
                 val existingGroupMembers = distinctGroupIds.associateWith { groupId ->
                     getCrossSourceMangaLinks.awaitByGroupId(groupId)
                 }
-                val plan = RatedGroupMergePlanner.plan(
+                val plan = planRatedGroupMerge(
                     selected = selected,
                     existingGroupMembers = existingGroupMembers,
                     now = System.currentTimeMillis(),
@@ -595,14 +624,20 @@ class LovedMangaScreenModel(
                 // captures the correct pre-merge state), but only record it into the journal after the
                 // write below actually succeeds -- see GroupUndoRecorder's class doc.
                 val undoEntry = exh.util.GroupUndoRecorder.buildMergeEntry(sourcePreferences, plan, existingGroupMembers)
-                val identityAnchor = selected.first().key
+                // Confirm the complete post-merge membership, including members that were not
+                // individually selected but were pulled in from a selected group. This keeps the
+                // identity decision set aligned with the transactional link write and the Undo
+                // snapshot rather than silently confirming only the visible selection.
+                val identityAnchor = plan.writes.first().let { RatedMangaKey(it.source, it.url) }
                 val identityResult = identityController.mutateAll(
-                    selected.drop(1).map { candidate ->
-                        tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.canonicalPair(
-                            tachiyomi.domain.taste.model.CrossSourceRecordKey(identityAnchor.source, identityAnchor.url),
-                            tachiyomi.domain.taste.model.CrossSourceRecordKey(candidate.key.source, candidate.key.url),
-                        )
-                    },
+                    plan.writes.map { link -> RatedMangaKey(link.source, link.url) }
+                        .filter { it != identityAnchor }
+                        .map { candidate ->
+                            tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.canonicalPair(
+                                tachiyomi.domain.taste.model.CrossSourceRecordKey(identityAnchor.source, identityAnchor.url),
+                                tachiyomi.domain.taste.model.CrossSourceRecordKey(candidate.source, candidate.url),
+                            )
+                        },
                     exh.recs.matching.CrossSourceIdentityMutation.CONFIRM,
                 )
                 check(
@@ -614,13 +649,13 @@ class LovedMangaScreenModel(
                 plan to undoEntry?.id
             }
             result.onSuccess { (plan, undoEntryId) ->
-                applyLinkWrites(plan.writes, selectedEntries.mapTo(mutableSetOf()) { RatedMangaKey.of(it.taste) })
+                applyLinkWrites(plan.writes, plan.writes.mapTo(mutableSetOf()) { RatedMangaKey(it.source, it.url) })
                 onResult(MergeResult.Success(undoEntryId))
+                clearSelection()
             }.onFailure { e ->
                 if (e is CancellationException) throw e
                 onResult(MergeResult.Failed)
             }
-            clearSelection()
         }
     }
 
@@ -698,10 +733,10 @@ class LovedMangaScreenModel(
             val after = mutableState.value as? State.Success
             if (after != null) {
                 val updated = after.linkGroupByKey.toMutableMap()
-                targets.forEach { key -> updated.remove("${key.source}|${key.url}") }
+                removed.forEach { (key, _) -> updated.remove("${key.source}|${key.url}") }
                 mutableState.value = after.copy(linkGroupByKey = updated)
             }
-            clearSelection()
+            if (removed.isNotEmpty()) clearSelection()
             onResult(undoEntry)
         }
     }
@@ -731,8 +766,10 @@ class LovedMangaScreenModel(
             } catch (e: Exception) {
                 null
             }
+            var deleted = false
             val undoEntry = try {
                 deleteCrossSourceGroupCompletely.await(groupId)
+                deleted = true
                 exh.util.GroupUndoRecorder.buildUngroupEntry(sourcePreferences, groupId, previousLinks, previousPrimary)
                     ?.also { exh.util.GroupUndoJournal.record(it) }
             } catch (e: CancellationException) {
@@ -743,11 +780,11 @@ class LovedMangaScreenModel(
             // KMK v0.8.11: reflect the ungroup immediately -- see the class-level note above
             // mergeSelectedIntoGroup().
             val after = mutableState.value as? State.Success
-            if (after != null) {
+            if (after != null && deleted) {
                 val updated = after.linkGroupByKey.filterValues { it != groupId }
                 mutableState.value = after.copy(linkGroupByKey = updated, primaryByGroupId = after.primaryByGroupId - groupId)
             }
-            clearSelection()
+            if (deleted) clearSelection()
             onResult(undoEntry)
         }
     }
@@ -790,6 +827,8 @@ class LovedMangaScreenModel(
             // KMK <--
             // KMK --> v0.8.0
             val primaryByGroupId: Map<String, RatedMangaKey> = emptyMap(),
+            val readChapterCounts: Map<Long, Long> = emptyMap(),
+            val automaticPrimaryEnabled: Boolean = true,
             val selectionMode: Boolean = false,
             val selectedKeys: Set<RatedMangaKey> = emptySet(),
             /** AUG-06: fences [changeSelectedRating] against re-invocation while a batch is in flight. */
@@ -809,7 +848,13 @@ class LovedMangaScreenModel(
                 get() {
                     val sorted = sortEntries(entries, sortMode)
                     return if (groupDuplicates) {
-                        buildGroupedItems(sorted, confirmedLinkGroupByKey, primaryByGroupId)
+                        buildGroupedItems(
+                            sorted,
+                            confirmedLinkGroupByKey,
+                            primaryByGroupId,
+                            readChapterCounts,
+                            automaticPrimaryEnabled,
+                        )
                     } else {
                         buildFlatItems(sorted, confirmedLinkGroupByKey)
                     }
@@ -818,6 +863,20 @@ class LovedMangaScreenModel(
         }
     }
 }
+
+// Keep the screen-model merge boundary independently testable while preserving the planner as the
+// single source of truth for the complete transitive member set.
+internal fun planRatedGroupMerge(
+    selected: List<RatedGroupMergePlanner.SelectedEntry>,
+    existingGroupMembers: Map<String, List<tachiyomi.domain.taste.model.CrossSourceMangaLink>>,
+    now: Long,
+    newGroupIdProvider: () -> String,
+): RatedGroupMergePlanner.MergePlan? = RatedGroupMergePlanner.plan(
+    selected = selected,
+    existingGroupMembers = existingGroupMembers,
+    now = now,
+    newGroupIdProvider = newGroupIdProvider,
+)
 
 // KMK v0.8.11 -->
 /**
@@ -879,6 +938,8 @@ internal fun buildGroupedItems(
     linkGroupByKey: Map<String, String>,
     // KMK --> v0.8.0
     primaryByGroupId: Map<String, RatedMangaKey>,
+    readChapterCounts: Map<Long, Long> = emptyMap(),
+    automaticPrimaryEnabled: Boolean = false,
     // KMK <--
 ): List<LovedDisplayItem> {
     val inputs = entries.map { entry ->
@@ -904,7 +965,21 @@ internal fun buildGroupedItems(
         // Stored primary wins when it's installed/visible (i.e. present among this group's loaded
         // members) — otherwise fall back to the grouper's own primary-key choice (RatedGroupPrimaryResolver).
         val storedPrimary = confirmedGroupId?.let { primaryByGroupId[it] }
-        val effectiveKey = RatedGroupPrimaryResolver.resolve(group.primaryKey, group.memberKeys, storedPrimary)
+        val effectiveKey = RatedGroupPrimaryResolver.resolve(
+            grouperPrimaryKey = group.primaryKey,
+            memberKeys = group.memberKeys,
+            storedPrimary = storedPrimary,
+            automaticSelectionEnabled = automaticPrimaryEnabled && isConfirmedLinkGroup,
+            candidates = group.memberKeys.mapNotNull { key ->
+                keyToEntry[key]?.let { entry ->
+                    RatedGroupPrimaryResolver.Candidate(
+                        key = key,
+                        readChapterCount = readChapterCounts[entry.manga?.id ?: entry.taste.mangaId] ?: 0L,
+                        firstRatedAt = entry.taste.createdAt,
+                    )
+                }
+            },
+        )
         val primary = keyToEntry[effectiveKey] ?: keyToEntry[group.primaryKey] ?: return@mapNotNull null
         // KMK <--
         LovedDisplayItem(

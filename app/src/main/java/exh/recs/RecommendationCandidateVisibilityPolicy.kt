@@ -42,7 +42,7 @@ enum class CandidateVisibility {
  *   3. Rated visibility setting (HIDE_ALL_RATED / HIDE_DISLIKED_ONLY / SHOW_ALL_RATED).
  *   4. Seen (user explicitly suppressed the candidate via swipe/dismiss).
  *   5. Known (in user's library or history, when hide-known-manga is enabled).
- *   6. Min-chapter count (when enabled and local chapter data is available).
+ *   6. Min-chapter count (when enabled and a local lookup returned a count for the candidate).
  */
 internal object RecommendationCandidateVisibilityPolicy {
 
@@ -76,8 +76,11 @@ internal object RecommendationCandidateVisibilityPolicy {
         if (SeenMangaKey(manga.source, manga.url) in seenKeys) return CandidateVisibility.HIDDEN_SEEN
         if (knownIds.isNotEmpty() && manga.id in knownIds) return CandidateVisibility.HIDDEN_KNOWN
         if (minChapterCount > 0 && chapterCounts.isNotEmpty()) {
-            val count = chapterCounts[manga.id] ?: 0L
-            if (count > 0L && count < minChapterCount) return CandidateVisibility.HIDDEN_MIN_CHAPTERS
+            // A present zero is authoritative when supplied by a caller. The repository query
+            // omits manga without chapter rows, so a missing entry means the source list has not
+            // been loaded locally yet and must fail open for fresh candidates.
+            val count = chapterCounts[manga.id]
+            if (count != null && count < minChapterCount) return CandidateVisibility.HIDDEN_MIN_CHAPTERS
         }
         return CandidateVisibility.VISIBLE
     }

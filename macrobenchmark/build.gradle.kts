@@ -7,7 +7,11 @@ android {
 
     defaultConfig {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        testInstrumentationRunnerArguments["androidx.benchmark.enabledRules"] = "BaselineProfile"
+        // Keep both benchmark families enabled. MacrobenchmarkRule skips its body when the
+        // instrumentation bundle enables only BaselineProfile, which otherwise makes the
+        // connected task report a false-green skipped test with no measurements.
+        testInstrumentationRunnerArguments["androidx.benchmark.enabledRules"] =
+            "Macrobenchmark,BaselineProfile"
     }
 
     buildTypes {

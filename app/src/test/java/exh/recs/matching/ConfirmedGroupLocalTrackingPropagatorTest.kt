@@ -1,5 +1,8 @@
 package exh.recs.matching
 
+import eu.kanade.domain.source.service.SourcePreferences
+import eu.kanade.domain.track.service.TrackPreferences
+import exh.util.FakePreferenceStore
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -7,6 +10,9 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import tachiyomi.domain.chapter.interactor.GetChapter
+import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
+import tachiyomi.domain.history.interactor.GetHistory
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.tracker.model.LocalTrackedWork
 import tachiyomi.domain.tracker.model.LocalTrackedWorkSource
@@ -24,7 +30,7 @@ class ConfirmedGroupLocalTrackingPropagatorTest {
         val target = manga(2, "/target")
         coEvery { repository.getWorkIdBySourceUrl(any(), any()) } returns null
 
-        assertFalse(propagator.propagateIfAnyTracked(listOf(origin, target)))
+        assertFalse(propagator.propagateIfAnyTracked(listOf(origin, target), enabled = true))
         coVerify(exactly = 0) { repository.upsertWork(any()) }
         coVerify(exactly = 0) { repository.upsertSource(any()) }
     }
@@ -50,7 +56,7 @@ class ConfirmedGroupLocalTrackingPropagatorTest {
         coEvery { repository.getWorkIdBySourceUrl(2, "/target") } returns null
         coEvery { repository.getWork("work-1") } returns work
 
-        assertTrue(propagator.propagateIfAnyTracked(listOf(origin, target)))
+        assertTrue(propagator.propagateIfAnyTracked(listOf(origin, target), enabled = true))
         coVerify { repository.upsertSource(match { it.workId == "work-1" && it.source == 2L && it.url == "/target" }) }
         coVerify(exactly = 0) { repository.upsertWork(any()) }
     }
@@ -81,7 +87,7 @@ class ConfirmedGroupLocalTrackingPropagatorTest {
         coEvery { repository.getSourceProgress("work-2", 2, "/target") } returns targetProgress
         coEvery { repository.getLists(any()) } returns emptyList()
 
-        assertTrue(propagator.propagateIfAnyTracked(listOf(origin, target)))
+        assertTrue(propagator.propagateIfAnyTracked(listOf(origin, target), enabled = true))
 
         coVerify(exactly = 1) { repository.consolidateWork("work-1", "work-2") }
         coVerify(exactly = 0) { repository.upsertSource(any()) }
@@ -102,12 +108,70 @@ class ConfirmedGroupLocalTrackingPropagatorTest {
             coEvery { orderRepository.getWork("work-older") } returns older
             coEvery { orderRepository.getWork("work-newer") } returns newer
 
-            assertTrue(orderPropagator.propagateIfAnyTracked(targets))
+            assertTrue(orderPropagator.propagateIfAnyTracked(targets, enabled = true))
             coVerify(exactly = 1) { orderRepository.consolidateWork("work-older", "work-newer") }
         }
 
         consolidateInOrder(listOf(origin, target))
         consolidateInOrder(listOf(target, origin))
+    }
+
+    @Test
+    fun `disabled propagation never attaches or consolidates confirmed versions`() = runTest {
+        val origin = manga(1, "/origin")
+        val target = manga(2, "/target")
+
+        assertFalse(propagator.propagateIfAnyTracked(listOf(origin, target), enabled = false))
+
+        coVerify(exactly = 0) { repository.getWorkIdBySourceUrl(any(), any()) }
+        coVerify(exactly = 0) { repository.upsertSource(any()) }
+        coVerify(exactly = 0) { repository.consolidateWork(any(), any()) }
+    }
+
+    @Test
+    fun `rating an already tracked manga respects disabled linked-version propagation`() = runTest {
+        val preferences = SourcePreferences(FakePreferenceStore()).also {
+            it.confirmedTrackedVersionLocalTrackingPropagationEnabled().set(false)
+        }
+        val ratingPropagator = ConfirmedGroupLocalTrackingPropagator(repository, preferences)
+        val origin = manga(1, "/origin")
+        val target = manga(2, "/target")
+        coEvery { repository.getWorkIdBySourceUrl(1, "/origin") } returns "work-1"
+        coEvery { repository.getWorkIdBySourceUrl(2, "/target") } returns null
+
+        assertTrue(ratingPropagator.ensureTrackedForRating(listOf(origin, target)))
+
+        coVerify(exactly = 0) { repository.upsertSource(any()) }
+        coVerify(exactly = 0) { repository.consolidateWork(any(), any()) }
+    }
+
+    @Test
+    fun `rating creates only primary tracking when linked-version propagation is disabled`() = runTest {
+        val store = FakePreferenceStore()
+        val preferences = SourcePreferences(store).also {
+            it.confirmedTrackedVersionLocalTrackingPropagationEnabled().set(false)
+        }
+        val ratingPropagator = ConfirmedGroupLocalTrackingPropagator(
+            repository = repository,
+            sourcePreferencesOverride = preferences,
+            trackPreferencesOverride = TrackPreferences(store),
+            getHistoryOverride = mockk<GetHistory>(relaxed = true),
+            getChapterOverride = mockk<GetChapter>(relaxed = true),
+            getChaptersByMangaIdOverride = mockk<GetChaptersByMangaId>(relaxed = true),
+        )
+        val origin = manga(1, "/origin")
+        val target = manga(2, "/target")
+        coEvery { repository.getWorkIdBySourceUrl(any(), any()) } returns null
+
+        assertTrue(ratingPropagator.ensureTrackedForRating(listOf(origin, target)))
+
+        coVerify(exactly = 1) { repository.upsertWork(any()) }
+        coVerify(exactly = 1) {
+            repository.upsertSource(match { it.source == origin.source && it.url == origin.url })
+        }
+        coVerify(exactly = 0) {
+            repository.upsertSource(match { it.source == target.source && it.url == target.url })
+        }
     }
 
     private fun manga(source: Long, url: String) = Manga.create().copy(source = source, url = url, ogTitle = url)

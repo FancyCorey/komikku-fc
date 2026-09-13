@@ -424,12 +424,24 @@ class SourcePreferences(
     /** Whether ratings may follow explicitly confirmed, already locally tracked versions. */
     fun confirmedTrackedVersionRatingPropagationEnabled() = preferenceStore.getBoolean(
         "confirmed_tracked_version_rating_propagation_enabled",
-        false,
+        true,
     )
 
     fun confirmedTrackedVersionLocalTrackingPropagationEnabled() = preferenceStore.getBoolean(
         "confirmed_tracked_version_local_tracking_propagation_enabled",
-        false,
+        true,
+    )
+
+    /** Whether local tracking should infer its initial status from reading facts. Defaults on. */
+    fun automaticLocalTrackingStatusInferenceEnabled() = preferenceStore.getBoolean(
+        "automatic_local_tracking_status_inference_enabled",
+        true,
+    )
+
+    /** Derives the rated-group primary only when the user has not chosen one explicitly. */
+    fun automaticRatedGroupPrimaryEnabled() = preferenceStore.getBoolean(
+        "automatic_rated_group_primary_enabled",
+        true,
     )
 
     /** Whether rated-manga actions are entered from the top-right selection affordance. */

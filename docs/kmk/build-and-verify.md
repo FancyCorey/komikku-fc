@@ -1,4 +1,4 @@
-# Build and verify Komikku KMK
+# Build and verify Komikku FC
 
 This guide produces a local development build and checks the behavior covered by automated tests. A local debug APK is not a signed public release.
 
@@ -19,14 +19,15 @@ From the repository root, run:
 
 On Windows PowerShell, use `./gradlew.bat :app:assembleDebug`. The universal debug APK is written below `app/build/outputs/apk/debug/`.
 
-The public release package is `app.komikku.kmk`. The development build uses `app.komikku.kmk.dev`; debug and test variants add their own suffixes so they do not overwrite a release install. Public releases require a maintainer-controlled signing configuration. Debug signing is only for isolated development installs and cannot update a public release.
+The public release package is `app.komikku.kmk`. The development build uses `app.komikku.dev`, so it installs separately. Public releases must use the project's release signing key. A debug-signed APK cannot update an installed public release.
 
 ## Verify
 
 Run the formatting, unit, and local-source checks before sharing a change:
 
 ```shell
-./gradlew spotlessCheck :app:testDebugUnitTest :source-local:testDebugUnitTest :app:assembleDebug
+./gradlew spotlessCheck :app:testDebugUnitTest :source-local:testDebugUnitTest :domain:testDebugUnitTest :data:testDebugUnitTest --max-workers=1 --no-parallel
+./gradlew :app:assembleDebug --max-workers=1 --no-parallel
 ```
 
 When a change affects a specific feature, also run that feature's tests. Device behavior still needs to be checked on a supported Android device or emulator, with screenshots reviewed for private information. A successful computer build alone cannot prove navigation, Android document-picker behavior, or extension compatibility.
@@ -43,9 +44,9 @@ Before distributing an APK:
 
 ## Repository automation
 
-Pushes and pull requests run formatting, debug unit tests, local-source tests, and a debug build without signing keys or service credentials. The manual Development validation build produces an isolated `app.komikku.kmk.dev` artifact for personal testing. It does not create releases, tags, or public app updates.
+Pushes and pull requests run formatting, unit tests, local-source tests, and a debug build without release signing keys. Development APKs use `app.komikku.dev` and do not create public releases or in-app updates.
 
-Stable releases are created from a `v*` tag in `FancyCorey/komikku-KMK`. Before pushing a release tag, configure `SIGNING_KEY`, `ALIAS`, `KEY_STORE_PASSWORD`, and `KEY_PASSWORD` with the fork's public release signing identity. The tag must match `versionName`, and the release must have a higher `versionCode` than the public version it replaces. The optional `GOOGLE_CLIENT_SECRETS_JSON` secret includes the fork's Google Drive client in the build; it is not required for the GitHub updater or for a valid public APK.
+Stable release tags match the Komikku FC feature version in `KmkRecsReleaseNotes`, for example `v0.8.22`. This is separate from Android's `versionName`, currently `1.14.1`. Android's `versionCode` must increase for each public update. The release workflow builds `kmkPublicTest` with the updater enabled, then signs the APKs using `SIGNING_KEY`, `ALIAS`, `KEY_STORE_PASSWORD`, and `KEY_PASSWORD`. These secrets must preserve the signing identity of the previous public release. The optional `GOOGLE_CLIENT_SECRETS_JSON` includes Google Drive support; it is not required for the updater.
 
 The release workflow builds without telemetry service credentials, signs the APKs, verifies the package name, version, and shared signing certificate, writes SHA-256 checksums and a release manifest, and creates a draft GitHub release. A human must verify the certificate, hashes, generated notes, update behavior, and APK behavior before publishing that draft. Google Drive sign-in is an additional check only when that optional client configuration was supplied. See [Release channels](release-channels.md) for the full public-versus-development release model.
 

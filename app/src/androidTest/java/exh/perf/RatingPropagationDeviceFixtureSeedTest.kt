@@ -13,6 +13,7 @@ import tachiyomi.domain.category.repository.CategoryRepository
 import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.history.repository.HistoryRepository
 import tachiyomi.domain.manga.repository.MangaRepository
+import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.domain.taste.model.CrossSourceIdentityDecision
 import tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy
 import tachiyomi.domain.taste.model.CrossSourceIdentityDecisionValue
@@ -37,8 +38,19 @@ class RatingPropagationDeviceFixtureSeedTest {
         DisposableTestEnvironmentGuard.assumeDisposableEnvironment(context)
         val arguments = InstrumentationRegistry.getArguments()
         val totalManga = arguments.getString("totalManga")?.toIntOrNull() ?: 40
+        val useVisibleSources = arguments.getString("useVisibleSources")?.toBooleanStrictOrNull() == true
+        val visibleSourceIds = if (useVisibleSources) {
+            Injekt.get<SourceManager>().getVisibleSources().map { it.id }.distinct().also {
+                assertTrue("device UI profile requires at least two visible sources", it.size >= 2)
+            }
+        } else {
+            null
+        }
         val dataset = PerformanceFixtureGenerator.generate(
-            PerformanceFixtureSpec.REALISTIC.copy(totalManga = totalManga),
+            PerformanceFixtureSpec.REALISTIC.copy(
+                totalManga = totalManga,
+                availableSourceIds = visibleSourceIds,
+            ),
         )
 
         PerformanceFixtureSeeder.seed(

@@ -1,4 +1,14 @@
 pluginManagement {
+    // Runtime dependencies include Kotlin 2.4 classes; bundled R8 8.13 cannot read their metadata.
+    buildscript {
+        repositories {
+            google()
+            mavenCentral()
+        }
+        dependencies {
+            classpath("com.android.tools:r8:9.1.31")
+        }
+    }
     resolutionStrategy {
         eachPlugin {
             val regex = "com.android.(library|application)".toRegex()

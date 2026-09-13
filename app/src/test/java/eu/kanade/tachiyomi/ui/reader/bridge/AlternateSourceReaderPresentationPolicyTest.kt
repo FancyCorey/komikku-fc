@@ -18,6 +18,7 @@ class AlternateSourceReaderPresentationPolicyTest {
         assertTrue(alternate.returnToPrimary)
         assertTrue(alternate.correctMapping)
         assertTrue(alternate.skipChapter)
+        assertTrue(alternate.addToLibrary)
         assertFalse(alternate.resolving)
 
         listOf(
@@ -32,6 +33,7 @@ class AlternateSourceReaderPresentationPolicyTest {
             assertFalse(actions.returnToPrimary)
             assertFalse(actions.correctMapping)
             assertFalse(actions.skipChapter)
+            assertFalse(actions.addToLibrary)
         }
     }
 
@@ -45,25 +47,43 @@ class AlternateSourceReaderPresentationPolicyTest {
             ),
         )
         assertTrue(actions.returnToPrimary)
+        assertTrue(actions.addToLibrary)
         assertFalse(actions.correctMapping)
         assertFalse(actions.skipChapter)
         assertEquals(AlternateSourceReaderRecoveryReason.RETRIES_EXHAUSTED, actions.degradedReason)
+
+        val pendingEntry = readerSession().copy(currentRoute = readerSession().primaryResumeRoute)
+        assertFalse(
+            AlternateSourceReaderPresentationPolicy.contextActions(
+                AlternateSourceReaderMachineState(
+                    phase = AlternateSourceReaderPhase.DEGRADED,
+                    session = pendingEntry,
+                ),
+            ).addToLibrary,
+        )
     }
 
     @Test
-    fun `terminal and primary phases expose no contextual actions`() {
-        listOf(
-            AlternateSourceReaderPhase.PRIMARY,
-            AlternateSourceReaderPhase.ENDED,
-            AlternateSourceReaderPhase.DEGRADED,
-        ).forEach { phase ->
-            assertEquals(
-                AlternateSourceReaderContextActions(),
-                AlternateSourceReaderPresentationPolicy.contextActions(
-                    AlternateSourceReaderMachineState(phase = phase),
+    fun `terminal phases expose no contextual actions and a retained primary pair can switch`() {
+        assertEquals(AlternateSourceReaderContextActions(), AlternateSourceReaderPresentationPolicy.contextActions(
+            AlternateSourceReaderMachineState(phase = AlternateSourceReaderPhase.PRIMARY),
+        ))
+        assertEquals(AlternateSourceReaderContextActions(), AlternateSourceReaderPresentationPolicy.contextActions(
+            AlternateSourceReaderMachineState(phase = AlternateSourceReaderPhase.ENDED),
+        ))
+        assertTrue(
+            AlternateSourceReaderPresentationPolicy.contextActions(
+                AlternateSourceReaderMachineState(
+                    phase = AlternateSourceReaderPhase.PRIMARY,
+                    session = readerSession().copy(
+                        currentRoute = readerSession().primaryResumeRoute,
+                        lastSafeRouteFingerprint = AlternateSourceReaderRouteFingerprint.of(
+                            readerSession().primaryResumeRoute,
+                        ),
+                    ),
                 ),
-            )
-        }
+            ).returnToPrimary,
+        )
     }
 
     @Test
@@ -112,16 +132,30 @@ class AlternateSourceReaderPresentationPolicyTest {
     }
 
     @Test
-    fun `stale and conflict invalidate private selection tokens`() {
+    fun `stale and invalid results invalidate private selection tokens`() {
         listOf(
             AlternateSourceReaderCommandResult.Stale,
-            AlternateSourceReaderCommandResult.Conflict,
             AlternateSourceReaderCommandResult.Invalid,
         ).forEach { result ->
             val presentation = AlternateSourceReaderPresentationPolicy.result(result, true)
                 as AlternateSourceReaderResultPresentation.Recoverable
             assertTrue(presentation.invalidateTokens)
         }
+    }
+
+    @Test
+    fun `conflict keeps the selected source and chapter available for retry`() {
+        assertEquals(
+            AlternateSourceReaderResultPresentation.Recoverable(
+                reason = AlternateSourceReaderRecoveryReason.CONFLICT,
+                canRetry = true,
+                invalidateTokens = false,
+            ),
+            AlternateSourceReaderPresentationPolicy.result(
+                AlternateSourceReaderCommandResult.Conflict,
+                explicitUserCommand = true,
+            ),
+        )
     }
 
     @Test
@@ -164,6 +198,18 @@ class AlternateSourceReaderPresentationPolicyTest {
         assertEquals("Chapter 12: The Return", row.primaryLabel)
         assertEquals("12.0", row.secondaryLabel)
         assertEquals(null, row.genericLabel)
+    }
+
+    @Test
+    fun `chapter rows show scanlator beside chapter number`() {
+        val row = AlternateSourceReaderPresentationPolicy.chapterCandidateRow(
+            token = AlternateSourceReaderOpaqueToken("chapter"),
+            name = "Chapter 12: The Return",
+            chapterNumber = 12f,
+            scanlator = "  Alpha  ",
+        )
+
+        assertEquals("12.0 • Alpha", row.secondaryLabel)
     }
 
     @Test

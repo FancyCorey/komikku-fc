@@ -393,19 +393,23 @@ data class BrowseSourceScreen(
                 },
                 onMangaLongClick = { manga ->
                     // KMK -->
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    if (bulkFavoriteState.selectionMode) {
-                        navigator.push(MangaScreen(manga.id, true))
+                    if (returnSelection) {
+                        Unit
                     } else {
-                        // KMK <--
-                        scope.launchIO {
-                            val duplicates = screenModel.getDuplicateLibraryManga(manga)
-                            when {
-                                manga.favorite -> screenModel.setDialog(BrowseSourceScreenModel.Dialog.RemoveManga(manga))
-                                duplicates.isNotEmpty() -> screenModel.setDialog(
-                                    BrowseSourceScreenModel.Dialog.AddDuplicateManga(manga, duplicates),
-                                )
-                                else -> screenModel.addFavorite(manga)
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        if (bulkFavoriteState.selectionMode) {
+                            navigator.push(MangaScreen(manga.id, true))
+                        } else {
+                            // KMK <--
+                            scope.launchIO {
+                                val duplicates = screenModel.getDuplicateLibraryManga(manga)
+                                when {
+                                    manga.favorite -> screenModel.setDialog(BrowseSourceScreenModel.Dialog.RemoveManga(manga))
+                                    duplicates.isNotEmpty() -> screenModel.setDialog(
+                                        BrowseSourceScreenModel.Dialog.AddDuplicateManga(manga, duplicates),
+                                    )
+                                    else -> screenModel.addFavorite(manga)
+                                }
                             }
                         }
                     }

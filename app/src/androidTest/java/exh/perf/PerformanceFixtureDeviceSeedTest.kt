@@ -24,7 +24,7 @@ import uy.kohesive.injekt.api.get
  * needed, and it stays rerunnable with a single command against any connected/target device:
  *
  * ```
- * adb -s <serial> shell pm clear app.komikku.dev   # start from a clean library (optional but recommended)
+ * adb -s <serial> shell pm clear app.komikku.dev   # required: acceptance rows assume a clean fixture profile
  * ./gradlew :app:connectedDebugAndroidTest \
  *   -Pandroid.testInstrumentationRunnerArguments.class=exh.perf.PerformanceFixtureDeviceSeedTest
  * ```

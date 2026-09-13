@@ -10,6 +10,62 @@ import java.security.MessageDigest
 class KmkReleaseNativeToolchainSourceTest {
 
     @Test
+    fun `Android plugin classpath provides Kotlin 2_4 compatible R8`() {
+        val settings = File("../settings.gradle.kts").readText()
+        val pluginManagement = settings.substringAfter("pluginManagement {").substringBefore("resolutionStrategy {")
+
+        assertTrue(pluginManagement.contains("buildscript {"))
+        assertTrue(pluginManagement.contains("google()"))
+        assertTrue(pluginManagement.contains("classpath(\"com.android.tools:r8:9.1.31\")"))
+        val appBuild = File("../app/build.gradle.kts").readText()
+        assertTrue(appBuild.contains("com.android.tools.r8.Version.getVersionString()"))
+        assertTrue(appBuild.contains("dependsOn(verifyAndroidCompiler)"))
+        val kotlinCatalog = File("../gradle/kotlinx.versions.toml").readText()
+        assertTrue(kotlinCatalog.contains("kotlin_version = \"2.4.0\""))
+    }
+
+    @Test
+    fun `release tests and public assembly use separate serial compiler lanes`() {
+        val workflow = File("../.github/workflows/build_release.yml").readText()
+        val testCommand = workflow.lineSequence().first { "./gradlew spotlessCheck" in it }
+
+        assertFalse(testCommand.contains("assembleKmkPublicTest"))
+        assertTrue(testCommand.contains(":domain:testDebugUnitTest :data:testDebugUnitTest"))
+        assertTrue(testCommand.contains("--max-workers=1 --no-parallel"))
+        assertTrue(workflow.contains("gradle_args=(:app:assembleKmkPublicTest -Penable-updater --max-workers=1 --no-parallel)"))
+    }
+
+    @Test
+    fun `release workflow requires upgrade continuity before creating a draft`() {
+        val workflow = File("../.github/workflows/build_release.yml").readText()
+        val continuity = workflow.indexOf("name: Verify upgrade continuity with the published release")
+        val signing = workflow.indexOf("name: Sign release APKs")
+        val draft = workflow.indexOf("name: Create draft release")
+
+        assertTrue(continuity >= 0 && continuity < signing && signing < draft)
+        assertTrue(workflow.contains("releases/latest --jq '.tag_name'"))
+        assertTrue(workflow.contains("test \"${'$'}{VERSION_CODE}\" -gt \"${'$'}{previous_code}\""))
+        assertTrue(workflow.contains("test \"${'$'}{certificate_fingerprint}\" = \"${'$'}{PREVIOUS_CERTIFICATE_SHA256}\""))
+        assertTrue(workflow.contains("--argjson version_code \"${'$'}{VERSION_CODE}\""))
+        assertTrue(workflow.indexOf("name: Refuse changes to an already published tag") in signing until draft)
+        assertTrue(workflow.contains("releases/tags/${'$'}{RELEASE_TAG}"))
+        assertTrue(workflow.contains("jq -e '.draft == true'"))
+        assertTrue(workflow.contains("^v[0-9]+\\.[0-9]+\\.[0-9]+(-fix[0-9]+)?${'$'}"))
+        assertFalse(workflow.contains("tag=\"${'$'}{{ steps.release.outputs.tag }}\""))
+    }
+
+    @Test
+    fun `every signed release APK has its package and version verified`() {
+        val workflow = File("../.github/workflows/build_release.yml").readText()
+        val signedApkLoop = workflow.substringAfter("for apk in Komikku-KMK-*.apk; do").substringBefore("done")
+
+        assertTrue(signedApkLoop.contains("dump badging \"${'$'}{apk}\""))
+        assertTrue(signedApkLoop.contains("package: name='app.komikku.kmk'"))
+        assertTrue(signedApkLoop.contains("versionName='${'$'}{VERSION_NAME}'"))
+        assertTrue(signedApkLoop.contains("versionCode='${'$'}{VERSION_CODE}'"))
+    }
+
+    @Test
     fun `release workflow installs the native configuration tool`() {
         val workflow = File("../.github/workflows/build_release.yml").readText()
 

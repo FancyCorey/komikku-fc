@@ -7,6 +7,7 @@ import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -201,6 +202,40 @@ class SameMangaCandidateSearcherLifecycleTest {
     }
 
     @Test
+    fun `global scope uses normal global sources and does not apply matching result cap`() = runTest {
+        val sourcePreferences = mockk<SourcePreferences>(relaxed = true)
+        every { sourcePreferences.enabledLanguages().get() } returns setOf("en", "ja")
+        every { sourcePreferences.disabledSources().get() } returns setOf("4")
+        every { sourcePreferences.pinnedSources().get() } returns setOf("9910020")
+        val sourceManager = mockk<SourceManager>()
+        val pinned = FakeSource(9_910_020, lang = "en", name = "Pinned") { page(manga("/pinned-a", "Different Alias"), manga("/pinned-b", "Another Title")) }
+        val regular = FakeSource(9_910_021, lang = "ja", name = "Japanese") { page(manga("/ja", "別名")) }
+        val disabled = FakeSource(4, lang = "en", name = "Disabled") { page(manga("/disabled", "Hidden")) }
+        every { sourceManager.getVisibleSources() } returns listOf(regular, disabled, pinned)
+
+        val results = mutableListOf<SameMangaSourceResult>()
+        SameMangaCandidateSearcher(
+            sourcePreferences = sourcePreferences,
+            sourceManager = sourceManager,
+            networkToLocalManga = identityNetworkToLocalManga(),
+            coroutineDispatcher = UnconfinedTestDispatcher(testScheduler),
+            getIdentityDecisions = mockk<tachiyomi.domain.taste.interactor.GetCrossSourceIdentityDecisions>().also {
+                coEvery { it.await(any()) } returns null
+            },
+        ).search(
+            queries = listOf("Origin"),
+            settings = settings(resultCap = 1),
+            originManga = origin(),
+            scope = SameMangaSearchScope.GLOBAL,
+            onResult = results::add,
+        )
+
+        assertEquals(setOf(9_910_020L, 9_910_021L), results.map { it.source.id }.toSet())
+        val pinnedResult = results.single { it.source.id == pinned.id }.result as SameMangaCandidateResult.Success
+        assertEquals(setOf("/pinned-a", "/pinned-b"), pinnedResult.results.map(Manga::url).toSet())
+    }
+
+    @Test
     fun `current user rejection is suppressed before candidate delivery`() = runTest {
         val source = FakeSource(6) { page(manga("/rejected", "Same"), manga("/unknown", "Same")) }
         val rejected = tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.userDecision(
@@ -276,10 +311,10 @@ class SameMangaCandidateSearcherLifecycleTest {
 
     private inner class FakeSource(
         override val id: Long,
+        override val lang: String = "en",
+        override val name: String = "Fixture $id",
         private val search: suspend (String) -> MangasPage,
     ) : Source {
-        override val name = "Fixture $id"
-        override val lang = "en"
         override val supportsLatest = false
 
         override suspend fun getPopularManga(page: Int) = throw UnsupportedOperationException()

@@ -62,6 +62,7 @@ fun ReaderAppBars(
     onReturnToPrimarySource: (() -> Unit)?,
     onCorrectAlternateSourceMapping: (() -> Unit)?,
     onSkipAlternateSourceChapter: (() -> Unit)?,
+    onAddAlternateSourceToLibrary: (() -> Unit)?,
 
     viewer: Viewer?,
     onNextChapter: () -> Unit,
@@ -139,6 +140,7 @@ fun ReaderAppBars(
                     onReturnToPrimarySource = onReturnToPrimarySource,
                     onCorrectAlternateSourceMapping = onCorrectAlternateSourceMapping,
                     onSkipAlternateSourceChapter = onSkipAlternateSourceChapter,
+                    onAddAlternateSourceToLibrary = onAddAlternateSourceToLibrary,
                 )
                 // SY -->
                 ExhUtils(

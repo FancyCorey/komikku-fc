@@ -198,6 +198,29 @@ class BrowsePersonalRecommendationsScreenModelLegacyPreferenceIsolationTest {
 
         assertEquals(1, outcome.successCount)
         coVerify(exactly = 1) { groupTargets.await(target) }
-        coVerify(exactly = 1) { propagator.propagateIfAnyTracked(listOf(target, confirmed)) }
+        coVerify(exactly = 1) { propagator.ensureTrackedForRating(listOf(target, confirmed)) }
+    }
+
+    @Test
+    fun `bulk rating still creates primary tracking when linked-version tracking is disabled`() = runTest {
+        val sourcePreferences = SourcePreferences(FakePreferenceStore()).also {
+            it.confirmedTrackedVersionLocalTrackingPropagationEnabled().set(false)
+        }
+        val groupTargets = mockk<ConfirmedMangaGroupTargets>(relaxed = true)
+        val propagator = mockk<ConfirmedGroupLocalTrackingPropagator>(relaxed = true)
+        val model = buildModel(
+            sourcePreferences,
+            confirmedMangaGroupTargets = groupTargets,
+            confirmedGroupLocalTrackingPropagator = propagator,
+        )
+        val target = candidate(6L, 60L, "/manga/primary-only")
+        val confirmed = candidate(7L, 70L, "/manga/linked-disabled")
+        io.mockk.coEvery { groupTargets.await(target) } returns listOf(target, confirmed)
+
+        val outcome = model.rateSelected(listOf(target), MangaRating.LOVE)
+
+        assertEquals(1, outcome.successCount)
+        coVerify(exactly = 1) { groupTargets.await(target) }
+        coVerify(exactly = 1) { propagator.ensureTrackedForRating(listOf(target, confirmed)) }
     }
 }

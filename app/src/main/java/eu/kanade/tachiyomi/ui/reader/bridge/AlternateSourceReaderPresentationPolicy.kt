@@ -76,6 +76,7 @@ sealed interface AlternateSourceReaderPresentation {
     data class ChoosingSource(
         val content: AlternateSourceReaderLoadState<AlternateSourceReaderCandidateRow>,
         val selectedToken: AlternateSourceReaderOpaqueToken? = null,
+        val currentSourceLabel: String? = null,
     ) : AlternateSourceReaderPresentation
     data class ChoosingChapter(
         val sourceToken: AlternateSourceReaderOpaqueToken,
@@ -97,6 +98,7 @@ data class AlternateSourceReaderContextActions(
     val returnToPrimary: Boolean = false,
     val correctMapping: Boolean = false,
     val skipChapter: Boolean = false,
+    val addToLibrary: Boolean = false,
     val resolving: Boolean = false,
     val degradedReason: AlternateSourceReaderRecoveryReason? = null,
 )
@@ -131,17 +133,22 @@ object AlternateSourceReaderPresentationPolicy {
         token: AlternateSourceReaderOpaqueToken,
         name: String,
         chapterNumber: Float,
+        scanlator: String? = null,
     ): AlternateSourceReaderCandidateRow = AlternateSourceReaderCandidateRow(
         token = token,
         primaryLabel = name,
-        secondaryLabel = chapterNumber.takeIf { it >= 0f }?.toString(),
+        secondaryLabel = listOfNotNull(
+            chapterNumber.takeIf { it >= 0f }?.toString(),
+            scanlator?.trim()?.takeIf { it.isNotEmpty() },
+        ).joinToString(" • ").takeIf { it.isNotEmpty() },
     )
 
     fun contextActions(state: AlternateSourceReaderMachineState): AlternateSourceReaderContextActions =
         when (state.phase) {
-            AlternateSourceReaderPhase.PRIMARY,
-            AlternateSourceReaderPhase.ENDED,
-            -> AlternateSourceReaderContextActions()
+            AlternateSourceReaderPhase.PRIMARY ->
+                if (state.session == null) AlternateSourceReaderContextActions()
+                else AlternateSourceReaderContextActions(returnToPrimary = true)
+            AlternateSourceReaderPhase.ENDED -> AlternateSourceReaderContextActions()
             AlternateSourceReaderPhase.RESOLVING_ENTRY,
             AlternateSourceReaderPhase.RESOLVING_CORRECTION,
             AlternateSourceReaderPhase.RETURNING,
@@ -150,12 +157,14 @@ object AlternateSourceReaderPresentationPolicy {
                 returnToPrimary = state.session != null,
                 correctMapping = state.session != null,
                 skipChapter = state.session != null,
+                addToLibrary = state.session?.currentRoute?.role == AlternateSourceReaderRouteRole.ALTERNATE,
             )
             AlternateSourceReaderPhase.DEGRADED -> if (state.session == null) {
                 AlternateSourceReaderContextActions()
             } else {
                 AlternateSourceReaderContextActions(
                     returnToPrimary = true,
+                    addToLibrary = state.session.currentRoute.role == AlternateSourceReaderRouteRole.ALTERNATE,
                     degradedReason = state.failureReason?.toRecoveryReason(),
                 )
             }
@@ -199,7 +208,10 @@ object AlternateSourceReaderPresentationPolicy {
         AlternateSourceReaderCommandResult.Conflict -> AlternateSourceReaderResultPresentation.Recoverable(
             reason = AlternateSourceReaderRecoveryReason.CONFLICT,
             canRetry = true,
-            invalidateTokens = true,
+            // Keep the selected source/chapter so Retry can re-run the same choice after
+            // re-reading the bridge. Clearing it here turns a recoverable mapping race into
+            // a chooser loop with no way to retry the user's original selection.
+            invalidateTokens = false,
         )
         AlternateSourceReaderCommandResult.Stale -> AlternateSourceReaderResultPresentation.Recoverable(
             reason = AlternateSourceReaderRecoveryReason.ROUTE_CHANGED,

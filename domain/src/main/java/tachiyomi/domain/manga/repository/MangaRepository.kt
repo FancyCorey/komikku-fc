@@ -10,6 +10,8 @@ interface MangaRepository {
 
     suspend fun getMangaById(id: Long): Manga
 
+    suspend fun getMangaByIds(ids: Collection<Long>): List<Manga>
+
     suspend fun getMangaByIdAsFlow(id: Long): Flow<Manga>
 
     suspend fun getMangaByUrlAndSourceId(url: String, sourceId: Long): Manga?
@@ -53,8 +55,15 @@ interface MangaRepository {
     suspend fun getKnownRecommendationMangaIds(mangaIds: Collection<Long>): Set<Long>
 
     // KMK --> v0.7.26: batch chapter counts for the minimum-chapter filter (local DB only, never fetches)
-    /** Returns a map of mangaId → locally-stored chapter count for each ID in [mangaIds]. */
+    /**
+     * Returns locally-known chapter counts for [mangaIds]. IDs with no stored chapter rows are
+     * omitted because their chapter count is unknown until the source list has been loaded.
+     */
     suspend fun getChapterCountsByMangaIds(mangaIds: Collection<Long>): Map<Long, Long>
+
+    suspend fun getReadChapterCountsByMangaIds(mangaIds: Collection<Long>): Map<Long, Long>
+
+    fun getReadChapterCountsByMangaIdsAsFlow(mangaIds: Collection<Long>): Flow<Map<Long, Long>>
     // KMK <--
     // KMK <--
 

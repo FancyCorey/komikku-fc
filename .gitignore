@@ -35,6 +35,9 @@ tachiyomi_kmk_debug_diagnostic*.db*
 # KMK fork: exclude local device screenshots captured during manual/automated UI verification
 /artifacts/
 
+# Local review evidence and implementation records
+/private/
+
 # Python tooling caches (tools/ UI-automation scripts)
 __pycache__/
 *.pyc

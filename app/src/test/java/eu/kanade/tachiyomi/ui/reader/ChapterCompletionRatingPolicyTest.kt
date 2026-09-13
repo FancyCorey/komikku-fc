@@ -1,10 +1,26 @@
 package eu.kanade.tachiyomi.ui.reader
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import tachiyomi.domain.taste.model.MangaRating
 
 class ChapterCompletionRatingPolicyTest {
+
+    @Test
+    fun `completion prompt is hidden when any applicable version is already rated`() {
+        assertFalse(
+            ChapterCompletionRatingPolicy.shouldShowPrompt(
+                listOf(null, MangaRating.LOVE),
+            ),
+        )
+    }
+
+    @Test
+    fun `completion prompt is shown only when every applicable version is unrated`() {
+        assertTrue(ChapterCompletionRatingPolicy.shouldShowPrompt(listOf(null, null)))
+    }
 
     @Test
     fun `an unrated work applies the selected rating and preserves configured follow-up`() {

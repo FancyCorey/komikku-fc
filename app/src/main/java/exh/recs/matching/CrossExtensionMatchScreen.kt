@@ -275,6 +275,10 @@ class CrossExtensionMatchScreen(
                                         isSelected = { manga ->
                                             MangaIdentityKey(manga.source, manga.url) in state.selectedKeys
                                         },
+                                        // Matching/version discovery is not a library surface. A
+                                        // previously favorited candidate must not make this search
+                                        // card look like an alternate-source marker.
+                                        showLibraryState = false,
                                     )
                                 }
                             }

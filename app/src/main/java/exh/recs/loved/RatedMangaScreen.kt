@@ -378,6 +378,7 @@ internal fun RatedMangaCollectionContent(
                             if (useSelectionActions) {
                                 RatedSelectionActionsMenu(
                                     selectedItems = successState?.displayItems.orEmpty().filter { it.key in successState?.selectedKeys.orEmpty() },
+                                    selectedCount = selectedCount,
                                     selectedGroupId = RatedSelectionGroupResolver.resolveSingleGroup(
                                         successState?.displayItems.orEmpty(),
                                         successState?.selectedKeys.orEmpty(),
@@ -385,6 +386,7 @@ internal fun RatedMangaCollectionContent(
                                     rating = rating,
                                     navigator = navigator,
                                     isBulkRatingActionInProgress = successState?.isBulkRatingActionInProgress == true,
+                                    onClearSelection = screenModel::clearSelection,
                                     onChange = { changeRatingTarget = true },
                                     onClear = { confirmAction = RatedMangaConfirmAction.ClearRatings },
                                     onMarkNotInterested = { confirmAction = RatedMangaConfirmAction.NotInterested },
@@ -485,11 +487,15 @@ internal fun RatedMangaCollectionContent(
                 if (successState != null && successState.selectionMode) {
                     RatedSelectionBottomBar(
                         selectedCount = selectedCount,
+                        selectedItems = successState.displayItems.filter { it.key in successState.selectedKeys },
+                        rating = rating,
+                        navigator = navigator,
+                        onClearSelection = screenModel::clearSelection,
                         onChange = { changeRatingTarget = true },
                         isBulkRatingActionInProgress = successState.isBulkRatingActionInProgress,
                         onClear = { confirmAction = RatedMangaConfirmAction.ClearRatings },
-                        onGroup = {
-                            // "Group" merges selection into one group when 2+ are selected; with a
+                        onMerge = {
+                            // "Merge selected into group" merges the selection when 2+ are selected; with a
                             // single confirmed-group selection it offers Select All In Group instead.
                             if (selectedCount >= 2) {
                                 confirmAction = RatedMangaConfirmAction.MergeIntoGroup
@@ -502,6 +508,9 @@ internal fun RatedMangaCollectionContent(
                         },
                         onMarkNotInterested = { confirmAction = RatedMangaConfirmAction.NotInterested },
                         onRemoveFromGroup = { confirmAction = RatedMangaConfirmAction.RemoveFromGroup },
+                        onManageGroup = { navigator.push(LinkGroupManagementScreen(it)) },
+                        onViewLinkedVersions = { navigator.push(LinkedVersionListScreen(it)) },
+                        onUngroup = { confirmAction = RatedMangaConfirmAction.Ungroup(it) },
                         // KMK v0.8.7: "Select All In Group" surfaced in the bulk-selection bottom bar's
                         // More menu too (plan section 3.4), not only the per-item overflow menu. Only
                         // offered when every currently selected item shares the same confirmed group —
@@ -639,6 +648,10 @@ internal fun RatedMangaCollectionContent(
                                             screenModel.enterSelection(item.key)
                                             // KMK <--
                                         },
+                                        // Rated/version cards use their own explicit version-count badge.
+                                        // Do not reuse Browse's in-library bookmark/dimming treatment here:
+                                        // alternate-source history must not permanently alter this surface.
+                                        showLibraryState = false,
                                     )
                                     if (item.versionCount > 1) {
                                         // KMK HR-2026-08-26-SMALL-PHONE-RATED-COLLECTION-LAYOUT: capped
@@ -904,10 +917,17 @@ internal fun RatedMangaCollectionContent(
 @Composable
 private fun RatedSelectionBottomBar(
     selectedCount: Int,
+    selectedItems: List<LovedDisplayItem>,
+    rating: MangaRating,
+    navigator: cafe.adriel.voyager.navigator.Navigator,
+    onClearSelection: () -> Unit,
     onChange: () -> Unit,
     onClear: () -> Unit,
-    onGroup: () -> Unit,
+    onMerge: () -> Unit,
     onMarkNotInterested: () -> Unit,
+    onManageGroup: (String) -> Unit,
+    onViewLinkedVersions: (String) -> Unit,
+    onUngroup: (String) -> Unit,
     onRemoveFromGroup: () -> Unit,
     // KMK v0.8.7: null when the current selection doesn't unambiguously belong to one confirmed
     // group (empty selection, mixed groups, or no group at all) — the action is hidden rather than
@@ -919,6 +939,8 @@ private fun RatedSelectionBottomBar(
     isBulkRatingActionInProgress: Boolean = false,
 ) {
     var showMoreMenu by remember { mutableStateOf(false) }
+    val actions = ratedSelectionActions(selectedItems, selectedCount, selectedGroupId, isBulkRatingActionInProgress)
+    val selectedItem = selectedItems.singleOrNull()
     BottomAppBar {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.padding.small),
@@ -930,38 +952,60 @@ private fun RatedSelectionBottomBar(
             TextButton(onClick = onClear, enabled = selectedCount > 0) {
                 Text(stringResource(KMR.strings.rated_manga_selection_bar_clear))
             }
-            TextButton(onClick = onGroup, enabled = selectedCount > 0) {
-                Text(stringResource(KMR.strings.rated_manga_selection_bar_group))
+            TextButton(onClick = onMerge, enabled = selectedCount >= 2) {
+                Text(stringResource(KMR.strings.rated_manga_action_merge_selected_into_group))
             }
             Box {
                 TextButton(onClick = { showMoreMenu = true }, enabled = selectedCount > 0) {
                     Text(stringResource(KMR.strings.rated_manga_selection_bar_more))
                 }
                 DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
-                    // KMK v0.8.7: plan section 3.4's "Select All In Group" under More.
-                    if (selectedGroupId != null) {
+                    actions.forEach { action ->
+                        val label = when (action.kind) {
+                            RatedSelectionActionKind.ChangeRating -> KMR.strings.rated_manga_action_change_rating
+                            RatedSelectionActionKind.ClearRating -> KMR.strings.rated_manga_action_clear_rating
+                            RatedSelectionActionKind.MarkNotInterested -> KMR.strings.rated_manga_action_mark_not_interested
+                            RatedSelectionActionKind.MergeGroups -> KMR.strings.rated_manga_action_merge_selected_into_group
+                            RatedSelectionActionKind.ManageGroup -> KMR.strings.rated_manga_action_manage_group
+                            RatedSelectionActionKind.ViewLinkedVersions -> KMR.strings.rated_manga_action_view_linked_versions
+                            RatedSelectionActionKind.SelectAllInGroup -> KMR.strings.rated_manga_action_select_all_in_group
+                            RatedSelectionActionKind.RemoveFromGroup -> KMR.strings.rated_manga_action_remove_from_group
+                            RatedSelectionActionKind.Ungroup -> KMR.strings.rated_manga_action_ungroup
+                            RatedSelectionActionKind.SeeRecommendations -> KMR.strings.rated_manga_action_see_recommendations
+                            RatedSelectionActionKind.SeeGroupRecommendations -> KMR.strings.rated_manga_action_see_group_recommendations
+                            RatedSelectionActionKind.FindOtherVersions -> KMR.strings.rated_manga_action_find_other_versions
+                            RatedSelectionActionKind.FavoriteOtherVersions -> KMR.strings.rated_manga_action_favorite_other_versions
+                        }
                         DropdownMenuItem(
-                            text = { Text(stringResource(KMR.strings.rated_manga_action_select_all_in_group)) },
+                            text = { Text(stringResource(label)) },
+                            enabled = action.enabled,
                             onClick = {
                                 showMoreMenu = false
-                                onSelectAllInGroup(selectedGroupId)
+                                when (action.kind) {
+                                    RatedSelectionActionKind.ChangeRating -> onChange()
+                                    RatedSelectionActionKind.ClearRating -> onClear()
+                                    RatedSelectionActionKind.MarkNotInterested -> onMarkNotInterested()
+                                    RatedSelectionActionKind.MergeGroups -> onMerge()
+                                    RatedSelectionActionKind.ManageGroup -> selectedGroupId?.let(onManageGroup)
+                                    RatedSelectionActionKind.ViewLinkedVersions -> selectedGroupId?.let(onViewLinkedVersions)
+                                    RatedSelectionActionKind.SelectAllInGroup -> selectedGroupId?.let(onSelectAllInGroup)
+                                    RatedSelectionActionKind.RemoveFromGroup -> onRemoveFromGroup()
+                                    RatedSelectionActionKind.Ungroup -> selectedGroupId?.let(onUngroup)
+                                    RatedSelectionActionKind.SeeRecommendations -> selectedItem?.let { navigator.push(RecommendsScreen(RecommendsScreen.Args.SingleSourceManga(it.taste.mangaId, it.taste.source))) }
+                                    RatedSelectionActionKind.SeeGroupRecommendations -> selectedItem?.let { item -> navigator.push(RecommendsScreen(RecommendsScreen.Args.CrossSourceGroupSeed(item.taste.source, item.taste.url, item.manga?.title ?: item.taste.title))) }
+                                    RatedSelectionActionKind.FindOtherVersions -> selectedItem?.let {
+                                        onClearSelection()
+                                        navigator.push(CrossExtensionMatchScreen.fromMode(it.taste.mangaId, CrossExtensionMatchMode.Rating(rating)))
+                                    }
+                                    RatedSelectionActionKind.FavoriteOtherVersions -> selectedItem?.let {
+                                        onClearSelection()
+                                        navigator.push(CrossExtensionMatchScreen.fromMode(it.taste.mangaId, CrossExtensionMatchMode.Favorite))
+                                    }
+                                    else -> Unit
+                                }
                             },
                         )
                     }
-                    DropdownMenuItem(
-                        text = { Text(stringResource(KMR.strings.rated_manga_action_mark_not_interested)) },
-                        onClick = {
-                            showMoreMenu = false
-                            onMarkNotInterested()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(KMR.strings.rated_manga_action_remove_from_group)) },
-                        onClick = {
-                            showMoreMenu = false
-                            onRemoveFromGroup()
-                        },
-                    )
                 }
             }
         }
@@ -1002,13 +1046,66 @@ private fun RatedMangaActionPlacementMenu(
     }
 }
 
-/** The top-right placement exposes the same rating and confirmed-group actions as the item menu. */
+/**
+ * The selection action contract shared by the top-right overflow and the bottom-bar More menu.
+ * Keeping eligibility here prevents the two placement options from drifting apart.
+ */
+internal enum class RatedSelectionActionKind {
+    ChangeRating,
+    ClearRating,
+    MarkNotInterested,
+    MergeGroups,
+    ManageGroup,
+    ViewLinkedVersions,
+    SelectAllInGroup,
+    RemoveFromGroup,
+    Ungroup,
+    SeeRecommendations,
+    SeeGroupRecommendations,
+    FindOtherVersions,
+    FavoriteOtherVersions,
+}
+
+internal data class RatedSelectionAction(
+    val kind: RatedSelectionActionKind,
+    val enabled: Boolean = true,
+)
+
+internal fun ratedSelectionActions(
+    selectedItems: List<LovedDisplayItem>,
+    selectedCount: Int,
+    selectedGroupId: String?,
+    isBulkRatingActionInProgress: Boolean,
+): List<RatedSelectionAction> = buildList {
+    if (selectedItems.isEmpty()) return@buildList
+    add(RatedSelectionAction(RatedSelectionActionKind.ChangeRating, enabled = !isBulkRatingActionInProgress))
+    add(RatedSelectionAction(RatedSelectionActionKind.ClearRating))
+    add(RatedSelectionAction(RatedSelectionActionKind.MarkNotInterested))
+    if (selectedCount >= 2) add(RatedSelectionAction(RatedSelectionActionKind.MergeGroups))
+    if (selectedGroupId != null) {
+        add(RatedSelectionAction(RatedSelectionActionKind.ManageGroup))
+        add(RatedSelectionAction(RatedSelectionActionKind.ViewLinkedVersions))
+        add(RatedSelectionAction(RatedSelectionActionKind.SelectAllInGroup))
+        add(RatedSelectionAction(RatedSelectionActionKind.RemoveFromGroup))
+        add(RatedSelectionAction(RatedSelectionActionKind.Ungroup))
+    }
+    selectedItems.singleOrNull()?.let { item ->
+        add(RatedSelectionAction(RatedSelectionActionKind.SeeRecommendations))
+        if (item.hasConfirmedGroup) add(RatedSelectionAction(RatedSelectionActionKind.SeeGroupRecommendations))
+        add(RatedSelectionAction(RatedSelectionActionKind.FindOtherVersions))
+        if (item.hasConfirmedGroup) add(RatedSelectionAction(RatedSelectionActionKind.FavoriteOtherVersions))
+    }
+}
+
+/** The top-right placement exposes the same action model as the bottom-bar More entrypoint. */
 @Composable
 private fun RatedSelectionActionsMenu(
     selectedItems: List<LovedDisplayItem>,
+    selectedCount: Int,
     selectedGroupId: String?,
     rating: MangaRating,
     navigator: cafe.adriel.voyager.navigator.Navigator,
+    onClearSelection: () -> Unit,
     isBulkRatingActionInProgress: Boolean,
     onChange: () -> Unit,
     onClear: () -> Unit,
@@ -1022,6 +1119,7 @@ private fun RatedSelectionActionsMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selectedItem = selectedItems.singleOrNull()
+    val actions = ratedSelectionActions(selectedItems, selectedCount, selectedGroupId, isBulkRatingActionInProgress)
     Box {
         IconButton(onClick = { expanded = true }) {
             Icon(
@@ -1030,117 +1128,50 @@ private fun RatedSelectionActionsMenu(
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(KMR.strings.rated_manga_action_change_rating)) },
-                enabled = selectedItems.isNotEmpty() && !isBulkRatingActionInProgress,
-                onClick = {
-                    expanded = false
-                    onChange()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(KMR.strings.rated_manga_action_clear_rating)) },
-                enabled = selectedItems.isNotEmpty(),
-                onClick = {
-                    expanded = false
-                    onClear()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(KMR.strings.rated_manga_action_mark_not_interested)) },
-                enabled = selectedItems.isNotEmpty(),
-                onClick = {
-                    expanded = false
-                    onMarkNotInterested()
-                },
-            )
-            if (selectedItems.size >= 2) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(KMR.strings.rated_manga_action_merge_selected_into_group)) },
-                    onClick = {
-                        expanded = false
-                        onMerge()
-                    },
-                )
-            }
-            if (selectedGroupId != null) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(KMR.strings.rated_manga_action_manage_group)) },
-                    onClick = {
-                        expanded = false
-                        onManageGroup(selectedGroupId)
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(KMR.strings.rated_manga_action_view_linked_versions)) },
-                    onClick = {
-                        expanded = false
-                        onViewLinkedVersions(selectedGroupId)
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(KMR.strings.rated_manga_action_select_all_in_group)) },
-                    onClick = {
-                        expanded = false
-                        onSelectAllInGroup(selectedGroupId)
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(KMR.strings.rated_manga_action_remove_from_group)) },
-                    onClick = {
-                        expanded = false
-                        onRemoveFromGroup()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(KMR.strings.rated_manga_action_ungroup)) },
-                    onClick = {
-                        expanded = false
-                        onUngroup(selectedGroupId)
-                    },
-                )
-            }
-            if (selectedItem != null) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(KMR.strings.rated_manga_action_see_recommendations)) },
-                    onClick = {
-                        expanded = false
-                        navigator.push(RecommendsScreen(RecommendsScreen.Args.SingleSourceManga(selectedItem.taste.mangaId, selectedItem.taste.source)))
-                    },
-                )
-                if (selectedItem.hasConfirmedGroup) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(KMR.strings.rated_manga_action_see_group_recommendations)) },
-                        onClick = {
-                            expanded = false
-                            navigator.push(
-                                RecommendsScreen(
-                                    RecommendsScreen.Args.CrossSourceGroupSeed(
-                                        sourceId = selectedItem.taste.source,
-                                        url = selectedItem.taste.url,
-                                        primaryTitle = selectedItem.manga?.title ?: selectedItem.taste.title,
-                                    ),
-                                ),
-                            )
-                        },
-                    )
+            actions.forEach { action ->
+                val label = when (action.kind) {
+                    RatedSelectionActionKind.ChangeRating -> KMR.strings.rated_manga_action_change_rating
+                    RatedSelectionActionKind.ClearRating -> KMR.strings.rated_manga_action_clear_rating
+                    RatedSelectionActionKind.MarkNotInterested -> KMR.strings.rated_manga_action_mark_not_interested
+                    RatedSelectionActionKind.MergeGroups -> KMR.strings.rated_manga_action_merge_selected_into_group
+                    RatedSelectionActionKind.ManageGroup -> KMR.strings.rated_manga_action_manage_group
+                    RatedSelectionActionKind.ViewLinkedVersions -> KMR.strings.rated_manga_action_view_linked_versions
+                    RatedSelectionActionKind.SelectAllInGroup -> KMR.strings.rated_manga_action_select_all_in_group
+                    RatedSelectionActionKind.RemoveFromGroup -> KMR.strings.rated_manga_action_remove_from_group
+                    RatedSelectionActionKind.Ungroup -> KMR.strings.rated_manga_action_ungroup
+                    RatedSelectionActionKind.SeeRecommendations -> KMR.strings.rated_manga_action_see_recommendations
+                    RatedSelectionActionKind.SeeGroupRecommendations -> KMR.strings.rated_manga_action_see_group_recommendations
+                    RatedSelectionActionKind.FindOtherVersions -> KMR.strings.rated_manga_action_find_other_versions
+                    RatedSelectionActionKind.FavoriteOtherVersions -> KMR.strings.rated_manga_action_favorite_other_versions
                 }
                 DropdownMenuItem(
-                    text = { Text(stringResource(KMR.strings.rated_manga_action_find_other_versions)) },
+                    text = { Text(stringResource(label)) },
+                    enabled = action.enabled,
                     onClick = {
                         expanded = false
-                        navigator.push(CrossExtensionMatchScreen.fromMode(selectedItem.taste.mangaId, CrossExtensionMatchMode.Rating(rating)))
+                        when (action.kind) {
+                            RatedSelectionActionKind.ChangeRating -> onChange()
+                            RatedSelectionActionKind.ClearRating -> onClear()
+                            RatedSelectionActionKind.MarkNotInterested -> onMarkNotInterested()
+                            RatedSelectionActionKind.MergeGroups -> onMerge()
+                            RatedSelectionActionKind.ManageGroup -> selectedGroupId?.let(onManageGroup)
+                            RatedSelectionActionKind.ViewLinkedVersions -> selectedGroupId?.let(onViewLinkedVersions)
+                            RatedSelectionActionKind.SelectAllInGroup -> selectedGroupId?.let(onSelectAllInGroup)
+                            RatedSelectionActionKind.RemoveFromGroup -> onRemoveFromGroup()
+                            RatedSelectionActionKind.Ungroup -> selectedGroupId?.let(onUngroup)
+                            RatedSelectionActionKind.SeeRecommendations -> selectedItem?.let { navigator.push(RecommendsScreen(RecommendsScreen.Args.SingleSourceManga(it.taste.mangaId, it.taste.source))) }
+                            RatedSelectionActionKind.SeeGroupRecommendations -> selectedItem?.let { item -> navigator.push(RecommendsScreen(RecommendsScreen.Args.CrossSourceGroupSeed(item.taste.source, item.taste.url, item.manga?.title ?: item.taste.title))) }
+                            RatedSelectionActionKind.FindOtherVersions -> selectedItem?.let {
+                                onClearSelection()
+                                navigator.push(CrossExtensionMatchScreen.fromMode(it.taste.mangaId, CrossExtensionMatchMode.Rating(rating)))
+                            }
+                            RatedSelectionActionKind.FavoriteOtherVersions -> selectedItem?.let {
+                                onClearSelection()
+                                navigator.push(CrossExtensionMatchScreen.fromMode(it.taste.mangaId, CrossExtensionMatchMode.Favorite))
+                            }
+                        }
                     },
                 )
-                if (selectedItem.hasConfirmedGroup) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(KMR.strings.rated_manga_action_favorite_other_versions)) },
-                        onClick = {
-                            expanded = false
-                            navigator.push(CrossExtensionMatchScreen.fromMode(selectedItem.taste.mangaId, CrossExtensionMatchMode.Favorite))
-                        },
-                    )
-                }
             }
         }
     }

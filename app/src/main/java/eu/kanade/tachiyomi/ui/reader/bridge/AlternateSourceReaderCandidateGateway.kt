@@ -64,6 +64,7 @@ data class AlternateSourceReaderChapterCandidate internal constructor(
     val url: String,
     val name: String,
     val chapterNumber: Float,
+    val scanlator: String? = null,
 )
 
 sealed interface AlternateSourceReaderChapterDiscovery {
@@ -131,7 +132,7 @@ class AlternateSourceReaderCandidateGateway internal constructor(
         reads.bridges()
             .asSequence()
             .filter { bridge ->
-                bridge.key.primary == originKey &&
+                (bridge.key.primary == originKey || bridge.key.alternate == originKey) &&
                     bridge.version == AlternateSourceBridgePolicy.CURRENT_VERSION &&
                     bridge.deletedAt == null &&
                     bridge.reviewState == AlternateSourceBridgeReviewState.CURRENT
@@ -143,10 +144,16 @@ class AlternateSourceReaderCandidateGateway internal constructor(
                 )
             }
             .forEach { bridge ->
+                val record = if (bridge.key.primary == originKey) {
+                    bridge.key.alternate
+                } else {
+                    bridge.key.primary
+                }
+                if (bridge.key.alternate == originKey && !reads.isConfirmed(originKey, record)) return@forEach
                 addCandidate(
                     candidates = candidates,
                     origin = originKey,
-                    record = bridge.key.alternate,
+                    record = record,
                     candidateOrigin = AlternateSourceReaderCandidateOrigin.CURRENT_BRIDGE,
                     requiresPairConfirmation = false,
                 )
@@ -365,8 +372,14 @@ internal class DefaultAlternateSourceReaderCandidateReads(
         }.fold(
             onSuccess = { chapters ->
                 val visible = AlternateSourceReaderChapterPolicy.normalizeAndSort(manga.title, chapters)
-                    .take(MAX_CHAPTERS)
-                    .map { AlternateSourceReaderChapterCandidate(it.url, it.name, it.chapter_number) }
+                    .map {
+                        AlternateSourceReaderChapterCandidate(
+                            url = it.url,
+                            name = it.name,
+                            chapterNumber = it.chapter_number,
+                            scanlator = it.scanlator,
+                        )
+                    }
                     .toList()
                 if (visible.isEmpty()) AlternateSourceReaderChapterDiscovery.Empty else AlternateSourceReaderChapterDiscovery.Available(visible)
             },
@@ -376,6 +389,5 @@ internal class DefaultAlternateSourceReaderCandidateReads(
 
     private companion object {
         const val MAX_LIVE_SOURCES = 12
-        const val MAX_CHAPTERS = 500
     }
 }

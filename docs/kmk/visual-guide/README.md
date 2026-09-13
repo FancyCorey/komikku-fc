@@ -1,6 +1,6 @@
-# Visual guide to KMK
+# Visual guide to Komikku FC
 
-This tour follows KMK's main workflows on a tablet. Each section explains what the screen is for, what its controls do, and where to find more detailed steps.
+This tour follows Komikku FC's main workflows across supported screen sizes. Each section explains what the screen is for, what its controls do, and where to find more detailed steps. Larger screens may show related navigation beside the current page; smaller screens may place the same controls behind a menu or on a separate page.
 
 ## For You
 
@@ -46,7 +46,7 @@ Evaluation Mode also hides source names in Browse. The rest of Komikku's navigat
 
 ## Evaluation Mode and safe review
 
-Evaluation Mode changes presentation labels used for review images, including source, extension, repository, and selected taste labels. It does not change saved manga, requests, identifiers, or actions. The For You and Browse images in this guide show the result: the recommendation or browse context remains understandable while identity-bearing labels are neutralized. The review process and its limits are documented in [Sharing screenshots and exported files safely](../feature-guides/sharing-screenshots-and-exported-files-safely.md).
+Evaluation Mode changes the labels shown in review images, including source, extension, and selected taste labels. It does not change saved manga, requests, identifiers, or actions. The For You and Browse images in this guide show the result: the recommendation or browse context remains understandable while identifying labels are replaced with neutral ones. The review process and its limits are documented in [Sharing screenshots and exported files safely](../feature-guides/sharing.md).
 
 ## Recommendation settings
 
@@ -96,7 +96,7 @@ This screen shows confirmed matching manga before the reader links versions or a
 | --- | --- |
 | ![Best Version comparison with chapter choices for each neutralized source](best-version-chapter-selection.png) | ![Best Version preview with comparable pages from neutralized sources](best-version-preview-comparison.png) |
 
-Best Version starts from versions the reader has already confirmed as related. The first screen lets the reader choose comparable chapter samples. The second keeps each preview independent, so a missing or failed preview does not erase the other comparison results. Choosing a different version continues through Komikku's existing migration flow; the comparison itself does not silently change the library. See [Finding and comparing manga versions](../feature-guides/finding-and-comparing-manga-versions.md) for the complete flow.
+Best Version starts from versions the reader has already confirmed as related. The first screen lets the reader choose comparable chapter samples. The second keeps each preview independent, so a missing or failed preview does not erase the other comparison results. Choosing a different version continues through Komikku's existing migration flow; the comparison itself does not silently change the library. See [Finding and comparing manga versions](../feature-guides/versions.md) for the complete flow.
 
 ## Reading schedule
 
@@ -138,7 +138,7 @@ The confirmation explains that an extension package is executable code and that 
 
 ## Extension operations and failure isolation
 
-Extension operations cover loading, install consent, cancellation, removal, export, and cleanup confirmation. Android owns the package and document boundaries; KMK does not silently install an extension or delete an unrelated file. If one extension fails or is cancelled, the remaining source work keeps its own result and can be retried. The export image above shows the public consent boundary; the complete operational flow is in [Managing and isolating extensions](../feature-guides/managing-and-isolating-extensions.md) and [Handling source and extension failures](../feature-guides/handling-source-and-extension-failures.md).
+Extension operations cover loading, install consent, cancellation, removal, export, and cleanup confirmation. Android shows the confirmation screens for installing extensions and choosing export files; Komikku FC does not install an extension silently or delete an unrelated file. If one extension fails or is cancelled, the remaining source work keeps its own result and can be retried. The complete operational flow is in [Managing and isolating extensions](../feature-guides/extensions.md) and [Handling source and extension failures](../feature-guides/troubleshooting.md).
 
 ## Back up and restore app data
 
@@ -146,21 +146,21 @@ Extension operations cover loading, install consent, cancellation, removal, expo
 
 The Data and storage page keeps manual backup, restore, automatic frequency, last-backup status, and restore progress controls together. It reports only that a storage location is configured in this view, then gives a separate warning that backup files may contain sensitive data.
 
-KMK's backup additions travel through Komikku's normal backup flow. Supported preference values, recommendation settings, linked-version groups, primary-version choices, source-quality observations, and source-evaluation state are included when selected. OCR text, temporary review state, and unsupported external account data remain outside the backup contract. Restore reports partial or failed records instead of presenting an incomplete restore as successful. See [Preserving KMK data in Komikku backups](../feature-guides/preserving-kmk-data-in-backups.md).
+Komikku FC's saved ratings, recommendation settings, linked-version groups, primary-version choices, source-quality information, and source-evaluation state can travel through Komikku's normal backup flow when selected. OCR text, temporary review state, and unsupported external account data remain outside the backup. Restore reports partial or failed records instead of presenting an incomplete restore as successful. See [Preserving Komikku FC data in Komikku backups](../feature-guides/backups.md).
 
-## Review KMK changes in the app
+## Review Komikku FC changes in the app
 
-![KMK What's New showing the current grouped change history](kmk-whats-new.png)
+![Komikku FC What's New showing the current grouped change history](kmk-whats-new.png)
 
-KMK What's New groups the current and earlier fork releases, summarizes each release, and separates new behavior from fixes. The current version is shown at the top so readers can tell which notes apply to the installed build.
+Komikku FC What's New groups the current and earlier fork releases, summarizes each release, and separates new behavior from fixes. The current version is shown at the top so readers can tell which notes apply to the installed build.
 
-## Source runtime and integration boundaries
+## When sources or links fail
 
-Source runtime handling keeps ordinary extension failures, cancellation, and retry separate from successful source rows. Deep links, WebView transitions, document exports, tracker boundaries, and local mutations are validated before they are accepted. Errors stay short and useful without displaying raw URLs, local paths, credentials, exception objects, or private response content. These are interaction and safety guarantees rather than useful screenshot subjects, so their complete success, rejection, cancellation, and cleanup paths are documented in [Validating links, actions, and file cleanup](../feature-guides/validating-links-actions-and-file-cleanup.md).
+Source and link handling keeps extension failures, cancellation, and retry separate from successful results. Links, web pages, exports, tracker updates, and local changes are checked before the app accepts them. Error messages stay short and useful without showing raw links, storage paths, sign-in details, or private content. The complete success, rejection, cancellation, and cleanup behavior is documented in [Validating links, actions, and file cleanup](../feature-guides/safety.md).
 
 ## Complete feature-family coverage
 
-The visual guide follows the full KMK feature contract. A family is listed here even when its safest public representation is a written flow rather than a screenshot.
+The visual guide follows the full Komikku FC feature contract. A family is listed here even when its safest public representation is a written flow rather than a screenshot.
 
 | Contract family | Coverage in this guide |
 | --- | --- |
@@ -182,8 +182,8 @@ The visual guide follows the full KMK feature contract. A family is listed here 
 | OCR search | [Search downloaded pages with OCR](#search-downloaded-pages-with-ocr) |
 | Backup portability | [Back up and restore app data](#back-up-and-restore-app-data) |
 | Extension operations | [Extension operations and failure isolation](#extension-operations-and-failure-isolation) |
-| Security and integration | [Source runtime and integration boundaries](#source-runtime-and-integration-boundaries), written flow only |
-| KMK change history | [Review KMK changes in the app](#review-kmk-changes-in-the-app) |
+| Security and integration | [When sources or links fail](#when-sources-or-links-fail), written flow only |
+| Komikku FC change history | [Review Komikku FC changes in the app](#review-kmk-changes-in-the-app) |
 
 Evaluation Mode replaces source identities with neutral labels. Account information, device identifiers, raw URLs, and local paths are omitted. Manga artwork, titles, page text, and reading context remain visible where they help explain a feature.
 
@@ -204,20 +204,20 @@ Use this table to find a screen or the written steps for each feature area.
 | Source Evaluation | [Screenshot](source-evaluation.png) | Aggregate progress and summarized source outcomes. |
 | Browse in Evaluation Mode | [Screenshot](browse-evaluation-mode.png) | Source labels are neutralized without changing the normal Browse layout. |
 | Love, Like, Dislike, and Not Interested | [Top Picks selection](top-picks-preference-actions.png) | The shared action surface shows Love, Like, Dislike, Not Interested, and Clear rating together. A matched collection-state set may be added later as supporting evidence. |
-| Sources to try | [Screenshot](sources-to-try-evaluation-mode.png) and [feature explanation](../feature-guides/finding-and-prioritizing-sources.md) | Evaluation Mode replaces the populated list's source identities with neutral labels. |
-| Find other versions | [Screenshot](linked-versions-evaluation-mode.png) and [feature explanation](../feature-guides/finding-and-comparing-manga-versions.md) | Manga matches with source names replaced by neutral labels. |
-| Best Version comparison | [Chapter selection](best-version-chapter-selection.png), [preview comparison](best-version-preview-comparison.png), and [feature guide](../feature-guides/finding-and-comparing-manga-versions.md) | Chapter and page comparisons with neutral source labels. |
+| Sources to try | [Screenshot](sources-to-try-evaluation-mode.png) and [feature explanation](../feature-guides/sources.md) | Evaluation Mode replaces the populated list's source identities with neutral labels. |
+| Find other versions | [Screenshot](linked-versions-evaluation-mode.png) and [feature explanation](../feature-guides/versions.md) | Manga matches with source names replaced by neutral labels. |
+| Best Version comparison | [Chapter selection](best-version-chapter-selection.png), [preview comparison](best-version-preview-comparison.png), and [feature guide](../feature-guides/versions.md) | Chapter and page comparisons with neutral source labels. |
 | Reading schedule | [Screenshot](reading-schedule.png) | The configuration dialog shows recurrence, editing, deletion, cancellation, and save controls. |
 | Reader completion rating and linked-version follow-up | [Preference prompt](reader-completion-preference.png) and [matching-version follow-up](reader-linked-version-follow-up.png) | The two prompts keep the local preference decision separate from the cross-source continuation. |
-| Reader timer and Jump to last read | [Reader guide](../feature-guides/reading-schedule-completion-and-chapter-navigation.md) | The Reader tools family is represented visually by schedule and completion screens; the guide gives the timer and chapter-jump steps. |
+| Reader timer and Jump to last read | [Reader guide](../feature-guides/reading.md) | The Reader tools family is represented visually by schedule and completion screens; the guide gives the timer and chapter-jump steps. |
 | Action History | [Screenshot](action-history-undo.png) | A completed local preference change and its Undo action. |
 | Extension export | [Screenshot](extension-export-confirmation.png) | The executable-file boundary and the app data excluded from the export. |
-| Exact-file cleanup | [Export guide](../feature-guides/sharing-screenshots-and-exported-files-safely.md) | The export family is represented visually by its consent screen; the guide explains the exact-document cleanup result and its limits. |
-| OCR Search Downloads | [Screenshot](ocr-search-downloads.png) and [feature guide](../feature-guides/searching-downloaded-pages-with-ocr.md) | Indexed-page totals, storage use, indexing options, and cleanup controls. |
+| Exact-file cleanup | [Export guide](../feature-guides/sharing.md) | The export family is represented visually by its consent screen; the guide explains the exact-document cleanup result and its limits. |
+| OCR Search Downloads | [Screenshot](ocr-search-downloads.png) and [feature guide](../feature-guides/ocr.md) | Indexed-page totals, storage use, indexing options, and cleanup controls. |
 | Backup and restore | [Screenshot](backup-and-restore.png) | Backup and restore controls, scheduling, status, warnings, and progress settings. |
-| KMK What's New | [Screenshot](kmk-whats-new.png) | The installed release, grouped history, summaries, and new/fix sections. |
+| Komikku FC What's New | [Screenshot](kmk-whats-new.png) | The installed release, grouped history, summaries, and new/fix sections. |
 | Extension operations | [Export confirmation](extension-export-confirmation.png) | The package boundary and the app data excluded from an export. |
-| Security and integration boundaries | [Feature explanation](../feature-guides/validating-links-actions-and-file-cleanup.md) | Written explanations of validation, rejection, cancellation, and cleanup behavior. |
+| When sources or links fail | [Feature explanation](../feature-guides/safety.md) | Written explanations of checking, rejection, cancellation, and cleanup behavior. |
 
 Screenshots show current, loaded feature states and are cropped to the app. Empty, loading, sample-only, and outdated screens are not used to represent normal behavior.
 

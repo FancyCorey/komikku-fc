@@ -371,7 +371,7 @@ class AlternateSourceReaderCoordinatorTest {
     }
 
     @Test
-    fun `automatic return fires only at exact boundary and clears session after route commit`() = runTest {
+    fun `automatic return fires only at exact boundary and keeps the pair after route commit`() = runTest {
         val store = sessionStore().also { it.write(readerSession()) }
         val state = bridgeState(automaticReturn = true, continuationUrl = "/chapter/primary-next")
         coEvery { identityResolver.isConfirmed(any(), any(), any(), any()) } returns true
@@ -405,8 +405,8 @@ class AlternateSourceReaderCoordinatorTest {
             coordinator.automaticReturn("/chapter/alternate"),
         )
         assertEquals(listOf(destination), switched)
-        assertTrue(store.read() is AlternateSourceReaderStateCodec.DecodeResult.Invalid)
-        assertEquals(AlternateSourceReaderPhase.ENDED, coordinator.state.value.phase)
+        assertTrue(store.read() is AlternateSourceReaderStateCodec.DecodeResult.Valid)
+        assertEquals(AlternateSourceReaderPhase.PRIMARY, coordinator.state.value.phase)
     }
 
     @Test
@@ -487,7 +487,7 @@ class AlternateSourceReaderCoordinatorTest {
             AlternateSourceReaderCommandResult.Returned,
             coordinator.manualReturn(preferContinuation = true),
         )
-        assertTrue(store.read() is AlternateSourceReaderStateCodec.DecodeResult.Invalid)
+        assertTrue(store.read() is AlternateSourceReaderStateCodec.DecodeResult.Valid)
     }
 
     @Test
@@ -504,6 +504,54 @@ class AlternateSourceReaderCoordinatorTest {
         assertThrows(AssertionError::class.java) {
             kotlinx.coroutines.runBlocking { fatal.confirmPair(readerBridgeKey()) }
         }
+    }
+
+    @Test
+    fun `chosen return chapter is used after reading ahead and another switch remains available`() = runTest {
+        val store = sessionStore().also { it.write(readerSession()) }
+        coEvery { identityResolver.isConfirmed(any(), any(), any(), any()) } returns true
+        coEvery { getBridge.await(readerBridgeKey()) } returns bridgeState()
+        val destination = readerRoute(AlternateSourceReaderRouteRole.PRIMARY, chapterUrl = "/chapter/primary-ahead", chapterId = 15L)
+        coEvery {
+            routeResolver.resolve(readerBridgeKey(), AlternateSourceReaderRouteRole.PRIMARY, destination.chapterUrl, 0)
+        } returns AlternateSourceReaderRouteResolver.Result.Resolved(destination)
+        coEvery {
+            routeResolver.resolve(readerBridgeKey(), AlternateSourceReaderRouteRole.ALTERNATE, "/chapter/alternate", 0)
+        } returns AlternateSourceReaderRouteResolver.Result.Resolved(readerRoute(AlternateSourceReaderRouteRole.ALTERNATE))
+        val switched = mutableListOf<AlternateSourceReaderRoute>()
+        val coordinator = coordinator(store) {
+            switched += it
+            true
+        }
+        coordinator.restore(readerRoute(AlternateSourceReaderRouteRole.ALTERNATE))
+        assertEquals(AlternateSourceReaderCommandResult.Stale, coordinator.manualReturnToChapter(readerBridgeKey(), "old-session", "/chapter/alternate", destination.chapterUrl))
+        assertEquals(AlternateSourceReaderCommandResult.Stale, coordinator.manualReturnToChapter(readerBridgeKey(), READER_SESSION_ID, "/old-chapter", destination.chapterUrl))
+        assertEquals(AlternateSourceReaderCommandResult.Returned, coordinator.manualReturnToChapter(readerBridgeKey(), READER_SESSION_ID, "/chapter/alternate", destination.chapterUrl))
+        assertEquals(destination, switched.single())
+        assertTrue(store.hasStoredState())
+        assertEquals(
+            AlternateSourceReaderCommandResult.Returned,
+            coordinator.manualReturnToChapter(
+                readerBridgeKey(),
+                READER_SESSION_ID,
+                destination.chapterUrl,
+                "/chapter/alternate",
+            ),
+        )
+        assertEquals(2, switched.size)
+    }
+
+    @Test
+    fun `unavailable chosen return chapter leaves alternate reading intact`() = runTest {
+        val store = sessionStore().also { it.write(readerSession()) }
+        coEvery { identityResolver.isConfirmed(any(), any(), any(), any()) } returns true
+        coEvery { getBridge.await(readerBridgeKey()) } returns bridgeState()
+        coEvery { routeResolver.resolve(any(), any(), any(), any()) } returns AlternateSourceReaderRouteResolver.Result.ChapterUnavailable
+        val coordinator = coordinator(store) { error("must not switch") }
+        coordinator.restore(readerRoute(AlternateSourceReaderRouteRole.ALTERNATE))
+        assertEquals(AlternateSourceReaderCommandResult.Unavailable, coordinator.manualReturnToChapter(readerBridgeKey(), READER_SESSION_ID, "/chapter/alternate", "/missing"))
+        assertEquals(AlternateSourceReaderPhase.ALTERNATE, coordinator.state.value.phase)
+        assertTrue(store.hasStoredState())
     }
 
     private fun coordinator(

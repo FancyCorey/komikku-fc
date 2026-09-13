@@ -429,7 +429,7 @@ class LovedMangaDuplicateGrouperTest {
     // --- Screen model integration: link groups passed into grouper ---
 
     @Test
-    fun `State Success with link group map groups entries via linkGroupId`() {
+    fun `State Success with link group map uses first-rated member as automatic primary`() {
         val taste1 = MangaTaste(
             mangaId = 1L,
             source = 100L,
@@ -466,7 +466,49 @@ class LovedMangaDuplicateGrouperTest {
         val display = state.displayItems
         assertEquals(1, display.size)
         assertEquals(2, display[0].versionCount)
-        assertEquals(taste1, display[0].taste) // first entry (most recent) is representative
+        assertEquals(taste2, display[0].taste)
+    }
+
+    @Test
+    fun `State Success with link group map prefers the most-read member`() {
+        val taste1 = MangaTaste(
+            mangaId = 1L,
+            source = 100L,
+            url = "url1",
+            title = "Solo Leveling",
+            rating = MangaRating.LOVE.value,
+            createdAt = 1000L,
+            updatedAt = 2000L,
+        )
+        val taste2 = MangaTaste(
+            mangaId = 2L,
+            source = 200L,
+            url = "url2",
+            title = "Only I Level Up",
+            rating = MangaRating.LOVE.value,
+            createdAt = 900L,
+            updatedAt = 1800L,
+        )
+        val linkGroupByKey = mapOf(
+            "100|url1" to "confirmed-group-id",
+            "200|url2" to "confirmed-group-id",
+        )
+        val state = LovedMangaScreenModel.State.Success(
+            entries = listOf(
+                LovedMangaEntry(taste = taste1, manga = null),
+                LovedMangaEntry(taste = taste2, manga = null),
+            ),
+            groupDuplicates = true,
+            linkGroupByKey = linkGroupByKey,
+            confirmedLinkGroupByKey = linkGroupByKey,
+            readChapterCounts = mapOf(1L to 12L, 2L to 3L),
+        )
+
+        val display = state.displayItems
+
+        assertEquals(1, display.size)
+        assertEquals(2, display[0].versionCount)
+        assertEquals(taste1, display[0].taste)
     }
 
     @Test

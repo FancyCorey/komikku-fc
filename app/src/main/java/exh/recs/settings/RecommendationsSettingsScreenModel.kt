@@ -74,6 +74,7 @@ import tachiyomi.domain.taste.model.RatedMangaVisibility
 import tachiyomi.domain.taste.model.TagPreference
 import tachiyomi.domain.taste.model.TagTaste
 import tachiyomi.domain.taste.model.normalizeTag
+import tachiyomi.domain.tracker.model.LocalTrackedWorkStatus
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -275,6 +276,8 @@ class RecommendationsSettingsScreenModel(
                 chapterCompletionRatingOtherVersionsPromptEnabled = sourcePreferences.chapterCompletionRatingOtherVersionsPromptEnabled().get(),
                 confirmedTrackedVersionRatingPropagationEnabled = sourcePreferences.confirmedTrackedVersionRatingPropagationEnabled().get(),
                 confirmedTrackedVersionLocalTrackingPropagationEnabled = sourcePreferences.confirmedTrackedVersionLocalTrackingPropagationEnabled().get(),
+                automaticLocalTrackingStatusInferenceEnabled = sourcePreferences.automaticLocalTrackingStatusInferenceEnabled().get(),
+                automaticRatedGroupPrimaryEnabled = sourcePreferences.automaticRatedGroupPrimaryEnabled().get(),
                 ratedMangaActionsUseSelection = sourcePreferences.ratedMangaActionsUseSelection().get(),
                 bestVersionPreviewSampleSize = exh.recs.matching.SameMangaMatchSettings.clampSampleSize(
                     sourcePreferences.bestVersionPreviewSampleSize().get(),
@@ -317,6 +320,22 @@ class RecommendationsSettingsScreenModel(
                     )
                 }
             }
+        }
+
+        screenModelScope.launch {
+            sourcePreferences.automaticLocalTrackingStatusInferenceEnabled().changes()
+                .onStart { emit(sourcePreferences.automaticLocalTrackingStatusInferenceEnabled().get()) }
+                .collectLatest { enabled ->
+                    mutableState.update { it.copy(automaticLocalTrackingStatusInferenceEnabled = enabled) }
+                }
+        }
+
+        screenModelScope.launch {
+            sourcePreferences.automaticRatedGroupPrimaryEnabled().changes()
+                .onStart { emit(sourcePreferences.automaticRatedGroupPrimaryEnabled().get()) }
+                .collectLatest { enabled ->
+                    mutableState.update { it.copy(automaticRatedGroupPrimaryEnabled = enabled) }
+                }
         }
 
         // Live-update source statuses whenever For You finishes a run and persists new values.
@@ -1299,6 +1318,32 @@ class RecommendationsSettingsScreenModel(
         mutableState.update { it.copy(confirmedTrackedVersionLocalTrackingPropagationEnabled = enabled) }
     }
 
+    fun setAutomaticLocalTrackingStatusInferenceEnabled(enabled: Boolean) {
+        val preference = sourcePreferences.automaticLocalTrackingStatusInferenceEnabled()
+        journalPreferenceChange(
+            exh.util.PreferenceJournalActionType.SAME_MANGA_MATCHING,
+            "automaticLocalTrackingStatusInferenceEnabled",
+            preference,
+            enabled,
+        ) {
+            preference.set(enabled)
+        }
+        mutableState.update { it.copy(automaticLocalTrackingStatusInferenceEnabled = enabled) }
+    }
+
+    fun setAutomaticRatedGroupPrimaryEnabled(enabled: Boolean) {
+        val preference = sourcePreferences.automaticRatedGroupPrimaryEnabled()
+        journalPreferenceChange(
+            exh.util.PreferenceJournalActionType.SAME_MANGA_MATCHING,
+            "automaticRatedGroupPrimaryEnabled",
+            preference,
+            enabled,
+        ) {
+            preference.set(enabled)
+        }
+        mutableState.update { it.copy(automaticRatedGroupPrimaryEnabled = enabled) }
+    }
+
     fun setRatedMangaActionsUseSelection(enabled: Boolean) {
         val preference = sourcePreferences.ratedMangaActionsUseSelection()
         journalPreferenceChange(
@@ -1636,8 +1681,10 @@ class RecommendationsSettingsScreenModel(
         val sameMangaPreselectionMode: exh.recs.matching.SameMangaPreselectionMode = exh.recs.matching.SameMangaPreselectionMode.ALL,
         val chapterCompletionRatingPromptEnabled: Boolean = true,
         val chapterCompletionRatingOtherVersionsPromptEnabled: Boolean = true,
-        val confirmedTrackedVersionRatingPropagationEnabled: Boolean = false,
-        val confirmedTrackedVersionLocalTrackingPropagationEnabled: Boolean = false,
+        val confirmedTrackedVersionRatingPropagationEnabled: Boolean = true,
+        val confirmedTrackedVersionLocalTrackingPropagationEnabled: Boolean = true,
+        val automaticLocalTrackingStatusInferenceEnabled: Boolean = true,
+        val automaticRatedGroupPrimaryEnabled: Boolean = true,
         val ratedMangaActionsUseSelection: Boolean = true,
         val bestVersionPreviewSampleSize: Int = 5,
         val bestVersionAvoidFirstPages: Boolean = true,

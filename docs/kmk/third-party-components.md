@@ -1,6 +1,6 @@
 # Additional third-party components
 
-Komikku KMK retains Komikku's existing dependency and open-source license screen. KMK adds the following direct dependencies to support its feature set and tests.
+Komikku FC retains Komikku's existing dependency and open-source license screen. Komikku FC adds the following direct dependencies to support its feature set and tests.
 
 ## ML Kit text recognition
 

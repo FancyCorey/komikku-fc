@@ -45,7 +45,11 @@ class RatingPropagationDeviceAcceptanceTest {
         val mangaRepository = Injekt.get<tachiyomi.domain.manga.repository.MangaRepository>()
         val links = Injekt.get<GetCrossSourceMangaLinks>().awaitAll()
         val decisions = Injekt.get<GetCrossSourceIdentityDecisions>().awaitAll()
-        val decision = decisions.firstOrNull { CrossSourceIdentityDecisionPolicy.isAuthoritativeConfirmation(it) }
+        val decision = decisions.firstOrNull {
+            CrossSourceIdentityDecisionPolicy.isAuthoritativeConfirmation(it) &&
+                it.pair.left.url.startsWith("/fixture/manga/") &&
+                it.pair.right.url.startsWith("/fixture/manga/")
+        }
             ?: error("seeded profile has no authoritative confirmed identity decision")
         val left = links.first { it.source == decision.pair.left.source && it.url == decision.pair.left.url }
         val right = links.first { it.source == decision.pair.right.source && it.url == decision.pair.right.url }

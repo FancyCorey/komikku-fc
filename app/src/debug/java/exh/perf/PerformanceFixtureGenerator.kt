@@ -46,6 +46,10 @@ internal object PerformanceFixtureGenerator {
     fun generate(spec: PerformanceFixtureSpec): PerformanceFixtureDataset {
         val random = Random(spec.seed)
         val categoryNames = (1..spec.categoryCount).map { "Fixture Category $it" }
+        val availableSourceIds = spec.availableSourceIds
+            ?.distinct()
+            ?.takeIf { it.isNotEmpty() }
+            ?: AVAILABLE_SOURCE_IDS
 
         val unavailableIndices = pickIndices(spec.totalManga, spec.unavailableSourceFraction, random)
         val favoriteIndices = pickIndices(spec.totalManga, spec.favoriteFraction, random)
@@ -74,6 +78,7 @@ internal object PerformanceFixtureGenerator {
                 rating = ratingByIndex[index],
                 groupId = groupIdByIndex[index]?.first,
                 groupPrimary = groupIdByIndex[index]?.second == true,
+                availableSourceIds = availableSourceIds,
             )
         }
 
@@ -111,11 +116,12 @@ internal object PerformanceFixtureGenerator {
         rating: MangaRating?,
         groupId: String?,
         groupPrimary: Boolean,
+        availableSourceIds: List<Long>,
     ): GeneratedManga {
         val source = if (sourceUnavailable) {
             UNAVAILABLE_SOURCE_IDS[index % UNAVAILABLE_SOURCE_IDS.size]
         } else {
-            AVAILABLE_SOURCE_IDS[index % AVAILABLE_SOURCE_IDS.size]
+            availableSourceIds[index % availableSourceIds.size]
         }
         val baseTitle = groupId?.let { "Fixture Shared Work $it" } ?: "Fixture Manga $index"
         val title = if (malformed && random.nextBoolean()) {

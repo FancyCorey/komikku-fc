@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <kmk-feature-contract version="6" privacy="sanitized-semantic">
-  <publication application-id="app.komikku.kmk" app-name="Komikku KMK" update-repository="FancyCorey/komikku-KMK" />
+  <publication application-id="app.komikku.kmk" app-name="Komikku FC" update-repository="FancyCorey/komikku-fc" />
   <feature id="for-you" route="browse/for-you">
     <purpose>Show personalized and exploratory manga candidates grouped by eligible source.</purpose>
-    <documentation>docs/kmk/feature-guides/personalized-recommendations-and-discovery.md</documentation>
+    <documentation>docs/kmk/feature-guides/recommendations.md</documentation>
     <owner>app/src/main/java/exh/recs/BrowsePersonalRecommendationsScreenModel.kt</owner>
     <presentation>app/src/main/java/exh/recs/BrowsePersonalRecommendationsTab.kt</presentation>
     <states>loading loaded partial empty recoverable-error</states>
@@ -12,7 +12,7 @@
   </feature>
   <feature id="top-picks-and-bundles" route="browse/for-you/top-picks">
     <purpose>Present combined top matches and export or import a validated recommendation set.</purpose>
-    <documentation>docs/kmk/feature-guides/personalized-recommendations-and-discovery.md</documentation>
+    <documentation>docs/kmk/feature-guides/recommendations.md</documentation>
     <owner>app/src/main/java/exh/recs/TopPicksScreen.kt</owner>
     <dispatch>app/src/main/java/exh/recs/share/RecommendationBundleImportScreenModel.kt</dispatch>
     <states>loaded partial export-chooser import-review invalid library-add-result</states>
@@ -20,7 +20,7 @@
   </feature>
   <feature id="group-recommendations" route="recommendations/group">
     <purpose>Load related manga for a rated or linked group through bounded, independent source rows.</purpose>
-    <documentation>docs/kmk/feature-guides/personalized-recommendations-and-discovery.md</documentation>
+    <documentation>docs/kmk/feature-guides/recommendations.md</documentation>
     <owner>app/src/main/java/exh/recs/GroupPreviewLoadCoordinator.kt</owner>
     <dispatch>app/src/main/java/exh/recs/group/GroupRecommendationSeedBuilder.kt</dispatch>
     <states>loading partial loaded row-timeout row-error cancelled</states>
@@ -28,7 +28,7 @@
   </feature>
   <feature id="recommendation-settings" route="settings/recommendations">
     <purpose>Navigate and configure recommendation feature families using established settings patterns.</purpose>
-    <documentation>docs/kmk/feature-guides/configuring-personalized-recommendations.md</documentation>
+    <documentation>docs/kmk/feature-guides/recommendation-settings.md</documentation>
     <owner>app/src/main/java/exh/recs/settings/RecommendationSettingsIndexScreen.kt</owner>
     <states>loaded search filtered</states>
     <sections>for-you-sources taste-and-filters source-evaluation sources-to-try management-and-diagnostics</sections>
@@ -36,7 +36,7 @@
   </feature>
   <feature id="source-evaluation" route="settings/recommendations/source-evaluation">
     <purpose>Evaluate source suitability and disclose partial, skipped, failed, and reassessment outcomes.</purpose>
-    <documentation>docs/kmk/feature-guides/evaluating-recommendation-source-quality.md</documentation>
+    <documentation>docs/kmk/feature-guides/source-evaluation.md</documentation>
     <owner>app/src/main/java/exh/recs/evaluation/SourceEvaluationScreenModel.kt</owner>
     <presentation>app/src/main/java/exh/recs/evaluation/SourceEvaluationScreen.kt</presentation>
     <states>ready running partial completed cancelled failed</states>
@@ -44,7 +44,7 @@
   </feature>
   <feature id="taste-source-diagnostics" route="settings/recommendations/management">
     <purpose>Explain rating-derived taste signals, source-quality observations, and recovery actions.</purpose>
-    <documentation>docs/kmk/feature-guides/evaluating-recommendation-source-quality.md</documentation>
+    <documentation>docs/kmk/feature-guides/source-evaluation.md</documentation>
     <owner>app/src/main/java/exh/recs/settings/RecommendationDiagnosticsSettingsScreen.kt</owner>
     <presentation>app/src/main/java/exh/recs/settings/QualitySignalHistoryScreen.kt</presentation>
     <states>summary history limited-evidence marked cleared</states>
@@ -52,14 +52,14 @@
   </feature>
   <feature id="sources-to-try" route="settings/recommendations/sources-to-try">
     <purpose>Suggest compatible non-installed sources using taste and source-evaluation signals.</purpose>
-    <documentation>docs/kmk/feature-guides/finding-and-prioritizing-sources.md</documentation>
+    <documentation>docs/kmk/feature-guides/sources.md</documentation>
     <owner>app/src/main/java/exh/recs/discovery/GetNonInstalledSourceSuggestions.kt</owner>
     <states>loading suggestions empty unavailable install-handoff</states>
     <privacy screenshot="approved">The reviewed populated state uses Evaluation Mode to replace source identities with neutral labels.</privacy>
   </feature>
   <feature id="manga-preference" route="manga/detail">
     <purpose>Treat Love, Like, Dislike, and Not Interested as peer preference actions with reversible transitions.</purpose>
-    <documentation>docs/kmk/feature-guides/rating-manga-and-managing-linked-versions.md</documentation>
+    <documentation>docs/kmk/feature-guides/ratings.md</documentation>
     <owner>app/src/main/java/exh/recs/loved/MangaPreferencePresentationPolicy.kt</owner>
     <dispatch>app/src/main/java/eu/kanade/tachiyomi/ui/manga/MangaScreenModel.kt</dispatch>
     <states>neutral loved liked disliked not-interested</states>
@@ -67,21 +67,21 @@
   </feature>
   <feature id="cross-source-matching" route="manga/find-other-versions">
     <purpose>Find, select, link, group, and compare versions through guarded source work.</purpose>
-    <documentation>docs/kmk/feature-guides/finding-and-comparing-manga-versions.md</documentation>
+    <documentation>docs/kmk/feature-guides/versions.md</documentation>
     <owner>app/src/main/java/exh/recs/matching/CrossExtensionMatchScreen.kt</owner>
     <states>searching candidates selected linked empty partial-failure</states>
     <privacy screenshot="approved">The reviewed selection state keeps approved manga matches visible while Evaluation Mode hides source identities.</privacy>
   </feature>
   <feature id="best-version" route="manga/find-other-versions/best-version">
     <purpose>Compare linked versions and continue through the established migration workflow when the user selects another version.</purpose>
-    <documentation>docs/kmk/feature-guides/finding-and-comparing-manga-versions.md</documentation>
+    <documentation>docs/kmk/feature-guides/versions.md</documentation>
     <owner>app/src/main/java/exh/recs/bestversion/BestVersionCompareScreenModel.kt</owner>
     <states>loading comparable insufficient-data keep-current confirmed cancelled failed</states>
     <privacy screenshot="approved">The reviewed chapter-selection and preview states use Evaluation Mode to hide source identities while retaining approved manga and comparison context.</privacy>
   </feature>
   <feature id="reader-controls" route="reader">
     <purpose>Apply optional timer and schedule policy, defer completion rating until exit, and preserve ordinary reader navigation.</purpose>
-    <documentation>docs/kmk/feature-guides/reading-schedule-completion-and-chapter-navigation.md</documentation>
+    <documentation>docs/kmk/feature-guides/reading.md</documentation>
     <owner>app/src/main/java/eu/kanade/tachiyomi/ui/reader/ReaderViewModel.kt</owner>
     <presentation>app/src/main/java/eu/kanade/tachiyomi/ui/reader/ReaderActivity.kt</presentation>
     <states>allowed restricted grace completed deferred-prompt</states>
@@ -89,7 +89,7 @@
   </feature>
   <feature id="jump-to-last-read" route="manga/detail/chapters">
     <purpose>Move the chapter list to the resolved last-read position without changing chapter state.</purpose>
-    <documentation>docs/kmk/feature-guides/reading-schedule-completion-and-chapter-navigation.md</documentation>
+    <documentation>docs/kmk/feature-guides/reading.md</documentation>
     <owner>app/src/main/java/eu/kanade/tachiyomi/ui/manga/MangaScreenModel.kt</owner>
     <presentation>app/src/main/java/eu/kanade/presentation/manga/components/MangaToolbar.kt</presentation>
     <states>available unavailable scrolled</states>
@@ -97,28 +97,28 @@
   </feature>
   <feature id="evaluation-mode" route="settings/advanced/evaluation-mode">
     <purpose>Sanitize identity-bearing presentation while preserving identifiers, actions, persistence, and network behavior.</purpose>
-    <documentation>docs/kmk/feature-guides/sharing-screenshots-and-exported-files-safely.md</documentation>
+    <documentation>docs/kmk/feature-guides/sharing.md</documentation>
     <owner>app/src/main/java/exh/util/EvaluationModeFormatter.kt</owner>
     <states>disabled enabled</states>
     <privacy screenshot="approved">Approved captures use neutral source labels where applicable.</privacy>
   </feature>
   <feature id="action-history" route="settings/advanced/action-history">
     <purpose>Disclose reversible and non-reversible actions and restore supported local state when no conflict exists.</purpose>
-    <documentation>docs/kmk/feature-guides/rating-manga-and-managing-linked-versions.md</documentation>
+    <documentation>docs/kmk/feature-guides/ratings.md</documentation>
     <owner>app/src/main/java/exh/util/EvaluationModeActionHistoryScreen.kt</owner>
     <states>empty entries undoable conflict restored non-reversible</states>
     <privacy screenshot="approved">The reviewed local undo row uses an aggregate action label and excludes manga titles, source identities, account details, and local paths.</privacy>
   </feature>
   <feature id="extension-export" route="extensions/export">
     <purpose>Export selected extension artifacts through Android document APIs and offer exact-artifact cleanup after success.</purpose>
-    <documentation>docs/kmk/feature-guides/sharing-screenshots-and-exported-files-safely.md</documentation>
+    <documentation>docs/kmk/feature-guides/sharing.md</documentation>
     <owner>app/src/main/java/eu/kanade/tachiyomi/extension/util/ExtensionApkExporter.kt</owner>
     <states>ready chooser success cancelled failed cleanup-kept cleanup-removed cleanup-failed</states>
     <privacy screenshot="approved">The reviewed confirmation stays inside the app and omits the system picker, provider name, destination, package identity, and local path.</privacy>
   </feature>
   <feature id="ocr-search" route="search/ocr-downloads">
     <purpose>Index and search recognized text from downloaded chapter pages on the device.</purpose>
-    <documentation>docs/kmk/feature-guides/searching-downloaded-pages-with-ocr.md</documentation>
+    <documentation>docs/kmk/feature-guides/ocr.md</documentation>
     <owner>app/src/main/java/exh/ocr/OcrSearchScreenModel.kt</owner>
     <presentation>app/src/main/java/exh/ocr/OcrSearchScreen.kt</presentation>
     <states>no-index indexing searchable partial cancelled failed</states>
@@ -126,14 +126,14 @@
   </feature>
   <feature id="backup-portability" route="settings/data/backup-restore">
     <purpose>Include supported KMK ratings, recommendation preferences, links, and source-evaluation state in the established backup flow.</purpose>
-    <documentation>docs/kmk/feature-guides/preserving-kmk-data-in-backups.md</documentation>
+    <documentation>docs/kmk/feature-guides/backups.md</documentation>
     <owner>app/src/main/java/eu/kanade/tachiyomi/data/backup/restore/restorers/TasteRestorer.kt</owner>
     <states>selected encoded restored partial failed</states>
     <privacy screenshot="approved">The reviewed backup screen uses a generic storage summary and excludes destinations, restored library details, raw storage paths, account data, and reading history.</privacy>
   </feature>
   <feature id="extension-operations" route="browse/extensions">
-    <purpose>Isolate unsafe extension failures and perform install, removal, and export through supported Android boundaries.</purpose>
-    <documentation>docs/kmk/feature-guides/managing-and-isolating-extensions.md</documentation>
+    <purpose>Report recoverable extension failures and perform installation, removal, and export using supported methods. Fatal crashes are not guaranteed to be contained.</purpose>
+    <documentation>docs/kmk/feature-guides/extensions.md</documentation>
     <owner>app/src/main/java/eu/kanade/tachiyomi/extension/ExtensionManager.kt</owner>
     <dispatch>app/src/main/java/eu/kanade/tachiyomi/extension/util/ExtensionApkExporter.kt</dispatch>
     <states>ready consent success cancelled failed cleanup-verified</states>
@@ -141,7 +141,7 @@
   </feature>
   <feature id="security-integration" route="system-boundary">
     <purpose>Validate external inputs, isolate ordinary failures, preserve cancellation, and scope local mutations and cleanup.</purpose>
-    <documentation>docs/kmk/feature-guides/validating-links-actions-and-file-cleanup.md</documentation>
+    <documentation>docs/kmk/feature-guides/safety.md</documentation>
     <owner>app/src/main/java/eu/kanade/tachiyomi/source/SourceRuntime.kt</owner>
     <dispatch>app/src/main/java/eu/kanade/tachiyomi/ui/deeplink/DeepLinkIntentSanitizer.kt</dispatch>
     <states>accepted rejected isolated-failure cancelled verified-mutation</states>
@@ -149,7 +149,7 @@
   </feature>
   <feature id="kmk-change-history" route="more/about/kmk-whats-new">
     <purpose>Present current and historical KMK changes separately from Komikku release notes.</purpose>
-    <documentation>docs/kmk/feature-guides/how-kmk-features-work-together.md</documentation>
+    <documentation>docs/kmk/feature-guides/overview.md</documentation>
     <owner>app/src/main/java/exh/recs/KmkRecsReleaseNotes.kt</owner>
     <presentation>app/src/main/java/eu/kanade/tachiyomi/ui/more/KmkRecsWhatsNewScreen.kt</presentation>
     <states>current-family collapsed-family expanded-family acknowledged</states>

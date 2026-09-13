@@ -41,4 +41,42 @@ class RatedGroupPrimaryResolverTest {
         )
         assertEquals("1|/a", result)
     }
+
+    @Test
+    fun `automatic primary prefers the most-read confirmed version`() {
+        val result = RatedGroupPrimaryResolver.resolve(
+            grouperPrimaryKey = "1|/a",
+            memberKeys = listOf("1|/a", "2|/b"),
+            storedPrimary = null,
+            automaticSelectionEnabled = true,
+            candidates = listOf(
+                RatedGroupPrimaryResolver.Candidate("1|/a", readChapterCount = 2, firstRatedAt = 10),
+                RatedGroupPrimaryResolver.Candidate("2|/b", readChapterCount = 8, firstRatedAt = 20),
+            ),
+        )
+
+        assertEquals("2|/b", result)
+    }
+
+    @Test
+    fun `automatic primary falls back to the first-rated version and never overrides a manual choice`() {
+        val candidates = listOf(
+            RatedGroupPrimaryResolver.Candidate("1|/a", readChapterCount = 0, firstRatedAt = 20),
+            RatedGroupPrimaryResolver.Candidate("2|/b", readChapterCount = 0, firstRatedAt = 10),
+        )
+        assertEquals(
+            "2|/b",
+            RatedGroupPrimaryResolver.resolve("1|/a", listOf("1|/a", "2|/b"), null, true, candidates),
+        )
+        assertEquals(
+            "1|/a",
+            RatedGroupPrimaryResolver.resolve(
+                "1|/a",
+                listOf("1|/a", "2|/b"),
+                RatedMangaKey(1, "/a"),
+                true,
+                candidates,
+            ),
+        )
+    }
 }

@@ -25,6 +25,7 @@ import eu.kanade.domain.track.interactor.AddTracks
 import eu.kanade.domain.track.interactor.RecordLocalTrackedChapterProgress
 import eu.kanade.domain.track.interactor.RefreshTracks
 import eu.kanade.domain.track.interactor.SyncChapterProgressWithTrack
+import eu.kanade.domain.track.interactor.SyncLocalTrackingFromExternal
 import eu.kanade.domain.track.interactor.TrackChapter
 import mihon.data.extension.repository.ExtensionStoreRepositoryImpl
 import mihon.data.extension.service.ExtensionStoreService
@@ -153,13 +154,14 @@ class DomainModule : InjektModule {
         addSingletonFactory<TrackRepository> { TrackRepositoryImpl(get()) }
         addFactory { TrackChapter(get(), get(), get(), get()) }
         addFactory { RecordLocalTrackedChapterProgress(get()) }
-        addFactory { AddTracks(get(), get(), get(), get()) }
-        addFactory { RefreshTracks(get(), get(), get(), get()) }
+        addFactory { AddTracks(get(), get(), get(), get(), get()) }
+        addFactory { SyncLocalTrackingFromExternal(get(), get(), get(), get(), get(), get(), get(), get()) }
+        addFactory { RefreshTracks(get(), get(), get(), get(), get()) }
         addFactory { DeleteTrack(get()) }
         addFactory { GetTracksPerManga(get(), get()) }
         addFactory { GetTracks(get()) }
         addFactory { InsertTrack(get()) }
-        addFactory { SyncChapterProgressWithTrack(get(), get(), get()) }
+        addFactory { SyncChapterProgressWithTrack(get(), get(), get(), get()) }
 
         addSingletonFactory<ChapterRepository> { ChapterRepositoryImpl(get()) }
         addFactory { GetChapter(get()) }

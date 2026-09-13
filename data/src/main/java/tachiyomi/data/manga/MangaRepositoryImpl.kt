@@ -1,6 +1,8 @@
 package tachiyomi.data.manga
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.data.DatabaseHandler
@@ -21,6 +23,11 @@ class MangaRepositoryImpl(
 
     override suspend fun getMangaById(id: Long): Manga {
         return handler.awaitOne { mangasQueries.getMangaById(id, MangaMapper::mapManga) }
+    }
+
+    override suspend fun getMangaByIds(ids: Collection<Long>): List<Manga> {
+        if (ids.isEmpty()) return emptyList()
+        return handler.awaitList { mangasQueries.getMangaByIds(ids, MangaMapper::mapManga) }
     }
 
     override suspend fun getMangaByIdAsFlow(id: Long): Flow<Manga> {
@@ -229,6 +236,20 @@ class MangaRepositoryImpl(
         return handler.awaitList {
             mangasQueries.getChapterCountsByMangaIds(mangaIds) { id, count -> id to count }
         }.toMap()
+    }
+
+    override suspend fun getReadChapterCountsByMangaIds(mangaIds: Collection<Long>): Map<Long, Long> {
+        if (mangaIds.isEmpty()) return emptyMap()
+        return handler.awaitList {
+            mangasQueries.getReadChapterCountsByMangaIds(mangaIds) { id, count -> id to count }
+        }.toMap()
+    }
+
+    override fun getReadChapterCountsByMangaIdsAsFlow(mangaIds: Collection<Long>): Flow<Map<Long, Long>> {
+        if (mangaIds.isEmpty()) return flowOf(emptyMap())
+        return handler.subscribeToList {
+            mangasQueries.getReadChapterCountsByMangaIds(mangaIds) { id, count -> id to count }
+        }.map { it.toMap() }
     }
     // KMK <--
     // KMK <--

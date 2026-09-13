@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.io.File
 
 // KMK v0.8.9 -->
 /**
@@ -15,6 +16,9 @@ import org.junit.jupiter.api.Test
  * ordering/completeness/duplication are still caught mechanically, without a structured data model.
  */
 class KmkRecsReleaseNotesTest {
+
+    private val recommendationStrings = File("../i18n-kmk/src/commonMain/moko-resources/base/strings.xml").readText()
+    private val publicReleaseNotes = File("../docs/kmk/release-notes.md").readText()
 
     private val headingRegex = Regex("(?m)^\\s*## KMK-Recs (v\\S+)\\s*$")
 
@@ -30,7 +34,7 @@ class KmkRecsReleaseNotesTest {
 
     @Test
     fun `the display version uses the approved forward-facing product name`() {
-        assertEquals("Komikku FC v0.8.21-fix2", KmkRecsReleaseNotes.DISPLAY_VERSION_NAME)
+        assertEquals("Komikku FC v0.8.22", KmkRecsReleaseNotes.DISPLAY_VERSION_NAME)
         assertTrue(KmkRecsReleaseNotes.VERSION_NAME.startsWith("KMK-Recs "))
     }
 
@@ -38,9 +42,9 @@ class KmkRecsReleaseNotesTest {
     fun `rendered release notes use the forward-facing product name`() {
         val displayMarkdown = KmkRecsReleaseNotes.displayMarkdown()
 
-        assertTrue(displayMarkdown.contains("## Komikku FC v0.8.21-fix2"))
+        assertTrue(displayMarkdown.contains("## Komikku FC v0.8.22"))
         assertFalse(displayMarkdown.contains("KMK-Recs"))
-        assertTrue(KmkRecsReleaseNotes.MARKDOWN.contains("## KMK-Recs v0.8.21-fix2"))
+        assertTrue(KmkRecsReleaseNotes.MARKDOWN.contains("## KMK-Recs v0.8.22"))
     }
 
     @Test
@@ -132,18 +136,19 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `headings are in strictly descending chronological order as written (newest-first)`() {
         // The renderer relies on source order for "newest first" -- verify the file wasn't
-        // accidentally reordered. v0.8.21-fix2 is expected to be exactly first.
+        // accidentally reordered. v0.8.22 is expected to be exactly first.
         val all = headings()
-        assertEquals("v0.8.21-fix2", all[0])
-        assertEquals("v0.8.21", all[1])
-        assertEquals("v0.8.20-fix5", all[2])
-        assertEquals("v0.8.20-fix4", all[3])
-        assertEquals("v0.8.20-fix3", all[4])
-        assertEquals("v0.8.20-fix2", all[5])
-        assertEquals("v0.8.20-fix1", all[6])
-        assertEquals("v0.8.20", all[7])
-        assertEquals("v0.8.19", all[8])
-        assertEquals("v0.8.18-fix1", all[9])
+        assertEquals("v0.8.22", all[0])
+        assertEquals("v0.8.21-fix2", all[1])
+        assertEquals("v0.8.21", all[2])
+        assertEquals("v0.8.20-fix5", all[3])
+        assertEquals("v0.8.20-fix4", all[4])
+        assertEquals("v0.8.20-fix3", all[5])
+        assertEquals("v0.8.20-fix2", all[6])
+        assertEquals("v0.8.20-fix1", all[7])
+        assertEquals("v0.8.20", all[8])
+        assertEquals("v0.8.19", all[9])
+        assertEquals("v0.8.18-fix1", all[10])
     }
 
     @Test
@@ -201,57 +206,128 @@ class KmkRecsReleaseNotesTest {
     }
 
     @Test
-    fun `the v0_8_21 entry records the complete accepted scope without claiming gated work shipped`() {
+    fun `the v0_8_21 entry explains historical plans without internal review language`() {
         val section = v0821Section()
-        val acceptedScope = listOf(
-            "Love/Like/Dislike/Not interested",
-            "recommendation eligibility",
-            "contextual settings navigation",
-            "Best Version image reliability",
-            "delayed-action acknowledgement",
-            "search-action clarity",
-            "extension chapter recovery",
-            "cross-source identity",
-            "tag and metadata diagnostics",
-            "chapter-line continuity",
-            "upstream/intended/actual comparison",
-            "diagram-readability",
-        )
-        acceptedScope.forEach { topic ->
-            assertTrue(section.contains(topic), "v0.8.21 entry omitted accepted scope: $topic")
+        listOf("ratings", "recommendation filters", "settings navigation", "comparing versions", "source recovery", "linked manga", "chapter matching", "tag information").forEach { topic ->
+            assertTrue(section.contains(topic), "v0.8.21 entry omitted reader topic: $topic")
         }
-        assertTrue(section.contains("Local internal tracker"))
-        assertTrue(section.contains("remains a separately contracted feature"))
-        assertTrue(section.contains("not a claim that an unopened gate has shipped"))
-    }
-
-    // KMK v0.8.21-fix2 -->
-    @Test
-    fun `the v0_8_21-fix2 entry is the current newest entry`() {
-        assertEquals("v0.8.21-fix2", sectionBodies().first().first)
+        assertTrue(section.contains("planned at this point in the history"))
+        assertTrue(section.contains("v0.8.21-fix2 and v0.8.22"))
+        listOf("Accepted current scope", "registered host", "applicability-gated", "separately contracted", "unopened gate").forEach { phrase ->
+            assertFalse(section.contains(phrase), "internal review wording remains: $phrase")
+        }
     }
 
     @Test
-    fun `the v0_8_21-fix2 entry documents the local tracking status list workflow`() {
+    fun `alternate chapter and repeat switching fixes are documented`() {
         val currentSection = sectionBodies().first().second
-        assertTrue(currentSection.contains("Local tracking status/list workflow"))
-        assertTrue(currentSection.contains("Reading, Plan to read, On hold, Completed, Dropped"))
+        assertTrue(currentSection.contains("Alternate-source chapters"))
+        assertTrue(currentSection.contains("scanlation groups"))
+        assertTrue(currentSection.contains("Switching sources"))
+        assertTrue(currentSection.contains("View in Reader"))
+    }
+
+    // KMK v0.8.22 -->
+    @Test
+    fun `the v0_8_22 entry is the current newest entry`() {
+        assertEquals("v0.8.22", sectionBodies().first().first)
     }
 
     @Test
-    fun `the v0_8_21-fix2 entry documents duplicate-tap protection for rating actions`() {
+    fun `the v0_8_22 entry documents automatic local tracking status`() {
         val currentSection = sectionBodies().first().second
-        assertTrue(currentSection.contains("Duplicate-tap protection"))
-        assertTrue(currentSection.contains("reader completion prompt"))
-        assertTrue(currentSection.contains("Rated Manga"))
+        assertTrue(currentSection.contains("Automatic local status"))
+        assertTrue(currentSection.contains("Plan to read"))
+        assertTrue(currentSection.contains("On hold and Dropped remain manual"))
+        assertTrue(currentSection.contains("Local progress correction"))
+        assertTrue(currentSection.contains("Confirmed local versions"))
+        assertTrue(currentSection.contains("Progress from connected trackers"))
+        assertTrue(currentSection.contains("Tracker refresh"))
+        assertTrue(currentSection.contains("Different chapter numbering"))
+        assertTrue(currentSection.contains("Alternate-source boundary"))
+        assertTrue(currentSection.contains("selection-mode search long-presses"))
+        assertTrue(currentSection.contains("Alternate-source library choice"))
+        assertTrue(currentSection.contains("Tracking navigation"))
+        assertTrue(currentSection.contains("Tracking settings layout"))
+        assertTrue(currentSection.contains("off by default"))
+        assertTrue(currentSection.contains("Always, Ask, or Never"))
+    }
+
+    @Test
+    fun `the v0_8_22 entry documents clearer settings wording`() {
+        val currentSection = sectionBodies().first().second
+        assertTrue(currentSection.contains("Clearer settings"))
+        assertTrue(currentSection.contains("everyday language"))
+    }
+
+    @Test
+    fun `recommendation settings use user goals instead of implementation jargon`() {
+        val expectedPlainLabels = listOf(
+            "Hide manga you already know",
+            "Extra details per source",
+            "Search more pages",
+            "Extra results to check",
+            "Results shown first per source",
+            "Review same-manga matches",
+        )
+        expectedPlainLabels.forEach { label ->
+            assertTrue(recommendationStrings.contains(">$label<"), "missing plain-language label: $label")
+        }
+
+        val removedJargon = listOf(
+            "Enrichment cap (per source)",
+            "Discovery effort",
+            "Additional candidate budget",
+            "Initial results per extension",
+            "Propagate ratings to confirmed tracked versions",
+            "Infer local tracking status",
+        )
+        removedJargon.forEach { label ->
+            assertFalse(recommendationStrings.contains(">$label<"), "technical label still exposed: $label")
+        }
+    }
+
+    @Test
+    fun `the v0_8_22 entry documents the completion rating correction`() {
+        val currentSection = sectionBodies().first().second
+        assertTrue(currentSection.contains("Completion rating flow"))
+        assertTrue(currentSection.contains("rereads"))
+        assertTrue(currentSection.contains("For You chapter minimum"))
+        assertTrue(currentSection.contains("Alternate-version selection"))
+        assertTrue(currentSection.contains("Tracking preference boundaries"))
+        assertTrue(currentSection.contains("rated manga can still start its own local tracking"))
+        assertTrue(currentSection.contains("Restored progress"))
+        assertTrue(currentSection.contains("Local source identity"))
+        assertTrue(currentSection.contains("Chapter-number matching control"))
+        assertTrue(currentSection.contains("Automatic primary version"))
+    }
+
+    @Test
+    fun `the public v0_8_22 summary retains the current user-facing change families`() {
+        val expectedPhrases = listOf(
+            "Automatic local status",
+            "primary version",
+            "linked-version local tracking",
+            "scrollable chapter picker",
+            "Gapped and fractional sequences",
+            "Restoring Local Tracking",
+            "Completion rating",
+            "Alternate-source reading",
+            "built-in Local source",
+        )
+        expectedPhrases.forEach { phrase ->
+            assertTrue(publicReleaseNotes.contains(phrase, ignoreCase = true), "missing public release-note coverage: $phrase")
+        }
+        assertTrue(publicReleaseNotes.contains("Komikku FC is an independent fork"))
+        assertFalse(publicReleaseNotes.contains("Komikku KMK is an independent fork"))
     }
 
     @Test
     fun `the v0_8_21-fix2 entry does not restate v0_8_21's accepted-scope list`() {
         // A -fix release documents only what changed in that patch, not the whole parent
         // version's scope -- avoids stale duplication as later fixes are added.
-        val currentSection = sectionBodies().first().second
-        assertFalse(currentSection.contains("remains a separately contracted feature"))
+        val fixSection = sectionBodies().first { it.first == "v0.8.21-fix2" }.second
+        assertFalse(fixSection.contains("remains a separately contracted feature"))
     }
     // KMK <--
 }

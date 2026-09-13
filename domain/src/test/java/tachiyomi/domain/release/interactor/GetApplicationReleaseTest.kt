@@ -16,6 +16,60 @@ import java.time.Instant
 
 class GetApplicationReleaseTest {
 
+    @Test
+    fun `fork release comparison accepts only newer compatible tags`() = runTest {
+        every { preference.get() } returns 0
+        every { preference.set(any()) } answers { }
+        val cases = listOf(
+            "v0.8.23" to true,
+            "v0.8.22-fix1" to true,
+            "v0.8.22" to false,
+            "v0.8.21" to false,
+            "v0.8" to false,
+            "v0.8.22.0" to false,
+            "r999999" to false,
+            "latest" to false,
+            "v999999999999999999999.1" to false,
+        )
+        for ((tag, shouldUpdate) in cases) {
+            val release = Release(tag, "Notes", "https://example.com/release", "https://example.com/app.apk")
+            coEvery { releaseService.releaseNotes(any()) } returns listOf(release)
+            val result = getApplicationRelease.await(
+                GetApplicationRelease.Arguments(false, false, 0, "v0.8.22", "FancyCorey/komikku-KMK", true),
+            )
+            (result is GetApplicationRelease.Result.NewUpdate) shouldBe shouldUpdate
+        }
+    }
+
+    @Test
+    fun `draft and prerelease builds are not offered to stable users`() = runTest {
+        every { preference.get() } returns 0
+        every { preference.set(any()) } answers { }
+        coEvery { releaseService.releaseNotes(any()) } returns listOf(
+            Release("v0.8.24", "Draft", "link", "apk", draft = true),
+            Release("v0.8.23", "Preview", "link", "apk", preRelease = true),
+        )
+        getApplicationRelease.await(
+            GetApplicationRelease.Arguments(false, false, 0, "v0.8.22", "FancyCorey/komikku-KMK", true),
+        ) shouldBe GetApplicationRelease.Result.NoNewUpdate
+    }
+
+    @Test
+    fun `preview checks skip stable and malformed tags without crashing`() = runTest {
+        every { preference.get() } returns 0
+        every { preference.set(any()) } answers { }
+        val releases = listOf(
+            Release("v0.8.23", "Stable", "link", "apk"),
+            Release("r99999999999999999999", "Malformed", "link", "apk"),
+            Release("r2000", "Preview", "link", "apk"),
+        )
+        coEvery { releaseService.releaseNotes(any()) } returns releases
+        val result = getApplicationRelease.await(
+            GetApplicationRelease.Arguments(false, true, 1000, "", "FancyCorey/komikku-KMK", true),
+        )
+        (result as GetApplicationRelease.Result.NewUpdate).release.version shouldBe "r2000"
+    }
+
     private lateinit var getApplicationRelease: GetApplicationRelease
     private lateinit var releaseService: ReleaseService
     private lateinit var preference: Preference<Long>

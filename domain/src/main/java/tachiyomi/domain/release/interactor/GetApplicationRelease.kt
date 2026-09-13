@@ -28,7 +28,7 @@ class GetApplicationRelease(
         // KMK -->
         val releases = service.releaseNotes(arguments)
             .filter {
-                !it.preRelease &&
+                !it.preRelease && !it.draft &&
                     isNewVersion(
                         arguments.isPreview,
                         arguments.commitCount,
@@ -37,10 +37,9 @@ class GetApplicationRelease(
                     )
             }
 
+        lastChecked.set(now.toEpochMilli())
         val latest = releases.getLatest() ?: return Result.NoNewUpdate
         // KMK <--
-
-        lastChecked.set(now.toEpochMilli())
 
         // Check if latest version is different from current version
         val isNewVersion = isNewVersion(
@@ -58,7 +57,7 @@ class GetApplicationRelease(
     // KMK -->
     suspend fun awaitReleaseNotes(arguments: Arguments): Result {
         val releases = service.releaseNotes(arguments)
-            .filter { !it.preRelease }
+            .filter { !it.preRelease && !it.draft }
 
         val latest = releases.getLatest() ?: return Result.NoNewUpdate
         return Result.NewUpdate(latest)
@@ -80,29 +79,26 @@ class GetApplicationRelease(
         versionName: String,
         versionTag: String,
     ): Boolean {
-        // Removes prefixes like "r" or "v"
-        val newVersion = versionTag.replace("[^\\d.]".toRegex(), "")
         return if (isPreview) {
-            // Preview builds: based on releases in "komikku-app/komikku-preview" repo
-            // tagged as something like "r1234"
-            newVersion.toInt() > commitCount
+            val count = Regex("^r(\\d+)$").matchEntire(versionTag)?.groupValues?.get(1)?.toIntOrNull()
+            count != null && count > commitCount
         } else {
-            // Release builds: based on releases in "komikku-app/komikku" repo
-            // tagged as something like "v0.1.2"
-            val oldVersion = versionName.replace("[^\\d.]".toRegex(), "")
-
-            val newSemVer = newVersion.split(".").map { it.toInt() }
-            val oldSemVer = oldVersion.split(".").map { it.toInt() }
-
-            oldSemVer.mapIndexed { index, i ->
-                if (newSemVer[index] > i) {
-                    return true
-                }
-                if (newSemVer[index] < i) return false
+            val newVersion = parseStableVersion(versionTag) ?: return false
+            val oldVersion = parseStableVersion(versionName) ?: return false
+            for (index in 0 until maxOf(newVersion.first.size, oldVersion.first.size)) {
+                val comparison = (newVersion.first.getOrNull(index) ?: 0)
+                    .compareTo(oldVersion.first.getOrNull(index) ?: 0)
+                if (comparison != 0) return comparison > 0
             }
-
-            false
+            newVersion.second > oldVersion.second
         }
+    }
+
+    private fun parseStableVersion(version: String): Pair<List<Int>, Int>? {
+        val match = Regex("^v?(\\d+(?:\\.\\d+)*)(?:-fix(\\d+))?$").matchEntire(version) ?: return null
+        val parts = match.groupValues[1].split(".").map { it.toIntOrNull() ?: return null }
+        val fix = match.groupValues[2].takeIf { it.isNotEmpty() }?.let { it.toIntOrNull() ?: return null } ?: 0
+        return parts to fix
     }
 
     data class Arguments(

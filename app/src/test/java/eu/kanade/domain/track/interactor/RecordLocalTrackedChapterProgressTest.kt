@@ -1,6 +1,7 @@
 package eu.kanade.domain.track.interactor
 
 import eu.kanade.domain.track.service.TrackPreferences
+import eu.kanade.tachiyomi.source.model.SManga
 import exh.recs.matching.CrossSourceIdentityAuthorizationResolver
 import exh.util.FakePreferenceStore
 import io.mockk.coEvery
@@ -34,6 +35,144 @@ import tachiyomi.domain.tracker.repository.LocalTrackerRepository
 class RecordLocalTrackedChapterProgressTest {
 
     @Test
+    fun `refresh shares local tracker progress without a rating group and reads duplicate translations`() = runTest {
+        val repository = mockk<LocalTrackerRepository>(relaxed = true)
+        val savedWork = work("shared-work", "Shared").copy(
+            lastChapterSource = 1L,
+            lastChapterNumber = 4.1,
+            lastChapterUrl = "/origin/ch-4.1",
+            lastChapterLabel = "Chapter 4.1",
+            lastProgressAt = 20L,
+            startDate = 10L,
+        )
+        val sources = listOf(
+            source(savedWork.id, 1L, "/origin", "Origin"),
+            source(savedWork.id, 2L, "/target", "Target"),
+        )
+        val target = manga(2L, "/target")
+        var chapters = listOf(
+            chapter(2L, "/target/ch-1").copy(id = 21L, chapterNumber = 1.0),
+            chapter(2L, "/target/ch-4.1-alpha").copy(id = 22L, chapterNumber = 4.1),
+            chapter(2L, "/target/ch-4.1-gamma").copy(id = 23L, chapterNumber = 4.1),
+            chapter(2L, "/target/ch-4.2").copy(id = 24L, chapterNumber = 4.2),
+        )
+        coEvery { repository.getAllWorksAsFlow() } returns flowOf(listOf(savedWork))
+        coEvery { repository.getSources(savedWork.id) } returns sources
+        coEvery { repository.getWorkIdBySourceUrl(2L, "/target") } returns savedWork.id
+        coEvery { repository.getWork(savedWork.id) } returns savedWork
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        coEvery { mangaRepository.getMangaByUrlAndSourceId("/target", 2L) } returns target
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
+        coEvery { chapterRepository.getChapterByMangaId(2L) } answers { chapters }
+        coEvery { chapterRepository.getChapterByUrlAndMangaId(any(), 2L) } answers {
+            chapters.firstOrNull { it.url == firstArg<String>() }
+        }
+        coEvery { chapterRepository.updateAll(any()) } answers {
+            val updates = firstArg<List<tachiyomi.domain.chapter.model.ChapterUpdate>>()
+            chapters = chapters.map { chapter ->
+                if (updates.any { it.id == chapter.id && it.read == true }) chapter.copy(read = true) else chapter
+            }
+        }
+        val interactor = RecordLocalTrackedChapterProgress(
+            repository,
+            TrackPreferences(FakePreferenceStore()),
+            getCrossSourceMangaLinks = mockk(relaxed = true),
+            identityAuthorizationResolver = mockk(relaxed = true),
+            alternateSourceBridgeRepository = mockk(relaxed = true),
+            mangaRepository = mangaRepository,
+            chapterRepository = chapterRepository,
+        )
+
+        interactor.synchronize()
+        assertEquals(listOf(21L, 22L, 23L), chapters.filter { it.read }.map { it.id })
+        interactor.synchronize()
+        coVerify(exactly = 1) { chapterRepository.updateAll(any()) }
+
+        chapters = listOf(
+            chapters.first().copy(read = false),
+            chapters[1].copy(read = false, chapterNumber = 3.2),
+            chapters.last(),
+        )
+        interactor.synchronize()
+        assertEquals(listOf(21L, 22L), chapters.filter { it.read }.map { it.id })
+
+        chapters = chapters.map { it.copy(read = false) }
+        coEvery { repository.getSources(savedWork.id) } returns sources.map {
+            if (it.source == 2L) it.copy(inheritanceOptedOut = true) else it
+        }
+        coEvery { repository.getSourceProgressForWork(savedWork.id) } returns listOf(
+            LocalTrackedWorkSourceProgress(
+                workId = savedWork.id,
+                source = 2L,
+                url = "/target",
+                chapterNumber = 3.2,
+                chapterUrl = chapters[1].url,
+                chapterLabel = chapters[1].name,
+                progressAt = 20L,
+                inheritedFromSource = 1L,
+                inheritedFromUrl = "/origin",
+                updatedAt = 20L,
+            ),
+        )
+        interactor.synchronize()
+        assertEquals(emptyList<Long>(), chapters.filter { it.read }.map { it.id })
+    }
+
+    @Test
+    fun `status and start date updates retain the newly read chapter in stored work`() = runTest {
+        for (initialStatus in listOf(LocalTrackedWorkStatus.PLANNED, LocalTrackedWorkStatus.READING)) {
+            val repository = mockk<LocalTrackerRepository>(relaxed = true)
+            var storedWork = work("origin-work", "Origin").copy(
+                status = initialStatus,
+                lastChapterNumber = 1.0,
+                startDate = null,
+            )
+            coEvery { repository.getWorkIdBySourceUrl(1L, "/origin") } returns storedWork.id
+            coEvery { repository.getWork("origin-work") } answers { storedWork }
+            coEvery { repository.upsertWork(any()) } answers { storedWork = firstArg() }
+            coEvery { repository.recordProgress(any(), any(), any(), any(), any(), any()) } answers {
+                storedWork = storedWork.copy(
+                    lastChapterSource = arg(1),
+                    lastChapterNumber = arg(2),
+                    lastChapterUrl = arg(3),
+                    lastChapterLabel = arg(4),
+                    lastProgressAt = arg(5),
+                    updatedAt = arg(5),
+                )
+            }
+            val preferences = TrackPreferences(FakePreferenceStore()).also {
+                it.autoInheritLocalProgress().set(false)
+            }
+            val interactor = RecordLocalTrackedChapterProgress(
+                repository,
+                preferences,
+                getCrossSourceMangaLinks = mockk(relaxed = true),
+                identityAuthorizationResolver = mockk(relaxed = true),
+                alternateSourceBridgeRepository = mockk(relaxed = true),
+                mangaRepository = mockk(relaxed = true),
+                chapterRepository = mockk(relaxed = true),
+            )
+            val origin = manga(1L, "/origin")
+            val fractionalChapter = chapter(1L, "/origin/ch-4.1").copy(
+                name = "Chapter 4.1",
+                chapterNumber = 4.1,
+            )
+
+            interactor.await(origin, fractionalChapter, 20L)
+
+            assertEquals(4.1, storedWork.lastChapterNumber)
+            assertEquals(fractionalChapter.url, storedWork.lastChapterUrl)
+            assertEquals(20L, storedWork.lastProgressAt)
+            assertEquals(20L, storedWork.startDate)
+            assertEquals(LocalTrackedWorkStatus.READING, storedWork.status)
+
+            interactor.await(origin, fractionalChapter.copy(chapterNumber = 5.2, url = "/origin/ch-5.2"), 21L)
+            assertEquals(5.2, storedWork.lastChapterNumber)
+            assertEquals(20L, storedWork.startDate)
+        }
+    }
+
+    @Test
     fun `synchronize replays persisted progress to confirmed versions`() = runTest {
         val repository = mockk<LocalTrackerRepository>(relaxed = true)
         val preferences = TrackPreferences(FakePreferenceStore()).also {
@@ -42,9 +181,16 @@ class RecordLocalTrackedChapterProgressTest {
         val linksInteractor = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
-        val mangaRepository = mockk<MangaRepository>()
-        val chapterRepository = mockk<ChapterRepository>()
-        val originWork = work("origin-work", "Origin")
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
+        val originWork = work("origin-work", "Origin").copy(
+            lastChapterSource = 1L,
+            lastChapterNumber = 12.0,
+            lastChapterUrl = "/origin/ch-12",
+            lastChapterLabel = "Chapter 12",
+            lastProgressAt = 20L,
+        )
+        val originSource = source("origin-work", 1L, "/origin", "Origin")
         val target = manga(2L, "/target")
         val targetChapter = chapter(2L, "/target/ch-13").copy(name = "Chapter 13", chapterNumber = 13.0)
         val targetWork = work("target-work", "Target").copy(status = LocalTrackedWorkStatus.PLANNED)
@@ -70,6 +216,7 @@ class RecordLocalTrackedChapterProgressTest {
         )
         coEvery { repository.getAllWorksAsFlow() } returns flowOf(listOf(originWork))
         coEvery { repository.getSourceProgressForWork("origin-work") } returns listOf(originProgress)
+        coEvery { repository.getSources("origin-work") } returns listOf(originSource)
         coEvery { repository.getWorkIdBySourceUrl(2L, "/target") } returns "target-work"
         coEvery { repository.getWork("target-work") } returns targetWork
         coEvery { repository.getSources("target-work") } returns listOf(targetSource)
@@ -120,8 +267,8 @@ class RecordLocalTrackedChapterProgressTest {
         val linksInteractor = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
-        val mangaRepository = mockk<MangaRepository>()
-        val chapterRepository = mockk<ChapterRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
 
         RecordLocalTrackedChapterProgress(
             repository,
@@ -139,6 +286,68 @@ class RecordLocalTrackedChapterProgressTest {
     }
 
     @Test
+    fun `reading an unattached confirmed sibling records progress in its existing work`() = runTest {
+        val repository = mockk<LocalTrackerRepository>(relaxed = true)
+        val preferences = TrackPreferences(FakePreferenceStore()).also {
+            it.autoInheritLocalProgress().set(true)
+        }
+        val linksInteractor = mockk<GetCrossSourceMangaLinks>()
+        val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
+        val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
+        val sibling = manga(2L, "/sibling")
+        val siblingChapter = chapter(2L, "/sibling/ch-12")
+        val work = work("shared-work", "Shared")
+
+        coEvery { repository.getWorkIdBySourceUrl(2L, "/sibling") } returns null
+        coEvery { repository.getWorkIdBySourceUrl(1L, "/origin") } returns "shared-work"
+        coEvery { repository.getWork("shared-work") } returns work
+        coEvery { linksInteractor.awaitBySourceUrl(2L, "/sibling") } returns
+            CrossSourceMangaLink(2L, "/sibling", "group", "Sibling", 1L, 1L)
+        coEvery { linksInteractor.awaitByGroupId("group") } returns listOf(
+            CrossSourceMangaLink(1L, "/origin", "group", "Origin", 1L, 1L),
+            CrossSourceMangaLink(2L, "/sibling", "group", "Sibling", 1L, 1L),
+        )
+        coEvery { identityResolver.confirmedGroupMembers(2L, "/sibling", any()) } returns listOf(
+            CrossSourceMangaLink(1L, "/origin", "group", "Origin", 1L, 1L),
+            CrossSourceMangaLink(2L, "/sibling", "group", "Sibling", 1L, 1L),
+        )
+        coEvery { bridgeRepository.getAllBridges() } returns emptyList()
+        coEvery { bridgeRepository.getAllMappings() } returns emptyList()
+        coEvery { mangaRepository.getMangaByUrlAndSourceId("/origin", 1L) } returns null
+
+        RecordLocalTrackedChapterProgress(
+            repository,
+            preferences,
+            getCrossSourceMangaLinks = linksInteractor,
+            identityAuthorizationResolver = identityResolver,
+            alternateSourceBridgeRepository = bridgeRepository,
+            mangaRepository = mangaRepository,
+            chapterRepository = chapterRepository,
+        ).await(sibling, siblingChapter, 20L)
+
+        coVerify {
+            repository.upsertSource(
+                match {
+                    it.workId == "shared-work" && it.source == 2L && it.url == "/sibling" &&
+                        it.confirmation == LocalTrackedWorkSourceConfirmation.USER_CONFIRMED
+                },
+            )
+        }
+        coVerify {
+            repository.recordProgress(
+                "shared-work",
+                2L,
+                12.0,
+                "/sibling/ch-12",
+                "Chapter 12",
+                20L,
+            )
+        }
+    }
+
+    @Test
     fun `progress resumes active local statuses while preserving completed metadata`() = runTest {
         val repository = mockk<LocalTrackerRepository>(relaxed = true)
         val origin = manga(1L, "/origin")
@@ -149,8 +358,8 @@ class RecordLocalTrackedChapterProgressTest {
         val linksInteractor = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
-        val mangaRepository = mockk<MangaRepository>()
-        val chapterRepository = mockk<ChapterRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
 
         coEvery { repository.getWorkIdBySourceUrl(1L, "/origin") } returns "origin-work"
         coEvery { repository.getWork("origin-work") } returnsMany listOf(
@@ -183,6 +392,45 @@ class RecordLocalTrackedChapterProgressTest {
         }
         coVerify(exactly = 1) {
             repository.upsertWork(match { it.status == LocalTrackedWorkStatus.COMPLETED })
+        }
+    }
+
+    @Test
+    fun `reading the semantic final chapter of completed manga completes local tracking`() = runTest {
+        val repository = mockk<LocalTrackerRepository>(relaxed = true)
+        val origin = manga(1L, "/origin").copy(ogStatus = SManga.COMPLETED.toLong())
+        val chapter8 = chapter(1L, "/origin/ch-8").copy(name = "Chapter 8", chapterNumber = 8.0)
+        val chapter10 = chapter(1L, "/origin/ch-10").copy(name = "Chapter 10", chapterNumber = 10.0)
+        val preferences = TrackPreferences(FakePreferenceStore()).also {
+            it.autoInheritLocalProgress().set(false)
+        }
+        val linksInteractor = mockk<GetCrossSourceMangaLinks>()
+        val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
+        val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
+
+        coEvery { repository.getWorkIdBySourceUrl(1L, "/origin") } returns "origin-work"
+        coEvery { repository.getWork("origin-work") } returns work("origin-work", "Origin")
+        coEvery { chapterRepository.getChapterByMangaId(1L) } returns listOf(chapter8, chapter10)
+
+        RecordLocalTrackedChapterProgress(
+            repository,
+            preferences,
+            getCrossSourceMangaLinks = linksInteractor,
+            identityAuthorizationResolver = identityResolver,
+            alternateSourceBridgeRepository = bridgeRepository,
+            mangaRepository = mangaRepository,
+            chapterRepository = chapterRepository,
+        ).await(origin, chapter10, 20L)
+
+        coVerify {
+            repository.upsertWork(
+                match {
+                    it.status == LocalTrackedWorkStatus.COMPLETED && it.finishDate == 20L &&
+                        it.startDate == 20L
+                },
+            )
         }
     }
 
@@ -251,8 +499,8 @@ class RecordLocalTrackedChapterProgressTest {
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
         val linksInteractor = mockk<GetCrossSourceMangaLinks>()
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
-        val mangaRepository = mockk<MangaRepository>()
-        val chapterRepository = mockk<ChapterRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
         coEvery { repository.getWorkIdBySourceUrl(1L, "/origin") } returns "origin-work"
         coEvery { repository.getWorkIdBySourceUrl(2L, "/target") } returns "target-work"
         coEvery { repository.getWork("origin-work") } returns work("origin-work", "Origin")
@@ -312,6 +560,61 @@ class RecordLocalTrackedChapterProgressTest {
     }
 
     @Test
+    fun `missing confirmed mapped target chapter does not fall back to numeric matching`() = runTest {
+        val repository = mockk<LocalTrackerRepository>(relaxed = true)
+        val preferences = TrackPreferences(FakePreferenceStore()).also {
+            it.autoInheritLocalProgress().set(true)
+        }
+        val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
+        val linksInteractor = mockk<GetCrossSourceMangaLinks>()
+        val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
+        val origin = manga(1L, "/origin")
+        val target = manga(2L, "/target")
+        val originChapter = chapter(1L, "/origin/ch-12")
+        val numericFallbackChapter = chapter(2L, "/target/ch-12")
+        val targetWork = work("target-work", "Target")
+        val targetSource = source("target-work", 2L, "/target", "Target")
+
+        coEvery { repository.getWorkIdBySourceUrl(1L, "/origin") } returns "origin-work"
+        coEvery { repository.getWorkIdBySourceUrl(2L, "/target") } returns "target-work"
+        coEvery { repository.getWork("origin-work") } returns work("origin-work", "Origin")
+        coEvery { repository.getWork("target-work") } returns targetWork
+        coEvery { repository.getSources("target-work") } returns listOf(targetSource)
+        coEvery { linksInteractor.awaitBySourceUrl(1L, "/origin") } returns
+            CrossSourceMangaLink(1L, "/origin", "group", "Origin", 1L, 1L)
+        coEvery { linksInteractor.awaitByGroupId("group") } returns listOf(
+            CrossSourceMangaLink(1L, "/origin", "group", "Origin", 1L, 1L),
+            CrossSourceMangaLink(2L, "/target", "group", "Target", 1L, 1L),
+        )
+        coEvery { identityResolver.confirmedGroupMembers(1L, "/origin", any()) } returns listOf(
+            CrossSourceMangaLink(1L, "/origin", "group", "Origin", 1L, 1L),
+            CrossSourceMangaLink(2L, "/target", "group", "Target", 1L, 1L),
+        )
+        coEvery { bridgeRepository.getAllBridges() } returns listOf(bridge())
+        coEvery { bridgeRepository.getAllMappings() } returns listOf(mapping())
+        coEvery { mangaRepository.getMangaByUrlAndSourceId("/target", 2L) } returns target
+        coEvery { chapterRepository.getChapterByUrlAndMangaId("/target/ch-13", 2L) } returns null
+        coEvery { chapterRepository.getChapterByMangaId(2L) } returns listOf(numericFallbackChapter)
+
+        RecordLocalTrackedChapterProgress(
+            repository,
+            preferences,
+            getCrossSourceMangaLinks = linksInteractor,
+            identityAuthorizationResolver = identityResolver,
+            alternateSourceBridgeRepository = bridgeRepository,
+            mangaRepository = mangaRepository,
+            chapterRepository = chapterRepository,
+        ).await(origin, originChapter, 20L)
+
+        coVerify(exactly = 1) { repository.recordSourceProgress(match { it.source == 1L }) }
+        coVerify(exactly = 0) { repository.recordSourceProgress(match { it.source == 2L }) }
+        coVerify(exactly = 0) { repository.upsertWork(match { it.id == "target-work" }) }
+        coVerify(exactly = 0) { chapterRepository.updateAll(any()) }
+    }
+
+    @Test
     fun `enabled confirmed mapped target creates missing local work`() = runTest {
         val repository = mockk<LocalTrackerRepository>(relaxed = true)
         val origin = manga(1L, "/origin")
@@ -325,8 +628,8 @@ class RecordLocalTrackedChapterProgressTest {
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
         val linksInteractor = mockk<GetCrossSourceMangaLinks>()
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
-        val mangaRepository = mockk<MangaRepository>()
-        val chapterRepository = mockk<ChapterRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
         coEvery { repository.getWorkIdBySourceUrl(1L, "/origin") } returns "origin-work"
         coEvery { repository.getWork("origin-work") } returns originWork
         coEvery { repository.getWorkIdBySourceUrl(2L, "/target") } returns null
@@ -385,8 +688,8 @@ class RecordLocalTrackedChapterProgressTest {
         val linksInteractor = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
-        val mangaRepository = mockk<MangaRepository>()
-        val chapterRepository = mockk<ChapterRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
         val origin = manga(1L, "/origin")
         val target = manga(2L, "/target")
         val originChapter = chapter(1L, "/origin/ch-12")
@@ -466,8 +769,8 @@ class RecordLocalTrackedChapterProgressTest {
         val linksInteractor = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
-        val mangaRepository = mockk<MangaRepository>()
-        val chapterRepository = mockk<ChapterRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
         val origin = manga(1L, "/origin")
         val target = manga(2L, "/target")
         val originWork = work("origin-work", "Origin").copy(
@@ -551,8 +854,8 @@ class RecordLocalTrackedChapterProgressTest {
         val linksInteractor = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
-        val mangaRepository = mockk<MangaRepository>()
-        val chapterRepository = mockk<ChapterRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
         val origin = manga(1L, "/origin")
         val target = manga(2L, "/target")
         val originChapter = chapter(1L, "/origin/ch-12")
@@ -617,8 +920,8 @@ class RecordLocalTrackedChapterProgressTest {
         val linksInteractor = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
-        val mangaRepository = mockk<MangaRepository>()
-        val chapterRepository = mockk<ChapterRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
         val origin = manga(1L, "/origin")
         val target = manga(2L, "/target")
         val originChapter = chapter(1L, "/origin/ch-12")
@@ -668,6 +971,7 @@ class RecordLocalTrackedChapterProgressTest {
         coVerify(exactly = 1) { repository.recordSourceProgress(match { it.source == 1L }) }
         coVerify(exactly = 0) { repository.upsertWork(match { it.id == "target-work" }) }
         coVerify(exactly = 0) { repository.upsertSourceProgress(match { it.source == 2L }) }
+        coVerify(exactly = 0) { chapterRepository.updateAll(any()) }
     }
 
     @Test
@@ -679,8 +983,8 @@ class RecordLocalTrackedChapterProgressTest {
         val linksInteractor = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
-        val mangaRepository = mockk<MangaRepository>()
-        val chapterRepository = mockk<ChapterRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
         val origin = manga(1L, "/origin")
         val originChapter = chapter(1L, "/origin/ch-12")
         coEvery { repository.getWorkIdBySourceUrl(1L, "/origin") } returns "origin-work"
@@ -719,8 +1023,8 @@ class RecordLocalTrackedChapterProgressTest {
         val linksInteractor = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
-        val mangaRepository = mockk<MangaRepository>()
-        val chapterRepository = mockk<ChapterRepository>()
+        val mangaRepository = mockk<MangaRepository>(relaxed = true)
+        val chapterRepository = mockk<ChapterRepository>(relaxed = true)
         val origin = manga(1L, "/origin")
         val target = manga(2L, "/target")
         val originChapter = chapter(1L, "/origin/ch-12")

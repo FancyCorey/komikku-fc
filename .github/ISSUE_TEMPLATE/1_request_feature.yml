@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest a feature to improve Komikku KMK
+description: Suggest a feature to improve Komikku FC
 labels: [feature request]
 body:
   - type: textarea
@@ -34,7 +34,7 @@ body:
           required: true
         - label: I wrote a short but informative title.
           required: true
-        - label: I tested the latest [Komikku KMK release](https://github.com/FancyCorey/komikku-KMK/releases/latest).
+        - label: I tested the latest [Komikku FC release](https://github.com/FancyCorey/komikku-fc/releases/latest).
           required: true
         - label: I filled out the requested information and explained the problem as well as the proposed result.
           required: true
@@ -51,4 +51,4 @@ body:
         Add a :+1: [reaction] to [feature requests you find important].
 
         [reaction]: https://github.blog/2016-03-10-add-reactions-to-pull-requests-issues-and-comments/
-        [feature requests you find important]: https://github.com/FancyCorey/komikku-KMK/issues?q=is%3Aissue+is%3Aopen+label%3A%22feature+request%22+sort%3Areactions-%2B1-desc
+        [feature requests you find important]: https://github.com/FancyCorey/komikku-fc/issues?q=is%3Aissue+is%3Aopen+label%3A%22feature+request%22+sort%3Areactions-%2B1-desc

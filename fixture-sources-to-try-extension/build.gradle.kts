@@ -26,12 +26,22 @@ android {
             dimension = "fixture"
             applicationId = "app.komikku.fixture.sources.alpha"
             buildConfigField("long", "SOURCE_ID", "910000000000000001L")
+            buildConfigField(
+                "boolean",
+                "FAIL_PREVIEW_PAGE",
+                providers.gradleProperty("kmk.fixture.previewFailure").map(String::toBoolean).orElse(false).get().toString(),
+            )
             resValue("string", "fixture_source_name", "Fixture Source Alpha")
         }
         create("beta") {
             dimension = "fixture"
             applicationId = "app.komikku.fixture.sources.beta"
             buildConfigField("long", "SOURCE_ID", "910000000000000002L")
+            buildConfigField(
+                "boolean",
+                "FAIL_PREVIEW_PAGE",
+                providers.gradleProperty("kmk.fixture.previewFailure").map(String::toBoolean).orElse(false).get().toString(),
+            )
             resValue("string", "fixture_source_name", "Fixture Source Beta")
         }
     }

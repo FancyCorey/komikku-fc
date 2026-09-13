@@ -165,6 +165,17 @@ class PerformanceFixtureGeneratorTest {
     }
 
     @Test
+    fun `device profile source override is applied without changing unavailable sources`() {
+        val visibleSourceIds = listOf(101L, 202L)
+        val dataset = PerformanceFixtureGenerator.generate(
+            PerformanceFixtureSpec.SMALL.copy(availableSourceIds = visibleSourceIds),
+        )
+
+        assertTrue(dataset.manga.filterNot { it.sourceUnavailable }.all { it.source in visibleSourceIds })
+        assertTrue(dataset.manga.any { it.sourceUnavailable })
+    }
+
+    @Test
     fun `category indices always resolve within the generated category list`() {
         val dataset = PerformanceFixtureGenerator.generate(PerformanceFixtureSpec.SMALL)
 

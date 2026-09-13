@@ -1,6 +1,6 @@
 # Security and integration behavior
 
-KMK interacts with extensions, websites, trackers, Android packages, files, backups, and document providers. Data from those places is checked before the app opens a screen or changes saved information. Error messages use consistent categories instead of passing private or unpredictable details directly to the screen.
+Komikku FC interacts with extensions, websites, trackers, Android packages, files, backups, and document providers. Data from those places is checked before the app opens a screen or changes saved information. Error messages use consistent categories instead of passing private or unpredictable details directly to the screen.
 
 ## External navigation
 

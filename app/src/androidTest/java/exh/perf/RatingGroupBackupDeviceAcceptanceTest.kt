@@ -61,10 +61,16 @@ class RatingGroupBackupDeviceAcceptanceTest {
         DisposableTestEnvironmentGuard.assumeDisposableEnvironment(context)
 
         val tasteRepository = Injekt.get<TasteRepository>()
-        val selectedTaste = tasteRepository.getAllMangaTastes().firstOrNull { it.rating != 0 }
+        val selectedTaste = tasteRepository.getAllMangaTastes().firstOrNull {
+            it.rating != 0 && it.url.startsWith("/fixture/manga/")
+        }
         assertNotNull("seeded profile must contain a rating", selectedTaste)
         val selectedDecision = Injekt.get<GetCrossSourceIdentityDecisions>().awaitAll()
-            .firstOrNull { CrossSourceIdentityDecisionPolicy.isAuthoritativeConfirmation(it) }
+            .firstOrNull {
+                CrossSourceIdentityDecisionPolicy.isAuthoritativeConfirmation(it) &&
+                    it.pair.left.url.startsWith("/fixture/manga/") &&
+                    it.pair.right.url.startsWith("/fixture/manga/")
+            }
         assertNotNull("seeded profile must contain a confirmed identity decision", selectedDecision)
 
         val backupFile = File(context.cacheDir, "device-rating-group-${System.currentTimeMillis()}.tachibk")

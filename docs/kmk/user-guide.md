@@ -1,6 +1,6 @@
-# KMK user guide
+# Komikku FC user guide
 
-Use this guide to find and use KMK features. Each section starts with the actions to take, then explains the result and any important limitation. The [visual guide](visual-guide/README.md) shows the main screens, while the linked feature guides cover workflows that depend on manga, chapter, source, account, or storage details.
+Use this guide to find and use Komikku FC features. Each section starts with the actions to take, then explains the result and any important limitation. The [visual guide](visual-guide/README.md) shows the main screens, while the linked feature guides cover workflows that depend on manga, chapter, source, account, or storage details.
 
 ## For You
 
@@ -14,15 +14,15 @@ Use this guide to find and use KMK features. Each section starts with the action
 
 *For You in Evaluation Mode. The recommendations stay visible while source names are hidden.*
 
-Before displaying a manga, For You checks your language, blocked genres and tags, source settings, exclusions, and minimum chapter count. Personalized matches remain the majority when enough are available. A smaller selection from each source's recent catalogue can add variety, but it must pass the same checks. If you repeatedly leave a visible card untouched for the configured number of days, the app moves it lower instead of removing it.
+Before displaying a manga, For You checks your language, blocked genres and tags, source settings, and exclusions. The minimum chapter count hides manga with a known count below your choice; manga with an unknown count can still appear. Personalized matches remain the majority when enough are available. A smaller selection from each source's recent catalogue can add variety, but it must pass the same checks. Repeatedly shown, untouched cards can move lower without being removed. Library manga and rated or tracked manga are not lowered by that repeat-display rule. See [Recommendation settings](feature-guides/recommendation-settings.md) for the display-history window and filters.
 
 If one source fails, results from other sources remain available. When the page is empty or incomplete, read the message on the affected row; the whole app has not necessarily failed.
 
 ### Top Picks and bulk actions
 
 1. Open **Top Picks** from For You to review the strongest combined matches.
-2. Long-press a manga card to enter selection mode, then tap additional cards to include them.
-3. Apply Love, Like, Dislike, Not Interested, or Clear Rating from the selection bar. With one card selected, version comparison and Open are also available.
+2. Use a manga card's selection action to enter selection mode, then select additional cards to include them. On a touch screen, the selection action may be a press-and-hold gesture.
+3. Apply Love, Like, or Dislike from the selection bar. Open **More** for Not Interested or Clear Rating. With one card selected, version comparison and Open are also available.
 4. Read the completion message before leaving selection mode. Supported local changes also appear in Action History.
 
 ### Recommendation bundles
@@ -46,7 +46,7 @@ Opening a bundle never adds manga automatically. Invalid structure and unresolve
 1. From For You, select the settings icon.
 2. Choose one of the five sections: **For You sources**, **Taste and filters**, **Source Evaluation**, **Sources to try**, or **Management and diagnostics**.
 3. Change a setting with the switches, choices, and dialogs used elsewhere in Komikku.
-4. Return to For You and refresh when the screen asks for recommendation regeneration.
+4. Return to For You and refresh when asked to reload recommendations.
 
 ![Recommendation settings divided into five sections](visual-guide/recommendation-settings.png)
 
@@ -63,7 +63,7 @@ You can configure:
 - Search across individual settings and use the quick-access row or For You side panel to move between sections.
 - Review taste diagnostics, rating-derived tag suggestions, source-quality history, and explicit recovery actions.
 
-The app checks stored values before using them and replaces invalid values with safe limits.
+Number settings are checked before use so an invalid saved value does not create an unlimited search or result list.
 
 ![Management and diagnostics settings with grouped controls](visual-guide/management-diagnostics.png)
 
@@ -71,7 +71,9 @@ The app checks stored values before using them and replaces invalid values with 
 
 ## Manga preferences
 
-See [Ratings and linked versions](feature-guides/rating-manga-and-managing-linked-versions.md) for the saved-state and undo flow.
+For chapter progress and reading status, see [Local tracking](feature-guides/local-tracking.md).
+
+See [Ratings and linked versions](feature-guides/ratings.md) to manage your choices and undo supported changes.
 
 1. Open a manga.
 2. Use the preference action to choose **Love**, **Like**, **Dislike**, or **Not interested**.
@@ -87,18 +89,18 @@ When Action History is available in Evaluation Mode, supported changes include t
 2. Choose how many sources to evaluate at once and review any warning.
 3. Select **Start evaluation**.
 4. You can leave the screen while evaluation continues.
-5. Review completed, skipped, weak, failed, or partial outcomes.
+5. Review completed, skipped, failed, or partial outcomes. A source with too little information may need manual review; that does not prove its manga are a poor match.
 6. Use reassessment when installed extensions change or when the app reports stale evaluation data.
 
 ![Source Evaluation showing progress, warnings, and reassessment actions](visual-guide/source-evaluation.png)
 
 *Source Evaluation can show useful progress and partial results without displaying raw source errors.*
 
-Source Evaluation checks whether a source is suitable; For You separately checks whether it can retrieve recommendations. Diagnostics show short categories and counts instead of raw errors, requests, credentials, or account details.
+Source Evaluation samples how well a source fits your preferences and separately checks recommendation searches. It is not a complete catalogue inspection or a security guarantee. Copied diagnostics show short error categories and counts, but can include source and extension names when Evaluation Mode is off. Review the text before sharing it. See [Source Evaluation](feature-guides/source-evaluation.md) for sorting, resets, and recovery actions.
 
 ## Sources to try
 
-See [Sources to try and source priority](feature-guides/finding-and-prioritizing-sources.md) for suggestion, filtering, and installation handoff states.
+See [Sources to try and source priority](feature-guides/sources.md) for suggestion, filtering, and installation handoff states.
 
 ![Sources to try with ranked suggestions and hidden source names](visual-guide/sources-to-try-evaluation-mode.png)
 
@@ -106,14 +108,14 @@ See [Sources to try and source priority](feature-guides/finding-and-prioritizing
 
 1. Open **Recommendation Settings** and select **Sources to try**.
 2. Review compatible non-installed source suggestions based on your taste and source evaluations.
-3. Choose a suggestion to open Android's normal extension installation screen.
+3. Choose a suggestion to install its extension using your selected installation method. Follow any prompts and check whether installation succeeded.
 4. Return to evaluation or For You after installation if the new source needs assessment.
 
-If the extension list, package, or network response is unavailable, the app shows an unavailable or failed state. Test-only sample data is not included in release builds.
+If the installed-source list or a network response is unavailable, the app shows an unavailable or failed state. The screen does not invent results when real source information is missing.
 
 ## Find other versions and Best Version
 
-See [Finding and comparing manga versions](feature-guides/finding-and-comparing-manga-versions.md) for search, linking, comparison, and migration handoff.
+See [Finding and comparing manga versions](feature-guides/versions.md) for search, linking, comparison, and migration handoff.
 
 ![Matching manga versions grouped under hidden source names](visual-guide/linked-versions-evaluation-mode.png)
 
@@ -122,9 +124,9 @@ See [Finding and comparing manga versions](feature-guides/finding-and-comparing-
 1. Open a manga and choose **Find other versions** from its actions.
 2. Review versions found through other sources and deselect incorrect matches.
 3. Confirm the versions that should be linked or grouped.
-4. Open **Best Version** when multiple linked versions have enough comparable information.
+4. Open **Best Version** to compare available versions.
 5. Choose comparable chapter samples when automatic matching needs help.
-6. Review page previews. A missing preview affects only that version.
+6. Review page previews. A missing preview affects only that version. **View in Reader** is available even when a preview fails; press Back to return to the comparison page.
 7. Keep the current version or continue to Komikku's migration confirmation.
 
 | Choose chapter samples | Compare previews |
@@ -137,7 +139,7 @@ If you cancel a search, or one source fails, versions you already accepted remai
 
 ## Reader controls
 
-See [Reading schedule, completion, and chapter navigation](feature-guides/reading-schedule-completion-and-chapter-navigation.md) for schedule checks, completion prompts, linked-version ratings, and Jump to last read.
+See [Reading schedule, completion, and chapter navigation](feature-guides/reading.md) for schedule checks, completion prompts, linked-version ratings, and Jump to last read.
 
 | Reading schedule | Completion preference |
 | --- | --- |
@@ -161,13 +163,13 @@ The schedule is off by default. If you open the reader during a restricted time,
 
 ### Completion rating
 
-When you finish the latest available chapter, the reader waits until you exit before asking for a preference. Choose one or skip the prompt. If linked versions exist, the next screen can offer to rate those versions before returning to normal navigation.
+Enable **Ask for a rating after finishing** under **Recommendation settings > Versions and quality** if you want the offer after leaving a newly completed final chapter. Rereads and already-rated manga do not trigger it. Choose a rating or skip the prompt. **Ask about other versions** controls the later offer to rate other versions; dismissing that offer keeps the rating you already saved.
 
 ![Reader follow-up for applying the preference to matching versions](visual-guide/reader-linked-version-follow-up.png)
 
 ## Evaluation Mode and Action History
 
-See [Evaluation Mode and exports](feature-guides/sharing-screenshots-and-exported-files-safely.md) for presentation privacy and [Ratings and linked versions](feature-guides/rating-manga-and-managing-linked-versions.md) for reversible actions.
+See [Evaluation Mode and exports](feature-guides/sharing.md) for presentation privacy and [Ratings and linked versions](feature-guides/ratings.md) for reversible actions.
 
 Evaluation Mode replaces source names and other identifying labels with neutral text for review and screenshots. It does not change saved data, actions, source requests, or network behavior.
 
@@ -181,15 +183,15 @@ Open **Action History** to review supported reversible actions. If the same valu
 
 ## Export and cleanup
 
-See [Evaluation Mode and exports](feature-guides/sharing-screenshots-and-exported-files-safely.md) for chooser, cancellation, success, and exact-file cleanup states.
+See [Evaluation Mode and exports](feature-guides/sharing.md) for chooser, cancellation, success, and exact-file cleanup states.
 
-Extension, recommendation, and library exports use Android's document picker. Choose the destination through the system UI. After a successful supported export, the app can offer to keep or remove exactly the document it just created. Cancellation leaves no success claim, and cleanup never scans or deletes unrelated storage.
+Extension, recommendation, and library exports use Android's document picker. Choose the destination through the system UI. Public builds keep successful exports. If cleanup is offered for an incomplete, failed, or cancelled export, Keep or Remove applies only to the document that export created. A removal failure can leave it in place. Cancellation does not mean that an already-created file was removed, and cleanup does not scan unrelated storage.
 
 ![For You with the Export Top Picks action open](visual-guide/recommendation-bundle-export.png)
 
 ## OCR search for downloads
 
-See [Searching downloaded pages with OCR](feature-guides/searching-downloaded-pages-with-ocr.md) for indexing, cancellation, search, and cleanup.
+See [Searching downloaded pages with OCR](feature-guides/ocr.md) for indexing, cancellation, search, and cleanup.
 
 1. Open **OCR Search Downloads** from the app's search tools.
 2. Choose the current manga or all downloaded manga, then start indexing.
@@ -197,15 +199,15 @@ See [Searching downloaded pages with OCR](feature-guides/searching-downloaded-pa
 4. Search the recognized text and select a result to return to its manga, chapter, and page context.
 5. Use the result menu or index controls to clear one chapter, one manga, failed rows, old-version rows, or the entire index.
 
-Recognition runs on the device. The extracted text stays in the local database, is excluded from backup and sync payloads, and can be removed without deleting downloaded pages. It works best with Latin-script text; stylized or non-Latin pages may produce incomplete results.
+Recognition runs on the device. The extracted text stays on the device, is excluded from backup and sync, and can be removed without deleting downloaded pages. It works best with Latin-script text; stylized or non-Latin pages may produce incomplete results.
 
 ![OCR Search Downloads with a real indexed summary and indexing controls](visual-guide/ocr-search-downloads.png)
 
 ## Backup and restore
 
-See [Backup and restore](feature-guides/preserving-kmk-data-in-backups.md) for selection, encoding, partial restore, and failure handling.
+See [Backup and restore](feature-guides/backups.md) for choosing what to save, protecting your file, and checking partial restore results.
 
-KMK adds supported ratings, recommendation preferences, source evaluations, linked-version state, and source-quality signals to Komikku's normal backup flow. Select the matching backup options when creating or restoring a backup. A partial restore reports what could not be restored instead of treating the entire operation as successful.
+Backups can include your ratings, recommendation choices, source evaluations, linked manga versions, preferred versions, source-quality information, and Local Tracking. **Taste profile** and **Local tracking** are separate choices: include both to save linked reading progress. Select **App settings** for recommendation controls stored as preferences. Sensitive settings, which can include tracker sign-in details, are optional and off by default. A partial restore reports what could not be restored instead of treating the entire operation as successful.
 
 OCR text is excluded from backup because it can be regenerated from local downloads. Action History also cannot roll back changes made by outside services or installed packages.
 
@@ -213,9 +215,9 @@ OCR text is excluded from backup because it can be regenerated from local downlo
 
 ## Extension operations
 
-See [Extension management](feature-guides/managing-and-isolating-extensions.md) for isolation, consent, installation, removal, export, and cleanup.
+See [Extension management](feature-guides/extensions.md) for isolation, consent, installation, removal, export, and cleanup.
 
-Extension installation and removal continue through Android's supported package flows. KMK isolates known unsafe or incompatible extension failures so one package does not prevent unrelated sources from loading. Extension export uses Android's document picker and acts only on packages selected by the user. After export, cleanup is limited to the exact document created by that operation.
+Choose the ordinary installer under **Settings > Advanced > Extensions > Extension installer**. Available methods depend on your build; private installation is not offered in public builds. Android prompts depend on the method and permissions. Source Evaluation has a separate installer choice for its checks. A failing extension does not necessarily affect unrelated sources, but a source failure is not a guarantee that every crash will be contained. Extension export uses Android's document picker and acts only on extensions you select. Cleanup is limited to the document created by that export.
 
 ![Extension export confirmation explaining the executable package boundary](visual-guide/extension-export-confirmation.png)
 

@@ -38,9 +38,6 @@ object AlternateSourceReaderRoutePolicy {
         if (!AlternateSourceReaderSession.isValidRoute(destination, session.bridgeKey)) return PrepareResult.InvalidSession
         val destinationFingerprint = AlternateSourceReaderRouteFingerprint.of(destination)
         if (destinationFingerprint == session.lastSafeRouteFingerprint) return PrepareResult.SameRoute
-        if (session.transitionCount >= AlternateSourceReaderSession.MAX_TRANSITIONS) {
-            return PrepareResult.TransitionLimitReached
-        }
         if (!explicitManualReturn && destinationFingerprint == session.previousRouteFingerprint) {
             return PrepareResult.ImmediateAutomaticReversal
         }
@@ -97,8 +94,7 @@ object AlternateSourceReaderRoutePolicy {
             return ContinueResult.InvalidSession
         }
         if (
-            session.currentRoute.role != AlternateSourceReaderRouteRole.ALTERNATE ||
-            destination.role != AlternateSourceReaderRouteRole.ALTERNATE
+            session.currentRoute.role != destination.role
         ) {
             return ContinueResult.WrongRole
         }
@@ -154,7 +150,10 @@ sealed interface AlternateSourceReaderEvent {
     data object BeginCorrection : AlternateSourceReaderEvent
     data class CorrectionResolved(val generation: Long, val session: AlternateSourceReaderSession) : AlternateSourceReaderEvent
     data object BeginReturn : AlternateSourceReaderEvent
-    data class ReturnResolved(val generation: Long) : AlternateSourceReaderEvent
+    data class ReturnResolved(
+        val generation: Long,
+        val session: AlternateSourceReaderSession,
+    ) : AlternateSourceReaderEvent
     data class Failed(val generation: Long, val reason: AlternateSourceReaderFailureReason) : AlternateSourceReaderEvent
     data class Cancelled(val generation: Long) : AlternateSourceReaderEvent
     data object Dismiss : AlternateSourceReaderEvent
@@ -191,7 +190,11 @@ object AlternateSourceReaderStateMachine {
         AlternateSourceReaderEvent.BeginReturn -> {
             if (
                 state.session != null &&
-                state.phase in setOf(AlternateSourceReaderPhase.ALTERNATE, AlternateSourceReaderPhase.DEGRADED)
+                state.phase in setOf(
+                    AlternateSourceReaderPhase.PRIMARY,
+                    AlternateSourceReaderPhase.ALTERNATE,
+                    AlternateSourceReaderPhase.DEGRADED,
+                )
             ) {
                 begin(state, AlternateSourceReaderPhase.RETURNING)
             } else {
@@ -214,8 +217,13 @@ object AlternateSourceReaderStateMachine {
             if (state.phase == AlternateSourceReaderPhase.RETURNING && event.generation == state.generation) {
                 AlternateSourceReaderReduction(
                     AlternateSourceReaderMachineState(
-                        phase = AlternateSourceReaderPhase.ENDED,
+                        phase = if (event.session.currentRoute.role == AlternateSourceReaderRouteRole.PRIMARY) {
+                            AlternateSourceReaderPhase.PRIMARY
+                        } else {
+                            AlternateSourceReaderPhase.ALTERNATE
+                        },
                         generation = state.generation,
+                        session = event.session,
                     ),
                     true,
                 )

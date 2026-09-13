@@ -11,6 +11,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
+import logcat.LogPriority
+import logcat.logcat
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.domain.track.interactor.GetTracks
@@ -24,6 +26,7 @@ class RefreshTracks(
     private val trackerManager: TrackerManager,
     private val insertTrack: InsertTrack,
     private val syncChapterProgressWithTrack: SyncChapterProgressWithTrack,
+    private val syncLocalTrackingFromExternal: SyncLocalTrackingFromExternal? = null,
 ) {
 
     /**
@@ -47,6 +50,15 @@ class RefreshTracks(
                         return@async try {
                             val updatedTrack = service!!.refresh(track.toDbTrack()).toDomainTrack()!!
                             insertTrack.await(updatedTrack)
+                            try {
+                                syncLocalTrackingFromExternal?.sync(updatedTrack, service)
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (error: Throwable) {
+                                logcat(LogPriority.ERROR) {
+                                    "Local tracking sync after tracker refresh failed: ${error.message}"
+                                }
+                            }
                             // KMK -->
                             if (!enhancedTrackersOnly) {
                                 syncChapterProgressWithTrack.sync(mangaId, updatedTrack, service)
@@ -72,6 +84,17 @@ class RefreshTracks(
                 }
                 .awaitAll()
                 .filterNotNull()
+                .also {
+                    try {
+                        syncLocalTrackingFromExternal?.synchronize()
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Throwable) {
+                        logcat(LogPriority.ERROR) {
+                            "Local tracking reconciliation after tracker refresh failed: ${error.message}"
+                        }
+                    }
+                }
         }
     }
 }

@@ -1,12 +1,19 @@
 package eu.kanade.tachiyomi.data.updater
 
 import eu.kanade.tachiyomi.BuildConfig
+import exh.recs.KmkRecsReleaseNotes
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class AppUpdateCheckerRepositoryTest {
+
+    @Test
+    fun `stable update identity uses the fork release version`() {
+        assertEquals(KmkRecsReleaseNotes.VERSION_NAME.removePrefix("KMK-Recs "), getUpdateVersionName())
+        assertEquals(getUpdateVersionName(), getReleaseTag())
+    }
 
     @Test
     fun `stable and preview checks stay inside the KMK fork`() {

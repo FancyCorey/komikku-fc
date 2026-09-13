@@ -15,6 +15,7 @@ import tachiyomi.domain.manga.repository.MangaRepository
 import tachiyomi.domain.taste.interactor.GetCrossSourceIdentityDecisions
 import tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks
 import tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy
+import tachiyomi.domain.taste.model.CrossSourceIdentityDecisionValue
 import tachiyomi.domain.taste.repository.TasteRepository
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -29,7 +30,11 @@ class RatingConflictOptOutDeviceAcceptanceTest {
         DisposableTestEnvironmentGuard.assumeDisposableEnvironment(context)
 
         val decisions = Injekt.get<GetCrossSourceIdentityDecisions>().awaitAll()
-        val rejected = decisions.firstOrNull { !CrossSourceIdentityDecisionPolicy.isAuthoritativeConfirmation(it) }
+        val rejected = decisions.firstOrNull {
+            it.decision == CrossSourceIdentityDecisionValue.USER_REJECTED &&
+                it.pair.left.url.startsWith("/fixture/manga/") &&
+                it.pair.right.url.startsWith("/fixture/manga/")
+        }
             ?: error("seeded profile has no rejected identity decision")
         val links = Injekt.get<GetCrossSourceMangaLinks>().awaitAll()
         val left = links.firstOrNull { it.source == rejected.pair.left.source && it.url == rejected.pair.left.url }

@@ -125,6 +125,7 @@ class AlternateSourceReaderPresentationAdoptionSourceTest {
             "alternate_source_reader_skip",
         ).forEach { resource -> assertTrue(topBar.contains(resource)) }
         assertTrue(topBar.contains("onReturnToPrimarySource?.let"))
+        assertTrue(topBar.contains("Icons.Outlined.SwapHoriz"))
         assertTrue(topBar.contains("onCorrectAlternateSourceMapping?.let"))
         assertTrue(topBar.contains("onSkipAlternateSourceChapter?.let"))
     }

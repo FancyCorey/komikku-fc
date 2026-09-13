@@ -192,7 +192,7 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
     fun startupFullCompilation() = startup(CompilationMode.Full())
 
     private fun startup(compilationMode: CompilationMode) = benchmarkRule.measureRepeated(
-        packageName = "app.komikku.kmk.benchmark",
+        packageName = "app.komikku.benchmark",
         metrics = listOf(StartupTimingMetric()),
         compilationMode = compilationMode,
         iterations = 10,
@@ -261,6 +261,13 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
  * [nextFirstRunUiStep]'s own KDoc.
  */
 internal fun MacrobenchmarkScope.dismissFirstRunUiIfPresent() {
+    // The disposable PerfClone can retain a stale tree URI such as KMKData/(invalid) in both
+    // DocumentsUI and the benchmark app's onboarding preferences. Reset only those disposable
+    // benchmark states before onboarding; this keeps the journey deterministic without touching
+    // user/tablet data.
+    device.executeShellCommand("pm clear $BENCHMARK_PACKAGE")
+    device.executeShellCommand("pm clear $DOCUMENTS_UI_PACKAGE")
+    device.executeShellCommand("mkdir -p $DOCUMENTS_UI_BENCHMARK_FOLDER_PATH")
     startActivityAndWait()
 
     var previousObservation: FirstRunUiObservation? = null
@@ -359,6 +366,17 @@ internal fun MacrobenchmarkScope.dismissFirstRunUiIfPresent() {
                     }
                     FirstRunUiState.STORAGE_PICKER -> {
                         if (snapshot.storagePickerInvalidRootPresent) {
+                            val downloadFolder = device.findObject(
+                                By.res("android:id/title").text(DOCUMENTS_UI_DOWNLOAD_FOLDER_TEXT),
+                            )
+                            if (downloadFolder != null) {
+                                Log.i(FIRST_RUN_UI_LOG_TAG, "action=select_existing_download_folder")
+                                val bounds = downloadFolder.visibleBounds
+                                device.click(bounds.centerX(), bounds.centerY())
+                                device.waitForIdle()
+                                Thread.sleep(STORAGE_PICKER_SETTLE_DELAY_MS)
+                                continue
+                            }
                             if (invalidRootDrawerAttempts >= DOCUMENTS_UI_MAX_ROOT_DRAWER_ATTEMPTS) {
                                 failFirstRunSetup(
                                     "DocumentsUI invalid-root recovery exhausted " +
@@ -369,29 +387,21 @@ internal fun MacrobenchmarkScope.dismissFirstRunUiIfPresent() {
                                 )
                             }
                             invalidRootDrawerAttempts++
-                            // A stale persisted DocumentsUI stack can reopen at an invalid root.
-                            // Prefer the provider's supported roots drawer so the next launch
-                            // does not immediately restore the same invalid location.
-                            val downloadsRoot = device.findObject(
-                                By.text(DOCUMENTS_UI_DOWNLOADS_ROOT_TEXT),
+                            // A stale persisted DocumentsUI stack can reopen at an invalid child
+                            // such as KMKData/(invalid). Clicking the visible parent breadcrumb
+                            // keeps the picker open across DocumentsUI versions; pressing Back is
+                            // only a last resort when the parent label is unavailable.
+                            Log.i(FIRST_RUN_UI_LOG_TAG, "action=return_from_documentsui_invalid_root")
+                            val parentBreadcrumb = device.findObject(
+                                By.text(DOCUMENTS_UI_EXPECTED_PARENT_TEXT),
                             )
-                            if (downloadsRoot != null) {
-                                Log.i(FIRST_RUN_UI_LOG_TAG, "action=select_documentsui_downloads_root")
-                                downloadsRoot.click()
-                                device.waitForIdle()
-                                Thread.sleep(STORAGE_PICKER_SETTLE_DELAY_MS)
+                            if (parentBreadcrumb != null) {
+                                parentBreadcrumb.click()
                             } else {
-                                Log.i(FIRST_RUN_UI_LOG_TAG, "action=open_documentsui_roots_drawer")
-                                device.swipe(
-                                    4,
-                                    device.displayHeight / 2,
-                                    device.displayWidth / 2,
-                                    device.displayHeight / 2,
-                                    20,
-                                )
-                                device.waitForIdle()
-                                Thread.sleep(STORAGE_PICKER_SETTLE_DELAY_MS)
+                                device.pressBack()
                             }
+                            device.waitForIdle()
+                            Thread.sleep(STORAGE_PICKER_SETTLE_DELAY_MS)
                             continue
                         }
                         if (snapshot.storagePickerAllowButtonPresent) {
@@ -402,14 +412,29 @@ internal fun MacrobenchmarkScope.dismissFirstRunUiIfPresent() {
                             Thread.sleep(STORAGE_PICKER_SETTLE_DELAY_MS)
                             continue
                         }
+                        val existingBenchmarkFolder = device.findObject(
+                            By.res("android:id/title").text(DOCUMENTS_UI_BENCHMARK_FOLDER_TEXT),
+                        )
+                        val downloadFolder = device.findObject(
+                            By.res("android:id/title").text(DOCUMENTS_UI_DOWNLOAD_FOLDER_TEXT),
+                        )
                         val createFolderAction = device.findObject(
                             By.res(DOCUMENTS_UI_CREATE_FOLDER_ACTION_RESOURCE),
                         ) ?: device.findObject(By.res(DOCUMENTS_UI_CREATE_FOLDER_MENU_RESOURCE))
                         val confirmButton = device.findObject(By.res(DOCUMENTS_UI_CONFIRM_BUTTON_RESOURCE))
+                            ?: device.findObject(By.text(DOCUMENTS_UI_CONFIRM_BUTTON_TEXT))
                         when {
-                            createFolderAction?.isEnabled == true -> {
-                                Log.i(FIRST_RUN_UI_LOG_TAG, "action=click_documentsui_create_folder")
-                                createFolderAction.click()
+                            downloadFolder != null -> {
+                                Log.i(FIRST_RUN_UI_LOG_TAG, "action=select_existing_download_folder")
+                                val bounds = downloadFolder.visibleBounds
+                                device.click(bounds.centerX(), bounds.centerY())
+                                device.waitForIdle()
+                                Thread.sleep(STORAGE_PICKER_SETTLE_DELAY_MS)
+                            }
+                            existingBenchmarkFolder != null -> {
+                                Log.i(FIRST_RUN_UI_LOG_TAG, "action=click_existing_benchmark_folder")
+                                val bounds = existingBenchmarkFolder.visibleBounds
+                                device.click(bounds.centerX(), bounds.centerY())
                                 device.waitForIdle()
                                 Thread.sleep(STORAGE_PICKER_SETTLE_DELAY_MS)
                             }
@@ -425,6 +450,12 @@ internal fun MacrobenchmarkScope.dismissFirstRunUiIfPresent() {
                                 )
                                 device.click(bounds.centerX(), bounds.centerY())
                                 device.waitForIdle()
+                                Thread.sleep(STORAGE_PICKER_SETTLE_DELAY_MS)
+                            }
+                            createFolderAction?.isEnabled == true -> {
+                                // The first DocumentsUI frame can expose toolbar actions before
+                                // the directory items finish loading. Let the bounded state
+                                // machine observe the settled listing before failing.
                                 Thread.sleep(STORAGE_PICKER_SETTLE_DELAY_MS)
                             }
                             else -> Thread.sleep(300)
@@ -510,8 +541,13 @@ private const val DOCUMENTS_UI_CREATE_FOLDER_ACTION_RESOURCE =
 private const val DOCUMENTS_UI_CREATE_FOLDER_MENU_RESOURCE =
     "com.google.android.documentsui:id/option_menu_create_dir"
 private const val DOCUMENTS_UI_CONFIRM_BUTTON_RESOURCE = "android:id/button1"
+private const val DOCUMENTS_UI_CONFIRM_BUTTON_TEXT = "USE THIS FOLDER"
 private const val DOCUMENTS_UI_INVALID_ROOT_TEXT = "(invalid)"
 private const val DOCUMENTS_UI_DOWNLOADS_ROOT_TEXT = "Downloads"
+private const val DOCUMENTS_UI_EXPECTED_PARENT_TEXT = "KMKData"
+private const val DOCUMENTS_UI_BENCHMARK_FOLDER_TEXT = "AAA_KMKData"
+private const val DOCUMENTS_UI_BENCHMARK_FOLDER_PATH = "/sdcard/Download/AAA_KMKData"
+private const val DOCUMENTS_UI_DOWNLOAD_FOLDER_TEXT = "Download"
 private const val DOCUMENTS_UI_MAX_ROOT_DRAWER_ATTEMPTS = 3
 private const val STORAGE_PICKER_SETTLE_DELAY_MS = 750L
 private const val STORAGE_PERMISSION_ALLOW_TEXT = "ALLOW"

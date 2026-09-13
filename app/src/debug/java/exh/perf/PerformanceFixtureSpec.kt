@@ -29,6 +29,12 @@ data class PerformanceFixtureSpec(
     val malformedMetadataFraction: Double,
     val longRunningCount: Int,
     val seed: Long,
+    /**
+     * Optional source IDs used by a disposable device profile. When absent, the generator keeps
+     * its synthetic installed-like IDs for deterministic host tests. Device UI review can provide
+     * the real visible source IDs without changing production source visibility rules.
+     */
+    val availableSourceIds: List<Long>? = null,
 ) {
     init {
         require(totalManga > 0) { "totalManga must be positive" }

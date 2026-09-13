@@ -18,13 +18,14 @@ import tachiyomi.domain.track.model.Track
 class RefreshTracksTest {
 
     @Test
-    fun `refresh isolates tracker failures and never owns local reconciliation`() = runTest {
+    fun `refresh isolates tracker failures and reconciles local progress once after the batch`() = runTest {
         val successfulTracker = mockk<BaseTracker>()
         val failingTracker = mockk<BaseTracker>()
         val trackerManager = mockk<TrackerManager>()
         val getTracks = mockk<GetTracks>()
         val insertTrack = mockk<InsertTrack>(relaxed = true)
         val syncProgress = mockk<SyncChapterProgressWithTrack>(relaxed = true)
+        val localSync = mockk<SyncLocalTrackingFromExternal>(relaxed = true)
         val successfulTrack = domainTrack(trackerId = 10L)
         val failingTrack = domainTrack(trackerId = 20L)
 
@@ -38,8 +39,9 @@ class RefreshTracksTest {
         coEvery { successfulTracker.refresh(any()) } returns successfulTrack.toDbTrack()
         coEvery { failingTracker.refresh(any()) } throws IllegalStateException("offline")
         coEvery { syncProgress.sync(42L, successfulTrack, successfulTracker) } returns null
+        coEvery { localSync.sync(successfulTrack, successfulTracker) } throws IllegalStateException("local sync failed")
 
-        val failures = RefreshTracks(getTracks, trackerManager, insertTrack, syncProgress).await(
+        val failures = RefreshTracks(getTracks, trackerManager, insertTrack, syncProgress, localSync).await(
             mangaId = 42L,
             enhancedTrackersOnly = false,
         )
@@ -53,6 +55,8 @@ class RefreshTracksTest {
         coVerify(exactly = 1) { insertTrack.await(successfulTrack) }
         coVerify(exactly = 0) { insertTrack.await(failingTrack) }
         coVerify(exactly = 1) { syncProgress.sync(42L, successfulTrack, successfulTracker) }
+        coVerify(exactly = 1) { localSync.sync(successfulTrack, successfulTracker) }
+        coVerify(exactly = 1) { localSync.synchronize() }
     }
 
     private fun domainTrack(trackerId: Long) = Track(

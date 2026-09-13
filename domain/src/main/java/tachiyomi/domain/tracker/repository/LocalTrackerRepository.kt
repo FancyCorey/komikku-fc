@@ -35,6 +35,14 @@ interface LocalTrackerRepository {
         progressAt: Long,
     )
 
+    suspend fun recordPendingProgress(
+        workId: String,
+        source: Long,
+        chapterNumber: Double,
+        chapterLabel: String,
+        progressAt: Long,
+    )
+
     suspend fun upsertSource(source: LocalTrackedWorkSource)
 
     /** Applies a migrated source relationship and dependent progress/work update as one unit. */

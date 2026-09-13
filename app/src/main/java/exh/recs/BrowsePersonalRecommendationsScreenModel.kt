@@ -3088,7 +3088,6 @@ class BrowsePersonalRecommendationsScreenModel(
             )
             setMangaTasteBatch.await(manga, tachiyomi.domain.taste.model.MangaRating.NOT_INTERESTED)
             exh.util.EvaluationModeJournalRecorder.commit(journalEntries)
-            propagateConfirmedLocalTracking(manga)
             BulkTasteOutcome.success(manga.size)
         } catch (e: CancellationException) {
             throw e
@@ -3131,9 +3130,8 @@ class BrowsePersonalRecommendationsScreenModel(
     }
 
     private suspend fun propagateConfirmedLocalTracking(manga: List<Manga>) {
-        if (!sourcePreferences.confirmedTrackedVersionLocalTrackingPropagationEnabled().get()) return
         manga.distinctBy { it.source to it.url }.forEach { origin ->
-            confirmedGroupLocalTrackingPropagator.propagateIfAnyTracked(
+            confirmedGroupLocalTrackingPropagator.ensureTrackedForRating(
                 confirmedMangaGroupTargets.await(origin),
             )
         }

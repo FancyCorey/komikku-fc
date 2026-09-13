@@ -125,7 +125,9 @@ class GlobalSearchScreen(
                 },
                 onLongClickItem = { manga ->
                     // KMK -->
-                    if (!bulkFavoriteState.selectionMode) {
+                    if (returnSelection) {
+                        Unit
+                    } else if (!bulkFavoriteState.selectionMode) {
                         bulkFavoriteScreenModel.addRemoveManga(manga, haptic)
                     } else {
                         // KMK <--

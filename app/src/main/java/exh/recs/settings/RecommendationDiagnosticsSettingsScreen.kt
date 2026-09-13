@@ -121,6 +121,8 @@ class RecommendationDiagnosticsSettingsScreen(
                 "chapter_completion_rating_other_versions_prompt",
                 "confirmed_tracked_version_rating_propagation",
                 "confirmed_tracked_version_local_tracking_propagation",
+                "automatic_local_tracking_status_inference",
+                "automatic_rated_group_primary",
                 "identity_review",
                 "best_version_header",
                 "best_version_sample_size",
@@ -301,6 +303,30 @@ class RecommendationDiagnosticsSettingsScreen(
                             onToggle = {
                                 screenModel.setConfirmedTrackedVersionLocalTrackingPropagationEnabled(
                                     !state.confirmedTrackedVersionLocalTrackingPropagationEnabled,
+                                )
+                            },
+                        )
+                    }
+                    item(key = "automatic_local_tracking_status_inference") {
+                        SameMangaSwitchRow(
+                            title = stringResource(KMR.strings.automatic_local_tracking_status_inference_title),
+                            summary = stringResource(KMR.strings.automatic_local_tracking_status_inference_summary),
+                            enabled = state.automaticLocalTrackingStatusInferenceEnabled,
+                            onToggle = {
+                                screenModel.setAutomaticLocalTrackingStatusInferenceEnabled(
+                                    !state.automaticLocalTrackingStatusInferenceEnabled,
+                                )
+                            },
+                        )
+                    }
+                    item(key = "automatic_rated_group_primary") {
+                        SameMangaSwitchRow(
+                            title = stringResource(KMR.strings.automatic_rated_group_primary_title),
+                            summary = stringResource(KMR.strings.automatic_rated_group_primary_summary),
+                            enabled = state.automaticRatedGroupPrimaryEnabled,
+                            onToggle = {
+                                screenModel.setAutomaticRatedGroupPrimaryEnabled(
+                                    !state.automaticRatedGroupPrimaryEnabled,
                                 )
                             },
                         )

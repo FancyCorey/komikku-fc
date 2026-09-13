@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.data.backup.restore.restorers
 
+import eu.kanade.domain.track.interactor.RecordLocalTrackedChapterProgress
 import eu.kanade.tachiyomi.data.backup.models.BackupLocalTrackedWork
 import eu.kanade.tachiyomi.data.backup.models.BackupLocalTrackedWorkSourceProgress
 import kotlinx.coroutines.CancellationException
@@ -12,6 +13,7 @@ import tachiyomi.domain.tracker.repository.LocalTrackerRepository
 
 class LocalTrackerBackupRestorer(
     private val repository: LocalTrackerRepository,
+    private val recordLocalTrackedChapterProgress: RecordLocalTrackedChapterProgress? = null,
 ) {
     suspend fun restore(rows: List<BackupLocalTrackedWork>): List<String> {
         val errors = mutableListOf<String>()
@@ -164,6 +166,12 @@ class LocalTrackerBackupRestorer(
                     rollbackFailure?.let { append("; rollback failed: ${it::class.simpleName}") }
                 }
             }
+        }
+        recordLocalTrackedChapterProgress?.let { interactor ->
+            runCatching { interactor.synchronize() }
+                .onFailure { error ->
+                    errors += "Local tracker chapter reconciliation failed: ${error::class.simpleName}"
+                }
         }
         return errors
     }

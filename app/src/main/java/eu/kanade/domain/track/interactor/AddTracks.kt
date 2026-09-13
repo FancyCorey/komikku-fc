@@ -30,6 +30,7 @@ class AddTracks(
     private val syncChapterProgressWithTrack: SyncChapterProgressWithTrack,
     private val getChaptersByMangaId: GetChaptersByMangaId,
     private val trackerManager: TrackerManager,
+    private val syncLocalTrackingFromExternal: SyncLocalTrackingFromExternal? = null,
 ) {
 
     // TODO: update all trackers based on common data
@@ -42,6 +43,7 @@ class AddTracks(
             var track = item.toDomainTrack(idRequired = false) ?: return@withIOContext
 
             insertTrack.await(track)
+            syncLocalTrackingFromExternal?.sync(track, tracker)
 
             // TODO: merge into [SyncChapterProgressWithTrack]?
             // Update chapter progress if newer chapters marked read locally
@@ -108,6 +110,7 @@ class AddTracks(
                             track.manga_id = manga.id
                             (service as Tracker).bind(track)
                             insertTrack.await(track.toDomainTrack(idRequired = false)!!)
+                            syncLocalTrackingFromExternal?.sync(track.toDomainTrack(idRequired = false)!!, service)
 
                             syncChapterProgressWithTrack.await(
                                 manga.id,

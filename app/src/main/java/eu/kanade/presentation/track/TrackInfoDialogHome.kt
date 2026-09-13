@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DropdownMenuItem
@@ -87,10 +88,12 @@ fun TrackInfoDialogHome(
     // always shows the local status/list workflow -- never an automatic write. See TrackerEntry's
     // doc for why Local isn't just another TrackItem.
     onLocalClick: () -> Unit,
+    onLocalTitleClick: () -> Unit = {},
     onLocalDetailsClick: () -> Unit = {},
     onLocalChapterClick: () -> Unit = {},
     onLocalReconcileClick: () -> Unit = {},
     onLocalOtherVersionsClick: () -> Unit = {},
+    onLocalSettingsClick: () -> Unit = {},
     localDateFormat: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE,
 ) {
     Column(
@@ -108,10 +111,12 @@ fun TrackInfoDialogHome(
                     work = entry.work,
                     dateFormat = localDateFormat,
                     onClick = onLocalClick,
+                    onTitleClick = onLocalTitleClick,
                     onDetailsClick = onLocalDetailsClick,
                     onChapterClick = onLocalChapterClick,
                     onReconcileClick = onLocalReconcileClick,
                     onOtherVersionsClick = onLocalOtherVersionsClick,
+                    onSettingsClick = onLocalSettingsClick,
                 )
                 is TrackerEntry.External -> ExternalTrackerRow(
                     item = entry.item,
@@ -206,10 +211,12 @@ private fun LocalTrackerInfoItem(
     work: LocalTrackedWork?,
     dateFormat: DateTimeFormatter,
     onClick: () -> Unit,
+    onTitleClick: () -> Unit,
     onDetailsClick: () -> Unit,
     onChapterClick: () -> Unit,
     onReconcileClick: () -> Unit,
     onOtherVersionsClick: () -> Unit,
+    onSettingsClick: () -> Unit,
 ) {
     if (work == null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -241,7 +248,7 @@ private fun LocalTrackerInfoItem(
                 modifier = Modifier
                     .weight(1f)
                     .heightIn(min = 48.dp)
-                    .clickable(onClick = onClick)
+                    .clickable(onClick = onTitleClick)
                     .padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
                 verticalArrangement = Arrangement.Center,
             ) {
@@ -253,17 +260,23 @@ private fun LocalTrackerInfoItem(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = stringResource(KMR.strings.local_tracking_reconcile),
+                    text = work.title,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = stringResource(MR.strings.action_settings),
                 )
             }
         }
         TrackDetailsPanel(
             status = stringResource(LocalTrackingActionPolicy.statusLabel(work.status)),
             onStatusClick = onClick,
-            chapters = work.lastChapterNumber?.let { it.toInt().toString() },
-            onChaptersClick = work.lastChapterNumber?.let { { onChapterClick() } },
+            chapters = work.lastChapterNumber?.let(::formatLocalChapterNumber) ?: "0",
+            onChaptersClick = onChapterClick,
             score = work.score?.toString(),
             onScoreClick = onDetailsClick,
             startDate = work.startDate?.let { dateFormat.format(it.toLocalDate()) },

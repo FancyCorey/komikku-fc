@@ -6,6 +6,7 @@ import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.util.system.isFossBuildType
 import eu.kanade.tachiyomi.util.system.isPreviewBuildType
 import exh.source.ExhPreferences
+import exh.recs.KmkRecsReleaseNotes
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.release.interactor.GetApplicationRelease
 import tachiyomi.domain.release.service.AppUpdatePolicy
@@ -38,7 +39,7 @@ class AppUpdateChecker(
                     isFoss = isFossBuildType,
                     isPreview = isPreviewBuildType || peekIntoPreview,
                     commitCount = BuildConfig.COMMIT_COUNT.toInt(),
-                    versionName = BuildConfig.VERSION_NAME,
+                    versionName = getUpdateVersionName(),
                     repository = getGithubRepo(peekIntoPreview),
                     forceCheck = forceCheck,
                 ),
@@ -84,7 +85,7 @@ class AppUpdateChecker(
                     isFoss = isFossBuildType,
                     isPreview = isPreviewBuildType || peekIntoPreview,
                     commitCount = BuildConfig.COMMIT_COUNT.toInt(),
-                    versionName = BuildConfig.VERSION_NAME,
+                    versionName = getUpdateVersionName(),
                     repository = getGithubRepo(peekIntoPreview),
                 ),
             )
@@ -97,13 +98,15 @@ val GITHUB_REPO: String by lazy { getGithubRepo() }
 
 fun getGithubRepo(peekIntoPreview: Boolean = false): String = "FancyCorey/komikku-KMK"
 
+fun getUpdateVersionName(): String = KmkRecsReleaseNotes.VERSION_NAME.removePrefix("KMK-Recs ")
+
 val RELEASE_TAG: String by lazy { getReleaseTag() }
 
 fun getReleaseTag(peekIntoPreview: Boolean = false): String =
     if (isPreviewBuildType || peekIntoPreview) {
         "r${BuildConfig.COMMIT_COUNT}"
     } else {
-        "v${BuildConfig.VERSION_NAME}"
+        getUpdateVersionName()
     }
 
 val RELEASE_URL = "https://github.com/$GITHUB_REPO/releases/tag/$RELEASE_TAG"

@@ -23,7 +23,7 @@ env:
 jobs:
   build:
     name: Build and sign KMK release
-    if: github.repository == 'FancyCorey/komikku-KMK'
+    if: github.repository == 'FancyCorey/komikku-fc'
     runs-on: ubuntu-24.04
     steps:
       - name: Resolve and verify release tag
@@ -33,10 +33,10 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           set -euo pipefail
-          case "${RELEASE_TAG}" in
-            v[0-9]*) ;;
-            *) echo "Release tags must begin with v followed by a version number." >&2; exit 1 ;;
-          esac
+          [[ "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-fix[0-9]+)?$ ]] || {
+            echo "Release tags must use vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-fixNUMBER." >&2
+            exit 1
+          }
           printf 'tag=%s\n' "${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Check out repository
@@ -53,8 +53,10 @@ jobs:
           set -euo pipefail
           git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}" >/dev/null
           version_name="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"/\1/p' app/build.gradle.kts | head -n 1)"
+          version_code="$(sed -n 's/^[[:space:]]*versionCode = \([0-9]*\)/\1/p' app/build.gradle.kts | head -n 1)"
           kmk_feature_version="$(sed -n 's/^[[:space:]]*const val VERSION_NAME = "KMK-Recs \([^"]*\)"/\1/p' app/src/main/java/exh/recs/KmkRecsReleaseNotes.kt | head -n 1)"
           test -n "${version_name}" || { echo "Could not read app versionName from app/build.gradle.kts" >&2; exit 1; }
+          test -n "${version_code}" || { echo "Could not read Android versionCode." >&2; exit 1; }
           test -n "${kmk_feature_version}" || { echo "Could not read KMK feature version from KmkRecsReleaseNotes.kt" >&2; exit 1; }
           test "${kmk_feature_version}" = "${RELEASE_TAG}" || {
             echo "KMK feature version [${kmk_feature_version}] does not match release tag [${RELEASE_TAG}]" >&2
@@ -62,6 +64,7 @@ jobs:
           }
           printf 'commit=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           printf 'version_name=%s\n' "${version_name}" >> "$GITHUB_OUTPUT"
+          printf 'version_code=%s\n' "${version_code}" >> "$GITHUB_OUTPUT"
           printf 'kmk_feature_version=%s\n' "${kmk_feature_version}" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK
@@ -106,7 +109,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gradle_args=(spotlessCheck :app:testDebugUnitTest :source-local:testDebugUnitTest :app:assembleKmkPublicTest -Penable-updater)
+          # Keep development-test and public compilation out of the same compiler heap.
+          ./gradlew spotlessCheck :app:testDebugUnitTest :source-local:testDebugUnitTest :domain:testDebugUnitTest :data:testDebugUnitTest --max-workers=1 --no-parallel
+          gradle_args=(:app:assembleKmkPublicTest -Penable-updater --max-workers=1 --no-parallel)
           if [ "${{ steps.google_drive.outputs.enabled }}" = "true" ]; then
             gradle_args+=(-Penable-google-drive-sync)
           fi
@@ -138,6 +143,28 @@ jobs:
             }
           done
 
+      - name: Verify upgrade continuity with the published release
+        id: previous_release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          VERSION_CODE: ${{ steps.identity.outputs.version_code }}
+        run: |
+          set -euo pipefail
+          previous_tag="$(gh api repos/FancyCorey/komikku-fc/releases/latest --jq '.tag_name')"
+          test "${previous_tag}" != "${RELEASE_TAG}" || { echo "Cannot replace a published release." >&2; exit 1; }
+          previous_dir="${RUNNER_TEMP}/previous-release"
+          mkdir -p "${previous_dir}"
+          gh release download "${previous_tag}" --repo FancyCorey/komikku-fc --pattern RELEASE_MANIFEST.json --dir "${previous_dir}"
+          manifest="${previous_dir}/RELEASE_MANIFEST.json"
+          jq -e --arg tag "${previous_tag}" '.tag == $tag and .package == "app.komikku.kmk"' "${manifest}" >/dev/null
+          # The first public manifest predates the version_code field.
+          previous_code="$(jq -er 'if has("version_code") then .version_code elif .tag == "v0.8.21-fix2" then 93 else error("Missing previous version_code") end | select(type == "number" and . == floor and . > 0)' "${manifest}")"
+          test "${VERSION_CODE}" -gt "${previous_code}" || { echo "Android versionCode must increase above ${previous_code}." >&2; exit 1; }
+          previous_certificate="$(jq -er '.certificate_sha256 | select(test("^[0-9a-fA-F]{64}$")) | ascii_downcase' "${manifest}")"
+          printf 'certificate_sha256=%s\n' "${previous_certificate}" >> "$GITHUB_OUTPUT"
+
       - name: Sign release APKs
         uses: r0adkll/sign-android-release@f30bdd30588842ac76044ecdbd4b6d0e3e813478
         with:
@@ -151,9 +178,11 @@ jobs:
 
       - name: Name signed APKs
         shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -euo pipefail
-          tag="${{ steps.release.outputs.tag }}"
+          tag="${RELEASE_TAG}"
           mv app/build/outputs/apk/kmkPublicTest/app-universal-kmkPublicTest-signed.apk "Komikku-KMK-${tag}.apk"
           mv app/build/outputs/apk/kmkPublicTest/app-arm64-v8a-kmkPublicTest-signed.apk "Komikku-KMK-arm64-v8a-${tag}.apk"
           mv app/build/outputs/apk/kmkPublicTest/app-armeabi-v7a-kmkPublicTest-signed.apk "Komikku-KMK-armeabi-v7a-${tag}.apk"
@@ -167,6 +196,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
           VERSION_NAME: ${{ steps.identity.outputs.version_name }}
+          VERSION_CODE: ${{ steps.identity.outputs.version_code }}
+          PREVIOUS_CERTIFICATE_SHA256: ${{ steps.previous_release.outputs.certificate_sha256 }}
         run: |
           set -euo pipefail
           build_tools="${ANDROID_HOME}/build-tools/${ANDROID_BUILD_TOOLS_VERSION}"
@@ -180,6 +211,10 @@ jobs:
           printf '%s\n' "${badging}" | grep -F "versionName='${VERSION_NAME}'"
           certificate_fingerprint=""
           for apk in Komikku-KMK-*.apk; do
+            badging="$("${aapt}" dump badging "${apk}")"
+            printf '%s\n' "${badging}" | grep -F "package: name='app.komikku.kmk'"
+            printf '%s\n' "${badging}" | grep -F "versionName='${VERSION_NAME}'"
+            printf '%s\n' "${badging}" | grep -F "versionCode='${VERSION_CODE}'"
             "${apksigner}" verify --verbose --print-certs "${apk}"
             current_fingerprint="$("${apksigner}" verify --print-certs "${apk}" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ { print $2 }')"
             test -n "${current_fingerprint}"
@@ -189,6 +224,7 @@ jobs:
               test "${certificate_fingerprint}" = "${current_fingerprint}"
             fi
           done
+          test "${certificate_fingerprint}" = "${PREVIOUS_CERTIFICATE_SHA256}" || { echo "Signing certificate changed; existing users could not install this update." >&2; exit 1; }
           printf '%s\n' "${certificate_fingerprint}" > CERTIFICATE_SHA256.txt
           printf 'certificate_sha256=%s\n' "${certificate_fingerprint}" >> "$GITHUB_OUTPUT"
 
@@ -198,6 +234,7 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
           RELEASE_COMMIT: ${{ steps.identity.outputs.commit }}
           VERSION_NAME: ${{ steps.identity.outputs.version_name }}
+          VERSION_CODE: ${{ steps.identity.outputs.version_code }}
           KMK_FEATURE_VERSION: ${{ steps.identity.outputs.kmk_feature_version }}
           CERTIFICATE_SHA256: ${{ steps.apk_identity.outputs.certificate_sha256 }}
           GOOGLE_DRIVE_ENABLED: ${{ steps.google_drive.outputs.enabled }}
@@ -208,11 +245,12 @@ jobs:
             --arg commit "${RELEASE_COMMIT}" \
             --arg package_name "app.komikku.kmk" \
             --arg version_name "${VERSION_NAME}" \
+            --argjson version_code "${VERSION_CODE}" \
             --arg kmk_feature_version "${KMK_FEATURE_VERSION}" \
             --arg certificate_sha256 "${CERTIFICATE_SHA256}" \
             --argjson google_drive_sync_enabled "${GOOGLE_DRIVE_ENABLED}" \
             --rawfile checksums SHA256SUMS.txt \
-            '{tag: $tag, commit: $commit, package: $package_name, version_name: $version_name, kmk_feature_version: $kmk_feature_version, certificate_sha256: $certificate_sha256, google_drive_sync_enabled: $google_drive_sync_enabled, sha256sums: $checksums}' \
+            '{tag: $tag, commit: $commit, package: $package_name, version_name: $version_name, version_code: $version_code, kmk_feature_version: $kmk_feature_version, certificate_sha256: $certificate_sha256, google_drive_sync_enabled: $google_drive_sync_enabled, sha256sums: $checksums}' \
             > RELEASE_MANIFEST.json
 
       - name: Upload release build record
@@ -228,16 +266,37 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Refuse changes to an already published tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          status="$(curl --silent --show-error --output "${RUNNER_TEMP}/requested-release.json" --write-out '%{http_code}' \
+            --header "Authorization: Bearer ${GH_TOKEN}" --header 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/FancyCorey/komikku-fc/releases/tags/${RELEASE_TAG}")"
+          case "${status}" in
+            404) ;;
+            200) jq -e '.draft == true' "${RUNNER_TEMP}/requested-release.json" >/dev/null || {
+              echo "This tag already has a published release; create a new version instead." >&2
+              exit 1
+            } ;;
+            *) echo "Could not verify requested release status (HTTP ${status})." >&2; exit 1 ;;
+          esac
+
       - name: Create draft release
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
-          name: Komikku KMK ${{ steps.release.outputs.tag }}
+          name: Komikku FC ${{ steps.release.outputs.tag }}
           tag_name: ${{ steps.release.outputs.tag }}
           target_commitish: ${{ steps.identity.outputs.commit }}
           body: |
-            This is an independently maintained Komikku KMK release.
+            Komikku FC is an independently maintained manga reader based on Komikku.
 
-            Review the generated notes, APK hashes, package identity, and signing certificate before publishing this draft.
+            Choose the universal APK, or an architecture-specific APK for a smaller download. Back up your library before updating. Install over your existing public Komikku FC app to keep its data; development builds are separate installations.
+
+            See [What's changed](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/release-notes.md) and the [user guide](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/user-guide.md).
           generate_release_notes: true
           files: |
             Komikku-KMK-*.apk

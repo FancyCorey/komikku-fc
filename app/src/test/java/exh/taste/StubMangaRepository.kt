@@ -2,6 +2,7 @@ package exh.taste
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import tachiyomi.domain.library.model.LibraryManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.manga.model.MangaUpdate
@@ -11,6 +12,7 @@ import tachiyomi.domain.manga.repository.MangaRepository
 /** Test stub for [MangaRepository]. Override only the methods needed by each test. */
 abstract class StubMangaRepository : MangaRepository {
     override suspend fun getMangaById(id: Long): Manga = throw UnsupportedOperationException()
+    override suspend fun getMangaByIds(ids: Collection<Long>): List<Manga> = emptyList()
     override suspend fun getMangaByIdAsFlow(id: Long): Flow<Manga> = emptyFlow()
     override suspend fun getMangaByUrlAndSourceId(url: String, sourceId: Long): Manga? = null
     override fun getMangaByUrlAndSourceIdAsFlow(url: String, sourceId: Long): Flow<Manga?> = emptyFlow()
@@ -33,5 +35,7 @@ abstract class StubMangaRepository : MangaRepository {
     // KMK -->
     override suspend fun getKnownRecommendationMangaIds(mangaIds: Collection<Long>): Set<Long> = emptySet()
     override suspend fun getChapterCountsByMangaIds(mangaIds: Collection<Long>): Map<Long, Long> = emptyMap()
+    override suspend fun getReadChapterCountsByMangaIds(mangaIds: Collection<Long>): Map<Long, Long> = emptyMap()
+    override fun getReadChapterCountsByMangaIdsAsFlow(mangaIds: Collection<Long>): Flow<Map<Long, Long>> = flowOf(emptyMap())
     // KMK <--
 }

@@ -3,6 +3,7 @@ package exh.recs.settings
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import java.io.File
 
 // KMK v0.8.10 -->
 class RecommendationSettingsAnchorScrollTest {
@@ -37,6 +38,16 @@ class RecommendationSettingsAnchorScrollTest {
     @Test
     fun `a blank anchor string is treated as unknown, not the first item`() {
         assertNull(resolveAnchorIndex(keys, ""))
+    }
+
+    @Test
+    fun `every automatic tracking search anchor is present in the diagnostics list`() {
+        val diagnostics = File("src/main/java/exh/recs/settings/RecommendationDiagnosticsSettingsScreen.kt").readText()
+        val orderedKeys = diagnostics.substringAfter("val itemKeysInOrder")
+            .substringBefore("ScrollToAnchorEffect")
+
+        assertEquals(true, "\"automatic_local_tracking_status_inference\"" in orderedKeys)
+        assertEquals(true, "\"automatic_rated_group_primary\"" in orderedKeys)
     }
 }
 // KMK <--

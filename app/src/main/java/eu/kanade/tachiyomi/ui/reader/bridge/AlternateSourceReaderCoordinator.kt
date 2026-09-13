@@ -95,7 +95,7 @@ class AlternateSourceReaderCoordinator(
         }
         if (
             session.pendingRouteFingerprint != null ||
-            activeRoute.role != AlternateSourceReaderRouteRole.ALTERNATE ||
+            activeRoute.role != session.currentRoute.role ||
             AlternateSourceReaderRouteFingerprint.of(activeRoute) != session.lastSafeRouteFingerprint ||
             session.currentRoute != activeRoute ||
             !identityResolver.isConfirmed(
@@ -114,7 +114,11 @@ class AlternateSourceReaderCoordinator(
             return@guarded AlternateSourceReaderCommandResult.Stale
         }
         mutableState.value = AlternateSourceReaderMachineState(
-            phase = AlternateSourceReaderPhase.ALTERNATE,
+            phase = if (session.currentRoute.role == AlternateSourceReaderRouteRole.PRIMARY) {
+                AlternateSourceReaderPhase.PRIMARY
+            } else {
+                AlternateSourceReaderPhase.ALTERNATE
+            },
             session = session,
         )
         AlternateSourceReaderCommandResult.Restored
@@ -261,7 +265,11 @@ class AlternateSourceReaderCoordinator(
             ?: return@guarded AlternateSourceReaderCommandResult.Invalid
         sessionStore.write(updated)
         mutableState.value = mutableState.value.copy(
-            phase = AlternateSourceReaderPhase.ALTERNATE,
+            phase = if (updated.currentRoute.role == AlternateSourceReaderRouteRole.PRIMARY) {
+                AlternateSourceReaderPhase.PRIMARY
+            } else {
+                AlternateSourceReaderPhase.ALTERNATE
+            },
             session = updated,
             failureReason = null,
         )
@@ -295,6 +303,29 @@ class AlternateSourceReaderCoordinator(
             fail(generation, AlternateSourceReaderFailureReason.ROUTE_UNAVAILABLE, session)
             return@guarded AlternateSourceReaderCommandResult.Unavailable
         }
+        returnLocked(session, destination, generation, explicitManualReturn = true)
+    }
+
+    suspend fun manualReturnToChapter(
+        bridgeKey: AlternateSourceBridgeKey,
+        expectedSessionId: String,
+        expectedChapterUrl: String,
+        chapterUrl: String,
+    ): AlternateSourceReaderCommandResult = guarded {
+        val session = activeSession() ?: return@guarded AlternateSourceReaderCommandResult.NoSession
+        if (session.bridgeKey != bridgeKey || session.sessionId != expectedSessionId ||
+            session.currentRoute.chapterUrl != expectedChapterUrl
+        ) {
+            return@guarded AlternateSourceReaderCommandResult.Stale
+        }
+        val generation = begin(AlternateSourceReaderEvent.BeginReturn)
+            ?: return@guarded AlternateSourceReaderCommandResult.Stale
+        val destinationRole = when (session.currentRoute.role) {
+            AlternateSourceReaderRouteRole.PRIMARY -> AlternateSourceReaderRouteRole.ALTERNATE
+            AlternateSourceReaderRouteRole.ALTERNATE -> AlternateSourceReaderRouteRole.PRIMARY
+        }
+        val destination = resolve(session.bridgeKey, destinationRole, chapterUrl, 0)
+            ?: return@guarded cancel(generation, AlternateSourceReaderCommandResult.Unavailable)
         returnLocked(session, destination, generation, explicitManualReturn = true)
     }
 
@@ -530,8 +561,8 @@ class AlternateSourceReaderCoordinator(
         if (committed !is AlternateSourceReaderRoutePolicy.CommitResult.Applied) {
             return cancel(generation, AlternateSourceReaderCommandResult.Stale)
         }
-        sessionStore.clear()
-        reduce(AlternateSourceReaderEvent.ReturnResolved(generation))
+        sessionStore.write(committed.session)
+        reduce(AlternateSourceReaderEvent.ReturnResolved(generation, committed.session))
         return AlternateSourceReaderCommandResult.Returned
     }
 
@@ -569,7 +600,11 @@ class AlternateSourceReaderCoordinator(
 
     private fun activeSession(): AlternateSourceReaderSession? =
         mutableState.value.session?.takeIf {
-            mutableState.value.phase in setOf(AlternateSourceReaderPhase.ALTERNATE, AlternateSourceReaderPhase.DEGRADED)
+            mutableState.value.phase in setOf(
+                AlternateSourceReaderPhase.PRIMARY,
+                AlternateSourceReaderPhase.ALTERNATE,
+                AlternateSourceReaderPhase.DEGRADED,
+            )
         }
 
     private fun isCurrentSessionState(

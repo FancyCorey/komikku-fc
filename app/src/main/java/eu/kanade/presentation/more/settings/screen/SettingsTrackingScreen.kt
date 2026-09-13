@@ -139,6 +139,7 @@ object SettingsTrackingScreen : SearchableSettings {
             Preference.PreferenceItem.SwitchPreference(
                 preference = trackPreferences.autoUpdateTrack(),
                 title = stringResource(MR.strings.pref_auto_update_manga_sync),
+                subtitle = stringResource(KMR.strings.pref_auto_update_manga_sync_summary),
             ),
             Preference.PreferenceItem.ListPreference(
                 preference = trackPreferences.autoUpdateTrackOnMarkRead(),
@@ -151,11 +152,27 @@ object SettingsTrackingScreen : SearchableSettings {
             Preference.PreferenceItem.SwitchPreference(
                 preference = trackPreferences.autoSyncProgressFromTrackers(),
                 title = stringResource(KMR.strings.pref_auto_sync_progress_from_trackers),
+                subtitle = stringResource(KMR.strings.pref_auto_sync_progress_from_trackers_summary),
+            ),
+            Preference.PreferenceItem.SwitchPreference(
+                preference = trackPreferences.autoSyncLocalTrackingFromTrackers(),
+                title = stringResource(KMR.strings.pref_auto_sync_local_tracking_from_trackers),
+                subtitle = stringResource(KMR.strings.pref_auto_sync_local_tracking_from_trackers_summary),
+            ),
+            Preference.PreferenceItem.SwitchPreference(
+                preference = trackPreferences.autoCreateLocalTrackingFromRating(),
+                title = stringResource(KMR.strings.pref_auto_create_local_tracking_from_rating),
+                subtitle = stringResource(KMR.strings.pref_auto_create_local_tracking_from_rating_summary),
             ),
             Preference.PreferenceItem.SwitchPreference(
                 preference = trackPreferences.autoInheritLocalProgress(),
                 title = stringResource(KMR.strings.pref_auto_inherit_local_progress),
                 subtitle = stringResource(KMR.strings.pref_auto_inherit_local_progress_summary),
+            ),
+            Preference.PreferenceItem.SwitchPreference(
+                preference = trackPreferences.matchTrackerProgressByReadingOrder(),
+                title = stringResource(KMR.strings.pref_match_tracker_progress_by_reading_order),
+                subtitle = stringResource(KMR.strings.pref_match_tracker_progress_by_reading_order_summary),
             ),
             // KMK <--
             // SY -->

@@ -810,6 +810,7 @@ class LocalTrackerBackupRestorerTest {
         override fun observeWorkIdBySourceUrl(source: Long, url: String): Flow<String?> =
             sourceLookupFlow
         override suspend fun recordProgress(workId: String, source: Long, chapterNumber: Double?, chapterUrl: String, chapterLabel: String, progressAt: Long) = Unit
+        override suspend fun recordPendingProgress(workId: String, source: Long, chapterNumber: Double, chapterLabel: String, progressAt: Long) = Unit
         override suspend fun upsertSource(source: LocalTrackedWorkSource) {
             if (failOnSource) error("source write failed")
             sources[source.source to source.url] = source

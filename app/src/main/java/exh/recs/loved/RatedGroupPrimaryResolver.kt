@@ -13,17 +13,33 @@ package exh.recs.loved
  */
 object RatedGroupPrimaryResolver {
 
+    data class Candidate(
+        val key: String,
+        val readChapterCount: Long,
+        val firstRatedAt: Long,
+    )
+
     fun resolve(
         grouperPrimaryKey: String,
         memberKeys: List<String>,
         storedPrimary: RatedMangaKey?,
+        automaticSelectionEnabled: Boolean = false,
+        candidates: List<Candidate> = emptyList(),
     ): String {
         val storedPrimaryStringKey = storedPrimary?.let { "${it.source}|${it.url}" }
-        return if (storedPrimaryStringKey != null && storedPrimaryStringKey in memberKeys) {
-            storedPrimaryStringKey
-        } else {
-            grouperPrimaryKey
-        }
+        if (storedPrimaryStringKey != null && storedPrimaryStringKey in memberKeys) return storedPrimaryStringKey
+        if (!automaticSelectionEnabled) return grouperPrimaryKey
+
+        return candidates.asSequence()
+            .filter { it.key in memberKeys }
+            .sortedWith(
+                compareByDescending<Candidate> { it.readChapterCount }
+                    .thenBy { it.firstRatedAt }
+                    .thenBy { it.key },
+            )
+            .firstOrNull()
+            ?.key
+            ?: grouperPrimaryKey
     }
 }
 // KMK <--

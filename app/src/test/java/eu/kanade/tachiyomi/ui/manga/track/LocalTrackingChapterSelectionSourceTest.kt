@@ -4,20 +4,24 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
 
-/** Guards source-specific local progress as the primary chapter-opening contract. */
+/** Guards direct local-progress editing through the same source chapter rows used for persistence. */
 class LocalTrackingChapterSelectionSourceTest {
 
     @Test
-    fun `local chapter action resolves source progress before generic history fallback`() {
+    fun `local chapter action opens the editor and resolves an exact source chapter when saving`() {
         val source = File(
             "src/main/java/eu/kanade/tachiyomi/ui/manga/track/TrackInfoDialog.kt",
         ).readText()
-        val sourceProgressLookup = source.indexOf("getSourceProgress(it, manga.source, manga.url)")
-        val sourceChapterLookup = source.indexOf("getChapterByUrlAndMangaId.await(it, manga.id)")
-        val historyFallback = source.indexOf("LocalTrackingHistoryProgressPolicy.resolve(getHistory.await(mangaId))")
+        val openDialog = source.indexOf("fun openLocalChapterDialog()")
+        val saveProgress = source.indexOf("fun saveLocalChapterProgress(chapterNumber: Double?)")
+        val sourceChapterLookup = source.indexOf("getChaptersByMangaId.await(manga.id)", saveProgress)
+        val exactChapterMatch = source.indexOf("it.chapterNumber == number", sourceChapterLookup)
+        val progressWrite = source.indexOf("localTrackerRepository.upsertSourceProgress", exactChapterMatch)
 
-        assertTrue(sourceProgressLookup >= 0, "local chapter opening must read source-specific progress")
-        assertTrue(sourceChapterLookup > sourceProgressLookup, "source progress must resolve its chapter URL")
-        assertTrue(historyFallback > sourceChapterLookup, "generic history must remain only as fallback")
+        assertTrue(openDialog >= 0, "local chapter action must open the progress editor")
+        assertTrue(saveProgress > openDialog, "the editor must expose a save boundary")
+        assertTrue(sourceChapterLookup > saveProgress, "saving must inspect this manga's source chapters")
+        assertTrue(exactChapterMatch > sourceChapterLookup, "saving must resolve the exact selected source chapter")
+        assertTrue(progressWrite > exactChapterMatch, "resolved source identity must be persisted")
     }
 }

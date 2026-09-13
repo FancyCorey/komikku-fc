@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -77,11 +78,13 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.compose.SubcomposeAsyncImageContent
+import eu.kanade.domain.chapter.model.toSChapter
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.KmkEmptyStateArtwork
 import eu.kanade.presentation.components.KmkEmptyStateIllustration
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import exh.recs.RecommendationErrorKind
@@ -91,6 +94,7 @@ import exh.recs.matching.SameMangaCandidateResult
 import exh.recs.recommendationErrorMessageRes
 import exh.recs.settings.RecommendationDiagnosticsSettingsScreen
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import mihon.domain.source.interactor.UpdateMangaFromRemote
 import tachiyomi.domain.chapter.interactor.GetChapterByUrlAndMangaId
@@ -300,6 +304,9 @@ class BestVersionCompareScreen(
                         ComparePreviewContent(
                             state = state,
                             sourceName = screenModel::sourceName,
+                            originReaderChapter = state.originChapters
+                                .firstOrNull { it.chapterNumber == state.selectedChapterNumber }
+                                ?.toSChapter(),
                             onSelectBest = screenModel::selectBestVersion,
                             // KMK --> v0.7.9
                             onOpenPagePreview = { p ->
@@ -317,6 +324,24 @@ class BestVersionCompareScreen(
                                 fullscreenCandidateSource = key.source
                                 fullscreenCandidateUrl = key.url
                                 screenModel.openFullscreenCandidate(key)
+                            },
+                            onOpenReader = { manga, chapter ->
+                                readerScope.launch {
+                                    val localChapter = getChapterByUrlAndMangaId.await(chapter.url, manga.id)
+                                        ?: updateMangaFromRemote(manga = manga, fetchChapters = true)
+                                            .getOrNull()
+                                            ?.newChapters
+                                            ?.find { it.url == chapter.url }
+                                    if (localChapter != null) {
+                                        context.startActivity(ReaderActivity.newIntent(context, manga.id, localChapter.id))
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(KMR.strings.best_version_reader_chapter_unavailable.resourceId),
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
+                                }
                             },
                             // One candidate Retry action retries the current failed candidate set.
                             onRetryCandidate = screenModel::retryCandidate,
@@ -548,7 +573,15 @@ private fun ConfirmCandidatesContent(
                 enabled = state.originManga != null,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(stringResource(KMR.strings.best_version_confirm_action))
+                Text(
+                    stringResource(
+                        if (allCandidates.isEmpty()) {
+                            KMR.strings.best_version_keep_current_action
+                        } else {
+                            KMR.strings.best_version_confirm_action
+                        },
+                    ),
+                )
             }
         }
     }
@@ -826,16 +859,23 @@ private fun ManualChapterPickerDialog(
 private fun ComparePreviewContent(
     state: BestVersionCompareScreenModel.State,
     sourceName: (Long) -> String,
+    originReaderChapter: SChapter?,
     onSelectBest: (MangaIdentityKey) -> Unit,
     onOpenPagePreview: (FullscreenPreviewPage) -> Unit, // KMK --> v0.7.9 // KMK <--
     onOpenFullscreenCandidate: (MangaIdentityKey) -> Unit, // KMK v0.8.16
+    onOpenReader: (Manga, SChapter) -> Unit,
     onRetryCandidate: (MangaIdentityKey) -> Unit, // KMK v0.8.17-fix1
 ) {
     // Thumbnail decoding happens after the source preview state is Loaded. Keep this small,
     // presentation-only retry ledger separate from the source/model state so a failed image can be
     // retried without refetching candidates or disturbing thumbnails that already succeeded.
     val failedPreviewPages = remember { mutableStateMapOf<MangaIdentityKey, Set<Int>>() }
+    val resolvedPreviewPages = remember { mutableStateMapOf<MangaIdentityKey, Set<Int>>() }
     val previewRetryGenerations = remember { mutableStateMapOf<Pair<MangaIdentityKey, Int>, Int>() }
+    // A source can report its page references as prepared while the image fetcher remains pending
+    // indefinitely. Keep that state honest: after a bounded wait, expose the same retry action as
+    // a terminal visual state instead of leaving a large blank preview area with no explanation.
+    val timedOutPreviewKeys = remember { mutableStateMapOf<MangaIdentityKey, Boolean>() }
     fun retryFailedPreviewPages() {
         BestVersionRetryScopePolicy.thumbnailPageKeys(failedPreviewPages.toMap()).forEach { retryKey ->
             previewRetryGenerations[retryKey] = (previewRetryGenerations[retryKey] ?: 0) + 1
@@ -890,6 +930,15 @@ private fun ComparePreviewContent(
                             val loaded = previewState.pages.size
                             val total = state.sampleSize
                             val failedPages = failedPreviewPages[key].orEmpty()
+                            LaunchedEffect(key, previewState.pages) {
+                                timedOutPreviewKeys[key] = false
+                                delay(5_000)
+                                val settledPages = resolvedPreviewPages[key].orEmpty().size +
+                                    failedPreviewPages[key].orEmpty().size
+                                if (settledPages < previewState.pages.size) {
+                                    timedOutPreviewKeys[key] = true
+                                }
+                            }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
@@ -924,102 +973,127 @@ private fun ComparePreviewContent(
                                 }
                             }
                             Spacer(Modifier.height(4.dp))
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                items(previewState.pages, key = { it.index }) { page ->
-                                    val retryGeneration = previewRetryGenerations[key to page.index] ?: 0
-                                    // KMK --> v0.7.33: per-thumbnail Fit/Crop toggle
-                                    val fitMode = fitModes.getOrDefault(page.index, false)
-                                    Box(
-                                        modifier = Modifier
-                                            .height(180.dp)
-                                            .aspectRatio(0.7f),
-                                    ) {
-                                        // KMK <--
-                                        // KMK v0.8.16-fix1: source-aware page preview loading --
-                                        // SubcomposeAsyncImage(model = page.preview) routes through
-                                        // PagePreviewFetcher (source-runtime boundary, page-preview
-                                        // cache, source headers), not a raw URL string. Explicit
-                                        // loading/error content replaces the previous silent
-                                        // broken-image placeholder.
-                                        androidx.compose.runtime.key(retryGeneration) {
-                                            SubcomposeAsyncImage(
-                                                model = page.preview,
-                                                contentDescription = stringResource(
-                                                    KMR.strings.best_version_preview_page_content_description,
-                                                    page.index + 1,
-                                                    manga.title,
-                                                ),
-                                                onSuccess = {
-                                                    failedPreviewPages[key] = failedPreviewPages[key].orEmpty() - page.index
-                                                },
-                                                onError = {
-                                                    failedPreviewPages[key] = failedPreviewPages[key].orEmpty() + page.index
-                                                },
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .clip(MaterialTheme.shapes.small)
-                                                    // KMK --> v0.7.9: tap to open fullscreen preview
-                                                    .clickable {
-                                                        onOpenPagePreview(
-                                                            FullscreenPreviewPage(
-                                                                imageUrl = page.preview.imageUrl,
-                                                                pageIndex = page.index,
-                                                                mangaTitle = manga.title,
-                                                                sourceId = page.preview.source,
-                                                            ),
-                                                        )
-                                                    },
-                                                // KMK <--
-                                                loading = {
-                                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                                    }
-                                                },
-                                                error = {
-                                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                                        Text(
-                                                            text = stringResource(KMR.strings.best_version_preview_page_failed),
-                                                            style = MaterialTheme.typography.labelSmall,
-                                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                                            modifier = Modifier.padding(4.dp),
-                                                        )
-                                                    }
-                                                },
-                                                success = {
-                                                    Box(Modifier.fillMaxSize()) {
-                                                        this@SubcomposeAsyncImage.SubcomposeAsyncImageContent()
-                                                    }
-                                                },
-                                                // KMK --> v0.7.33: toggle between Crop and Fit
-                                                contentScale = if (fitMode) ContentScale.Fit else ContentScale.Crop,
-                                                // KMK <--
-                                            )
-                                        }
-                                        // KMK --> v0.7.33: Fit/Crop icon toggle overlay
-                                        IconButton(
-                                            onClick = { fitModes[page.index] = !fitMode },
+                            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                                val previewTileWidth = ((maxWidth - 8.dp) / 3).coerceAtMost(126.dp)
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    items(previewState.pages, key = { it.index }) { page ->
+                                        val retryGeneration = previewRetryGenerations[key to page.index] ?: 0
+                                        // KMK --> v0.7.33: per-thumbnail Fit/Crop toggle
+                                        val fitMode = fitModes.getOrDefault(page.index, false)
+                                        Box(
                                             modifier = Modifier
-                                                .align(Alignment.BottomEnd),
+                                                .height(180.dp)
+                                                .width(previewTileWidth),
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Outlined.AspectRatio,
-                                                contentDescription = stringResource(
-                                                    if (fitMode) {
-                                                        KMR.strings.best_version_preview_crop_page
-                                                    } else {
-                                                        KMR.strings.best_version_preview_fit_page
+                                            // KMK <--
+                                            // KMK v0.8.16-fix1: source-aware page preview loading --
+                                            // SubcomposeAsyncImage(model = page.preview) routes through
+                                            // PagePreviewFetcher (source-runtime boundary, page-preview
+                                            // cache, source headers), not a raw URL string. Explicit
+                                            // loading/error content replaces the previous silent
+                                            // broken-image placeholder.
+                                            androidx.compose.runtime.key(retryGeneration) {
+                                                SubcomposeAsyncImage(
+                                                    model = page.preview,
+                                                    contentDescription = stringResource(
+                                                        KMR.strings.best_version_preview_page_content_description,
+                                                        page.index + 1,
+                                                        manga.title,
+                                                    ),
+                                                    onSuccess = {
+                                                        resolvedPreviewPages[key] = resolvedPreviewPages[key].orEmpty() + page.index
+                                                        failedPreviewPages[key] = failedPreviewPages[key].orEmpty() - page.index
                                                     },
-                                                ),
-                                                tint = Color.White.copy(alpha = 0.85f),
-                                                modifier = Modifier.size(16.dp),
-                                            )
+                                                    onError = {
+                                                        resolvedPreviewPages[key] = resolvedPreviewPages[key].orEmpty() - page.index
+                                                        failedPreviewPages[key] = failedPreviewPages[key].orEmpty() + page.index
+                                                    },
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clip(MaterialTheme.shapes.small)
+                                                        // KMK --> v0.7.9: tap to open fullscreen preview
+                                                        .clickable {
+                                                            onOpenPagePreview(
+                                                                FullscreenPreviewPage(
+                                                                    imageUrl = page.preview.imageUrl,
+                                                                    pageIndex = page.index,
+                                                                    mangaTitle = manga.title,
+                                                                    sourceId = page.preview.source,
+                                                                ),
+                                                            )
+                                                        },
+                                                    // KMK <--
+                                                    loading = {
+                                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                                        }
+                                                    },
+                                                    error = {
+                                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                            Text(
+                                                                text = stringResource(KMR.strings.best_version_preview_page_failed),
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                                                modifier = Modifier.padding(4.dp),
+                                                            )
+                                                        }
+                                                    },
+                                                    success = {
+                                                        Box(Modifier.fillMaxSize()) {
+                                                            this@SubcomposeAsyncImage.SubcomposeAsyncImageContent()
+                                                        }
+                                                    },
+                                                    // KMK --> v0.7.33: toggle between Crop and Fit
+                                                    contentScale = if (fitMode) ContentScale.Fit else ContentScale.Crop,
+                                                    // KMK <--
+                                                )
+                                            }
+                                            // KMK --> v0.7.33: Fit/Crop icon toggle overlay
+                                            IconButton(
+                                                onClick = { fitModes[page.index] = !fitMode },
+                                                modifier = Modifier
+                                                    .align(Alignment.BottomEnd),
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.AspectRatio,
+                                                    contentDescription = stringResource(
+                                                        if (fitMode) {
+                                                            KMR.strings.best_version_preview_crop_page
+                                                        } else {
+                                                            KMR.strings.best_version_preview_fit_page
+                                                        },
+                                                    ),
+                                                    tint = Color.White.copy(alpha = 0.85f),
+                                                    modifier = Modifier.size(16.dp),
+                                                )
+                                            }
+                                            // KMK <--
+                                            // KMK --> v0.7.33
                                         }
                                         // KMK <--
-                                        // KMK --> v0.7.33
                                     }
-                                    // KMK <--
+                                }
+                            }
+                            if (
+                                timedOutPreviewKeys[key] == true &&
+                                failedPages.isEmpty() &&
+                                previewState.failedPageIndexes.isEmpty()
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                                ) {
+                                    Text(
+                                        text = stringResource(KMR.strings.best_version_preview_page_failed),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    TextButton(onClick = { onRetryCandidate(key) }) {
+                                        Text(stringResource(KMR.strings.best_version_retry))
+                                    }
                                 }
                             }
                             val failedSourcePages = previewState.failedPageIndexes
@@ -1068,6 +1142,18 @@ private fun ComparePreviewContent(
                         CandidatePreviewState.Loading, null -> {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         }
+                    }
+                    val readerChapter = if (isOrigin) {
+                        originReaderChapter
+                    } else {
+                        (state.candidateChapters[key] as? CandidateChapterState.Available)?.chapter
+                    }
+                    OutlinedButton(
+                        onClick = { readerChapter?.let { onOpenReader(manga, it) } },
+                        enabled = readerChapter != null,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(KMR.strings.best_version_open_reader_action))
                     }
                     Spacer(Modifier.height(8.dp))
                     // KMK v0.8.18: selecting origin reads as "Keep current version" -- it routes to
@@ -1376,6 +1462,8 @@ private fun FullscreenCandidatePreviewDialog(
                             color = Color.White,
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
+                                .background(Color.Black.copy(alpha = 0.72f))
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
                                 .padding(bottom = 24.dp),
                         )
                     }
@@ -1385,6 +1473,7 @@ private fun FullscreenCandidatePreviewDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
+                    .background(Color.Black.copy(alpha = 0.72f))
                     .padding(MaterialTheme.padding.medium),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

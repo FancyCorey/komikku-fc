@@ -46,6 +46,45 @@ class AlternateSourceReaderCandidateGatewayTest {
     }
 
     @Test
+    fun `reverse saved bridge from alternate origin discovers confirmed primary pair only`() = runTest {
+        val reads = FakeCandidateReads().apply {
+            context = AlternateSourceReaderCandidateContext(
+                origin = manga(ALTERNATE_KEY, 22L, "Alternate"),
+                preceding = chapter(201L, 22L, "/c/alternate-1"),
+                following = chapter(202L, 22L, "/c/alternate-3"),
+            )
+            bridges = listOf(
+                AlternateSourceBridge(
+                    key = tachiyomi.domain.taste.model.AlternateSourceBridgeKey(PRIMARY_KEY, ALTERNATE_KEY),
+                    version = AlternateSourceBridgePolicy.CURRENT_VERSION,
+                    offsetMilli = 0,
+                    offsetState = AlternateSourceBridgeEvidenceState.CONFIRMED,
+                    reviewState = AlternateSourceBridgeReviewState.CURRENT,
+                    createdAt = 1_000L,
+                    updatedAt = 2_000L,
+                ),
+            )
+            confirmed = listOf(PRIMARY_KEY)
+        }
+
+        val gateway = AlternateSourceReaderCandidateGateway(reads)
+        val alternateOriginRequest = request(
+            originKey = ALTERNATE_KEY,
+            mangaId = 22L,
+            chapterUrl = "/c/alternate-1",
+            precedingChapterId = 201L,
+            followingChapterId = 202L,
+        )
+        val result = gateway.discover(alternateOriginRequest, includeLiveSearch = false)
+
+        assertEquals(listOf(PRIMARY_KEY), result.candidates.map { it.manga.recordKey() })
+        assertEquals(AlternateSourceReaderCandidateOrigin.CURRENT_BRIDGE, result.candidates.single().origin)
+
+        reads.confirmed = emptyList()
+        assertTrue(gateway.discover(alternateOriginRequest, includeLiveSearch = false).candidates.isEmpty())
+    }
+
+    @Test
     fun `legacy group remains selectable but requires explicit pair confirmation`() = runTest {
         val reads = FakeCandidateReads().apply {
             links = listOf(
@@ -149,7 +188,7 @@ class AlternateSourceReaderCandidateGatewayTest {
     @Test
     fun `chapter discovery is delegated without candidate preselection`() = runTest {
         val expected = AlternateSourceReaderChapterDiscovery.Available(
-            listOf(AlternateSourceReaderChapterCandidate("/c/9", "Chapter 9", 9f)),
+            listOf(AlternateSourceReaderChapterCandidate("/c/9", "Chapter 9", 9f, "Alpha")),
         )
         val reads = FakeCandidateReads().apply {
             confirmed = listOf(CONFIRMED_KEY)
@@ -190,7 +229,20 @@ class AlternateSourceReaderCandidateGatewayTest {
         var mappingReadCount = 0
         var liveReadCount = 0
 
-        override suspend fun resolveContext(request: AlternateSourceReaderCandidateRequest) = context
+        override suspend fun resolveContext(request: AlternateSourceReaderCandidateRequest): AlternateSourceReaderCandidateContext? {
+            val resolved = context ?: return null
+            val route = request.primaryRoute
+            val origin = CrossSourceRecordKey(resolved.origin.source, resolved.origin.url)
+            return resolved.takeIf {
+                route.role == AlternateSourceReaderRouteRole.PRIMARY &&
+                    route.record == origin &&
+                    route.mangaId == resolved.origin.id &&
+                    route.chapterId == request.precedingPrimaryChapterId &&
+                    resolved.preceding.id == request.precedingPrimaryChapterId &&
+                    resolved.preceding.url == route.chapterUrl &&
+                    resolved.following?.id == request.followingPrimaryChapterId
+            }
+        }
 
         override suspend fun bridges(): List<AlternateSourceBridge> {
             bridgeReadCount++
@@ -206,6 +258,7 @@ class AlternateSourceReaderCandidateGatewayTest {
         override suspend fun links() = links
         override suspend fun confirmedRecords(origin: CrossSourceRecordKey) = confirmed
         override suspend fun manga(record: CrossSourceRecordKey): Manga? = when (record) {
+            PRIMARY_KEY -> manga(record, 11L, "Primary")
             ALTERNATE_KEY -> manga(record, 22L, "Alternate")
             CONFIRMED_KEY -> manga(record, 33L, "Confirmed")
             LEGACY_KEY -> manga(record, 55L, "Legacy")
@@ -229,17 +282,23 @@ class AlternateSourceReaderCandidateGatewayTest {
         val LIVE_KEY = CrossSourceRecordKey(4L, "/m/live")
         val LEGACY_KEY = CrossSourceRecordKey(5L, "/m/legacy")
 
-        fun request() = AlternateSourceReaderCandidateRequest(
+        fun request(
+            originKey: CrossSourceRecordKey = PRIMARY_KEY,
+            mangaId: Long = 11L,
+            chapterUrl: String = "/c/1",
+            precedingChapterId: Long = 101L,
+            followingChapterId: Long = 102L,
+        ) = AlternateSourceReaderCandidateRequest(
             primaryRoute = AlternateSourceReaderRoute(
                 role = AlternateSourceReaderRouteRole.PRIMARY,
-                record = PRIMARY_KEY,
-                mangaId = 11L,
-                chapterUrl = "/c/1",
-                chapterId = 101L,
+                record = originKey,
+                mangaId = mangaId,
+                chapterUrl = chapterUrl,
+                chapterId = precedingChapterId,
                 pageIndex = 0,
             ),
-            precedingPrimaryChapterId = 101L,
-            followingPrimaryChapterId = 102L,
+            precedingPrimaryChapterId = precedingChapterId,
+            followingPrimaryChapterId = followingChapterId,
         )
 
         fun manga(key: CrossSourceRecordKey, id: Long, title: String) = Manga.create().copy(

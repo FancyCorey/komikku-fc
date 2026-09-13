@@ -68,7 +68,10 @@ class BackupRestorer(
     // KMK -->
     private val feedRestorer: FeedRestorer = FeedRestorer(),
     private val tasteRestorer: TasteRestorer = TasteRestorer(),
-    private val localTrackerBackupRestorer: LocalTrackerBackupRestorer = LocalTrackerBackupRestorer(Injekt.get()),
+    private val localTrackerBackupRestorer: LocalTrackerBackupRestorer = LocalTrackerBackupRestorer(
+        Injekt.get(),
+        Injekt.get(),
+    ),
     // KMK <--
 ) {
 

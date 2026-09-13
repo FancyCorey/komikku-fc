@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 class AlternateSourceReaderRoutePolicyTest {
 
     @Test
-    fun `prepare rejects same route immediate automatic reversal and transition exhaustion`() {
+    fun `prepare rejects same route and automatic reversal without an arbitrary switch cap`() {
         val session = readerSession()
         assertEquals(
             AlternateSourceReaderRoutePolicy.PrepareResult.SameRoute,
@@ -21,13 +21,12 @@ class AlternateSourceReaderRoutePolicyTest {
                 explicitManualReturn = false,
             ),
         )
-        assertEquals(
-            AlternateSourceReaderRoutePolicy.PrepareResult.TransitionLimitReached,
+        assertTrue(
             AlternateSourceReaderRoutePolicy.prepare(
                 session.copy(transitionCount = AlternateSourceReaderSession.MAX_TRANSITIONS),
                 session.primaryResumeRoute,
                 explicitManualReturn = true,
-            ),
+            ) is AlternateSourceReaderRoutePolicy.PrepareResult.Allowed,
         )
     }
 
@@ -124,5 +123,26 @@ class AlternateSourceReaderRoutePolicyTest {
                 readerRoute(AlternateSourceReaderRouteRole.ALTERNATE).copy(mangaId = 9_999L),
             ),
         )
+    }
+
+    @Test
+    fun `continued reading also refreshes the retained primary route after switching back`() {
+        val alternate = readerSession()
+        val primary = alternate.copy(
+            currentRoute = alternate.primaryResumeRoute,
+            lastSafeRouteFingerprint = AlternateSourceReaderRouteFingerprint.of(alternate.primaryResumeRoute),
+        )
+        val next = readerRoute(
+            AlternateSourceReaderRouteRole.PRIMARY,
+            chapterUrl = "/chapter/primary-ahead",
+            chapterId = 15L,
+            pageIndex = 4,
+        )
+
+        val result = AlternateSourceReaderRoutePolicy.continueAlternate(primary, next)
+            as AlternateSourceReaderRoutePolicy.ContinueResult.Applied
+
+        assertEquals(next, result.session.currentRoute)
+        assertEquals(AlternateSourceReaderTransitionReason.CONTINUED_READING, result.session.lastTransitionReason)
     }
 }
