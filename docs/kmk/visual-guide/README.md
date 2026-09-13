@@ -44,9 +44,9 @@ The For You overflow menu exports the current Top Picks as a recommendation bund
 
 Evaluation Mode also hides source names in Browse. The rest of Komikku's navigation stays the same.
 
-## Evaluation Mode and safe review
+## Evaluation Mode and sharing
 
-Evaluation Mode changes the labels shown in review images, including source, extension, and selected taste labels. It does not change saved manga, requests, identifiers, or actions. The For You and Browse images in this guide show the result: the recommendation or browse context remains understandable while identifying labels are replaced with neutral ones. The review process and its limits are documented in [Sharing screenshots and exported files safely](../feature-guides/sharing.md).
+Evaluation Mode replaces source, extension, and selected taste labels with neutral names. It does not change saved manga, requests, identifiers, or actions. Manga titles, artwork, reading context, and some genre suggestions can remain visible. Check the whole screen before sharing it; see [Sharing screenshots and exported files safely](../feature-guides/sharing.md).
 
 ## Recommendation settings
 
@@ -88,7 +88,7 @@ The populated list shows ranking, sorting, installation, and selection controls.
 
 ![Matching manga grouped under neutral source labels](linked-versions-evaluation-mode.png)
 
-This screen shows confirmed matching manga before the reader links versions or applies an action. Love, Like, Dislike, and Not Interested form one preference system; the Top Picks selection screen presents all four together instead of using one preference as a stand-in for the other three.
+This screen shows search results selected for a preference action, including sources with no results. Check each selected manga before applying the action: a search result is not proof that it is the same manga. Love, Like, Dislike, and Not Interested form one preference system; the Top Picks selection screen presents all four together.
 
 ## Compare versions before migrating
 
@@ -128,7 +128,7 @@ The index summary shows how many downloaded pages have been processed and how mu
 
 ![Action History showing a completed manga preference change with an Undo action](action-history-undo.png)
 
-Action History records a supported local change only after it succeeds. The Undo button restores the previous value when the current state still matches the recorded action. This captured change was undone through the same screen, and the app confirmed that the manga was restored.
+Action History records a supported local change only after it succeeds. The Undo button restores the previous value when the current state still matches the recorded action. It cannot undo a later conflicting change or an update sent to an external tracker.
 
 ## Extension export
 
@@ -150,13 +150,13 @@ Komikku FC's saved ratings, recommendation settings, linked-version groups, prim
 
 ## Review Komikku FC changes in the app
 
-![Komikku FC What's New showing the current grouped change history](kmk-whats-new.png)
+![Historical What's New screen showing v0.8.20-fix5 and earlier notes](kmk-whats-new.png)
 
-Komikku FC What's New groups the current and earlier fork releases, summarizes each release, and separates new behavior from fixes. The current version is shown at the top so readers can tell which notes apply to the installed build.
+Komikku FC What's New groups the current and earlier fork releases, summarizes each release, and separates new behavior from fixes. The installed version is shown at the top. This image shows the older v0.8.20-fix5 screen, not the v0.8.22 release notes; open What's New in your installed app for those notes.
 
 ## When sources or links fail
 
-Source and link handling keeps extension failures, cancellation, and retry separate from successful results. Links, web pages, exports, tracker updates, and local changes are checked before the app accepts them. Error messages stay short and useful without showing raw links, storage paths, sign-in details, or private content. The complete success, rejection, cancellation, and cleanup behavior is documented in [Validating links, actions, and file cleanup](../feature-guides/safety.md).
+Source and link handling keeps supported extension failures, cancellation, and retry separate from successful results. Check unfamiliar links and extension packages before opening or installing them. Evaluation diagnostics summarize failures, but copied diagnostics can still include names when Evaluation Mode is off. Check logs and exported files before sharing them. See [Validating links, actions, and file cleanup](../feature-guides/safety.md) for the checks and their limits.
 
 ## Complete feature-family coverage
 
@@ -176,16 +176,16 @@ The visual guide follows the full Komikku FC feature contract. A family is liste
 | Best Version | [Compare versions before migrating](#compare-versions-before-migrating) |
 | Reader controls | [Reading schedule](#reading-schedule) and [Completion preference](#completion-preference) |
 | Jump to last read | [Jump to last read](#jump-to-last-read), written flow only because chapter history is private |
-| Evaluation Mode | [Evaluation Mode and safe review](#evaluation-mode-and-safe-review) |
+| Evaluation Mode | [Evaluation Mode and sharing](#evaluation-mode-and-sharing) |
 | Action History | [Undo a supported local action](#undo-a-supported-local-action) |
 | Extension export | [Extension export](#extension-export) |
 | OCR search | [Search downloaded pages with OCR](#search-downloaded-pages-with-ocr) |
 | Backup portability | [Back up and restore app data](#back-up-and-restore-app-data) |
 | Extension operations | [Extension operations and failure isolation](#extension-operations-and-failure-isolation) |
 | Security and integration | [When sources or links fail](#when-sources-or-links-fail), written flow only |
-| Komikku FC change history | [Review Komikku FC changes in the app](#review-kmk-changes-in-the-app) |
+| Komikku FC change history | [Review Komikku FC changes in the app](#review-komikku-fc-changes-in-the-app) |
 
-Evaluation Mode replaces source identities with neutral labels. Account information, device identifiers, raw URLs, and local paths are omitted. Manga artwork, titles, page text, and reading context remain visible where they help explain a feature.
+Evaluation Mode replaces source identities with neutral labels, but it is not a way to hide everything about your reading. Manga artwork, titles, page text, reading context, genre suggestions, and aggregate counts may remain visible.
 
 ## Screenshot coverage
 
@@ -199,11 +199,11 @@ Use this table to find a screen or the written steps for each feature area.
 | Related and group-seeded recommendations | [Related-manga screenshot](related-manga-results.png) and [group-seeded screenshot](group-recommendations.png) | The difference between ordinary related results and recommendations seeded by a confirmed multi-version group. |
 | Recommendation settings | [Screenshot](recommendation-settings.png) | The settings index contains no account, manga, source, or storage details. |
 | Management and diagnostics | [Screenshot](management-diagnostics.png) | Only grouped controls and short, non-identifying summaries are shown. |
-| Taste and filters | [Screenshot](taste-and-filters.png) | Preference and blocking controls with neutral tag examples. |
+| Taste and filters | [Screenshot](taste-and-filters.png) | Selected preferred and blocked tags use neutral labels; genre suggestions and rating counts remain visible below them. |
 | Source-quality diagnostics | [Screenshot](source-quality-diagnostics.png) | The expanded view shows aggregate evidence and per-source detail with neutral labels. |
 | Source Evaluation | [Screenshot](source-evaluation.png) | Aggregate progress and summarized source outcomes. |
 | Browse in Evaluation Mode | [Screenshot](browse-evaluation-mode.png) | Source labels are neutralized without changing the normal Browse layout. |
-| Love, Like, Dislike, and Not Interested | [Top Picks selection](top-picks-preference-actions.png) | The shared action surface shows Love, Like, Dislike, Not Interested, and Clear rating together. A matched collection-state set may be added later as supporting evidence. |
+| Love, Like, Dislike, and Not Interested | [Top Picks selection](top-picks-preference-actions.png) | The shared action surface shows Love, Like, Dislike, Not Interested, and Clear rating together. |
 | Sources to try | [Screenshot](sources-to-try-evaluation-mode.png) and [feature explanation](../feature-guides/sources.md) | Evaluation Mode replaces the populated list's source identities with neutral labels. |
 | Find other versions | [Screenshot](linked-versions-evaluation-mode.png) and [feature explanation](../feature-guides/versions.md) | Manga matches with source names replaced by neutral labels. |
 | Best Version comparison | [Chapter selection](best-version-chapter-selection.png), [preview comparison](best-version-preview-comparison.png), and [feature guide](../feature-guides/versions.md) | Chapter and page comparisons with neutral source labels. |
@@ -215,11 +215,11 @@ Use this table to find a screen or the written steps for each feature area.
 | Exact-file cleanup | [Export guide](../feature-guides/sharing.md) | The export family is represented visually by its consent screen; the guide explains the exact-document cleanup result and its limits. |
 | OCR Search Downloads | [Screenshot](ocr-search-downloads.png) and [feature guide](../feature-guides/ocr.md) | Indexed-page totals, storage use, indexing options, and cleanup controls. |
 | Backup and restore | [Screenshot](backup-and-restore.png) | Backup and restore controls, scheduling, status, warnings, and progress settings. |
-| Komikku FC What's New | [Screenshot](kmk-whats-new.png) | The installed release, grouped history, summaries, and new/fix sections. |
+| Komikku FC What's New | [Historical screenshot](kmk-whats-new.png) | The v0.8.20-fix5 screen illustrates grouped history, summaries, and new/fix sections; it does not show v0.8.22 notes. |
 | Extension operations | [Export confirmation](extension-export-confirmation.png) | The package boundary and the app data excluded from an export. |
 | When sources or links fail | [Feature explanation](../feature-guides/safety.md) | Written explanations of checking, rejection, cancellation, and cleanup behavior. |
 
-Screenshots show current, loaded feature states and are cropped to the app. Empty, loading, sample-only, and outdated screens are not used to represent normal behavior.
+Screenshots illustrate the workflows described above, including partial results and unavailable previews. Some controls have changed since these images were captured. The Best Version images show chapter selection and preview comparison but do not show the newer **View in Reader** action; see the [versions guide](../feature-guides/versions.md) for its current controls.
 
 ## Technical reference
 

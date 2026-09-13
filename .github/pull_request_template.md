@@ -5,7 +5,7 @@
 
   For relevant changes, check phone and tablet layouts, light and dark themes,
   accessibility labels, back navigation, process recreation, and existing
-  Komikku behavior adjacent to the KMK feature.
+  Komikku behavior adjacent to the Komikku FC feature.
 
   Do not include private evidence, local paths, credentials, source URLs,
   account details, device identifiers, or internal implementation plans.

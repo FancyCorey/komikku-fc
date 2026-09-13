@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<kmk-feature-contract version="6" privacy="sanitized-semantic">
+<kmk-feature-contract version="7" privacy="sanitized-semantic">
   <publication application-id="app.komikku.kmk" app-name="Komikku FC" update-repository="FancyCorey/komikku-fc" />
   <feature id="for-you" route="browse/for-you">
     <purpose>Show personalized and exploratory manga candidates grouped by eligible source.</purpose>
@@ -8,7 +8,7 @@
     <presentation>app/src/main/java/exh/recs/BrowsePersonalRecommendationsTab.kt</presentation>
     <states>loading loaded partial empty recoverable-error</states>
     <constraints>language genre minimum-chapters exclusions source-eligibility personalized-majority exposure-window</constraints>
-    <privacy screenshot="approved">Evaluation Mode neutralizes source identities; manga artwork and recommendation context remain visible so the feature can be understood.</privacy>
+    <privacy screenshot="approved">Evaluation mode replaces source names with neutral labels. Manga artwork, titles, and recommendation context remain visible.</privacy>
   </feature>
   <feature id="top-picks-and-bundles" route="browse/for-you/top-picks">
     <purpose>Present combined top matches and export or import a validated recommendation set.</purpose>
@@ -16,7 +16,7 @@
     <owner>app/src/main/java/exh/recs/TopPicksScreen.kt</owner>
     <dispatch>app/src/main/java/exh/recs/share/RecommendationBundleImportScreenModel.kt</dispatch>
     <states>loaded partial export-chooser import-review invalid library-add-result</states>
-    <privacy screenshot="approved">The reviewed Top Picks action stays inside the app; the import review remains described without publishing selected source or library details.</privacy>
+    <privacy screenshot="approved">Recommendation bundles can contain selected manga and source information. Evaluation mode does not anonymize the exported file.</privacy>
   </feature>
   <feature id="group-recommendations" route="recommendations/group">
     <purpose>Load related manga for a rated or linked group through bounded, independent source rows.</purpose>
@@ -24,15 +24,15 @@
     <owner>app/src/main/java/exh/recs/GroupPreviewLoadCoordinator.kt</owner>
     <dispatch>app/src/main/java/exh/recs/group/GroupRecommendationSeedBuilder.kt</dispatch>
     <states>loading partial loaded row-timeout row-error cancelled</states>
-    <privacy screenshot="approved">The reviewed group result keeps manga context visible while Evaluation Mode neutralizes source identities and account or device details.</privacy>
+    <privacy screenshot="approved">Evaluation mode replaces source names, not account or device details. Check manga context and the whole screen before sharing.</privacy>
   </feature>
   <feature id="recommendation-settings" route="settings/recommendations">
-    <purpose>Navigate and configure recommendation feature families using established settings patterns.</purpose>
+    <purpose>Find and change recommendation settings by section or search.</purpose>
     <documentation>docs/kmk/feature-guides/recommendation-settings.md</documentation>
     <owner>app/src/main/java/exh/recs/settings/RecommendationSettingsIndexScreen.kt</owner>
     <states>loaded search filtered</states>
     <sections>for-you-sources taste-and-filters source-evaluation sources-to-try management-and-diagnostics</sections>
-    <privacy screenshot="approved">No account, title, source identity, or local path is visible.</privacy>
+    <privacy screenshot="approved">Settings can reveal source choices and taste preferences. Check the visible values before sharing.</privacy>
   </feature>
   <feature id="source-evaluation" route="settings/recommendations/source-evaluation">
     <purpose>Evaluate source suitability and disclose partial, skipped, failed, and reassessment outcomes.</purpose>
@@ -40,7 +40,7 @@
     <owner>app/src/main/java/exh/recs/evaluation/SourceEvaluationScreenModel.kt</owner>
     <presentation>app/src/main/java/exh/recs/evaluation/SourceEvaluationScreen.kt</presentation>
     <states>ready running partial completed cancelled failed</states>
-    <privacy screenshot="approved">Counts and generic categories are visible; source identities and raw errors are absent.</privacy>
+    <privacy screenshot="approved">Copied diagnostics use error categories instead of raw errors. Source and extension names can remain when Evaluation mode is off.</privacy>
   </feature>
   <feature id="taste-source-diagnostics" route="settings/recommendations/management">
     <purpose>Explain rating-derived taste signals, source-quality observations, and recovery actions.</purpose>
@@ -48,14 +48,14 @@
     <owner>app/src/main/java/exh/recs/settings/RecommendationDiagnosticsSettingsScreen.kt</owner>
     <presentation>app/src/main/java/exh/recs/settings/QualitySignalHistoryScreen.kt</presentation>
     <states>summary history limited-evidence marked cleared</states>
-    <privacy screenshot="approved">The reviewed management screen shows aggregate summaries without sampled tags, source identities, or manga details.</privacy>
+    <privacy screenshot="approved">Taste and quality diagnostics can show tags, source choices, and manga context. Neutral display labels do not hide every detail.</privacy>
   </feature>
   <feature id="sources-to-try" route="settings/recommendations/sources-to-try">
     <purpose>Suggest compatible non-installed sources using taste and source-evaluation signals.</purpose>
     <documentation>docs/kmk/feature-guides/sources.md</documentation>
     <owner>app/src/main/java/exh/recs/discovery/GetNonInstalledSourceSuggestions.kt</owner>
     <states>loading suggestions empty unavailable install-handoff</states>
-    <privacy screenshot="approved">The reviewed populated state uses Evaluation Mode to replace source identities with neutral labels.</privacy>
+    <privacy screenshot="approved">Evaluation mode replaces source names with neutral labels; suggestions can still reveal taste preferences.</privacy>
   </feature>
   <feature id="manga-preference" route="manga/detail">
     <purpose>Treat Love, Like, Dislike, and Not Interested as peer preference actions with reversible transitions.</purpose>
@@ -63,21 +63,21 @@
     <owner>app/src/main/java/exh/recs/loved/MangaPreferencePresentationPolicy.kt</owner>
     <dispatch>app/src/main/java/eu/kanade/tachiyomi/ui/manga/MangaScreenModel.kt</dispatch>
     <states>neutral loved liked disliked not-interested</states>
-    <privacy screenshot="approved">The reviewed cross-version example retains approved manga artwork and title context while Evaluation Mode hides source identities.</privacy>
+    <privacy screenshot="approved">Manga artwork, titles, and ratings remain visible. Evaluation mode changes source labels only where supported.</privacy>
   </feature>
   <feature id="cross-source-matching" route="manga/find-other-versions">
     <purpose>Find, select, link, group, and compare versions through guarded source work.</purpose>
     <documentation>docs/kmk/feature-guides/versions.md</documentation>
     <owner>app/src/main/java/exh/recs/matching/CrossExtensionMatchScreen.kt</owner>
     <states>searching candidates selected linked empty partial-failure</states>
-    <privacy screenshot="approved">The reviewed selection state keeps approved manga matches visible while Evaluation Mode hides source identities.</privacy>
+    <privacy screenshot="approved">Matching results show manga titles and artwork. Evaluation mode can replace source labels, but does not anonymize the result.</privacy>
   </feature>
   <feature id="best-version" route="manga/find-other-versions/best-version">
-    <purpose>Compare linked versions and continue through the established migration workflow when the user selects another version.</purpose>
+    <purpose>Compare chapters and page previews, open a selected chapter with View in Reader even if previews fail, or choose Migrate, Copy, or Cancel after selecting another version.</purpose>
     <documentation>docs/kmk/feature-guides/versions.md</documentation>
     <owner>app/src/main/java/exh/recs/bestversion/BestVersionCompareScreenModel.kt</owner>
-    <states>loading comparable insufficient-data keep-current confirmed cancelled failed</states>
-    <privacy screenshot="approved">The reviewed chapter-selection and preview states use Evaluation Mode to hide source identities while retaining approved manga and comparison context.</privacy>
+    <states>loading comparable insufficient-data preview-failed reader-open comparison-returned keep-current confirmed cancelled failed</states>
+    <privacy screenshot="approved">Chapter names, manga artwork, previews, and reader pages remain visible. Evaluation mode is not a way to hide reading content.</privacy>
   </feature>
   <feature id="reader-controls" route="reader">
     <purpose>Apply optional timer and schedule policy, defer completion rating until exit, and preserve ordinary reader navigation.</purpose>
@@ -86,6 +86,22 @@
     <presentation>app/src/main/java/eu/kanade/tachiyomi/ui/reader/ReaderActivity.kt</presentation>
     <states>allowed restricted grace completed deferred-prompt</states>
     <privacy screenshot="withheld">Reader pages and progress are private content.</privacy>
+  </feature>
+  <feature id="local-tracking" route="manga/detail/trackers">
+    <purpose>Remember status, score, dates, and integer or decimal chapter progress without an external tracking account; apply saved progress on load or refresh and share it across confirmed versions when enabled.</purpose>
+    <documentation>docs/kmk/feature-guides/local-tracking.md</documentation>
+    <owner>domain/src/main/java/tachiyomi/domain/tracker/repository/LocalTrackerRepository.kt</owner>
+    <dispatch>app/src/main/java/eu/kanade/domain/track/interactor/RecordLocalTrackedChapterProgress.kt</dispatch>
+    <states>untracked tracked edited progress-applied sharing-disabled conflict</states>
+    <privacy screenshot="withheld">Local progress and linked manga are saved on the device. External-account reconciliation is a separate user action; sharing local progress does not change tracker accounts.</privacy>
+  </feature>
+  <feature id="reader-source-switching" route="reader/alternate-source">
+    <purpose>Switch either way between an active pair of manga sources; suggest the same or closest available chapter and let the reader review chapter names and translation-group labels before opening it.</purpose>
+    <documentation>docs/kmk/feature-guides/reading.md</documentation>
+    <owner>app/src/main/java/eu/kanade/tachiyomi/ui/reader/bridge/AlternateSourceReaderSession.kt</owner>
+    <presentation>app/src/main/java/eu/kanade/presentation/reader/AlternateSourceReaderDialog.kt</presentation>
+    <states>choosing-source choosing-chapter reading-primary reading-alternate unavailable cancelled</states>
+    <privacy screenshot="withheld">Reader pages, chapter choices, and progress remain visible. Switching does not automatically add the other manga to the library; reading can update saved progress.</privacy>
   </feature>
   <feature id="jump-to-last-read" route="manga/detail/chapters">
     <purpose>Move the chapter list to the resolved last-read position without changing chapter state.</purpose>
@@ -96,25 +112,25 @@
     <privacy screenshot="withheld">Chapter names and reading position are private history.</privacy>
   </feature>
   <feature id="evaluation-mode" route="settings/advanced/evaluation-mode">
-    <purpose>Sanitize identity-bearing presentation while preserving identifiers, actions, persistence, and network behavior.</purpose>
+    <purpose>Replace source, repository, extension, and tag names with neutral display labels without changing saved data, actions, or network behavior.</purpose>
     <documentation>docs/kmk/feature-guides/sharing.md</documentation>
     <owner>app/src/main/java/exh/util/EvaluationModeFormatter.kt</owner>
     <states>disabled enabled</states>
-    <privacy screenshot="approved">Approved captures use neutral source labels where applicable.</privacy>
+    <privacy screenshot="approved">Neutral display labels do not hide manga titles, artwork, account details, notifications, or every part of Android.</privacy>
   </feature>
   <feature id="action-history" route="settings/advanced/action-history">
     <purpose>Disclose reversible and non-reversible actions and restore supported local state when no conflict exists.</purpose>
     <documentation>docs/kmk/feature-guides/ratings.md</documentation>
     <owner>app/src/main/java/exh/util/EvaluationModeActionHistoryScreen.kt</owner>
     <states>empty entries undoable conflict restored non-reversible</states>
-    <privacy screenshot="approved">The reviewed local undo row uses an aggregate action label and excludes manga titles, source identities, account details, and local paths.</privacy>
+    <privacy screenshot="approved">Action history can reveal recorded choices. Undo is available only for supported local changes without a conflict.</privacy>
   </feature>
   <feature id="extension-export" route="extensions/export">
-    <purpose>Export selected extension artifacts through Android document APIs and offer exact-artifact cleanup after success.</purpose>
+    <purpose>Export selected extensions to a chosen document location. Successful exports are kept; identified incomplete exports can offer Keep or Remove. Development builds can also offer removal after success.</purpose>
     <documentation>docs/kmk/feature-guides/sharing.md</documentation>
     <owner>app/src/main/java/eu/kanade/tachiyomi/extension/util/ExtensionApkExporter.kt</owner>
     <states>ready chooser success cancelled failed cleanup-kept cleanup-removed cleanup-failed</states>
-    <privacy screenshot="approved">The reviewed confirmation stays inside the app and omits the system picker, provider name, destination, package identity, and local path.</privacy>
+    <privacy screenshot="approved">Exported extension files can identify installed packages. A confirmation screen does not anonymize the chosen file or document location.</privacy>
   </feature>
   <feature id="ocr-search" route="search/ocr-downloads">
     <purpose>Index and search recognized text from downloaded chapter pages on the device.</purpose>
@@ -122,14 +138,14 @@
     <owner>app/src/main/java/exh/ocr/OcrSearchScreenModel.kt</owner>
     <presentation>app/src/main/java/exh/ocr/OcrSearchScreen.kt</presentation>
     <states>no-index indexing searchable partial cancelled failed</states>
-    <privacy screenshot="approved">The reviewed index summary excludes page text, source identity, account data, device identity, raw URLs, and local paths. Page text and reading context may be shown in a separately reviewed capture when they are needed to explain search. OCR text is excluded from backup and sync.</privacy>
+    <privacy screenshot="approved">Recognized page text and search results can reveal reading content. OCR text stays local and is excluded from backup and sync.</privacy>
   </feature>
   <feature id="backup-portability" route="settings/data/backup-restore">
-    <purpose>Include supported KMK ratings, recommendation preferences, links, and source-evaluation state in the established backup flow.</purpose>
+    <purpose>Back up selected Komikku FC ratings, recommendation preferences, links, source evaluations, and local tracking alongside ordinary library data; restore supported items with partial-failure reporting.</purpose>
     <documentation>docs/kmk/feature-guides/backups.md</documentation>
     <owner>app/src/main/java/eu/kanade/tachiyomi/data/backup/restore/restorers/TasteRestorer.kt</owner>
     <states>selected encoded restored partial failed</states>
-    <privacy screenshot="approved">The reviewed backup screen uses a generic storage summary and excludes destinations, restored library details, raw storage paths, account data, and reading history.</privacy>
+    <privacy screenshot="approved">Backups can include selected library, reading, tracking, and account settings. Check the backup options and keep the file private.</privacy>
   </feature>
   <feature id="extension-operations" route="browse/extensions">
     <purpose>Report recoverable extension failures and perform installation, removal, and export using supported methods. Fatal crashes are not guaranteed to be contained.</purpose>
@@ -145,14 +161,14 @@
     <owner>app/src/main/java/eu/kanade/tachiyomi/source/SourceRuntime.kt</owner>
     <dispatch>app/src/main/java/eu/kanade/tachiyomi/ui/deeplink/DeepLinkIntentSanitizer.kt</dispatch>
     <states>accepted rejected isolated-failure cancelled verified-mutation</states>
-    <privacy screenshot="withheld">A screenshot is not useful here because hostile inputs and private route values should not be displayed.</privacy>
+    <privacy screenshot="withheld">Opening a link or passing a source check is not proof of trust. Check files and logs before sharing private route information.</privacy>
   </feature>
   <feature id="kmk-change-history" route="more/about/kmk-whats-new">
-    <purpose>Present current and historical KMK changes separately from Komikku release notes.</purpose>
+    <purpose>Show current and historical Komikku FC changes separately from upstream Komikku release notes.</purpose>
     <documentation>docs/kmk/feature-guides/overview.md</documentation>
     <owner>app/src/main/java/exh/recs/KmkRecsReleaseNotes.kt</owner>
     <presentation>app/src/main/java/eu/kanade/tachiyomi/ui/more/KmkRecsWhatsNewScreen.kt</presentation>
     <states>current-family collapsed-family expanded-family acknowledged</states>
-    <privacy screenshot="approved">The reviewed change-history screen contains public KMK release notes only and excludes device, account, source, and local-path details.</privacy>
+    <privacy screenshot="approved">The change history describes public Komikku FC releases; check surrounding screen and system information before sharing.</privacy>
   </feature>
 </kmk-feature-contract>

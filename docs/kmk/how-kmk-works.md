@@ -1,116 +1,122 @@
 # How Komikku FC works
 
-This page explains how Komikku FC fits into Komikku. Read it when you want to understand which part of the app owns a feature, where data is stored, or how failures are contained. For instructions, use the [user guide](user-guide.md). For a closer look at one feature, use the [feature guides](feature-guides/README.md).
+This page explains how recommendations, reading, sources, and saved data fit together. For step-by-step instructions, use the [user guide](user-guide.md). For settings and limitations, use the [feature guides](feature-guides/README.md). Contributors can find implementation files in the [feature and code map](feature-and-code-map.md).
 
 ## System boundary
 
 ```mermaid
 flowchart LR
-    User["Reader"] --> App["Komikku Android app"]
+    User["Reader"] --> App["Komikku FC"]
     App --> Library["Library, history, and reader"]
-    App --> Discovery["KMK discovery and preference features"]
-    Discovery --> Runtime["Guarded source runtime"]
-    Runtime --> Extensions["Installed source extensions"]
-    Library --> Store["Repositories, preferences, and SQLDelight"]
+    App --> Discovery["Recommendations and manga preferences"]
+    Discovery --> Requests["Source requests and their results"]
+    Requests --> Extensions["Installed source extensions"]
+    Library --> Store["Saved app data and settings"]
     Discovery --> Store
-    App --> Android["Android lifecycle, storage, and document APIs"]
+    App --> Android["Android permissions, storage, and file chooser"]
 ```
 
-Komikku continues to own navigation, the library, the reader, downloads, tracking, backup, and extension loading. Komikku FC adds discovery and preference features inside those existing parts of the app. Installed extensions can access their own online services; Komikku FC does not add a separate server.
+Komikku FC builds on Komikku's navigation, library, reader, downloads, tracking, backups, and extension support. Its added tools work within those familiar screens, including Local Tracking and source comparison. Installed extensions can access online services; Komikku FC does not add a separate recommendation server.
 
 ## Where features live
 
 ```mermaid
 flowchart TD
-    Screens["Screens and navigation"] --> Owners["Screen models and reader state"]
-    Owners --> Local["Preferences, reader tools, and OCR"]
-    Owners --> SourceWork["For You, evaluation, suggestions, and matching"]
-    Local --> Storage["Repositories, settings, and database"]
-    SourceWork --> Runtime["Guarded source runtime"]
-    Runtime --> Extensions["Installed source extensions"]
+    Screens["Screens and navigation"] --> Action["Your action starts work in the app"]
+    Action --> Local["Ratings, local progress, reader tools, and text search"]
+    Action --> SourceWork["For You, evaluation, suggestions, and matching"]
+    Local --> Storage["Saved data and settings"]
+    SourceWork --> Requests["Source requests and their results"]
+    Requests --> Extensions["Installed source extensions"]
     SourceWork --> Storage
 ```
 
-Screens display information and handle navigation. Screen models hold the current feature state and coordinate the work behind each screen. `SourceRuntime` prevents one failing extension from breaking unrelated work and preserves cancellation. Data is stored through Komikku's repositories, settings, and database migrations.
+Some tools use saved data; catalogue searches also contact installed source extensions. Supported source failures keep separate results, so one unsuccessful source need not erase useful results from another. This does not guarantee that every extension crash can be contained. Cancelling pending work does not reverse completed installations, exports, or outside tracker updates.
 
 ## Recommendation flow
 
 ```mermaid
 sequenceDiagram
-    actor User
-    participant Screen as For You screen
-    participant Model as Recommendation screen model
-    participant Policy as Eligibility and ranking policies
-    participant Runtime as SourceRuntime
-    participant Source as Installed source
-    participant Memory as Exposure and preference stores
+    actor Reader
+    participant Screen as For You
+    participant App as Recommendations
+    participant Rules as Filters and ordering
+    participant Source as Installed sources
+    participant Data as Saved settings and display history
 
-    User->>Screen: Open or refresh For You
-    Screen->>Model: Request visible rows
-    Model->>Memory: Read eligibility inputs
-    Model->>Runtime: Run guarded source work
-    Runtime->>Source: Search or latest request
-    Source-->>Runtime: Candidates or local failure
-    Runtime-->>Model: Isolated result
-    Model->>Policy: Filter, merge, and rerank
-    Policy-->>Model: Stable visible result
-    Model->>Memory: Save exposure
-    Model-->>Screen: Ready / partial / empty / error
+    Reader->>Screen: Open or refresh
+    Screen->>App: Request manga rows
+    App->>Data: Read settings, ratings, and display history
+    App->>Source: Search or request recent manga
+    Source-->>App: Each source's results or failure
+    App->>Rules: Filter and order available manga
+    Rules-->>App: Limited selection to display
+    App->>Data: Record displayed manga
+    App-->>Screen: Results, partial results, empty, or error
 ```
 
-Personalized matches remain the majority when enough suitable results exist. A smaller set of recent catalogue entries can add variety, but those entries must still pass language, genre, minimum-chapter, exclusion, and source checks. If a card remains visible and untouched for the configured number of days, the app moves it lower instead of deleting it. Manga in the library, manga with a preference, and known tracked manga keep their position when the app can verify that state safely.
+Personalized matches remain the majority when enough suitable results exist. Recent catalogue entries can add variety but use the same For You filters. The minimum chapter setting hides manga below your choice when a count is known; an unknown count can still appear. Passing filters does not guarantee a displayed place because each row has a result limit.
 
-## Reversible preference actions
+With repeat rotation enabled, manga shown more than once within your chosen display-history window can move lower. The effect fades over time. Library, rated, tracked, and other recorded interactions are exempt when that state is available. Moving a card lower changes ordering only, not your saved manga. See [Recommendations](feature-guides/recommendations.md) for the full flow.
+
+## Manga preferences
 
 ```mermaid
 flowchart TD
-    Neutral["Neutral"] --> Choose{"Preference action"}
+    Current["Current preference or none"] --> Choose{"Choose a preference"}
     Choose --> Love["Love"]
     Choose --> Like["Like"]
     Choose --> Dislike["Dislike"]
-    Choose --> NotInterested["Not Interested"]
-    Love --> Rated["Visible rating state"]
-    Like --> Rated
-    Dislike --> Rated
-    NotInterested --> Hidden["Visible Not Interested state"]
-    Rated --> Clear["Clear rating"]
-    Hidden --> Undo["Undo not interested"]
-    Hidden --> Replace["Choose a rating"]
-    Clear --> Neutral
-    Undo --> Neutral
-    Replace --> Rated
+    Choose --> NotInterested["Not interested"]
+    Love --> Saved["Save the new preference"]
+    Like --> Saved
+    Dislike --> Saved
+    NotInterested --> Saved
+    Saved --> Change["Choose another preference or clear the rating"]
+    Change --> Current
 ```
 
-Not Interested behaves like the other preference choices. It has its own marker and collection, and it can be cleared or replaced by Love, Like, or Dislike. Before a supported change, Action History records the previous value. It keeps that record only when the change succeeds, so the previous state can be restored unless a newer change would be overwritten.
+Love, Like, Dislike, and Not interested are choices you can change or clear. Each has a marker and collection. Supported successful changes can appear in Action History with an Undo action. Undo checks the current value before restoring the previous one; it is not a backup or a way to undo every outside tracker update. See [Ratings](feature-guides/ratings.md).
 
-## Reader lifecycle
+## Reading and completion
 
 ```mermaid
 flowchart TD
-    Open["Open reader"] --> Resolve["Resolve optional local schedule"]
-    Resolve --> Allowed{"Reading allowed?"}
-    Allowed -->|Yes| Read["Read current chapter"]
-    Allowed -->|No| Block["Show blocked state"]
-    Read --> Complete{"Genuine latest-chapter completion?"}
-    Complete -->|No| Continue["Continue or exit normally"]
-    Complete -->|Yes| Defer["Defer rating prompt until reader exit"]
-    Defer --> Choice["Love, Like, Dislike, Not interested, or skip"]
-    Choice --> Offer["Option to rate linked versions"]
-    Offer --> Exit["Return through normal navigation"]
+    Open["Open reader"] --> Allowed{"Schedule allows reading?"}
+    Allowed -->|No| Block["Show the restriction"]
+    Allowed -->|Yes| Read["Read chapters"]
+    Read --> Complete{"Newly finished latest chapter and rating offer enabled?"}
+    Complete -->|No| Exit["Continue or leave normally"]
+    Complete -->|Yes| Rated{"Already rated?"}
+    Rated -->|Yes| Exit
+    Rated -->|No| Leave["Wait until reader exit"]
+    Leave --> Choice{"Choose a rating?"}
+    Choice -->|Skip| Exit
+    Choice -->|Save| Saved["Keep your rating"]
+    Saved --> Offer{"Other-version offer enabled?"}
+    Offer -->|No| Exit
+    Offer -->|Yes| More["Choose whether to search for other versions"]
+    More --> Exit
 ```
 
-The schedule is local, optional, and off by default. The reader checks it when it opens and whenever the app returns to the foreground. Moving to another chapter cannot bypass a restriction. The completion prompt appears only after you finish the latest available chapter, and it waits until you exit so it does not interrupt reading. The manga toolbar also shows **Jump to last read** when a valid reading position exists.
+The schedule is optional and off by default. The reader checks it when it opens and returns to the foreground. If a restriction begins while reading, the grace message explains whether you may finish the current chapter; switching chapters cannot bypass the restriction. The manual reading timer has separate settings.
 
-## Privacy and data boundaries
+The completion offer requires a newly finished latest chapter, an unrated manga, and **Ask for a rating after finishing**. It waits until you leave the reader. **Ask about other versions** controls the separate follow-up; cancelling that offer keeps the rating you already saved. See [Reading](feature-guides/reading.md) for timer, schedule, prompt, and navigation settings.
+
+An active source pair lets you switch in either direction through **Switch source**. Chapter suggestions use matching numbers or the closest available number, not a guarantee that the contents match. Local Tracking applies saved progress when a manga opens or refreshes and can share progress across participating confirmed versions. Source switching and progress sharing are separate tools; see [Local tracking](feature-guides/local-tracking.md).
+
+## Privacy and saved data
 
 ```mermaid
 flowchart TD
-    App["Komikku FC"] --> Local["Ratings, history, settings, and OCR index stay on the device"]
-    App --> Sources["Online catalogue work goes through installed source extensions"]
-    App --> Sharing["Evaluation Mode can hide source labels before a screenshot is shared"]
-    App --> Files["Exports and backups use Android's user-chosen document destination"]
+    App["Komikku FC"] --> Local["Store ratings, progress, settings, history, and OCR text locally"]
+    App --> Sources["Request online manga through installed extensions"]
+    App --> Sharing["Evaluation Mode replaces selected visible labels"]
+    App --> Files["Choose exports and backups through Android's file chooser"]
 ```
 
-Komikku FC does not add a separate account or recommendation server. Ratings, recommendation settings, reading history, Action History, and the OCR index are stored locally. Installed source extensions still handle their own online catalogue requests.
+Komikku FC does not add a separate recommendation account or server. Installed extensions still handle their online catalogue requests, and connected external trackers have separate update settings.
 
-Evaluation Mode changes visible source labels without changing saved identifiers, requests, or actions. OCR text can be rebuilt from downloaded pages, so it is left out of backup and sync and can be cleared without deleting those pages. Backups can include Komikku FC data that is harder to recreate, such as ratings, recommendation settings, linked versions, and source evaluations.
+Evaluation Mode changes selected visible labels, not saved identifiers, requests, or actions. Titles, artwork, reading context, genre suggestions, and counts can remain visible. Inspect the whole screen before sharing it.
+
+OCR text can be rebuilt from downloaded pages, so it is excluded from backup and sync. Clearing the index does not delete those pages. Backups can include ratings, settings, linked versions, and local tracking when their separate options are selected. Sensitive settings are optional; protect any backup you share. See [Privacy and data](privacy-and-data.md) and [Backups](feature-guides/backups.md).

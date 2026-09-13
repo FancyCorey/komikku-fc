@@ -8,7 +8,7 @@ The current in-app feature version is **Komikku FC v0.8.22**.
 
 ## App Updates
 
-Komikku FC updates are distributed through this fork's [Releases page](https://github.com/FancyCorey/komikku-fc/releases). A release must be published with a compatible APK before you can download and install it. This page is not an announcement that a new public APK is already available.
+Download [Komikku FC v0.8.22](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.22) from this fork's Releases page. Choose the APK for your device and read its installation notes. Future updates are distributed through the same Releases page.
 
 Use **More > About > Check for updates** to check manually. Automatic discovery depends on the installed version's update checker, the published release, network access, and your update settings; notifications also require Android notification permission. Installing over an existing app requires a compatible package and signing certificate. Do not assume a development APK can replace your public installation.
 

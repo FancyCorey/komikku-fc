@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<kmk-screenshot-manifest version="3" hash-algorithm="SHA-256">
+<kmk-screenshot-manifest version="4" hash-algorithm="SHA-256">
   <artifact id="for-you-evaluation" type="screenshot" path="../visual-guide/for-you-evaluation-mode.png" sha256="FC1ED39C020B5B315B88F7C89350762F752898B8CAEDC94965FC2F834DB4B090">
     <route>browse/for-you</route>
     <state>loaded</state>
@@ -88,7 +88,7 @@
   <artifact id="source-quality-diagnostics" type="screenshot" path="../visual-guide/source-quality-diagnostics.png" sha256="F2308386F005BDDCA0E43D85864E8553FCB766650A0B0BE389EC0589900B1ABD">
     <route>settings/recommendations/management/source-quality-diagnostics</route>
     <state>expanded</state>
-    <sanitization>cropped-to-app; evaluation-mode-source-labels; aggregate-counts-only; no-device-status; no-account; no-raw-response; no-local-path</sanitization>
+    <sanitization>cropped-to-app; evaluation-mode-source-labels; per-source-aggregate-counts-and-metadata-detail; no-device-status; no-account; no-raw-response; no-local-path</sanitization>
   </artifact>
   <artifact id="ocr-search-downloads" type="screenshot" path="../visual-guide/ocr-search-downloads.png" sha256="4848F3D9E657E2264C71F062749F6CC6E3E35E91FAD74BE084A4EA47EC254E9D">
     <route>more/ocr-search-downloads</route>
@@ -107,7 +107,7 @@
   </artifact>
   <artifact id="kmk-whats-new" type="screenshot" path="../visual-guide/kmk-whats-new.png" sha256="D595AE478BBE07697D8CF658E3442BA2A726D5FA1EE8C906A4934CE5169CE10C">
     <route>settings/about/kmk-whats-new</route>
-    <state>current-group-expanded</state>
+    <state>historical-v0.8.20-fix5-group-expanded</state>
     <sanitization>cropped-to-feature-pane; public-release-history-only; no-device-status; no-account; no-source-identity; no-local-path</sanitization>
   </artifact>
   <artifact id="group-recommendations" type="screenshot" path="../visual-guide/group-recommendations.png" sha256="CA56B43079591550B97D26243E1DDE5EC7140D00761FB25053FB681363477210">

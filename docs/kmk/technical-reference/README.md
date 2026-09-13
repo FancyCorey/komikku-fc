@@ -11,4 +11,6 @@ These files are not Android UI dumps and do not contain screen coordinates, devi
 
 ## Keeping the reference current
 
+The feature reference describes app behavior, not a guarantee that a screen is anonymous or a source is safe. Its `screenshot` labels refer to the existing illustration set, not approval of every current state. Check each image and its manifest entry separately; older Best Version illustrations do not show the newer View in Reader action. New Local Tracking and source-switching entries have no approved illustration here yet.
+
 Update a feature entry when its route, visible states, privacy behavior, documentation page, or implementation owner changes. Update a screenshot entry when the image changes, then recompute its SHA-256 hash and repeat the privacy review. A source-only change does not require a new screenshot when the visible screen and behavior remain unchanged.

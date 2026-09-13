@@ -10,9 +10,9 @@ Komikku FC retains Komikku's existing dependency and open-source license screen.
 
 `app.cash.sqldelight:sqlite-driver` is used only by JVM migration tests. SQLDelight is distributed under the [Apache License 2.0](https://github.com/sqldelight/sqldelight/blob/master/LICENSE.txt). It is not added to the production APK by this test dependency.
 
-## AndroidX test components
+## Android and host test components
 
-AndroidX test extensions and UI Automator are used by Android UI tests that check documented screens. They are `androidTest` dependencies and are not included in the production app.
+AndroidX test extensions, the AndroidX test runner, UI Automator, and Compose UI tests support Android UI checks. AndroidX test extensions and Compose UI tests are also used by host tests. Robolectric supplies an Android environment for host tests, and Roborazzi supports screenshot checks. These are test dependencies, not production app dependencies. A test or screenshot check covers only the states it actually exercises; it does not prove every screen or animation works.
 
 ## Google Drive sync
 

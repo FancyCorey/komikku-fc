@@ -22,15 +22,18 @@ Open **Settings > Reader** to change the default reading mode and its controls. 
 
 | Setting | What it changes |
 | --- | --- |
+| Double tap animation speed | Chooses how quickly the view moves when you zoom with a double tap. It does not make pages download faster. |
+| Show reading mode | Briefly shows the current reading mode when you open the reader. |
+| Show tap zones overlay | Briefly shows the areas you can tap for navigation when you open the reader. It does not change the tap layout itself. |
 | Smaller tap zones | Makes the navigation areas smaller in supported tap layouts, leaving more room for opening the reader menu. It does not resize the manga page. |
 | Force horizontal seekbar | Uses the horizontal page-position bar instead of the vertical bar. The vertical-bar placement options are unavailable while this is enabled. |
 | Show vertical seekbar in landscape | Allows the vertical page-position bar when the screen is sideways, unless the horizontal bar is forced. |
 | Left-handed vertical seekbar | Places the vertical page-position bar on the other side. This does not reverse the chapter's reading direction. |
 | Wide images zoom mode | Chooses how the paged reader's automatic wide-image zoom works: fit the image height or use double the starting scale. Enable wide-image zoom with a compatible image scale setting first. |
-| Disable zoom in | Limits zooming in within the paged reader. Its Double tap zoom option is unavailable while this is enabled. Webtoon has separate gesture controls. |
+| Disable zoom in | Limits zooming in within the paged reader. Its Double tap to zoom option is unavailable while this is enabled. Webtoon has separate gesture controls. |
 | Smart scale on wide screen | In the Webtoon reader, choose Fit screen or a target page proportion. On a wide display, a target proportion can narrow the reading area; it does not stretch the artwork or improve the original image resolution. |
 | Apply Smart scale to Long strip with gaps | Allows that scaling choice in the continuous vertical mode with gaps as well. It is off by default. |
-| Pinch to zoom | Enables or disables two-finger zoom in the Webtoon reader. Double tap zoom is a separate choice. |
+| Pinch to zoom | Enables or disables two-finger zoom in the Webtoon reader. Double tap to zoom is a separate choice. |
 
 For other reader adjustments, use the relevant section:
 
@@ -43,6 +46,98 @@ For other reader adjustments, use the relevant section:
 - **Page downloading** controls preloading, simultaneous page downloads, and cache size. These can affect data use and storage; they cannot repair an unavailable source.
 
 Check the page and navigation behavior after changing a setting. A zoom or scaling choice does not replace comparing the actual pages from different sources; see [Versions](versions.md).
+
+### Display
+
+Under **Settings > Reader > Display**, choose how the reader uses your screen:
+
+| Setting | What it changes |
+| --- | --- |
+| Default rotation | Chooses the reader's starting screen orientation. |
+| Background color | Chooses the area behind the pages: black, gray, white, or automatic. It does not recolor the artwork. |
+| Fullscreen | Hides the system bars while reading. |
+| Show content in cutout area | Allows fullscreen content in the screen area around a camera cutout. This choice is available only on a screen with a cutout while Fullscreen is enabled. |
+| Keep screen on | Keeps the display awake while the reader is open. |
+| Show page number | Shows your page position while reading. |
+
+### E-Ink
+
+These settings are intended to reduce lingering images on an E-Ink display. They do not improve the source's page resolution.
+
+| Setting | What it changes |
+| --- | --- |
+| Flash on page change | Enables brief screen flashes as you move through pages. Turn this off if you do not want flashes. |
+| Flash duration | Chooses how long a flash lasts. It is available when page-change flashes are enabled. |
+| Flash every | Chooses how many page changes occur between flashes. It is available when page-change flashes are enabled. |
+| Flash with | Chooses a black, white, or white-then-black flash. It is available when page-change flashes are enabled. |
+
+### Moving between chapters
+
+Under **Settings > Reader > Reading**, choose which chapters ordinary next/previous navigation passes over. Skipping is not the same as marking a chapter read.
+
+| Setting | What it changes |
+| --- | --- |
+| Skip chapters marked read | Passes over chapters already marked read when moving between chapters. |
+| Skip filtered chapters | Passes over chapters excluded by the manga's chapter filters. |
+| Skip duplicate chapters | Passes over another entry with the same chapter number, such as a second translation. Matching numbers do not guarantee identical contents. |
+| Always show chapter transition | Shows the between-chapter transition even when the adjacent chapter's pages are already loaded. |
+
+### Paged
+
+These choices apply to the paged reader, which moves between individual pages rather than a continuous strip.
+
+| Setting | What it changes |
+| --- | --- |
+| Tap zones | Chooses where to tap for the previous or next page, or disables tap navigation. |
+| Invert tap zones | Reverses the horizontal, vertical, or both tap directions. This choice is unavailable when tap navigation is disabled. |
+| Scale type | Chooses how an image fits the available reading area. This changes its displayed size, not the original image. |
+| Zoom start position | Chooses which part of a zoomed page is shown first. |
+| Crop borders | Removes surrounding borders from the displayed page. It does not edit the source image. |
+| Animate page transitions | Enables animation when moving between pages. |
+| Automatically zoom into wide images | Starts wide images zoomed in when the chosen Scale type supports this. Wide images zoom mode chooses the starting zoom. |
+| Double tap to zoom | Allows zooming with a double tap unless Disable zoom in is enabled. |
+| Pan wide images | Uses navigation to move across an image wider than the visible area before changing pages. It is unavailable when tap navigation is disabled. |
+| Split wide pages | Shows the halves of a wide page separately. Enabling this turns off Rotate wide pages to fit. |
+| Invert split page placement | Reverses which half appears first. It is available while Split wide pages is enabled. |
+| Rotate wide pages to fit | Rotates wide pages to fit the display. Enabling this turns off Split wide pages. |
+| Flip orientation of rotated wide pages | Changes the direction of the rotation. It is available while Rotate wide pages to fit is enabled. |
+
+### Webtoon
+
+These choices apply to the continuous Webtoon reader. Its settings are separate from the Paged choices above.
+
+| Setting | What it changes |
+| --- | --- |
+| Tap zones | Chooses where to tap to move through the strip, or disables tap navigation. |
+| Invert tap zones | Reverses the selected tap directions. It is unavailable when tap navigation is disabled. |
+| Side padding | Adds space along the sides of the strip, reducing the width available for pages. |
+| Sensitivity for hiding menu on scroll | Chooses how much scrolling hides the reader menu. Higher sensitivity needs less movement. |
+| Crop borders | Crops surrounding borders when displaying pages in this mode. |
+| Split wide pages | Displays the halves of wide pages separately. Enabling it turns off Rotate wide pages to fit in this mode. |
+| Invert split page placement | Reverses the order of those halves. It is available while splitting is enabled. |
+| Rotate wide pages to fit | Rotates wide pages instead of splitting them. Enabling it turns off Split wide pages in this mode. |
+| Flip orientation of rotated wide pages | Changes the rotation direction while Rotate wide pages to fit is enabled. |
+| Double tap to zoom | Enables zooming with a double tap; Pinch to zoom is a separate choice. |
+| Disable zoom out | Prevents shrinking the view below its normal starting scale. It does not turn off zooming in. |
+| Animate page transitions | Enables animated movement when navigating through the strip. |
+
+The Smart scale and Pinch to zoom choices are described in the first table. Check the result on an actual page; these settings cannot add detail missing from the source image.
+
+### Vertical+
+
+| Setting | What it changes |
+| --- | --- |
+| Tap scroll by page | Uses the page size instead of the screen size for tap scrolling in this mode. |
+| Crop borders | Crops surrounding borders in the continuous vertical reader. This is separate from the Paged and Webtoon crop settings. |
+
+### Navigation and actions
+
+| Section and setting | What it changes |
+| --- | --- |
+| Navigation > Volume keys | Allows the volume buttons to move through the reader. |
+| Navigation > Invert volume keys | Reverses the buttons' navigation directions. It is available when Volume keys is enabled. |
+| Actions > Show actions on long tap | Opens page actions when you press and hold a page. |
+| Actions > Save pages into separate folders | Places saved page images in folders named after their manga. This concerns saved images, not downloaded chapter organization. |
 
 ### Loading and storage
 

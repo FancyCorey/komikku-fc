@@ -20,10 +20,9 @@ personal recommendations, source comparison, ratings, and local tracking.
 
 ## Before You Install
 
-The repository contains work for the next Komikku FC release. The latest
-published APK may not include every feature visible in the current source or
-development screenshots. Check the notes attached to a release before
-installing it.
+Download Komikku FC from this fork's Releases page. Read the release's
+compatibility and installation notes before updating. Development builds and
+older screenshots can differ from the published APK.
 
 Komikku FC does not host manga or include content sources. Users choose and
 manage compatible source extensions themselves.

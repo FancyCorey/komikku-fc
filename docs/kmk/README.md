@@ -17,12 +17,12 @@ Komikku FC helps you find manga, compare sources, keep track of reading, and man
 ## Policies and reference material
 
 - [Privacy and data](privacy-and-data.md) explains local storage, network access, exports, backups, and screenshot sharing.
-- [Security and integration](security-and-integration.md) explains input checks, isolated failures, cancellation, and bounded local changes.
+- [Links, extensions, and recovery](security-and-integration.md) explains trust decisions, supported failure handling, cancellation, and local recovery limits.
 - [Third-party components](third-party-components.md) records additional Komikku FC dependencies and their terms.
 - [Release notes](release-notes.md) summarizes the current public feature set and compatibility boundary.
 - [Technical reference](technical-reference/README.md) explains the XML files used to map features and screenshots.
 - [Feature reference (XML)](technical-reference/feature-reference.xml) lists routes, states, privacy rules, and implementation owners in a machine-readable form.
-- [Screenshot manifest (XML)](technical-reference/screenshot-manifest.xml) lists every public screenshot, its review result, and its SHA-256 hash.
+- [Screenshot manifest (XML)](technical-reference/screenshot-manifest.xml) lists each screenshot's route, illustrated state, visible-content limits, and SHA-256 hash.
 - [Security policy](../../SECURITY.md) explains how to report a vulnerability without publishing sensitive information.
 
 ## How the documentation is organized
@@ -34,8 +34,8 @@ Feature pages have short filenames, such as `ratings.md`, `versions.md`, and `ba
 ## Design principles
 
 - Library, Browse, Reader, Settings, backup, tracking, and extension features continue to use Komikku's existing screens and internal flows.
-- Komikku FC keeps one extension failure from breaking unrelated screens and saves data through Komikku's existing database and settings.
-- Cancellation remains cancellation. A source, network, or extension failure is isolated to the operation that encountered it.
+- Komikku FC saves data through Komikku's existing database and settings. Supported source failures keep their own results so other sources can still be useful; this does not guarantee that every extension crash can be contained.
+- Cancelling work stops pending operations where supported. It does not reverse completed file writes, installations, or outside tracker updates.
 - Evaluation Mode changes visible names in screenshots; it does not change saved identifiers, user data, source requests, or the item an action affects.
 - Reversible actions record the previous value before a change and keep that record only when the change succeeds.
 - The public fork uses its own package name, launcher name, update source, release page, and issue tracker while keeping the original Komikku artwork.

@@ -2,7 +2,7 @@
 
 ## Supported source
 
-Security fixes are applied to the current `main` branch and to releases identified as supported on the repository's Releases page. Older builds may contain known defects and should not be treated as supported merely because an APK remains downloadable.
+Security fixes are applied to the current `master` branch and to releases identified as supported on the repository's Releases page. Older builds may contain known defects and should not be treated as supported merely because an APK remains downloadable.
 
 ## Report a vulnerability
 

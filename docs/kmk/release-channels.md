@@ -21,7 +21,7 @@ Google Drive sync is independent of the updater. Supplying `GOOGLE_CLIENT_SECRET
 
 ## Development builds
 
-Development builds use `app.komikku.dev`. They install beside the public app, use the Android debug key, and do not enable the in-app updater. Development workflows create downloadable test APKs, not public updates.
+Debug development builds use `app.komikku.dev`. They install beside the public app, use the Android debug key, and do not enable the in-app updater. The push CI and manual development workflows create downloadable debug APKs, not public updates. The inherited pull-request workflow instead builds preview APKs and can enable the updater and signing for same-repository pull requests; those artifacts are not the public `app.komikku.kmk` channel. See [Build and verification](build-and-verify.md#repository-automation) for the differences.
 
 For a genuinely private development history, keep the development branch in a separate private repository or private clone. Branches inside a public repository are public. A private GitHub release cannot be used as an anonymous in-app update feed, so private development builds are intentionally distributed through authenticated artifacts or direct testing rather than the public updater.
 

@@ -83,6 +83,15 @@ See [Ratings and linked versions](feature-guides/ratings.md) to manage your choi
 
 When Action History is available in Evaluation Mode, supported changes include the value that existed before the change. You can reverse bulk For You actions from Action History. The short confirmation message shown after a bulk action does not currently include its own **Undo** button.
 
+## Local tracking
+
+1. Open a manga and select **Trackers**.
+2. In **Local tracking**, select the status, chapter, score, or date to change it. The chapter picker supports scrolling and direct entry, including zero and decimal chapter numbers.
+3. Open or refresh a manga to apply its saved local progress to its available chapters.
+4. To keep confirmed copies from other sources caught up, enable **Share progress across linked versions** in **Settings > Tracking**. Select the local tracker title to review participating versions and turn **Keep reading progress in sync** off for a version you want to keep separate.
+
+For example, progress at chapter 15 can mark available chapters through the matching point read on another participating version. A confirmed chapter match takes priority; otherwise the app uses the highest available number at or below 15. This does not download pages, make later chapters unread, or send an outside tracker update. If you mark an earlier chapter unread but leave saved progress farther ahead, loading or refreshing can mark it read again. See [Local tracking](feature-guides/local-tracking.md) for matching limits and separate external-tracker settings.
+
 ## Source Evaluation
 
 1. Open **Recommendation Settings** and select **Source Evaluation**.
@@ -135,11 +144,19 @@ See [Finding and comparing manga versions](feature-guides/versions.md) for searc
 
 Comparison does not alter the library. A library change begins only after you select another version and confirm the established migration flow.
 
+The images above are older captures and do not show **View in Reader**. Opening the full reader can update reading progress through ordinary reading; returning to the comparison does not undo that progress.
+
 If you cancel a search, or one source fails, versions you already accepted remain selected. Migration shows which steps succeeded and which failed. It does not claim to reverse changes that already finished or happened outside the app.
 
 ## Reader controls
 
 See [Reading schedule, completion, and chapter navigation](feature-guides/reading.md) for schedule checks, completion prompts, linked-version ratings, and Jump to last read.
+
+### Switch between sources
+
+Open the reader's alternate-source chooser and select another source offering the same manga. Review the suggested chapter and the translation-group name when available, then open your choice. The chooser starts with the first chapter sharing your current chapter number; without an exact match, it suggests the closest available number, favoring the lower number in a tie.
+
+While that reading pair is active, **Switch source** lets you choose a chapter from the other source in either direction. Returning to the source you started from does not end the pair. If the pair is unavailable after the session ends, open the alternate-source chooser again. Switching does not add manga to your library or bypass reading-time restrictions. See [Switch between sources](feature-guides/reading.md#switch-between-sources) for the complete steps.
 
 | Reading schedule | Completion preference |
 | --- | --- |

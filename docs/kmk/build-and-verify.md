@@ -4,9 +4,11 @@ This guide produces a local development build and checks the behavior covered by
 
 ## Requirements
 
-- JDK 17.
+- JDK 21 to match the push and public release workflows; their version is recorded in `.github/.java-version`. The inherited pull-request workflow currently uses JDK 17.
 - The Android SDK versions requested by the Gradle build.
 - Git and a checkout of this repository.
+- Python and Meson for the native image decoder. CI installs Meson 1.12.0. Keep `meson` available on your command path.
+- The Android SDK's CMake and NDK tools, including Ninja. NASM is needed for x86-family native decoder assembly; CI installs it separately.
 - Network access for the first dependency download, or a complete compatible Gradle cache for offline builds.
 
 ## Build
@@ -44,7 +46,9 @@ Before distributing an APK:
 
 ## Repository automation
 
-Pushes and pull requests run formatting, unit tests, local-source tests, and a debug build without release signing keys. Development APKs use `app.komikku.dev` and do not create public releases or in-app updates.
+The `CI` workflow runs on pushes to `master` and manual requests. It checks formatting, app and local-source unit tests, then assembles a debug APK without release signing keys. The manually started development workflow also produces a debug APK. These APKs use `app.komikku.dev` and do not create public releases or in-app updates.
+
+The inherited `PR build check` workflow is different: it excludes Markdown-only changes, checks dependencies and formatting, assembles a preview build, and runs release unit tests. Same-repository pull requests can use configured Google service files, enable the updater, and sign preview APKs; pull requests from another repository do not take those conditional steps. A preview artifact is not the public `app.komikku.kmk` release. Check that workflow before relying on it for a particular change; it does not run the exact debug/local-source command above.
 
 Stable release tags match the Komikku FC feature version in `KmkRecsReleaseNotes`, for example `v0.8.22`. This is separate from Android's `versionName`, currently `1.14.1`. Android's `versionCode` must increase for each public update. The release workflow builds `kmkPublicTest` with the updater enabled, then signs the APKs using `SIGNING_KEY`, `ALIAS`, `KEY_STORE_PASSWORD`, and `KEY_PASSWORD`. These secrets must preserve the signing identity of the previous public release. The optional `GOOGLE_CLIENT_SECRETS_JSON` includes Google Drive support; it is not required for the updater.
 
