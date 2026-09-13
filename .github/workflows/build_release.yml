@@ -53,7 +53,7 @@ jobs:
           set -euo pipefail
           git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}" >/dev/null
           version_name="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"/\1/p' app/build.gradle.kts | head -n 1)"
-          version_code="$(sed -n 's/^[[:space:]]*versionCode = \([0-9]*\)/\1/p' app/build.gradle.kts | head -n 1)"
+          version_code="$(sed -n 's/^[[:space:]]*versionCode = \([0-9][0-9]*\).*$/\1/p' app/build.gradle.kts | head -n 1)"
           kmk_feature_version="$(sed -n 's/^[[:space:]]*const val VERSION_NAME = "KMK-Recs \([^"]*\)"/\1/p' app/src/main/java/exh/recs/KmkRecsReleaseNotes.kt | head -n 1)"
           test -n "${version_name}" || { echo "Could not read app versionName from app/build.gradle.kts" >&2; exit 1; }
           test -n "${version_code}" || { echo "Could not read Android versionCode." >&2; exit 1; }
