@@ -26,6 +26,7 @@ android {
             dimension = "fixture"
             applicationId = "app.komikku.fixture.sources.alpha"
             buildConfigField("long", "SOURCE_ID", "910000000000000001L")
+            buildConfigField("long", "SEARCH_DELAY_MILLIS", "0L")
             buildConfigField(
                 "boolean",
                 "FAIL_PREVIEW_PAGE",
@@ -37,6 +38,21 @@ android {
             dimension = "fixture"
             applicationId = "app.komikku.fixture.sources.beta"
             buildConfigField("long", "SOURCE_ID", "910000000000000002L")
+            buildConfigField(
+                "long",
+                "SEARCH_DELAY_MILLIS",
+                providers.gradleProperty("kmk.fixture.betaSearchDelayMillis")
+                    .map {
+                        it.toLong().also { delayMillis ->
+                            require(delayMillis in 0L..10_000L) {
+                                "kmk.fixture.betaSearchDelayMillis must be between 0 and 10000"
+                            }
+                        }
+                    }
+                    .orElse(0L)
+                    .get()
+                    .toString() + "L",
+            )
             buildConfigField(
                 "boolean",
                 "FAIL_PREVIEW_PAGE",

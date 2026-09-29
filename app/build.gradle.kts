@@ -4,6 +4,9 @@ import mihon.buildlogic.getCommitCount
 import mihon.buildlogic.getGitSha
 import java.time.Instant
 
+private val defaultAndroidVersionName = "1.14.1"
+private val defaultAndroidVersionCode = 96
+
 plugins {
     id("mihon.android.application")
     id("mihon.android.application.compose")
@@ -42,8 +45,12 @@ android {
     defaultConfig {
         applicationId = "app.komikku"
 
-        versionCode = 94 // Increase for each public APK release; feature versions are tracked in KmkRecsReleaseNotes.
-        versionName = "1.14.1"
+        versionCode = providers.gradleProperty("kmk.releaseVersionCode").orNull?.toInt()
+            ?: defaultAndroidVersionCode // Feature versions are tracked in KmkRecsReleaseNotes.
+        // A compatibility bridge may need the Android version expected by an older updater.
+        // Ordinary builds keep the established application version unless the release workflow
+        // supplies an explicit bridge version.
+        versionName = providers.gradleProperty("kmk.releaseVersionName").orNull ?: defaultAndroidVersionName
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getGitSha()}\"")
@@ -470,6 +477,7 @@ dependencies {
     testImplementation(libs.roborazzi.compose)
     testImplementation(androidx.test.ext)
     testImplementation(compose.ui.test.junit4)
+    testImplementation(androidx.workmanager.testing)
     // KMK --> R-026: in-memory SQLite driver for migration tests
     testImplementation(libs.sqldelight.sqlite.driver)
     // KMK <--

@@ -126,13 +126,14 @@ internal class ExactBestVersionPairedFixtureSearchGateway(
     private val targetSource: Source,
     private val target: Manga,
 ) : BestVersionCandidateSearchGateway {
-    override fun getMatchingSources(): List<Source> = listOf(targetSource)
+    override fun getGlobalSearchSources(): List<Source> = listOf(targetSource)
 
     override suspend fun search(
         queries: List<String>,
         settings: SameMangaMatchSettings,
         originManga: Manga,
         sources: List<Source>,
+        scope: exh.recs.matching.SameMangaSearchScope,
         onResult: suspend (SameMangaSourceResult) -> Unit,
     ) {
         if (sources.singleOrNull()?.id != targetSource.id) return

@@ -45,7 +45,7 @@ class AlternateSourceReaderFixtureSourceContractTest {
     }
 
     @Test
-    fun `fixture extension owns only exact paired routes and loopback page urls`() {
+    fun `fixture extension owns only registered routes and loopback page urls`() {
         val source = File(
             "../fixture-sources-to-try-extension/src/main/java/app/komikku/fixture/sources/FixtureSource.kt",
         ).readText()
@@ -55,10 +55,30 @@ class AlternateSourceReaderFixtureSourceContractTest {
         assertTrue(source.contains("http://127.0.0.1:38291"))
         assertTrue(source.contains("class FixtureSource : HttpSource()"))
         assertTrue(source.contains("override val baseUrl = LOOPBACK_BASE"))
-        assertTrue(source.contains("if (manga.url != fixture.mangaUrl) return SMangaUpdate(manga, chapters)"))
-        assertTrue(source.contains("val chapterNumber = fixture.chapterNumber(chapter.url) ?: return emptyList()"))
+        assertTrue(source.contains("val fixture = FixtureContent.forSource(id)"))
+        assertTrue(source.contains("val corpusEntry = FixtureCorpus.forSource(id).firstOrNull { it.url == manga.url }"))
+        assertTrue(source.contains("if (fixture == null && corpusEntry == null) return SMangaUpdate(manga, chapters)"))
+        assertTrue(source.contains("val chapterNumber = fixtureChapterNumber ?: corpusChapterNumber ?: return emptyList()"))
         assertFalse(source.contains("0.0.0.0"))
         assertFalse(source.contains("https://"))
+    }
+
+    @Test
+    fun `middle motion reader route stays outside recommendation search`() {
+        val source = File(
+            "../fixture-sources-to-try-extension/src/main/java/app/komikku/fixture/sources/FixtureSource.kt",
+        ).readText()
+        val latestRoute = source.substringAfter("override suspend fun getLatestUpdates").substringBefore("override suspend fun getSearchManga")
+        val recommendationSearch = source.substringAfter("private fun searchCorpus").substringBefore("override suspend fun getMangaUpdate")
+
+        assertTrue(source.contains("query.contains(\"middle motion\", ignoreCase = true)"))
+        assertTrue(source.contains("Fixture Middle Motion"))
+        assertTrue(source.contains("chapterNumbers = 1..101"))
+        assertTrue(source.contains("FixtureCorpus.middleMotionForSource(id)"))
+        assertTrue(latestRoute.contains("FixtureCorpus.middleMotionForSource(id)?.asManga()"))
+        assertTrue(latestRoute.contains("page != 1"))
+        assertTrue(recommendationSearch.contains("FixtureCorpus.forSource(id)"))
+        assertFalse(recommendationSearch.contains("middleMotionForSource"))
     }
 
     @Test

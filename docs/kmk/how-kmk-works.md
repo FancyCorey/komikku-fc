@@ -85,9 +85,11 @@ flowchart TD
     Open["Open reader"] --> Allowed{"Schedule allows reading?"}
     Allowed -->|No| Block["Show the restriction"]
     Allowed -->|Yes| Read["Read chapters"]
-    Read --> Complete{"Newly finished latest chapter and rating offer enabled?"}
+    Read --> Complete{"Newly finished latest chapter?"}
     Complete -->|No| Exit["Continue or leave normally"]
-    Complete -->|Yes| Rated{"Already rated?"}
+    Complete -->|Yes| Eligible{"Offer enabled, regular reader session, no active alternate session, and schedule permits?"}
+    Eligible -->|No| Exit
+    Eligible -->|Yes| Rated{"Already rated?"}
     Rated -->|Yes| Exit
     Rated -->|No| Leave["Wait until reader exit"]
     Leave --> Choice{"Choose a rating?"}
@@ -101,7 +103,7 @@ flowchart TD
 
 The schedule is optional and off by default. The reader checks it when it opens and returns to the foreground. If a restriction begins while reading, the grace message explains whether you may finish the current chapter; switching chapters cannot bypass the restriction. The manual reading timer has separate settings.
 
-The completion offer requires a newly finished latest chapter, an unrated manga, and **Ask for a rating after finishing**. It waits until you leave the reader. **Ask about other versions** controls the separate follow-up; cancelling that offer keeps the rating you already saved. See [Reading](feature-guides/reading.md) for timer, schedule, prompt, and navigation settings.
+The completion offer requires a newly finished latest chapter, an unrated manga, **Ask for a rating after finishing**, and a regular reader session with no active alternate-source session. It waits until you leave the reader; if the schedule blocks the session at completion, the prompt is suppressed. **Ask about other versions** controls the separate follow-up; cancelling that offer keeps the rating you already saved. See [Reading](feature-guides/reading.md) for timer, schedule, prompt, and navigation settings.
 
 An active source pair lets you switch in either direction through **Switch source**. Chapter suggestions use matching numbers or the closest available number, not a guarantee that the contents match. Local Tracking applies saved progress when a manga opens or refreshes and can share progress across participating confirmed versions. Source switching and progress sharing are separate tools; see [Local tracking](feature-guides/local-tracking.md).
 

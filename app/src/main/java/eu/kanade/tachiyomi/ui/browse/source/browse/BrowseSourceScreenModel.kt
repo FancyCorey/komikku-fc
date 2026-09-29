@@ -38,6 +38,8 @@ import eu.kanade.tachiyomi.source.online.MetadataSource
 import eu.kanade.tachiyomi.source.online.all.MangaDex
 import eu.kanade.tachiyomi.util.removeCovers
 import exh.metadata.metadata.RaisedSearchMetadata
+import exh.recs.ForYouBrowseRestrictionContext
+import exh.recs.ForYouBrowseRestrictions
 import exh.source.EH_PACKAGE
 import exh.source.ExhPreferences
 import exh.source.LOCAL_SOURCE_PACKAGE
@@ -92,6 +94,7 @@ import tachiyomi.domain.source.model.SavedSearch
 import tachiyomi.domain.source.model.StubSource
 import tachiyomi.domain.source.repository.SourcePagingSource
 import tachiyomi.domain.source.service.SourceManager
+import tachiyomi.domain.taste.interactor.GetChapterCountsByMangaIds
 import tachiyomi.i18n.sy.SYMR
 import tachiyomi.source.local.isLocal
 import uy.kohesive.injekt.Injekt
@@ -120,6 +123,36 @@ internal fun shouldUseBrowseFixture(
     sourceId: Long,
 ): Boolean = isDebugBuild && sourceId == DebugBrowseFixtureSource.ID
 
+internal fun restoreBrowseSourceFilters(
+    filters: FilterList,
+    filtersJson: String,
+    serializer: FilterSerializer,
+): Boolean {
+    val saved = runCatching { Json.decodeFromString<JsonArray>(filtersJson) }.getOrNull() ?: return false
+    return serializer.deserializeIfCompatible(filters, saved)
+}
+
+internal fun resetBrowseSourceFilters(
+    filters: FilterList,
+    inheritedFiltersJson: String?,
+    serializer: FilterSerializer,
+): FilterList {
+    inheritedFiltersJson?.let { restoreBrowseSourceFilters(filters, it, serializer) }
+    return filters
+}
+
+internal fun restoreBrowseSourceVisitFilters(
+    filters: FilterList,
+    visitFiltersJson: String?,
+    inheritedFiltersJson: String?,
+    serializer: FilterSerializer,
+): Boolean {
+    if (visitFiltersJson != null && restoreBrowseSourceFilters(filters, visitFiltersJson, serializer)) {
+        return true
+    }
+    return inheritedFiltersJson?.let { restoreBrowseSourceFilters(filters, it, serializer) } ?: false
+}
+
 open class BrowseSourceScreenModel(
     /* KMK --> */
     protected /* KMK <-- */ val sourceId: Long,
@@ -127,6 +160,8 @@ open class BrowseSourceScreenModel(
     // SY -->
     private val filtersJson: String? = null,
     private val savedSearch: Long? = null,
+    private val forYouRestrictionsJson: String? = null,
+    private val visitFiltersJson: String? = null,
     // SY <--
     private val sourceManager: SourceManager = Injekt.get(),
     private val sourcePreferences: SourcePreferences = Injekt.get(),
@@ -138,6 +173,7 @@ open class BrowseSourceScreenModel(
     private val setMangaCategories: SetMangaCategories = Injekt.get(),
     private val setMangaDefaultChapterFlags: SetMangaDefaultChapterFlags = Injekt.get(),
     private val getManga: GetManga = Injekt.get(),
+    private val getChapterCounts: GetChapterCountsByMangaIds = Injekt.get(),
     private val updateManga: UpdateManga = Injekt.get(),
     private val addTracks: AddTracks = Injekt.get(),
     private val getIncognitoState: GetIncognitoState = Injekt.get(),
@@ -199,6 +235,8 @@ open class BrowseSourceScreenModel(
     val startExpanded by uiPreferences.expandFilters().asState(screenModelScope)
 
     private val filterSerializer = FilterSerializer()
+    private val forYouRestrictionContext = ForYouBrowseRestrictionContext.decode(forYouRestrictionsJson)
+    val hasInvalidForYouRestrictionContext: Boolean get() = forYouRestrictionContext.isInvalid
     // SY <--
 
     // KMK -->
@@ -251,12 +289,17 @@ open class BrowseSourceScreenModel(
                         // KMK <--
                     )
                 }
-            } else if (jsonFilters != null) {
-                runCatching {
-                    val filtersJson = Json.decodeFromString<JsonArray>(jsonFilters)
-                    filterSerializer.deserialize(filters, filtersJson)
-                    search(filters = filters)
-                }
+            } else if (visitFiltersJson != null || jsonFilters != null) {
+                val filtersRestored = restoreBrowseSourceVisitFilters(
+                    filters = filters,
+                    visitFiltersJson = visitFiltersJson,
+                    inheritedFiltersJson = jsonFilters,
+                    serializer = filterSerializer,
+                )
+                // A recommendation can outlive a source extension's filter schema. Keep the
+                // source browse route useful by searching with its current defaults when the
+                // temporary handoff cannot be decoded.
+                search(filters = if (filtersRestored) filters else safeFilterList(source))
             }
 
             getExhSavedSearch.subscribe(source.id) { safeFilterList(source) }
@@ -304,19 +347,38 @@ open class BrowseSourceScreenModel(
                 createSourcePagingSource(listing.query ?: "", listing.filters)
                 // SY <--
             }.flow.map { pagingData ->
-                pagingData.map { (manga, metadata) ->
-                    getManga.subscribe(manga.url, manga.source)
-                        .map { it ?: manga }
-                        // SY -->
-                        .combineMetadata(metadata)
-                        // SY <--
-                        .stateIn(ioCoroutineScope)
-                }
+                pagingData
+                    .filter { (manga, _) -> forYouRestrictionContext.allows(manga) }
+                    .filter { (manga, _) -> allowsForYouChapterCount(manga) }
+                    .map { (manga, metadata) ->
+                        getManga.subscribe(manga.url, manga.source)
+                            .map { it ?: manga }
+                            // SY -->
+                            .combineMetadata(metadata)
+                            // SY <--
+                            .stateIn(ioCoroutineScope)
+                    }
                     .filter { !hideInLibraryItems || !it.value.first.favorite }
             }
                 .cachedIn(ioCoroutineScope)
         }
         .stateIn(ioCoroutineScope, SharingStarted.Lazily, emptyFlow())
+
+    private suspend fun allowsForYouChapterCount(manga: Manga): Boolean {
+        val minimum = forYouRestrictionContext.restrictions?.minimumKnownChapterCount ?: return true
+        if (minimum <= 0) return true
+
+        return try {
+            val localManga = getManga.await(manga.url, manga.source) ?: return true
+            val count = getChapterCounts.await(listOf(localManga.id))[localManga.id]
+            forYouRestrictionContext.restrictions?.allows(manga, count) != false
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN, e) { "For You local chapter-count filter failed open" }
+            true
+        }
+    }
 
     fun getColumnsPreference(orientation: Int): GridCells {
         val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -351,7 +413,13 @@ open class BrowseSourceScreenModel(
         if (source !is CatalogueSource) return
 
         // KMK -->
-        setFilters(safeFilterList(source))
+        setFilters(
+            resetBrowseSourceFilters(
+                filters = safeFilterList(source),
+                inheritedFiltersJson = filtersJson.takeIf { forYouRestrictionContext.restrictions != null },
+                serializer = filterSerializer,
+            ),
+        )
 
         reloadSavedSearches()
         // KMK <--
@@ -370,6 +438,10 @@ open class BrowseSourceScreenModel(
             )
         }
     }
+
+    fun serializeVisitFilters(filters: FilterList = state.value.filters): String? = runCatching {
+        filterSerializer.serialize(filters).ifEmpty { null }?.let { Json.encodeToString(it) }
+    }.getOrNull()
 
     fun search(
         query: String? = null,

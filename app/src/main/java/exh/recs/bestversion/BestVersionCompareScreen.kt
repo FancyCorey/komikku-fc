@@ -84,6 +84,8 @@ import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.KmkEmptyStateArtwork
 import eu.kanade.presentation.components.KmkEmptyStateIllustration
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.data.coil.previewTraceId
+import eu.kanade.tachiyomi.data.coil.safeTypeChain
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
@@ -96,7 +98,9 @@ import exh.recs.settings.RecommendationDiagnosticsSettingsScreen
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import logcat.LogPriority
 import mihon.domain.source.interactor.UpdateMangaFromRemote
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.interactor.GetChapterByUrlAndMangaId
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.i18n.kmk.KMR
@@ -160,6 +164,7 @@ class BestVersionCompareScreen(
             )
         }
         val state by screenModel.state.collectAsState()
+        val chapterUnavailableText = stringResource(KMR.strings.best_version_reader_chapter_unavailable)
         // KMK --> v0.7.9: local UI state for fullscreen page preview — does not affect model state
         // KMK --> v0.7.33: stored as 3 primitives so rememberSaveable survives rotation
         var fullscreenPageUrl by rememberSaveable { mutableStateOf<String?>(null) }
@@ -279,7 +284,7 @@ class BestVersionCompareScreen(
                                     } else {
                                         Toast.makeText(
                                             context,
-                                            context.getString(KMR.strings.best_version_reader_chapter_unavailable.resourceId),
+                                            chapterUnavailableText,
                                             Toast.LENGTH_SHORT,
                                         ).show()
                                     }
@@ -337,7 +342,7 @@ class BestVersionCompareScreen(
                                     } else {
                                         Toast.makeText(
                                             context,
-                                            context.getString(KMR.strings.best_version_reader_chapter_unavailable.resourceId),
+                                            chapterUnavailableText,
                                             Toast.LENGTH_SHORT,
                                         ).show()
                                     }
@@ -510,6 +515,28 @@ private fun ConfirmCandidatesContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
         )
+        if (state.searchProgress < state.searchTotal) {
+            Text(
+                text = stringResource(KMR.strings.best_version_searching),
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(
+                    horizontal = MaterialTheme.padding.medium,
+                    vertical = MaterialTheme.padding.small,
+                ),
+            )
+            LinearProgressIndicator(
+                progress = {
+                    if (state.searchTotal > 0) {
+                        state.searchProgress.toFloat() / state.searchTotal
+                    } else {
+                        0f
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = MaterialTheme.padding.medium),
+            )
+        }
         LazyColumn(modifier = Modifier.weight(1f)) {
             // KMK v0.8.18: origin/current manga always shown first as the fixed comparison
             // baseline -- always included, never toggled off (see
@@ -525,7 +552,7 @@ private fun ConfirmCandidatesContent(
                     )
                 }
             }
-            if (allCandidates.isEmpty()) {
+            if (allCandidates.isEmpty() && state.searchProgress == state.searchTotal) {
                 // Candidate search has completed before this step is shown, so an empty list is a
                 // genuine unavailable result rather than a loading placeholder.
                 item(key = "no_candidates") {
@@ -545,6 +572,15 @@ private fun ConfirmCandidatesContent(
                             modifier = Modifier.padding(top = MaterialTheme.padding.small),
                         )
                     }
+                }
+            } else if (allCandidates.isEmpty()) {
+                item(key = "candidates_pending") {
+                    Text(
+                        text = stringResource(KMR.strings.best_version_searching),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(MaterialTheme.padding.medium),
+                    )
                 }
             } else {
                 items(allCandidates, key = { "${it.source}|${it.url}" }) { manga ->
@@ -570,7 +606,7 @@ private fun ConfirmCandidatesContent(
             // can still proceed straight to confirming they're already on the best version.
             Button(
                 onClick = onConfirm,
-                enabled = state.originManga != null,
+                enabled = state.canConfirmCandidates,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
@@ -871,6 +907,7 @@ private fun ComparePreviewContent(
     // retried without refetching candidates or disturbing thumbnails that already succeeded.
     val failedPreviewPages = remember { mutableStateMapOf<MangaIdentityKey, Set<Int>>() }
     val resolvedPreviewPages = remember { mutableStateMapOf<MangaIdentityKey, Set<Int>>() }
+    val loadingPreviewPages = remember { mutableStateMapOf<MangaIdentityKey, Set<Int>>() }
     val previewRetryGenerations = remember { mutableStateMapOf<Pair<MangaIdentityKey, Int>, Int>() }
     // A source can report its page references as prepared while the image fetcher remains pending
     // indefinitely. Keep that state honest: after a bounded wait, expose the same retry action as
@@ -930,14 +967,15 @@ private fun ComparePreviewContent(
                             val loaded = previewState.pages.size
                             val total = state.sampleSize
                             val failedPages = failedPreviewPages[key].orEmpty()
-                            LaunchedEffect(key, previewState.pages) {
+                            LaunchedEffect(key, previewState.pages, loadingPreviewPages[key]) {
                                 timedOutPreviewKeys[key] = false
                                 delay(5_000)
-                                val settledPages = resolvedPreviewPages[key].orEmpty().size +
-                                    failedPreviewPages[key].orEmpty().size
-                                if (settledPages < previewState.pages.size) {
-                                    timedOutPreviewKeys[key] = true
-                                }
+                                timedOutPreviewKeys[key] = BestVersionPreviewTimeoutPolicy.shouldShowWarning(
+                                    timedOut = true,
+                                    pendingPageCount = loadingPreviewPages[key].orEmpty().size,
+                                    failedPageCount = failedPreviewPages[key].orEmpty().size,
+                                    sourceFailedPageCount = previewState.failedPageIndexes.size,
+                                )
                             }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1002,13 +1040,40 @@ private fun ComparePreviewContent(
                                                         page.index + 1,
                                                         manga.title,
                                                     ),
-                                                    onSuccess = {
-                                                        resolvedPreviewPages[key] = resolvedPreviewPages[key].orEmpty() + page.index
-                                                        failedPreviewPages[key] = failedPreviewPages[key].orEmpty() - page.index
+                                                    onLoading = {
+                                                        loadingPreviewPages[key] = loadingPreviewPages[key].orEmpty() + page.index
                                                     },
-                                                    onError = {
-                                                        resolvedPreviewPages[key] = resolvedPreviewPages[key].orEmpty() - page.index
-                                                        failedPreviewPages[key] = failedPreviewPages[key].orEmpty() + page.index
+                                                    onSuccess = {
+                                                        val resolved = resolvedPreviewPages[key].orEmpty() + page.index
+                                                        val failed = failedPreviewPages[key].orEmpty() - page.index
+                                                        val loading = loadingPreviewPages[key].orEmpty() - page.index
+                                                        resolvedPreviewPages[key] = resolved
+                                                        failedPreviewPages[key] = failed
+                                                        loadingPreviewPages[key] = loading
+                                                        timedOutPreviewKeys[key] = BestVersionPreviewTimeoutPolicy.shouldShowWarning(
+                                                            timedOut = timedOutPreviewKeys[key] == true,
+                                                            pendingPageCount = loading.size,
+                                                            failedPageCount = failed.size,
+                                                            sourceFailedPageCount = previewState.failedPageIndexes.size,
+                                                        )
+                                                    },
+                                                    onError = { error ->
+                                                        val resolved = resolvedPreviewPages[key].orEmpty() - page.index
+                                                        val failed = failedPreviewPages[key].orEmpty() + page.index
+                                                        val loading = loadingPreviewPages[key].orEmpty() - page.index
+                                                        resolvedPreviewPages[key] = resolved
+                                                        failedPreviewPages[key] = failed
+                                                        loadingPreviewPages[key] = loading
+                                                        timedOutPreviewKeys[key] = BestVersionPreviewTimeoutPolicy.shouldShowWarning(
+                                                            timedOut = timedOutPreviewKeys[key] == true,
+                                                            pendingPageCount = loading.size,
+                                                            failedPageCount = failed.size,
+                                                            sourceFailedPageCount = previewState.failedPageIndexes.size,
+                                                        )
+                                                        logcat(LogPriority.WARN, tag = "BestVersionPreview") {
+                                                            "Image pipeline failed trace=${page.preview.previewTraceId()} " +
+                                                                "page=${page.index + 1} errorTypes=${error.result.throwable.safeTypeChain()}"
+                                                        }
                                                     },
                                                     modifier = Modifier
                                                         .fillMaxSize()
@@ -1077,9 +1142,12 @@ private fun ComparePreviewContent(
                                 }
                             }
                             if (
-                                timedOutPreviewKeys[key] == true &&
-                                failedPages.isEmpty() &&
-                                previewState.failedPageIndexes.isEmpty()
+                                BestVersionPreviewTimeoutPolicy.shouldShowWarning(
+                                    timedOut = timedOutPreviewKeys[key] == true,
+                                    pendingPageCount = loadingPreviewPages[key].orEmpty().size,
+                                    failedPageCount = failedPages.size,
+                                    sourceFailedPageCount = previewState.failedPageIndexes.size,
+                                )
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,

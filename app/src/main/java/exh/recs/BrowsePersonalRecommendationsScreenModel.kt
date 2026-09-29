@@ -50,6 +50,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.SharingStarted
@@ -61,6 +62,8 @@ import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import logcat.LogPriority
 import mihon.domain.manga.model.toDomainManga
 import tachiyomi.core.common.util.lang.withUIContext
@@ -94,6 +97,7 @@ import tachiyomi.domain.tracker.repository.LocalTrackerRepository
 import tachiyomi.i18n.kmk.KMR
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import xyz.nulldev.ts.api.http.serializer.FilterSerializer
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.UUID
@@ -150,7 +154,14 @@ internal fun <T> selectRecommendationCandidates(
 data class RecommendationSearchContext(
     val textQuery: String,
     val topTags: List<String>,
+    val filtersJson: String? = null,
+    val restrictionsJson: String? = null,
 )
+
+internal fun serializeRecommendationFilters(
+    filters: FilterList,
+    serializer: FilterSerializer = FilterSerializer(),
+): String? = runCatching { serializer.serialize(filters).toString() }.getOrNull()
 
 /** Stable identity for a source manga — survives local manga_id changes across devices/paths. */
 internal data class MangaTasteKey(val source: Long, val url: String)
@@ -245,6 +256,7 @@ class BrowsePersonalRecommendationsScreenModel(
     private val getTagAliases: GetTagAliases = Injekt.get(),
     private val getDisabledSources: GetDisabledRecommendationSources = Injekt.get(),
     private val sourceManager: SourceManager = Injekt.get(),
+    private val filterSerializer: FilterSerializer = FilterSerializer(),
     private val networkToLocalManga: NetworkToLocalManga = Injekt.get(),
     private val getMangaInteractor: GetManga = Injekt.get(),
     private val getMangaTaste: GetMangaTaste = Injekt.get(),
@@ -500,18 +512,21 @@ class BrowsePersonalRecommendationsScreenModel(
      * not discard successful source results or issue duplicate requests for them.
      */
     fun retryFailedSourcesOrRefresh() {
-        val failedSourceIds = retryableRecommendationSourceIds(
-            mutableState.value.items.mapKeys { (source, _) -> source.id },
-        )
-        requestLoad(
-            forceRefresh = true,
-            retrySourceIds = failedSourceIds.takeIf { it.isNotEmpty() },
-        )
+        synchronized(loadLaunchLock) {
+            val failedSourceIds = retryableRecommendationSourceIds(
+                mutableState.value.items.mapKeys { (source, _) -> source.id },
+            )
+            requestLoad(
+                forceRefresh = true,
+                retrySourceIds = failedSourceIds.takeIf { it.isNotEmpty() },
+            )
+        }
     }
 
     /** Serializes refresh requests so a superseded load cannot cancel a newer search job. */
     private fun requestLoad(forceRefresh: Boolean, retrySourceIds: Set<Long>? = null) {
         synchronized(loadLaunchLock) {
+            ForYouRefreshTelemetry.superseded(mutableState.value.resultGeneration)
             loadJob?.cancel()
             searchJob?.cancel()
             // Reserve the generation before launching work. A cancelled older load can otherwise
@@ -596,9 +611,10 @@ class BrowsePersonalRecommendationsScreenModel(
         if (activeRefreshGeneration.get() != refreshGeneration) return
         val retryOnly = retrySourceIds?.takeIf { it.isNotEmpty() }
         val fixtureMode = ForYouDebugFixture.resolveMode(
-            isDebugBuild = isDebugBuild || BuildConfig.KMK_BENCHMARK_FIXTURE,
+            fixtureBuildEnabled = isDebugBuild || BuildConfig.KMK_BENCHMARK_FIXTURE,
             preferenceValue = sourcePreferences.forYouFixtureMode().get(),
         )
+        ForYouRefreshTelemetry.begin(fixtureMode, refreshGeneration)
         // KMK --> v0.7.25: reset offline state when starting a new load
         mutableState.update {
             if (it.resultGeneration != refreshGeneration) return@update it
@@ -609,7 +625,7 @@ class BrowsePersonalRecommendationsScreenModel(
             )
         }
 
-        if (!ForYouDebugFixture.usesSyntheticInputs(fixtureMode) && !isOnline()) {
+        if (!ForYouDebugFixture.usesFixtureInputs(fixtureMode) && !isOnline()) {
             mutableState.update {
                 if (it.resultGeneration != refreshGeneration) {
                     it
@@ -636,6 +652,7 @@ class BrowsePersonalRecommendationsScreenModel(
         }
 
         val profile = ForYouDebugFixture.profile(fixtureMode) { getTasteProfile.await() }
+        currentCoroutineContext().ensureActive()
         if (profile.isEmpty()) {
             if (retryOnly == null) {
                 mutableState.update {
@@ -653,9 +670,12 @@ class BrowsePersonalRecommendationsScreenModel(
             return
         }
 
-        val aliasMap = getTagAliases.awaitAliasMap()
-        val groupToAliases = getTagAliases.awaitGroupToAliasesMap()
+        val tagAliases = getTagAliases.awaitAll()
+        currentCoroutineContext().ensureActive()
+        val aliasMap = tagAliases.associate { it.normalizedAlias to it.groupKey }
+        val groupToAliases = tagAliases.groupBy({ it.groupKey }) { it.normalizedAlias }
         val disabledSourceIds = getDisabledSources.await().toSet()
+        currentCoroutineContext().ensureActive()
         // KMK -->
         val dislikedRaw = sourcePreferences.dislikedRecommendationSourceKeys().get()
         val dislikedInstalledIds = exh.recs.sourceprefs.RecommendationSourcePreferenceStore
@@ -707,19 +727,20 @@ class BrowsePersonalRecommendationsScreenModel(
         // KMK --> v0.7.40: use shared selector (language filter + ordering + disabled exclusion)
         val orderedEnabledSources = RecommendationSourceSelector.select(
             sources = ForYouDebugFixture.sources(fixtureMode, sourceManager.getVisibleSources()),
-            languages = if (ForYouDebugFixture.usesSyntheticInputs(fixtureMode)) setOf("en") else recommendationLanguages,
-            storedOrder = if (ForYouDebugFixture.usesSyntheticInputs(fixtureMode)) {
+            languages = if (ForYouDebugFixture.usesFixtureInputs(fixtureMode)) setOf("en") else recommendationLanguages,
+            storedOrder = if (ForYouDebugFixture.usesFixtureInputs(fixtureMode)) {
                 ForYouDebugFixture.sourceIds(fixtureMode).toList()
             } else {
                 storedOrder
             },
-            effectiveDisabledIds = if (ForYouDebugFixture.usesSyntheticInputs(fixtureMode)) emptySet() else effectiveDisabledIds,
+            effectiveDisabledIds = if (ForYouDebugFixture.usesFixtureInputs(fixtureMode)) emptySet() else effectiveDisabledIds,
         )
         // KMK <--
 
         // Boosted sources are fixed: always the top BOOSTED_SOURCE_COUNT eligible sources
         val boostedSourceIds = orderedEnabledSources.take(BOOSTED_SOURCE_COUNT).map { it.id }.toSet()
 
+        val completedSourceResults = linkedMapOf<Long, Pair<Source, List<PersonalRecommendation>>>()
         val retryCombined: Pair<PersonalRecommendationResult?, PersonalRecommendationResult?>?
         synchronized(accumulatorLock) {
             combinedAccumulator.clear()
@@ -727,12 +748,13 @@ class BrowsePersonalRecommendationsScreenModel(
             if (retryOnly != null) {
                 mutableState.value.items.forEach { (source, result) ->
                     if (source.id !in retryOnly && result is PersonalRecommendationResult.Success && result.result.isNotEmpty()) {
+                        completedSourceResults[source.id] = source to result.result
                         combinedAccumulator.add(result.result, source.id)
                     }
                 }
             }
-            val rowRanked = combinedAccumulator.rank(boostedSourceIds, TOP_PICKS_ROW_CAP)
             val detailRanked = combinedAccumulator.rank(boostedSourceIds, TOP_PICKS_DETAIL_CAP)
+            val rowRanked = detailRanked.take(TOP_PICKS_ROW_CAP)
             retryCombined = if (retryOnly == null) {
                 null
             } else {
@@ -757,6 +779,7 @@ class BrowsePersonalRecommendationsScreenModel(
         // value tuple, not tied to the preference's own persistence) so every downstream consumer
         // of this variable is unaffected -- only where it's computed FROM changes.
         val allTastes = getMangaTaste.awaitAll()
+        currentCoroutineContext().ensureActive()
         val seenKeys = allTastes
             .asSequence()
             .filter { it.rating == tachiyomi.domain.taste.model.MangaRating.NOT_INTERESTED.value }
@@ -771,7 +794,7 @@ class BrowsePersonalRecommendationsScreenModel(
         // user's real Not Interested history. Production refreshes retain the live adjustment;
         // otherwise a user's accumulated genre penalties can make the fixture's intentionally
         // positive candidates disappear before the mixed-result device gate is observable.
-        val scoringProfile = if (ForYouDebugFixture.usesSyntheticInputs(fixtureMode)) {
+        val scoringProfile = if (ForYouDebugFixture.usesFixtureInputs(fixtureMode)) {
             profile
         } else {
             buildNotInterestedAdjustedProfile(profile, seenKeys, aliasMap)
@@ -790,7 +813,19 @@ class BrowsePersonalRecommendationsScreenModel(
         // KMK v0.8.2: visible-card budget per row; raw value, validated by ForYouResultBudgetPolicy
         val resultBudget = sourcePreferences.recommendationResultBudget().get()
         // KMK <--
-        val fingerprint = profileFingerprint(topTags, profile, aliasMap, effectiveDisabledIds, storedOrder, recommendationLanguages, hideKnownManga, seenMangaCount, minChapterCount, resultBudget)
+        val fingerprint = profileFingerprint(
+            topTags,
+            profile,
+            aliasMap,
+            effectiveDisabledIds,
+            storedOrder,
+            recommendationLanguages,
+            hideKnownManga,
+            seenMangaCount,
+            minChapterCount,
+            resultBudget,
+            seenKeys,
+        )
         val queryKey = topTags.sorted().joinToString(",")
 
         val tasteByKey = allTastes.associate { MangaTasteKey(it.source, it.url) to it }
@@ -880,7 +915,7 @@ class BrowsePersonalRecommendationsScreenModel(
         // site needing to know anything about the past. Skipped entirely under a synthetic debug
         // fixture run (ForYouDebugFixture) so a developer's fixture session can never prune the real
         // catalog (and, as importantly, never pollutes everEligibleSourceIds with fixture-only ids).
-        if (!ForYouDebugFixture.usesSyntheticInputs(fixtureMode)) {
+        if (!ForYouDebugFixture.usesFixtureInputs(fixtureMode)) {
             val installedAndEnabledSourceIds = sourceManager.getVisibleSources()
                 .asSequence()
                 .map { it.id }
@@ -893,13 +928,14 @@ class BrowsePersonalRecommendationsScreenModel(
         }
 
         currentCoroutineContext().ensureActive()
-        val loadIsActive = currentCoroutineContext().isActive
+        val loadContext = currentCoroutineContext()
         synchronized(loadLaunchLock) {
-            if (!loadIsActive) return
+            if (!loadContext.isActive || activeRefreshGeneration.get() != refreshGeneration) return
             searchJob?.cancel()
             searchJob = screenModelScope.launch(effectiveSearchDispatcher) {
                 val allStatuses = mutableMapOf<Long, RecommendationSourceRunStatus>()
                 var usefulCount = 0
+                val refreshFocus = activeFocusCriteria.value
 
                 val candidateSources = selectRecommendationCandidates(
                     sources = orderedEnabledSources,
@@ -907,6 +943,7 @@ class BrowsePersonalRecommendationsScreenModel(
                     maxAttempts = MAX_SOURCE_ATTEMPTS,
                     sourceId = Source::id,
                 )
+                val sourcePriority = orderedEnabledSources.withIndex().associate { it.value.id to it.index }
 
                 // Resolve a private Latest budget for this refresh. It is passed to every source
                 // search instead of living on the ScreenModel, so a cancelled older refresh cannot
@@ -937,31 +974,35 @@ class BrowsePersonalRecommendationsScreenModel(
                         )
                     }
 
-                    val outcomes = batch.map { source ->
-                        async {
-                            searchSource(
-                                source, queryKey, fingerprint, topTags, scoringProfile, aliasMap, aliasCandidates,
-                                tasteByKey, visibility, hideKnownManga, seenKeys, forceRefresh,
-                                source.id in boostedSourceIds,
-                                lastStrategy = strategyMap[source.id],
-                                // KMK v0.8.13
-                                lastRunStatus = lastStatusMap[source.id],
-                                // KMK --> v0.7.26
-                                minChapterCount = minChapterCount,
-                                // KMK <--
-                                // KMK v0.8.2
-                                resultBudget = resultBudget,
-                                latestBudgetState = latestBudgetState,
-                                // KMK <--
-                                refreshGeneration = refreshGeneration,
-                                // An inline Retry is an explicit user-requested attempt and must bypass
-                                // automatic suppression for the selected failed sources only.
-                                bypassSourceFailureSuppression = retryOnly != null,
+                    val outcomeChannel = Channel<SourceSearchOutcome>(capacity = batch.size)
+                    batch.forEach { source ->
+                        launch {
+                            outcomeChannel.send(
+                                searchSource(
+                                    source, queryKey, fingerprint, topTags, scoringProfile, aliasMap, aliasCandidates,
+                                    tasteByKey, visibility, hideKnownManga, seenKeys, forceRefresh,
+                                    source.id in boostedSourceIds,
+                                    lastStrategy = strategyMap[source.id],
+                                    // KMK v0.8.13
+                                    lastRunStatus = lastStatusMap[source.id],
+                                    // KMK --> v0.7.26
+                                    minChapterCount = minChapterCount,
+                                    // KMK <--
+                                    // KMK v0.8.2
+                                    resultBudget = resultBudget,
+                                    latestBudgetState = latestBudgetState,
+                                    // KMK <--
+                                    refreshGeneration = refreshGeneration,
+                                    // An inline Retry is an explicit user-requested attempt and must bypass
+                                    // automatic suppression for the selected failed sources only.
+                                    bypassSourceFailureSuppression = retryOnly != null,
+                                ),
                             )
                         }
-                    }.awaitAll()
+                    }
 
-                    for (outcome in outcomes) {
+                    repeat(batch.size) {
+                        val outcome = outcomeChannel.receive()
                         if (outcome.successfulStrategy != null) {
                             synchronized(strategyMap) { strategyMap[outcome.source.id] = outcome.successfulStrategy }
                         } else if (RecommendationStrategyRecoveryPolicy.shouldForgetAfterRun(outcome.status)) {
@@ -970,9 +1011,21 @@ class BrowsePersonalRecommendationsScreenModel(
                             synchronized(strategyMap) { strategyMap.remove(outcome.source.id) }
                         }
                         allStatuses[outcome.source.id] = outcome.status
-                        if (outcome.isUseful) usefulCount++
-                        updateItem(refreshGeneration, outcome.source, outcome.result, outcome.status)
+                        if (outcome.isUseful) {
+                            val result = outcome.result as? PersonalRecommendationResult.Success
+                            val focused = result?.let { RecommendationFocusPolicy.apply(it.result, refreshFocus, focusAliasMap) }
+                            if (focused !is RecommendationFocusPolicy.Outcome.Filtered || focused.matched.isNotEmpty()) usefulCount++
+                        }
+                        updateItem(
+                            refreshGeneration,
+                            outcome.source,
+                            outcome.result,
+                            outcome.status,
+                            completedSourceResults,
+                            sourcePriority,
+                        )
                     }
+                    outcomeChannel.close()
 
                     if (usefulCount >= MAX_VISIBLE_SOURCE_ROWS) break
                 }
@@ -1056,6 +1109,12 @@ class BrowsePersonalRecommendationsScreenModel(
                         state
                     }
                 }
+                ForYouRefreshTelemetry.finish(
+                    generation = refreshGeneration,
+                    evaluatedCandidates = allStatuses.values.sumOf { it.evaluatedCount },
+                    visibleCandidates = (mutableState.value.combinedResult as? PersonalRecommendationResult.Success)
+                        ?.result?.size ?: 0,
+                )
             }
         }
     }
@@ -1119,6 +1178,7 @@ class BrowsePersonalRecommendationsScreenModel(
         if (!forceRefresh) {
             val cached = loadFromCache(source.id, queryKey, fingerprint, tasteByKey, visibility, hideKnownManga, seenKeys, minChapterCount)
             if (cached != null) {
+                ForYouRefreshTelemetry.cacheHit(refreshGeneration, cached.size)
                 // KMK --> v0.7.38: merge cached page-1 results with remembered candidates from all pages
                 val displayLimit = ForYouResultBudgetPolicy.resolve(resultBudget, isBoosted) // KMK v0.8.2
                 val resolvedMemory = resolveMemoryEntries(remembered)
@@ -1157,6 +1217,7 @@ class BrowsePersonalRecommendationsScreenModel(
                     // KMK --> v0.7.41: apply min-chapter policy in the merge too
                     minChapterCount, chapterCountsForFilter,
                     // KMK <--
+                    allowNeutralLatest = allowsNeutralLatest(displayLimit),
                 )
                 // KMK <--
                 val status = RecommendationSourceRunStatus(
@@ -1464,7 +1525,20 @@ class BrowsePersonalRecommendationsScreenModel(
             )
 
             if (currentCoroutineContext().isActive) {
-                val ctx = RecommendationSearchContext(searchParams.textQuery, plan.tags)
+                val ctx = RecommendationSearchContext(
+                    textQuery = searchParams.textQuery,
+                    topTags = plan.tags,
+                    filtersJson = serializeRecommendationFilters(searchParams.filters, filterSerializer),
+                    restrictionsJson = Json.encodeToString(
+                        ForYouBrowseRestrictions.fromProfile(
+                            sourceId = source.id,
+                            blockedGroups = profile.blockedGroups,
+                            tastes = tasteByKey.values,
+                            aliases = aliasMap,
+                            minimumKnownChapterCount = minChapterCount,
+                        ),
+                    ),
+                )
                 mutableState.update { s ->
                     s.copy(searchContexts = s.searchContexts.mutate { it[source.id] = ctx })
                 }
@@ -2055,6 +2129,7 @@ class BrowsePersonalRecommendationsScreenModel(
             val processed = processRawCandidates(
                 source, rawSMangas, tasteByKey, visibility, seenKeys, minChapterCount,
                 hideKnownManga, enrichLimit, displayLimit, profile, aliasMap,
+                allowNeutralCandidates = true,
             )
             // Cross-lane dedup: a manga already present in the personalized result set for this
             // source must never also be counted as (or displace a slot meant for) a Latest candidate.
@@ -2144,6 +2219,7 @@ class BrowsePersonalRecommendationsScreenModel(
         displayLimit: Int,
         profile: TasteProfile,
         aliasMap: Map<String, String>,
+        allowNeutralCandidates: Boolean = false,
     ): ProcessedRawCandidates {
         val smangaByUrl = rawSMangas.associateBy { it.url }
         val raw = rawSMangas.map { it.toDomainManga(source.id) }
@@ -2182,7 +2258,13 @@ class BrowsePersonalRecommendationsScreenModel(
             chapterCounts,
         )
         val enriched = enricher.enrich(source, saved, smangaByUrl, enrichLimit)
-        val scored = PersonalRecommendationScorer.rankCandidates(enriched, profile, aliasMap, displayLimit)
+        val scored = PersonalRecommendationScorer.rankCandidates(
+            enriched,
+            profile,
+            aliasMap,
+            displayLimit,
+            allowNeutralCandidates = allowNeutralCandidates,
+        )
         val recommendations = scored.map { sc -> PersonalRecommendation(sc.manga, sc.score, sc.matchedGroups) }
         return ProcessedRawCandidates(saved, knownIds, scored.size, recommendations)
     }
@@ -2232,8 +2314,16 @@ class BrowsePersonalRecommendationsScreenModel(
             exposureContext.interactions,
             exposureContext.now,
             exposureContext.windowDays,
+            allowNeutralLatest = allowsNeutralLatest(displayLimit),
         )
     }
+
+    private fun allowsNeutralLatest(displayLimit: Int): Boolean =
+        RecommendationLatestBudgetPolicy.resolveAdditiveSlotsPerSource(
+            enabled = sourcePreferences.recommendationLatestExplorationEnabled().get(),
+            displayLimit = displayLimit,
+            configuredPercent = sourcePreferences.recommendationLatestExplorationPercent().get(),
+        ) > 0
 
     /** Bundles the optional exposure-reranking inputs for [mergeFreshAndRememberedCandidates]. */
     private data class ExposureRerankContext(
@@ -2581,9 +2671,9 @@ class BrowsePersonalRecommendationsScreenModel(
         val scores = entry.resultScores?.split(",").orEmpty().mapNotNull { it.trim().toDoubleOrNull() }
         val cachedGroups = entry.resultReasons?.split(", ").orEmpty().filter { it.isNotBlank() }
 
-        // Resolve every cached manga first so known-id and chapter-count lookups can be batched.
+        val mangaById = getMangaInteractor.await(ids).associateBy { it.id }
         val resolved = ids.mapIndexedNotNull { index, id ->
-            val manga = getMangaInteractor.await(id) ?: return@mapIndexedNotNull null
+            val manga = mangaById[id] ?: return@mapIndexedNotNull null
             manga to scores.getOrElse(index) { 0.0 }
         }
         if (resolved.isEmpty()) return emptyList()
@@ -2675,6 +2765,7 @@ class BrowsePersonalRecommendationsScreenModel(
         // under a smaller budget stores fewer rows than a larger budget needs, so it must never be
         // treated as complete/reusable for a later, larger setting.
         resultBudget: Int = ForYouResultBudgetPolicy.DEFAULT,
+        hiddenKeys: Set<SeenMangaKey> = emptySet(),
         // KMK <--
     ): String {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -2699,6 +2790,9 @@ class BrowsePersonalRecommendationsScreenModel(
         // KMK --> v0.8.2
         update("resultBudget:${ForYouResultBudgetPolicy.validate(resultBudget)}")
         // KMK <--
+        // A replacement Not interested entry must invalidate the cache even when the number of
+        // hidden entries stays the same.
+        update("hidden:${RecommendationHiddenTitleFingerprint.digest(hiddenKeys)}")
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
@@ -2981,6 +3075,7 @@ class BrowsePersonalRecommendationsScreenModel(
         }
 
         // Record progress with the resolved retry metadata.
+        currentCoroutineContext().ensureActive()
         try {
             progressStore.recordProgress(
                 sourceId = source.id,
@@ -3143,6 +3238,8 @@ class BrowsePersonalRecommendationsScreenModel(
         source: Source,
         result: PersonalRecommendationResult,
         status: RecommendationSourceRunStatus? = null,
+        completedSourceResults: MutableMap<Long, Pair<Source, List<PersonalRecommendation>>>,
+        sourcePriority: Map<Long, Int>,
     ) {
         if (!RecommendationRefreshGenerationPolicy.shouldAccept(
                 candidateGeneration = refreshGeneration,
@@ -3161,14 +3258,26 @@ class BrowsePersonalRecommendationsScreenModel(
                 return
             }
             if (result is PersonalRecommendationResult.Success && result.result.isNotEmpty()) {
-                combinedAccumulator.add(result.result, source.id)
+                completedSourceResults[source.id] = source to result.result
+            } else {
+                completedSourceResults.remove(source.id)
             }
-            val rowRanked = combinedAccumulator.rank(currentBoostedSourceIds, TOP_PICKS_ROW_CAP)
+            // Searches complete independently, but merge representatives and ties must remain
+            // deterministic in the user's source-priority order rather than network completion order.
+            combinedAccumulator.clear()
+            completedSourceResults.entries
+                .withIndex()
+                .sortedWith(compareBy({ sourcePriority[it.value.key] ?: Int.MAX_VALUE }, { it.index }))
+                .forEach { (_, entry) -> combinedAccumulator.add(entry.value.second, entry.key) }
             val detailRanked = combinedAccumulator.rank(currentBoostedSourceIds, TOP_PICKS_DETAIL_CAP)
+            val rowRanked = detailRanked.take(TOP_PICKS_ROW_CAP)
             Pair(
                 if (rowRanked.isEmpty()) null else PersonalRecommendationResult.Success(rowRanked),
                 if (detailRanked.isEmpty()) null else PersonalRecommendationResult.Success(detailRanked),
             )
+        }
+        if (result is PersonalRecommendationResult.Success && result.result.isNotEmpty()) {
+            ForYouRefreshTelemetry.firstResult(refreshGeneration, result.result.size)
         }
         mutableState.update { state ->
             if (!RecommendationRefreshGenerationPolicy.shouldAccept(

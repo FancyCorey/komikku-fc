@@ -104,7 +104,7 @@ class BestVersionPairedFixtureRuntimeTest {
 
         assertTrue(binding != null)
         assertEquals(setOf(MigrationFlag.CHAPTER, MigrationFlag.CATEGORY), binding!!.migrationPresetFlags)
-        assertEquals(listOf(beta), binding.candidateSearchGateway.getMatchingSources())
+        assertEquals(listOf(beta), binding.candidateSearchGateway.getGlobalSearchSources())
         assertTrue(binding.isCurrentTarget(target))
 
         coEvery {

@@ -69,16 +69,7 @@ class SourceRecommendationQualityRunner(
 
         val privateAvailable = BasePreferences.ExtensionInstaller.PRIVATE in
             basePreferences.extensionInstaller().entries
-        // KMK --> v0.7.45: public-safety fix — this job temporarily installs non-installed
-        // extensions the same way Source Evaluation does, but its PromptRequired cleanup path was
-        // log-only (see cleanupExtension below), so a Shizuku/Current-mode temp install could be
-        // left behind with only a logcat line. Rather than fully replicating Source Evaluation's
-        // cleanup-status/leftover-warning UX for a secondary background feature, non-installed
-        // probes are now unconditionally forced to Private (which cleans up silently and
-        // reliably) regardless of the user's chosen installerMode; if Private isn't available,
-        // those targets are refused entirely instead of risking a Shizuku/Current leftover — see
-        // evaluateOne's non-installed branch. Installed-source checks are unaffected since they
-        // never install/uninstall anything.
+        // Temporary probes require private installation so cleanup never opens a system prompt.
         val installerOverride: BasePreferences.ExtensionInstaller? =
             if (privateAvailable) BasePreferences.ExtensionInstaller.PRIVATE else null
         // KMK <--
@@ -206,34 +197,33 @@ class SourceRecommendationQualityRunner(
             is SourceRecommendationQualityExtensionResolver.ResolveResult.Found -> resolved.extension
         }
 
-        val installSuccess = withTimeoutOrNull(90_000L) {
-            try {
-                extensionManager.installExtension(availableExt, installerOverride)
-                    .first { it == InstallStep.Installed || it == InstallStep.Error } == InstallStep.Installed
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                false
+        extensionManager.withTemporaryPrivateExtension(availableExt) { installation ->
+            val installSuccess = withTimeoutOrNull(90_000L) {
+                try {
+                    installation
+                        .first { it == InstallStep.Installed || it == InstallStep.Error } == InstallStep.Installed
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    false
+                }
+            } ?: false
+
+            if (!installSuccess) {
+                writeErrorFit(evaluation, "Install failed or timed out")
+                return@withTemporaryPrivateExtension
             }
-        } ?: false
 
-        if (!installSuccess) {
-            writeErrorFit(evaluation, "Install failed or timed out")
-            return
-        }
+            val installedExt = withTimeoutOrNull(20_000L) {
+                extensionManager.installedExtensionsFlow.first { installed ->
+                    installed.any { it.pkgName == availableExt.pkgName && it.signatureHash == availableExt.signatureHash }
+                }.find { it.pkgName == availableExt.pkgName && it.signatureHash == availableExt.signatureHash }
+            }
 
-        val installedExt = withTimeoutOrNull(20_000L) {
-            extensionManager.installedExtensionsFlow.first { installed ->
-                installed.any { it.pkgName == availableExt.pkgName && it.signatureHash == availableExt.signatureHash }
-            }.find { it.pkgName == availableExt.pkgName && it.signatureHash == availableExt.signatureHash }
-        }
+            if (installedExt == null) {
+                writeErrorFit(evaluation, "Installed extension did not load")
+                return@withTemporaryPrivateExtension
+            }
 
-        if (installedExt == null) {
-            writeErrorFit(evaluation, "Installed extension did not load")
-            cleanupExtension(availableExt)
-            return
-        }
-
-        try {
             when (val sr = SourceRecommendationQualitySourceResolver.resolve(installedExt, evaluation)) {
                 is SourceRecommendationQualitySourceResolver.ResolveResult.Found -> {
                     val outcome = probe.probe(sr.source, tasteProfile)
@@ -246,41 +236,14 @@ class SourceRecommendationQualityRunner(
                     writeErrorFit(evaluation, "Source not found after install")
                 }
             }
-        } finally {
-            cleanupExtension(availableExt)
         }
     }
 
-    private fun cleanupExtension(ext: Extension.Available) {
-        try {
-            val installedExt = extensionManager.installedExtensionsFlow.value.find {
-                it.pkgName == ext.pkgName && it.signatureHash == ext.signatureHash
-            }
-            val decision = SourceEvaluationCleanupPolicy.cleanupDecision(
-                preExistingInstalled = false,
-                installedAfterEvaluation = installedExt != null,
-                isShared = installedExt?.isShared ?: false,
-            )
-            when (decision) {
-                SourceEvaluationCleanupPolicy.CleanupDecision.RemovePrivateSilently -> {
-                    extensionManager.uninstallExtension(installedExt!!)
-                }
-                SourceEvaluationCleanupPolicy.CleanupDecision.PromptRequired -> {
-                    logcat(LogPriority.INFO) {
-                        "KMK SourceRecommendationQualityRunner: skipping system-installed cleanup"
-                    }
-                }
-                else -> { /* SkipPreExisting or NotNeeded */ }
-            }
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            logcat(LogPriority.WARN) { "KMK SourceRecommendationQualityRunner: cleanup failed" }
-        }
-    }
-
-    private suspend fun writeErrorFit(evaluation: SourceEvaluation, message: String) {
+    internal suspend fun writeErrorFit(evaluation: SourceEvaluation, message: String) {
         try {
             upsertSourceRecommendationFit.await(buildErrorFit(evaluation, message))
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {}
     }
 

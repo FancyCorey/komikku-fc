@@ -7,6 +7,7 @@ import eu.kanade.tachiyomi.data.database.models.Track
 import eu.kanade.tachiyomi.data.track.EnhancedTracker
 import eu.kanade.tachiyomi.data.track.Tracker
 import eu.kanade.tachiyomi.data.track.TrackerManager
+import eu.kanade.tachiyomi.data.track.TrackerRegistrationResult
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.util.lang.convertEpochMillisZone
 import eu.kanade.tachiyomi.util.system.toast
@@ -38,64 +39,91 @@ class AddTracks(
         withIOContext {
             val allChapters = getChaptersByMangaId.await(mangaId)
             val hasReadChapters = allChapters.any { it.read }
-            tracker.bind(item, hasReadChapters)
+            val boundItem = tracker.bind(item, hasReadChapters)
 
-            var track = item.toDomainTrack(idRequired = false) ?: return@withIOContext
-
-            insertTrack.await(track)
-            syncLocalTrackingFromExternal?.sync(track, tracker)
-
-            // TODO: merge into [SyncChapterProgressWithTrack]?
-            // Update chapter progress if newer chapters marked read locally
-            if (hasReadChapters) {
-                val latestLocalReadChapterNumber = allChapters
-                    .sortedBy { it.chapterNumber }
-                    .takeWhile { it.read }
-                    .lastOrNull()
-                    ?.chapterNumber ?: -1.0
-
-                if (latestLocalReadChapterNumber > track.lastChapterRead) {
-                    /* KMK -->
-                    // This code causes issue NOT settings remote-track's status
-                    track = track.copy(
-                        lastChapterRead = latestLocalReadChapterNumber,
-                    )
-                    KMK <-- */
-                    tracker.setRemoteLastChapterRead(track.toDbTrack(), latestLocalReadChapterNumber.toInt())
-                        // KMK -->
-                        .toDomainTrack(idRequired = false)
-                        ?.let { track = it }
-                    // KMK <--
+            val convertedTrack = boundItem.toDomainTrack(idRequired = false)
+            if (convertedTrack == null) {
+                logcat(LogPriority.ERROR) { "Tracker accepted the binding but the result could not be converted locally" }
+                val context = Injekt.get<Application>()
+                withUIContext {
+                    context.toast(context.stringResource(KMR.strings.tracking_remote_added_local_save_failed))
                 }
-
-                if (track.startDate <= 0) {
-                    val firstReadChapterDate = Injekt.get<GetHistory>().await(mangaId)
-                        .sortedBy { it.readAt }
-                        .firstOrNull()
-                        ?.readAt
-
-                    firstReadChapterDate?.let {
-                        val startDate = firstReadChapterDate.time.convertEpochMillisZone(
-                            ZoneOffset.systemDefault(),
-                            ZoneOffset.UTC,
-                        )
-                        track = track.copy(
-                            startDate = startDate,
-                        )
-                        tracker.setRemoteStartDate(track.toDbTrack(), startDate)
-                    }
-                }
+                return@withIOContext TrackerRegistrationResult.RemoteAcceptedLocalSaveFailed
             }
+            var track = checkNotNull(convertedTrack)
 
-            syncChapterProgressWithTrack.await(mangaId, track, tracker)
-                // KMK -->
-                ?.let {
+            runTrackerBindingFollowUps(
+                persistLocalTrack = { insertTrack.await(track) },
+                synchronize = {
+                    syncLocalTrackingFromExternal?.sync(track, tracker)
+
+                    // TODO: merge into [SyncChapterProgressWithTrack]?
+                    // Update chapter progress if newer chapters marked read locally
+                    if (hasReadChapters) {
+                        val latestLocalReadChapterNumber = allChapters
+                            .sortedBy { it.chapterNumber }
+                            .takeWhile { it.read }
+                            .lastOrNull()
+                            ?.chapterNumber ?: -1.0
+
+                        if (latestLocalReadChapterNumber > track.lastChapterRead) {
+                            /* KMK -->
+                            // This code causes issue NOT settings remote-track's status
+                            track = track.copy(
+                                lastChapterRead = latestLocalReadChapterNumber,
+                            )
+                            KMK <-- */
+                            tracker.setRemoteLastChapterRead(track.toDbTrack(), latestLocalReadChapterNumber.toInt())
+                                // KMK -->
+                                .toDomainTrack(idRequired = false)
+                                ?.let { track = it }
+                            // KMK <--
+                        }
+
+                        if (track.startDate <= 0) {
+                            val firstReadChapterDate = Injekt.get<GetHistory>().await(mangaId)
+                                .sortedBy { it.readAt }
+                                .firstOrNull()
+                                ?.readAt
+
+                            firstReadChapterDate?.let {
+                                val startDate = firstReadChapterDate.time.convertEpochMillisZone(
+                                    ZoneOffset.systemDefault(),
+                                    ZoneOffset.UTC,
+                                )
+                                track = track.copy(
+                                    startDate = startDate,
+                                )
+                                tracker.setRemoteStartDate(track.toDbTrack(), startDate)
+                            }
+                        }
+                    }
+
+                    syncChapterProgressWithTrack.await(mangaId, track, tracker)
+                        // KMK -->
+                        ?.let {
+                            val context = Injekt.get<Application>()
+                            withUIContext {
+                                context.toast(context.stringResource(KMR.strings.sync_progress_from_trackers_up_to_chapter, it))
+                            }
+                        }
+                    // KMK <--
+                },
+                onLocalPersistenceFailure = { failure ->
+                    logcat(LogPriority.ERROR, failure) { "Tracker accepted the binding but local persistence failed" }
                     val context = Injekt.get<Application>()
                     withUIContext {
-                        context.toast(context.stringResource(KMR.strings.sync_progress_from_trackers_up_to_chapter, it))
+                        context.toast(context.stringResource(KMR.strings.tracking_remote_added_local_save_failed))
                     }
-                }
-            // KMK <--
+                },
+                onSynchronizationFailure = { failure ->
+                    logcat(LogPriority.ERROR, failure) { "Track saved but post-bind synchronization failed" }
+                    val context = Injekt.get<Application>()
+                    withUIContext {
+                        context.toast(context.stringResource(KMR.strings.tracking_added_sync_failed))
+                    }
+                },
+            )
         }
     }
 

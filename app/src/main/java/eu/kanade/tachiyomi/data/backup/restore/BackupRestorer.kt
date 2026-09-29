@@ -35,6 +35,7 @@ import eu.kanade.tachiyomi.data.backup.restore.restorers.SavedSearchRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.TasteRestorer
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.util.system.createFileInCacheDir
+import exh.ocr.OcrIndexRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -72,6 +73,7 @@ class BackupRestorer(
         Injekt.get(),
         Injekt.get(),
     ),
+    private val ocrIndexRepository: OcrIndexRepository = Injekt.get(),
     // KMK <--
 ) {
 
@@ -223,6 +225,18 @@ class BackupRestorer(
             // KMK <--
 
             // TODO: optionally trigger online library + tracker update
+        }
+
+        // OCR rows are deliberately not part of backups. Remove only rows whose restored
+        // manga/chapter identity no longer exists; settings-only restores keep the index intact.
+        if (options.libraryEntries) {
+            try {
+                ocrIndexRepository.deleteOrphanedRows()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                recordError(context.stringResource(MR.strings.unknown_error))
+            }
         }
     }
 

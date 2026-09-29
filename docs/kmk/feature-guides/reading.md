@@ -171,7 +171,7 @@ The additional reader-options section under **Settings > Reader** contains these
 
 Under **Recommendation settings > Versions and quality**, **Ask for a rating after finishing** controls the completion offer. **Ask about other versions** controls the later offer to rate other versions after saving a rating. Neither setting chooses a rating for you.
 
-After the final available chapter, the optional completion prompt offers rating choices. Choose **Not now** or press Back to leave without changing your rating. Accepting the offer opens the rating screen, where you can also rate linked versions when available. Your rating changes only when you select one. If you then decline the offer to rate other versions, the rating you already saved stays in place; those other versions are not rated by that dismissal.
+After the final available chapter, the optional completion prompt is offered when the reader is not schedule-blocked and you are in a regular reader session, not an active alternate-source session. Choose **Not now** or press Back to leave without changing your rating. Accepting the offer lets you choose Love, Like, Dislike, or Not interested. After you save a rating, the app can offer to help you rate other versions when **Ask about other versions** is enabled, including versions it finds when no linked group is already confirmed. Your rating changes only when you select one. If you then decline the offer to rate other versions, the rating you already saved stays in place; those other versions are not rated by that dismissal.
 
 ## Jump to last read
 
@@ -209,17 +209,21 @@ If a page does not load, check its error message. Opening an alternate source is
 
 ```mermaid
 flowchart TD
-    Progress["Finish the final page"] --> Genuine{"Finished the latest available chapter?"}
-    Genuine -->|No| Normal["Continue or exit normally"]
+    Progress["Finish the final page"] --> Enabled{"Completion rating enabled?"}
+    Enabled -->|No| Normal["Continue or exit normally"]
+    Enabled -->|Yes| Eligible{"Primary version, no active alternate session, and schedule permits?"}
+    Eligible -->|No| Normal
+    Eligible -->|Yes| Genuine{"Finished the latest available chapter?"}
+    Genuine -->|No| Normal
     Genuine -->|Yes| Exit["Leave the reader"]
     Exit --> Prompt["Offer to rate the manga when enabled"]
     Prompt -->|Not now or Back| Return["Return without a rating change"]
     Prompt -->|Accept| Choices["Choose a rating"]
-    Choices -->|Love, Like, Dislike, or Not Interested| Save["Save your rating"]
+    Choices -->|Love, Like, Dislike, or Not interested| Save["Save your rating"]
     Choices -->|Cancel or Back| Return
-    Save --> Linked{"Linked versions available?"}
-    Linked -->|Yes| Offer["Offer linked-version rating"]
-    Linked -->|No| Rated["Return with your rating saved"]
+    Save --> Ask{"Ask about other versions enabled?"}
+    Ask -->|Yes| Offer["Offer to find and rate other versions"]
+    Ask -->|No| Rated["Return with your rating saved"]
     Offer -->|Cancel or Back| Rated
     Offer -->|Accept| Other["Review and select other versions to rate"]
     Other --> Rated
@@ -243,7 +247,7 @@ These optional controls add to the existing reader settings and viewer without r
 ```mermaid
 flowchart TD
     Request["Want to read a chapter"] --> Allowed{"Schedule allows reading, or schedule is off?"}
-    Allowed -->|No| Block["Show schedule message; wait for an allowed period"]
+    Allowed -->|No| Block["Show schedule message; reopen after an allowed period"]
     Allowed -->|Yes| Open["Read the chapter"]
     Open --> Ends{"Allowed period ends while reading?"}
     Ends -->|No| Continue["Continue under your schedule"]

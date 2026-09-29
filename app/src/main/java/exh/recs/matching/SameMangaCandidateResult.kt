@@ -11,6 +11,7 @@ sealed interface SameMangaCandidateResult {
     data class Success(
         val results: List<Manga>,
         val evidence: Map<MangaIdentityKey, SameMangaIdentityAssessment> = emptyMap(),
+        val confirmedKeys: Set<MangaIdentityKey> = emptySet(),
     ) : SameMangaCandidateResult
 }
 

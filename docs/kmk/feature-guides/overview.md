@@ -51,7 +51,7 @@ flowchart TD
     Compare --> Preview["Inspect previews or View in Reader"]
     Preview --> Decide{"Do you want a different version?"}
     Decide -->|No| Keep["Keep your current version"]
-    Decide -->|Yes| Confirm["Review the Copy or Migrate confirmation"]
+    Decide -->|Yes| Confirm["Review the copy or migration choices"]
     Confirm --> Choice["Apply only the choice you confirm"]
 ```
 
@@ -67,7 +67,7 @@ flowchart TD
     Safe --> Restore["Review restore choices when you need the data"]
 ```
 
-See [Backups](backups.md) for sensitive-data options, merge behavior, and restore limits. Before installing an update, read its release notes and use the correct build for your installed app. This guide does not promise that every older installation can automatically discover a new fork release.
+See [Backups](backups.md) for sensitive-data options, merge behavior, and restore limits. Before installing an update, read its release notes and use the correct build for your installed app. Older installations can discover a release automatically only when a compatible bridge release is provided; otherwise, use the [manual update path](../release-notes.md).
 
 ## Know what is shared
 

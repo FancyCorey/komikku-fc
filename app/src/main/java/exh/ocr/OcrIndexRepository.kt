@@ -1,5 +1,7 @@
 package exh.ocr
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import tachiyomi.data.DatabaseHandler
 
 // KMK --> OCR v0.1.1 (updated from v0.1.0)
@@ -9,11 +11,25 @@ data class OcrPageState(
     val ocrStatus: String,
     val recognizedWordCount: Long,
     val errorMessage: String?,
+    val pageModifiedAt: Long? = null,
+    val pageSize: Long? = null,
 )
 
 class OcrIndexRepository(
     private val handler: DatabaseHandler,
 ) {
+
+    private val writeGate = Mutex()
+    private var generation = 0L
+
+    suspend fun beginIndexing(): Long = writeGate.withLock {
+        ++generation
+    }
+
+    suspend fun <T> withInvalidatedGeneration(block: suspend () -> T): T = writeGate.withLock {
+        ++generation
+        block()
+    }
 
     suspend fun upsertPage(
         mangaId: Long,
@@ -38,8 +54,10 @@ class OcrIndexRepository(
         recognizedTextLength: Long,
         recognizedWordCount: Long,
         ocrStatus: String,
-    ) {
-        handler.await(inTransaction = true) {
+        runGeneration: Long,
+    ): Boolean = writeGate.withLock {
+        if (runGeneration != generation) return@withLock false
+        val rowsAffected = handler.await(inTransaction = true) {
             ocr_indexed_pageQueries.upsertPage(
                 mangaId = mangaId,
                 sourceId = sourceId,
@@ -63,8 +81,9 @@ class OcrIndexRepository(
                 recognizedTextLength = recognizedTextLength,
                 recognizedWordCount = recognizedWordCount,
                 ocrStatus = ocrStatus,
-            )
+            ).await()
         }
+        rowsAffected > 0
     }
 
     /**
@@ -127,6 +146,7 @@ class OcrIndexRepository(
     suspend fun getExistingPageState(
         chapterId: Long,
         pageIndex: Int,
+        pageIdentity: String,
         engineKey: String,
         engineVersion: String,
     ): OcrPageState? {
@@ -134,37 +154,65 @@ class OcrIndexRepository(
             ocr_indexed_pageQueries.getExistingPageState(
                 chapterId = chapterId,
                 pageIndex = pageIndex.toLong(),
+                pageIdentity = pageIdentity,
                 engineKey = engineKey,
                 engineVersion = engineVersion,
-            ) { identity, status, wordCount, errMsg ->
+            ) { identity, status, wordCount, errMsg, modifiedAt, size ->
                 OcrPageState(
                     pageIdentity = identity,
                     ocrStatus = status,
                     recognizedWordCount = wordCount,
                     errorMessage = errMsg,
+                    pageModifiedAt = modifiedAt,
+                    pageSize = size,
                 )
             }
         }
     }
 
     suspend fun deleteByManga(mangaId: Long) {
-        handler.await { ocr_indexed_pageQueries.deleteByManga(mangaId) }
+        writeGate.withLock {
+            ++generation
+            handler.await { ocr_indexed_pageQueries.deleteByManga(mangaId) }
+        }
     }
 
     suspend fun deleteByChapter(chapterId: Long) {
-        handler.await { ocr_indexed_pageQueries.deleteByChapter(chapterId) }
+        writeGate.withLock {
+            ++generation
+            handler.await { ocr_indexed_pageQueries.deleteByChapter(chapterId) }
+        }
+    }
+
+    /** Removes rows left behind when a restore replaces manga or chapter identities. */
+    suspend fun deleteOrphanedRows() {
+        writeGate.withLock {
+            ++generation
+            handler.await(inTransaction = true) {
+                ocr_indexed_pageQueries.deleteOrphanedRows()
+            }
+        }
     }
 
     suspend fun deleteAll() {
-        handler.await { ocr_indexed_pageQueries.deleteAll() }
+        writeGate.withLock {
+            ++generation
+            handler.await { ocr_indexed_pageQueries.deleteAll() }
+        }
     }
 
     suspend fun deleteOldEngineRows(currentEngineVersion: String) {
-        handler.await { ocr_indexed_pageQueries.deleteOldEngineRows(currentEngineVersion) }
+        writeGate.withLock {
+            ++generation
+            handler.await { ocr_indexed_pageQueries.deleteOldEngineRows(currentEngineVersion) }
+        }
     }
 
     suspend fun deleteEmptyAndFailed() {
-        handler.await { ocr_indexed_pageQueries.deleteEmptyAndFailed() }
+        writeGate.withLock {
+            ++generation
+            handler.await { ocr_indexed_pageQueries.deleteEmptyAndFailed() }
+        }
     }
 
     suspend fun getStats(engineVersion: String): OcrIndexStats {

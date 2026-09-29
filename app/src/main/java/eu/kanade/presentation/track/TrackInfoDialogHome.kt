@@ -233,6 +233,7 @@ private fun LocalTrackerInfoItem(
             ) {
                 Text(stringResource(KMR.strings.track_locally))
             }
+            LocalTrackerSettingsButton(onSettingsClick)
         }
         return
     }
@@ -265,12 +266,7 @@ private fun LocalTrackerInfoItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            IconButton(onClick = onSettingsClick) {
-                Icon(
-                    imageVector = Icons.Outlined.Settings,
-                    contentDescription = stringResource(MR.strings.action_settings),
-                )
-            }
+            LocalTrackerSettingsButton(onSettingsClick)
         }
         TrackDetailsPanel(
             status = stringResource(LocalTrackingActionPolicy.statusLabel(work.status)),
@@ -298,6 +294,16 @@ private fun LocalTrackerInfoItem(
         ) {
             Text(stringResource(KMR.strings.local_tracking_other_versions))
         }
+    }
+}
+
+@Composable
+private fun LocalTrackerSettingsButton(onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = Icons.Outlined.Settings,
+            contentDescription = stringResource(MR.strings.action_settings),
+        )
     }
 }
 

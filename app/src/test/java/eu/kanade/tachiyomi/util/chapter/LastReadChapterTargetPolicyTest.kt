@@ -11,8 +11,9 @@ import tachiyomi.domain.chapter.model.Chapter
  * Target-resolution contract for "Jump to last read".
  *
  * These are **pure policy tests**: they prove the resolution rule and the index arithmetic, not the
- * Compose scroll itself. Rendered scroll behavior is not covered anywhere -- this repository has no
- * Compose UI test infrastructure (recorded as `BLOCKED_EXTERNAL`).
+ * Compose scroll itself. The shared Compose positioning behavior is covered separately by
+ * [eu.kanade.presentation.manga.MangaScreenLastReadPositionComposeTest]; installed-app motion remains
+ * a distinct runtime assertion.
  *
  * Run with:
  * `./gradlew :app:testDebugUnitTest --tests "*.LastReadChapterTargetPolicyTest"`

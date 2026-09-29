@@ -3,13 +3,18 @@ package xyz.nulldev.ts.api.http.serializer
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.float
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
@@ -84,6 +89,25 @@ class FilterSerializer {
         }
     }
 
+    fun deserializeIfCompatible(filters: FilterList, json: JsonArray): Boolean {
+        val defaults = runCatching { serialize(filters) }.getOrNull() ?: return false
+        if (!compatibleSnapshot(defaults, json)) return false
+
+        return try {
+            deserializeSnapshot(filters, json)
+            true
+        } catch (_: Exception) {
+            runCatching { deserializeSnapshot(filters, defaults) }
+            false
+        }
+    }
+
+    private fun deserializeSnapshot(filters: FilterList, json: JsonArray) {
+        filters.filterIsInstance<Filter<Any?>>().zip(json).forEach { (filter, value) ->
+            deserialize(filter, value.jsonObject)
+        }
+    }
+
     fun deserialize(filter: Filter<Any?>, json: JsonObject) {
         val serializer = serializers
             .filterIsInstance<Serializer<Filter<Any?>>>()
@@ -118,5 +142,65 @@ class FilterSerializer {
     companion object {
         const val TYPE = "_type"
         const val CLASS_MAPPINGS = "_cmaps"
+    }
+
+    private fun compatibleSnapshot(current: JsonArray, saved: JsonArray): Boolean =
+        current.size == saved.size && current.zip(saved).all { (currentFilter, savedFilter) ->
+            if (currentFilter is JsonNull || savedFilter is JsonNull) {
+                currentFilter == savedFilter
+            } else {
+                compatibleFilter(currentFilter.jsonObject, savedFilter.jsonObject)
+            }
+        }
+
+    private fun compatibleFilter(current: JsonObject, saved: JsonObject): Boolean {
+        val currentFields = current.filterKeys { it != "state" && it != CLASS_MAPPINGS }
+        val savedFields = saved.filterKeys { it != "state" && it != CLASS_MAPPINGS }
+        if (currentFields != savedFields) return false
+
+        val currentMappings = current[CLASS_MAPPINGS]?.jsonObject ?: return false
+        val savedMappings = saved[CLASS_MAPPINGS]?.jsonObject ?: return false
+        if (currentMappings.keys != savedMappings.keys) return false
+        if (currentMappings.filterKeys { it != "state" } != savedMappings.filterKeys { it != "state" }) return false
+        if (currentMappings["state"] != savedMappings["state"]) return false
+
+        val currentState = current["state"] ?: return saved["state"] == null
+        val savedState = saved["state"] ?: return false
+        return when (current[TYPE]?.jsonPrimitive?.content) {
+            "GROUP" -> compatibleGroupState(currentState, savedState)
+            "SELECT" -> compatibleIndexState(current, savedState)
+            "TRISTATE" -> savedState.jsonPrimitive.intOrNull in 0..2
+            "CHECKBOX" -> savedState.jsonPrimitive.content.toBooleanStrictOrNull() != null
+            "TEXT" -> savedState.jsonPrimitive.isString
+            "AUTOCOMPLETE" -> savedState.jsonArray.all { it.jsonPrimitive.isString }
+            "SORT" -> compatibleSortState(current, savedState)
+            else -> currentState::class == savedState::class
+        }
+    }
+
+    private fun compatibleGroupState(current: JsonElement, saved: JsonElement): Boolean {
+        val currentChildren = current.jsonArray
+        val savedChildren = saved.jsonArray
+        return currentChildren.size == savedChildren.size && currentChildren.zip(savedChildren).all { (left, right) ->
+            when {
+                left is JsonNull || right is JsonNull -> left == right
+                else -> compatibleFilter(left.jsonObject, right.jsonObject)
+            }
+        }
+    }
+
+    private fun compatibleIndexState(current: JsonObject, saved: JsonElement): Boolean {
+        val index = saved.jsonPrimitive.intOrNull ?: return false
+        val values = current["values"]?.jsonArray ?: return false
+        return index in values.indices
+    }
+
+    private fun compatibleSortState(current: JsonObject, saved: JsonElement): Boolean {
+        if (saved is JsonNull) return true
+        val selection = saved.jsonObject
+        val index = selection["index"]?.jsonPrimitive?.intOrNull ?: return false
+        if (selection["ascending"]?.jsonPrimitive?.booleanOrNull == null) return false
+        val values = current["values"]?.jsonArray ?: return false
+        return index in values.indices
     }
 }

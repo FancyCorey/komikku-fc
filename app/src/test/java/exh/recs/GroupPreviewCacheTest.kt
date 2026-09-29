@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import tachiyomi.domain.manga.model.Manga
+import java.nio.file.Files
+import java.nio.file.Path
 
 // KMK v0.8.6 -->
 class GroupPreviewCacheTest {
@@ -36,6 +38,28 @@ class GroupPreviewCacheTest {
         val mangas = listOf(manga("A"), manga("B"))
         GroupPreviewCache.put(key(), mangas)
         assertEquals(mangas, GroupPreviewCache.get(key()))
+    }
+
+    @Test
+    fun `mutating the supplied list after put does not change the cached value`() {
+        val mangas = mutableListOf(manga("A"))
+        GroupPreviewCache.put(key(), mangas)
+
+        mangas += manga("B")
+
+        assertEquals(listOf(manga("A")), GroupPreviewCache.get(key()))
+    }
+
+    @Test
+    fun `mutating a returned list does not change the cached value`() {
+        val cached = listOf(manga("A"), manga("B"))
+        GroupPreviewCache.put(key(), cached)
+        @Suppress("UNCHECKED_CAST")
+        val returned = GroupPreviewCache.get(key()) as MutableList<Manga>
+
+        returned += manga("C")
+
+        assertEquals(cached, GroupPreviewCache.get(key()))
     }
 
     @Test
@@ -79,6 +103,24 @@ class GroupPreviewCacheTest {
         GroupPreviewCache.invalidateAll()
         assertEquals(0, GroupPreviewCache.size())
         assertNull(GroupPreviewCache.get(key()))
+    }
+
+    @Test
+    fun `a superseded group load cannot publish into the cache`() {
+        val source = recommendsScreenModelSource()
+        assertEquals(
+            true,
+            source.contains("if (cacheKey != null && isActive && generationGuard.isCurrent(myGeneration))"),
+        )
+    }
+
+    private fun recommendsScreenModelSource(): String {
+        val relative = Path.of("app/src/main/java/exh/recs/RecommendsScreenModel.kt")
+        val path = listOf(relative, Path.of("..").resolve(relative))
+            .map(Path::toAbsolutePath)
+            .firstOrNull(Files::isRegularFile)
+            ?: error("Unable to resolve recommendation screen model")
+        return Files.readAllBytes(path).toString(Charsets.UTF_8)
     }
 }
 // KMK <--

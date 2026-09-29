@@ -12,4 +12,9 @@ internal object ReaderInitialChapterPolicy {
         if (chapterIds.isEmpty()) return null
         return chapterIds.indexOfFirst { it == requestedId }.takeUnless { it == -1 } ?: 0
     }
+
+    fun resolvePage(requestedId: Long, selectedId: Long, requestedPage: Int?, restoredPage: Int? = null): Int? {
+        if (requestedId != selectedId) return null
+        return restoredPage?.takeIf { it >= 0 } ?: requestedPage?.takeIf { it >= 0 }
+    }
 }

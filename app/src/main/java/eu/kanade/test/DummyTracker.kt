@@ -91,7 +91,7 @@ data class DummyTracker(
     override suspend fun register(
         item: eu.kanade.tachiyomi.data.database.models.Track,
         mangaId: Long,
-    ) = Unit
+    ) = eu.kanade.tachiyomi.data.track.TrackerRegistrationResult.Linked
 
     override suspend fun setRemoteStatus(
         track: eu.kanade.tachiyomi.data.database.models.Track,

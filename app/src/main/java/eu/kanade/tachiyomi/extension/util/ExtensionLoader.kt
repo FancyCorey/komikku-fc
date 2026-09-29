@@ -15,6 +15,7 @@ import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.util.lang.Hash
 import eu.kanade.tachiyomi.util.storage.copyAndSetReadOnlyTo
 import eu.kanade.tachiyomi.util.system.ChildFirstPathClassLoader
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
@@ -73,9 +74,14 @@ internal object ExtensionLoader {
 
     private fun getPrivateExtensionDir(context: Context) = File(context.filesDir, "exts")
 
-    fun installPrivateExtensionFile(context: Context, file: File): Boolean {
+    private val privateFiles = PrivateExtensionFileStore()
+
+    fun installPrivateExtensionFile(context: Context, file: File): Boolean = installPrivateExtensionFile(context, file, null)
+
+    fun installPrivateExtensionFile(context: Context, file: File, lease: PrivateExtensionFileStore.Lease?): Boolean {
         val extension = context.packageManager.getPackageArchiveInfo(file.absolutePath, PACKAGE_FLAGS)
             ?.takeIf { isPackageAnExtension(it) } ?: return false
+        if (lease != null && extension.packageName != lease.packageName) return false
         val currentExtension = getExtensionPackageInfoFromPkgName(context, extension.packageName)
 
         if (currentExtension != null) {
@@ -100,23 +106,30 @@ internal object ExtensionLoader {
 
         val target = File(getPrivateExtensionDir(context), "${extension.packageName}.$PRIVATE_EXTENSION_EXTENSION")
         return try {
-            target.delete()
-            file.copyAndSetReadOnlyTo(target, overwrite = true)
-            if (currentExtension != null) {
-                ExtensionInstallReceiver.notifyReplaced(context, extension.packageName)
-            } else {
-                ExtensionInstallReceiver.notifyAdded(context, extension.packageName)
+            privateFiles.install(target, lease, currentExtension != null, onInstalled = {
+                if (currentExtension != null) {
+                    ExtensionInstallReceiver.notifyReplaced(context, extension.packageName)
+                } else {
+                    ExtensionInstallReceiver.notifyAdded(context, extension.packageName)
+                }
+            }) { staging ->
+                file.copyAndSetReadOnlyTo(staging, overwrite = true)
             }
-            true
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             logcat(LogPriority.ERROR) { "Extension file copy failed" }
-            target.delete()
             false
         }
     }
 
     fun uninstallPrivateExtension(context: Context, pkgName: String) {
-        File(getPrivateExtensionDir(context), "$pkgName.$PRIVATE_EXTENSION_EXTENSION").delete()
+        privateFiles.remove(File(getPrivateExtensionDir(context), "$pkgName.$PRIVATE_EXTENSION_EXTENSION"))
+    }
+
+    fun removeTemporaryPrivateExtension(context: Context, lease: PrivateExtensionFileStore.Lease) {
+        val target = File(getPrivateExtensionDir(context), "${lease.packageName}.$PRIVATE_EXTENSION_EXTENSION")
+        privateFiles.removeTemporary(target, lease) { ExtensionInstallReceiver.notifyRemoved(context, lease.packageName) }
     }
 
     /**
@@ -126,6 +139,12 @@ internal object ExtensionLoader {
      */
     fun loadExtensions(context: Context): List<LoadResult> {
         val pkgManager = context.packageManager
+        val excludedPrivateFiles = try {
+            PrivateExtensionRecovery.recover(getPrivateExtensionDir(context))
+        } catch (failure: Exception) {
+            logcat(LogPriority.ERROR, failure) { "Private extension recovery failed" }
+            null
+        }
 
         val installedPkgs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             pkgManager.getInstalledPackages(PackageManager.PackageInfoFlags.of(PACKAGE_FLAGS.toLong()))
@@ -139,9 +158,10 @@ internal object ExtensionLoader {
             .map { ExtensionInfo(packageInfo = it, isShared = true) }
 
         val privateExtPkgs = getPrivateExtensionDir(context)
-            .listFiles()
+            .takeIf { excludedPrivateFiles != null }
+            ?.listFiles()
             ?.asSequence()
-            ?.filter { it.isFile && it.extension == PRIVATE_EXTENSION_EXTENSION }
+            ?.filter { it.isFile && it.extension == PRIVATE_EXTENSION_EXTENSION && it !in excludedPrivateFiles.orEmpty() }
             ?.mapNotNull {
                 // Just in case, since Android 14+ requires them to be read-only
                 if (it.canWrite()) {

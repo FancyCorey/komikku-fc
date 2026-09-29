@@ -98,6 +98,16 @@ internal sealed interface AlternateSourceReaderLiveCandidateRead {
     data object SourceFailure : AlternateSourceReaderLiveCandidateRead
 }
 
+internal class AlternateSourceReaderLiveCandidateResults {
+    private val results = java.util.concurrent.ConcurrentLinkedQueue<AlternateSourceReaderLiveCandidateRead>()
+
+    fun add(result: AlternateSourceReaderLiveCandidateRead) {
+        results.add(result)
+    }
+
+    fun snapshot(): List<AlternateSourceReaderLiveCandidateRead> = results.toList()
+}
+
 class AlternateSourceReaderCandidateGateway internal constructor(
     private val reads: AlternateSourceReaderCandidateReads,
 ) {
@@ -336,7 +346,7 @@ internal class DefaultAlternateSourceReaderCandidateReads(
     override fun sourceLabel(sourceId: Long): String? = sourceManager.get(sourceId)?.name
 
     override suspend fun liveSearch(origin: Manga): List<AlternateSourceReaderLiveCandidateRead> {
-        val results = mutableListOf<AlternateSourceReaderLiveCandidateRead>()
+        val results = AlternateSourceReaderLiveCandidateResults()
         val sources = searcher.getMatchingSources().take(MAX_LIVE_SOURCES)
         searcher.search(
             queries = CrossExtensionMatchQueryPlanner.buildQueries(origin),
@@ -346,15 +356,15 @@ internal class DefaultAlternateSourceReaderCandidateReads(
         ) { sourceResult ->
             when (val result = sourceResult.result) {
                 SameMangaCandidateResult.Loading -> Unit
-                is SameMangaCandidateResult.Error -> results += AlternateSourceReaderLiveCandidateRead.SourceFailure
+                is SameMangaCandidateResult.Error -> results.add(AlternateSourceReaderLiveCandidateRead.SourceFailure)
                 is SameMangaCandidateResult.Success -> {
                     result.results.forEach { candidate ->
-                        results += AlternateSourceReaderLiveCandidateRead.Candidate(candidate)
+                        results.add(AlternateSourceReaderLiveCandidateRead.Candidate(candidate))
                     }
                 }
             }
         }
-        return results
+        return results.snapshot()
     }
 
     override suspend fun chapters(manga: Manga): AlternateSourceReaderChapterDiscovery {

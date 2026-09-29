@@ -23,14 +23,15 @@ Source Evaluation has a separate restriction for extensions associated with a de
 
 ## For You shows few or no manga
 
-Open **Recommendation settings > For You Sources** and check which sources are enabled. Check your recommendation languages and the filters in **Taste and Filters**, including the minimum chapter count.
+Open **Recommendation settings > For You Sources** and check which sources are enabled. Check recommendation languages under **Management and diagnostics**, then check the filters in **Taste and Filters**, including the minimum chapter count.
 
 A strong source-fit rating does not guarantee many visible recommendations. Fit describes the source's usefulness; shown results also depend on your manga filters and what the source returned.
 
 ```mermaid
 flowchart TD
-    Empty["For You has few or no results"] --> Enabled["Check enabled sources and languages"]
-    Enabled --> Filters["Check taste and chapter filters"]
+    Empty["For You has few or no results"] --> Enabled["Check enabled sources"]
+    Enabled --> Languages["Check languages in Management and diagnostics"]
+    Languages --> Filters["Check taste and chapter filters"]
     Filters --> Status["Read the source's current status"]
     Status --> Refresh["Refresh For You"]
     Refresh --> Result{"Results available?"}

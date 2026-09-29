@@ -80,6 +80,7 @@ class RecommendationCandidateMemoryRankerTest {
         seenKeys: Set<exh.recs.SeenMangaKey> = emptySet(),
         knownIds: Set<Long> = emptySet(),
         limit: Int = 100,
+        allowNeutralLatest: Boolean = false,
     ) = RecommendationCandidateMemoryRanker.merge(
         remembered = remembered,
         newResults = newResults,
@@ -90,9 +91,53 @@ class RecommendationCandidateMemoryRankerTest {
         seenKeys = seenKeys,
         knownIds = knownIds,
         limit = limit,
+        allowNeutralLatest = allowNeutralLatest,
     )
 
     // ---- Test 1: empty inputs return empty ----
+    @Test
+    fun `neutral latest survives memory merge but personalized stays strict`() {
+        val latest = rec(manga(101L)).copy(lane = exh.recs.RecommendationDiscoveryLane.LATEST_CATALOGUE)
+        val personalized = rec(manga(102L))
+        assertEquals(listOf(101L), merge(newResults = listOf(latest, personalized), allowNeutralLatest = true).map { it.manga.id })
+        assertTrue(merge(newResults = listOf(latest)).isEmpty())
+    }
+
+    @Test
+    fun `remembered latest retains lane and respects exploration switch`() {
+        val candidate = manga(103L)
+        val entry = memEntry(1L, candidate.url, candidate.id).copy(
+            queryStrategy = exh.recs.RecommendationDiscoveryLane.LATEST_CATALOGUE.storageKey,
+        )
+        val remembered = listOf(candidate to entry)
+        assertEquals(listOf(103L), merge(remembered = remembered, allowNeutralLatest = true).map { it.manga.id })
+        assertTrue(merge(remembered = remembered).isEmpty())
+    }
+
+    @Test
+    fun `memory exploration cannot offset disliked tags with source affinity`() {
+        val candidate = manga(104L, genres = listOf("Harem"))
+        val latest = rec(candidate).copy(lane = exh.recs.RecommendationDiscoveryLane.LATEST_CATALOGUE)
+        val result = RecommendationCandidateMemoryRanker.merge(
+            remembered = emptyList(),
+            newResults = listOf(latest),
+            profile = TasteProfile(
+                learnedTagWeights = emptyMap(),
+                explicitTagPreferences = mapOf("harem" to tachiyomi.domain.taste.model.TagPreference.DISLIKE.value),
+                sourceAffinity = mapOf(1L to 5.0),
+                blockedGroups = emptySet(),
+            ),
+            aliasMap = emptyAliasMap,
+            tasteByKey = emptyTasteByKey,
+            visibility = defaultVisibility,
+            seenKeys = emptySet(),
+            knownIds = emptySet(),
+            limit = 10,
+            allowNeutralLatest = true,
+        )
+        assertTrue(result.isEmpty())
+    }
+
     @Test
     fun `empty remembered and newResults yields empty list`() {
         val result = merge()

@@ -156,6 +156,14 @@
             <item quantity="one">%1$d version ungrouped</item>
             <item quantity="other">%1$d versions ungrouped</item>
         </plurals>
+    <plurals name="eval_undo_summary_group_add">
+            <item quantity="one">%1$d version added to a group</item>
+            <item quantity="other">%1$d versions added to a group</item>
+        </plurals>
+    <plurals name="eval_undo_summary_group_move">
+            <item quantity="one">%1$d version moved to another group</item>
+            <item quantity="other">%1$d versions moved to another group</item>
+        </plurals>
     <plurals name="eval_undo_summary_library_favorite">
             <item quantity="one">%1$d manga added to library</item>
             <item quantity="other">%1$d manga added to library</item>

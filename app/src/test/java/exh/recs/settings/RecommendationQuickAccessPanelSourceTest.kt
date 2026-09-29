@@ -1,5 +1,6 @@
 package exh.recs.settings
 
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -22,6 +23,24 @@ class RecommendationQuickAccessPanelSourceTest {
         assertFalse(
             panel.contains(".fillMaxHeight(EdgeQuickAccessPanelLayoutPolicy.MAX_HEIGHT_FRACTION)"),
             "fillMaxHeight plus wrapContentHeight can leave verticalScroll unbounded",
+        )
+    }
+
+    @Test
+    fun `For You content reserves the edge handle touch area`() {
+        val text = Files.readAllLines(
+            Path.of("src/main/java/exh/recs/BrowsePersonalRecommendationsTab.kt"),
+        ).joinToString("\n")
+        val content = text.substringAfter("private fun PersonalRecommendationsContent(")
+
+        assertTrue(
+            text.contains(".padding(end = exh.recs.settings.EdgeQuickAccessPanelLayoutPolicy.MIN_TOUCH_TARGET_DP.dp)"),
+            "For You cards must not extend beneath the fixed edge quick-access handle",
+        )
+        assertEquals(
+            5,
+            Regex("modifier = modifier\\.fillMaxSize\\(\\)").findAll(content).count(),
+            "Offline, loading, empty, no-results, and populated content must share the inset",
         )
     }
 }

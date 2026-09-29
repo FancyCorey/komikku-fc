@@ -18,9 +18,9 @@ import org.junit.jupiter.api.Test
 // OcrIndexWorker itself cannot be instantiated in a JVM unit test -- constructing a real
 // CoroutineWorker requires androidx.work's WorkerParameters/WorkDatabase machinery, only
 // available via the androidx.work:work-testing artifact (typically paired with Robolectric for a
-// JVM Context). Neither is a dependency of this project (confirmed absent from
-// gradle/androidx.versions.toml and app/build.gradle.kts before writing this test). Rather than
-// add either dependency just to construct a worker, OcrIndexWorker.kt now exposes
+// JVM Context). This test keeps the cancellation control flow independent of that framework;
+// the production persisted-work lookup is covered separately by OcrPersistedWorkManagerTest.
+// OcrIndexWorker.kt exposes
 // runOcrIndexWork(...) -- the exact try/catch/finally control flow doWork() delegates to,
 // parameterized over the notifier and state-publishing side effects doWork() previously called
 // directly. This test exercises that real function with fakes, not a duplicated policy.
@@ -127,6 +127,29 @@ class OcrIndexWorkerCancellationTest {
         assertEquals(Result.success(), result)
         assertFalse(notifier.dismissProgressCalled)
         assertEquals(Triple(5, 1, 0), notifier.showCompleteCall)
+        assertTrue(notRunning)
+    }
+
+    @Test
+    fun `a terminal failed progress reports failure without completion notification`() = runTest {
+        val notifier = FakeNotifier()
+        var notRunning = false
+
+        val result = runOcrIndexWork(
+            runIndexing = { onProgress ->
+                onProgress(OcrIndexProgress(isFailed = true, lastError = OcrErrorKey.Storage.storageKey))
+            },
+            notifier = notifier,
+            publishProgress = { },
+            markCancelled = { fail("markCancelled must not be called on failure") },
+            markFailed = { fail("markFailed must not be called for a terminal progress failure") },
+            markNotRunning = { notRunning = true },
+            logUnexpectedError = { },
+        )
+
+        assertEquals(Result.failure(), result)
+        assertTrue(notifier.dismissProgressCalled)
+        assertNull(notifier.showCompleteCall)
         assertTrue(notRunning)
     }
 }

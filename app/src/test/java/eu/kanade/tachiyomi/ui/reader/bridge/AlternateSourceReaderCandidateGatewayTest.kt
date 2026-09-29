@@ -1,6 +1,9 @@
 package eu.kanade.tachiyomi.ui.reader.bridge
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -18,6 +21,25 @@ import tachiyomi.domain.taste.model.CrossSourceMangaLink
 import tachiyomi.domain.taste.model.CrossSourceRecordKey
 
 class AlternateSourceReaderCandidateGatewayTest {
+
+    @Test
+    fun `live search result collector preserves callbacks arriving concurrently`() = runTest {
+        val results = AlternateSourceReaderLiveCandidateResults()
+        val writers = 8
+        val resultsPerWriter = 1_000
+
+        coroutineScope {
+            repeat(writers) {
+                launch(Dispatchers.Default) {
+                    repeat(resultsPerWriter) {
+                        results.add(AlternateSourceReaderLiveCandidateRead.SourceFailure)
+                    }
+                }
+            }
+        }
+
+        assertEquals(writers * resultsPerWriter, results.snapshot().size)
+    }
 
     @Test
     fun `known bridge is first and duplicate confirmed and live records are removed`() = runTest {

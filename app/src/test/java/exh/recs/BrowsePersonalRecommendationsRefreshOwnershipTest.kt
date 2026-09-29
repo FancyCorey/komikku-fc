@@ -19,6 +19,16 @@ class BrowsePersonalRecommendationsRefreshOwnershipTest {
     }
 
     @Test
+    fun `search handoff checks live ownership inside the launch lock`() {
+        val source = source()
+        val handoff = source.substring(source.indexOf("val loadContext = currentCoroutineContext()"))
+        val lock = handoff.indexOf("synchronized(loadLaunchLock)")
+        val guard = handoff.indexOf("if (!loadContext.isActive || activeRefreshGeneration.get() != refreshGeneration) return")
+        val cancellation = handoff.indexOf("searchJob?.cancel()")
+        assertTrue(lock >= 0 && guard > lock && cancellation > guard)
+    }
+
+    @Test
     fun `refresh reserves a generation before launching cancellable work`() {
         val source = source()
         val reservation = source.indexOf("val refreshGeneration = mutableState.updateAndGet")
@@ -28,6 +38,17 @@ class BrowsePersonalRecommendationsRefreshOwnershipTest {
         assertTrue(launch > reservation)
         assertTrue(source.substring(reservation, launch).contains("resultGeneration + 1"))
         assertTrue(source.contains("refreshGeneration: Long"))
+    }
+
+    @Test
+    fun `inline retry snapshots failed rows while holding the refresh launch lock`() {
+        val source = source()
+        val retry = source.substring(source.indexOf("fun retryFailedSourcesOrRefresh()"))
+        val lock = retry.indexOf("synchronized(loadLaunchLock)")
+        val snapshot = retry.indexOf("val failedSourceIds = retryableRecommendationSourceIds")
+        val request = retry.indexOf("requestLoad(")
+
+        assertTrue(lock >= 0 && snapshot > lock && request > snapshot)
     }
 
     @Test

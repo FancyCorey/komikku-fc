@@ -18,6 +18,7 @@ import java.io.IOException
 enum class OcrErrorKey(val storageKey: String) {
     Storage("ocr_error_storage"),
     ImageDecode("ocr_error_image_decode"),
+    ResourceLimit("ocr_error_resource_limit"),
     NoDownloadedPages("ocr_error_no_downloaded_pages"),
     Cancelled("ocr_error_cancelled"),
     PermissionOrFileAccess("ocr_error_file_access"),
@@ -37,6 +38,7 @@ object OcrErrorClassifier {
         e is FileNotFoundException -> OcrErrorKey.PermissionOrFileAccess
         e is SecurityException -> OcrErrorKey.PermissionOrFileAccess
         e is OutOfMemoryError -> OcrErrorKey.ImageDecode
+        e is OcrResourceLimitException -> OcrErrorKey.ResourceLimit
         isImageDecodeException(e) -> OcrErrorKey.ImageDecode
         e is IOException -> OcrErrorKey.Storage
         else -> OcrErrorKey.Internal

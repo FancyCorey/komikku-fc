@@ -46,6 +46,31 @@ class LocalTrackerRepositoryImpl(
         }
     }
 
+    override suspend fun upsertInheritedWork(work: LocalTrackedWork) {
+        require(work.id.isNotBlank())
+        require(work.title.isNotBlank())
+        require(work.normalizedTitle.isNotBlank())
+        require(work.createdAt > 0L && work.updatedAt >= work.createdAt)
+        handler.await(inTransaction = true) {
+            local_trackerQueries.upsertInheritedWork(
+                id = work.id,
+                title = work.title,
+                normalizedTitle = work.normalizedTitle,
+                status = work.status.name,
+                lastChapterSource = work.lastChapterSource,
+                lastChapterUrl = work.lastChapterUrl,
+                lastChapterNumber = work.lastChapterNumber,
+                lastChapterLabel = work.lastChapterLabel,
+                lastProgressAt = work.lastProgressAt,
+                score = work.score,
+                startDate = work.startDate,
+                finishDate = work.finishDate,
+                createdAt = work.createdAt,
+                updatedAt = work.updatedAt,
+            )
+        }
+    }
+
     override suspend fun deleteWork(id: String) {
         handler.await(inTransaction = true) {
             // Keep deletion deterministic even when a test/restore SQLite driver does not enable

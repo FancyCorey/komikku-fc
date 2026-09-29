@@ -2,8 +2,8 @@ package eu.kanade.presentation.manga
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,6 +37,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -46,6 +47,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -145,27 +147,129 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.math.roundToInt
 
-private suspend fun LazyListState.animateToLastReadChapter(
-    absoluteIndex: Int,
-    chapterIndex: Int,
-    chapterCount: Int,
+internal suspend fun LazyListState.positionLastReadChapter(
+    chapterId: Long,
+    chapterKey: Any,
+    currentIndexOfChapter: (Long) -> Int?,
+    chapterCount: () -> Int,
+    afterDirectScroll: suspend () -> Unit = {},
 ): Boolean {
-    animateScrollToItem(absoluteIndex)
-    if (!LastReadChapterTargetPolicy.shouldCenter(chapterIndex, chapterCount)) return true
+    // The displayed list can be resorted, filtered, or refreshed while a direct jump is waiting
+    // for its measured frame. Re-resolve the stable chapter ID and verify the LazyColumn key before
+    // centering, with one bounded retry for a list/layout update.
+    for (attempt in 0..1) {
+        val chapterIndex = currentIndexOfChapter(chapterId) ?: return false
+        val currentChapterCount = chapterCount()
+        val absoluteIndex = LastReadChapterTargetPolicy.toLazyListIndex(
+            totalItemsCount = layoutInfo.totalItemsCount,
+            chapterCount = currentChapterCount,
+            indexInList = chapterIndex,
+        )
+        if (absoluteIndex == null) {
+            if (attempt == 0) {
+                withFrameNanos { }
+                continue
+            }
+            return false
+        }
 
-    // animateScrollToItem positions at the viewport start. Wait for the following measured frame
-    // before reading layoutInfo; the immediate snapshot can still predate the completed scroll.
-    withFrameNanos { }
-    val layoutInfo = layoutInfo
-    val target = layoutInfo.visibleItemsInfo.firstOrNull { it.index == absoluteIndex } ?: return false
-    val delta = LastReadChapterTargetPolicy.centeringScrollDelta(
-        viewportStartOffset = layoutInfo.viewportStartOffset.toFloat(),
-        viewportEndOffset = layoutInfo.viewportEndOffset.toFloat(),
-        targetOffset = target.offset.toFloat(),
-        targetSize = target.size.toFloat(),
-    ) ?: return false
-    animateScrollBy(delta)
-    return true
+        // Jump directly to the target instead of animating through the list.
+        scrollToItem(absoluteIndex)
+        afterDirectScroll()
+
+        val refreshedIndex = currentIndexOfChapter(chapterId) ?: return false
+        val refreshedChapterCount = chapterCount()
+        val refreshedAbsoluteIndex = LastReadChapterTargetPolicy.toLazyListIndex(
+            totalItemsCount = layoutInfo.totalItemsCount,
+            chapterCount = refreshedChapterCount,
+            indexInList = refreshedIndex,
+        )
+        if (refreshedAbsoluteIndex == null) {
+            if (attempt == 0) {
+                withFrameNanos { }
+                continue
+            }
+            return false
+        }
+
+        val currentLayoutInfo = layoutInfo
+        val target = currentLayoutInfo.visibleItemsInfo.firstOrNull { it.index == refreshedAbsoluteIndex }
+        val isCurrentTargetVisible =
+            chapterIndex == refreshedIndex &&
+                currentChapterCount == refreshedChapterCount &&
+                absoluteIndex == refreshedAbsoluteIndex &&
+                target?.key == chapterKey
+        if (!isCurrentTargetVisible) {
+            if (attempt == 0) {
+                // Yield only when the list changed or the direct jump has not produced its target
+                // layout yet. The valid path centers before a frame can expose the top-aligned
+                // intermediate position.
+                withFrameNanos { }
+                continue
+            }
+            return false
+        }
+
+        if (!LastReadChapterTargetPolicy.shouldCenter(refreshedIndex, refreshedChapterCount)) return true
+        val positionedTarget = target ?: return false
+        val delta = LastReadChapterTargetPolicy.centeringScrollDelta(
+            viewportStartOffset = currentLayoutInfo.viewportStartOffset.toFloat(),
+            viewportEndOffset = currentLayoutInfo.viewportEndOffset.toFloat(),
+            targetOffset = positionedTarget.offset.toFloat(),
+            targetSize = positionedTarget.size.toFloat(),
+        ) ?: return false
+        // Apply the measured correction immediately; animation visibly reverses a long-list jump.
+        scrollBy(delta)
+        return true
+    }
+    return false
+}
+
+/** Owns the in-flight jump so another press supersedes it and composition disposal cancels it. */
+internal class LastReadChapterJumpController(
+    private val scope: kotlinx.coroutines.CoroutineScope,
+) {
+    private var job: Job? = null
+
+    fun jump(
+        chapterId: Long,
+        state: LazyListState,
+        currentIndexOfChapter: (Long) -> Int?,
+        chapterCount: () -> Int,
+        onUnavailable: suspend () -> Unit,
+        afterDirectScroll: suspend () -> Unit = {},
+    ): Job {
+        job?.cancel()
+        return scope.launch {
+            try {
+                val positioned = state.positionLastReadChapter(
+                    chapterId = chapterId,
+                    chapterKey = "chapter-$chapterId",
+                    currentIndexOfChapter = currentIndexOfChapter,
+                    chapterCount = chapterCount,
+                    afterDirectScroll = afterDirectScroll,
+                )
+                if (!positioned) onUnavailable()
+            } catch (e: CancellationException) {
+                throw e
+            }
+        }.also { job = it }
+    }
+
+    fun cancel() {
+        job?.cancel()
+        job = null
+    }
+}
+
+@Composable
+internal fun rememberLastReadChapterJumpController(): LastReadChapterJumpController {
+    val scope = rememberCoroutineScope()
+    val controller = remember(scope) { LastReadChapterJumpController(scope) }
+    DisposableEffect(controller) {
+        onDispose { controller.cancel() }
+    }
+    return controller
 }
 
 @Composable
@@ -531,36 +635,20 @@ private fun MangaScreenSmallImpl(
             third = state.isAnySelected,
         )
     }
-    val jumpScope = rememberCoroutineScope()
-    var jumpJob by remember { mutableStateOf<Job?>(null) }
+    val latestChapterCount = rememberUpdatedState(listItem.size)
+    val latestChapterIndexLookup = rememberUpdatedState(currentIndexOfChapter)
+    val jumpController = rememberLastReadChapterJumpController()
     val jumpUnavailableMessage = stringResource(KMR.strings.jump_to_last_read_unavailable)
     val onClickJumpToLastRead = lastReadChapterTarget?.let { target ->
         {
-            jumpJob?.cancel()
-            jumpJob = jumpScope.launch {
-                try {
-                    val currentIndex = currentIndexOfChapter(target.chapterId)
-                    currentIndex?.let { chapterIndex ->
-                        val absoluteIndex = LastReadChapterTargetPolicy.toLazyListIndex(
-                            totalItemsCount = chapterListState.layoutInfo.totalItemsCount,
-                            chapterCount = listItem.size,
-                            indexInList = chapterIndex,
-                        )
-                        if (absoluteIndex == null) {
-                            snackbarHostState.showSnackbar(jumpUnavailableMessage)
-                        } else {
-                            val positioned = chapterListState.animateToLastReadChapter(
-                                absoluteIndex = absoluteIndex,
-                                chapterIndex = chapterIndex,
-                                chapterCount = listItem.size,
-                            )
-                            if (!positioned) snackbarHostState.showSnackbar(jumpUnavailableMessage)
-                        }
-                    } ?: snackbarHostState.showSnackbar(jumpUnavailableMessage)
-                } catch (e: CancellationException) {
-                    throw e
-                }
-            }
+            jumpController.jump(
+                chapterId = target.chapterId,
+                state = chapterListState,
+                currentIndexOfChapter = { chapterId -> latestChapterIndexLookup.value(chapterId) },
+                chapterCount = { latestChapterCount.value },
+                onUnavailable = { snackbarHostState.showSnackbar(jumpUnavailableMessage) },
+            )
+            Unit
         }
     }
     // KMK <--
@@ -1092,6 +1180,8 @@ private fun MangaScreenLargeImpl(
             third = state.isAnySelected,
         )
     }
+    val latestChapterCount = rememberUpdatedState(listItem.size)
+    val latestChapterIndexLookup = rememberUpdatedState(currentIndexOfChapter)
 
     // SY -->
     val metadataDescription = metadataDescription(state.source)
@@ -1139,36 +1229,18 @@ private fun MangaScreenLargeImpl(
 
     val chapterListState = rememberLazyListState()
 
-    val jumpScope = rememberCoroutineScope()
-    var jumpJob by remember { mutableStateOf<Job?>(null) }
+    val jumpController = rememberLastReadChapterJumpController()
     val jumpUnavailableMessage = stringResource(KMR.strings.jump_to_last_read_unavailable)
     val onClickJumpToLastRead = lastReadChapterTarget?.let { target ->
         {
-            jumpJob?.cancel()
-            jumpJob = jumpScope.launch {
-                try {
-                    val currentIndex = currentIndexOfChapter(target.chapterId)
-                    currentIndex?.let { chapterIndex ->
-                        val absoluteIndex = LastReadChapterTargetPolicy.toLazyListIndex(
-                            totalItemsCount = chapterListState.layoutInfo.totalItemsCount,
-                            chapterCount = listItem.size,
-                            indexInList = chapterIndex,
-                        )
-                        if (absoluteIndex == null) {
-                            snackbarHostState.showSnackbar(jumpUnavailableMessage)
-                        } else {
-                            val positioned = chapterListState.animateToLastReadChapter(
-                                absoluteIndex = absoluteIndex,
-                                chapterIndex = chapterIndex,
-                                chapterCount = listItem.size,
-                            )
-                            if (!positioned) snackbarHostState.showSnackbar(jumpUnavailableMessage)
-                        }
-                    } ?: snackbarHostState.showSnackbar(jumpUnavailableMessage)
-                } catch (e: CancellationException) {
-                    throw e
-                }
-            }
+            jumpController.jump(
+                chapterId = target.chapterId,
+                state = chapterListState,
+                currentIndexOfChapter = { chapterId -> latestChapterIndexLookup.value(chapterId) },
+                chapterCount = { latestChapterCount.value },
+                onUnavailable = { snackbarHostState.showSnackbar(jumpUnavailableMessage) },
+            )
+            Unit
         }
     }
     // KMK <--

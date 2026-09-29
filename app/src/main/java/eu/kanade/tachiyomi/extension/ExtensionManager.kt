@@ -15,6 +15,7 @@ import eu.kanade.tachiyomi.extension.model.LoadResult
 import eu.kanade.tachiyomi.extension.util.ExtensionInstallReceiver
 import eu.kanade.tachiyomi.extension.util.ExtensionInstaller
 import eu.kanade.tachiyomi.extension.util.ExtensionLoader
+import eu.kanade.tachiyomi.extension.util.PrivateExtensionFileStore
 import eu.kanade.tachiyomi.util.system.toast
 import exh.log.xLogD
 import exh.source.BlacklistedSources
@@ -24,6 +25,7 @@ import exh.source.ExhPreferences
 import exh.source.MERGED_SOURCE_ID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withContext
 import logcat.LogPriority
 import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.logcat
@@ -307,6 +310,31 @@ class ExtensionManager(
         installerOverride: BasePreferences.ExtensionInstaller? = null,
     ): Flow<InstallStep> {
         return installer.downloadAndInstall(extension.apkUrl, extension, installerOverride)
+    }
+
+    internal suspend fun <T> withTemporaryPrivateExtension(
+        extension: Extension.Available,
+        block: suspend (Flow<InstallStep>) -> T,
+    ): T {
+        val lease = PrivateExtensionFileStore.Lease(extension.pkgName)
+        var failure: Throwable? = null
+        try {
+            return block(installer.downloadAndInstall(extension.apkUrl, extension, BasePreferences.ExtensionInstaller.PRIVATE, lease))
+        } catch (e: Throwable) {
+            failure = e
+            throw e
+        } finally {
+            withContext(NonCancellable) {
+                try {
+                    lease.finishDownload()
+                    ExtensionLoader.removeTemporaryPrivateExtension(context, lease)
+                } catch (cleanupFailure: Exception) {
+                    val original = failure
+                    if (original == null) throw cleanupFailure
+                    original.addSuppressed(cleanupFailure)
+                }
+            }
+        }
     }
     // KMK <--
 

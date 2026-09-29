@@ -78,11 +78,15 @@ class SourceRecommendationFitProbe(
 
         val aliasMap = try {
             getTagAliases.awaitAliasMap()
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             emptyMap()
         }
         val groupToAliases = try {
             getTagAliases.awaitGroupToAliasesMap()
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             emptyMap()
         }

@@ -25,8 +25,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -79,6 +82,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import mihon.feature.migration.dialog.MigrateMangaDialog
 import mihon.presentation.core.util.collectAsLazyPagingItems
 import tachiyomi.core.common.Constants
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.source.model.StubSource
 import tachiyomi.i18n.MR
@@ -97,6 +101,7 @@ data class BrowseSourceScreen(
     // SY -->
     private val filtersJson: String? = null,
     private val savedSearch: Long? = null,
+    private val forYouRestrictionsJson: String? = null,
     /** being set when called from [SmartSearchScreen] or when click on a manga from this screen
      * which was previously opened from `SmartSearchScreen` */
     private val smartSearchConfig: SourcesScreen.SmartSearchConfig? = null,
@@ -115,6 +120,10 @@ data class BrowseSourceScreen(
             return
         }
 
+        var visitFiltersJson by rememberSaveable(sourceId, filtersJson, forYouRestrictionsJson, savedSearch) {
+            mutableStateOf<String?>(null)
+        }
+        val isForYouBrowseVisit = forYouRestrictionsJson != null
         val screenModel = rememberScreenModel {
             BrowseSourceScreenModel(
                 sourceId = sourceId,
@@ -122,6 +131,8 @@ data class BrowseSourceScreen(
                 // SY -->
                 filtersJson = filtersJson,
                 savedSearch = savedSearch,
+                forYouRestrictionsJson = forYouRestrictionsJson,
+                visitFiltersJson = visitFiltersJson.takeIf { isForYouBrowseVisit },
                 // SY <--
             )
         }
@@ -156,6 +167,14 @@ data class BrowseSourceScreen(
         val haptic = LocalHapticFeedback.current
         val uriHandler = LocalUriHandler.current
         val snackbarHostState = remember { SnackbarHostState() }
+
+        LaunchedEffect(screenModel.hasInvalidForYouRestrictionContext) {
+            if (screenModel.hasInvalidForYouRestrictionContext) {
+                snackbarHostState.showSnackbar(
+                    context.stringResource(KMR.strings.rec_browse_restrictions_unavailable),
+                )
+            }
+        }
 
         val onHelpClick = { uriHandler.openUri(LocalSource.HELP_URL) }
         val onWebViewClick = f@{
@@ -263,6 +282,7 @@ data class BrowseSourceScreen(
                             selected = state.listing == Listing.Popular,
                             onClick = {
                                 screenModel.resetFilters()
+                                visitFiltersJson = null
                                 screenModel.setListing(Listing.Popular)
                             },
                             leadingIcon = {
@@ -282,6 +302,7 @@ data class BrowseSourceScreen(
                                 selected = state.listing == Listing.Latest,
                                 onClick = {
                                     screenModel.resetFilters()
+                                    visitFiltersJson = null
                                     screenModel.setListing(Listing.Latest)
                                 },
                                 leadingIcon = {
@@ -331,6 +352,7 @@ data class BrowseSourceScreen(
                                 selected = state.listing is Listing.Search &&
                                     (state.listing as Listing.Search).savedSearchId == savedSearch.id,
                                 onClick = {
+                                    visitFiltersJson = null
                                     screenModel.onSavedSearch(savedSearch) {
                                         context.toast(it)
                                     }
@@ -426,14 +448,21 @@ data class BrowseSourceScreen(
                 SourceFilterDialog(
                     onDismissRequest = onDismissRequest,
                     filters = state.filters,
-                    onReset = screenModel::resetFilters,
+                    onReset = {
+                        screenModel.resetFilters()
+                        visitFiltersJson = screenModel.serializeVisitFilters().takeIf { isForYouBrowseVisit }
+                    },
                     onFilter = { screenModel.search(filters = state.filters) },
-                    onUpdate = screenModel::setFilters,
+                    onUpdate = { filters ->
+                        screenModel.setFilters(filters)
+                        visitFiltersJson = screenModel.serializeVisitFilters(filters).takeIf { isForYouBrowseVisit }
+                    },
                     // SY -->
                     startExpanded = screenModel.startExpanded,
                     onSave = screenModel::onSaveSearch,
                     savedSearches = state.savedSearches,
                     onSavedSearch = { search ->
+                        visitFiltersJson = null
                         screenModel.onSavedSearch(search) {
                             context.toast(it)
                         }

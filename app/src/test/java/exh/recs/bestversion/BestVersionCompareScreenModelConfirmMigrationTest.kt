@@ -17,9 +17,12 @@ import exh.util.NonUndoableEventType
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -28,6 +31,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import mihon.domain.migration.usecases.MigrateMangaUseCase
 import mihon.domain.migration.usecases.MigrationOutcome
 import org.junit.jupiter.api.AfterEach
@@ -40,9 +44,14 @@ import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.service.SourceManager
+import tachiyomi.domain.taste.interactor.GetCrossSourceGroupPrimary
 import tachiyomi.domain.taste.interactor.GetCrossSourceIdentityDecisions
+import tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks
 import tachiyomi.domain.taste.interactor.ReplaceCrossSourceIdentityDecisions
+import tachiyomi.domain.taste.interactor.RestoreCrossSourceGroupState
 import tachiyomi.domain.taste.interactor.UpsertMangaSourceQualitySignal
+import tachiyomi.domain.taste.model.CrossSourceGroupPrimary
+import tachiyomi.domain.taste.model.CrossSourceMangaLink
 import java.util.concurrent.Executors
 
 // KMK Confirmed Blocker Remediation Corrective Completion Plan V2 2026-07-29 -->
@@ -124,8 +133,16 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
         sourceManager: SourceManager = mockk(relaxed = true),
         upsertQualitySignal: UpsertMangaSourceQualitySignal = mockk(relaxed = true),
         dispatcherHandle: DispatcherHandle = DispatcherHandle(StandardTestDispatcher()),
+        candidateSearchGateway: BestVersionCandidateSearchGateway = mockk(relaxed = true),
+        getCrossSourceMangaLinks: GetCrossSourceMangaLinks = mockk(relaxed = true),
+        getCrossSourceGroupPrimary: GetCrossSourceGroupPrimary = mockk(relaxed = true),
+        restoreCrossSourceGroupState: RestoreCrossSourceGroupState = mockk(relaxed = true),
+        identityDecisionController: CrossSourceIdentityDecisionController = identityController(),
+        defaultOriginMissing: Boolean = true,
     ): BestVersionCompareScreenModel {
-        coEvery { getManga.await(originMangaId) } returns null
+        if (defaultOriginMissing) {
+            coEvery { getManga.await(originMangaId) } returns null
+        }
         return BestVersionCompareScreenModel(
             originMangaId = originMangaId,
             sourcePreferences = sourcePreferences,
@@ -137,8 +154,11 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
             upsertQualitySignal = upsertQualitySignal,
             isLowRamDevice = false,
             dispatcherHandle = dispatcherHandle,
-            candidateSearchGateway = mockk(relaxed = true),
-            identityController = identityController(),
+            candidateSearchGateway = candidateSearchGateway,
+            getCrossSourceMangaLinks = getCrossSourceMangaLinks,
+            getCrossSourceGroupPrimary = getCrossSourceGroupPrimary,
+            restoreCrossSourceGroupState = restoreCrossSourceGroupState,
+            identityController = identityDecisionController,
         )
     }
 
@@ -199,6 +219,59 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
         advanceUntilIdle()
 
         assertEquals(BestVersionStep.Error(BestVersionErrorReason.OriginMissing), model.state.value.step)
+    }
+
+    @Test
+    fun `origin lookup remains loading while suspended and starts search when released`() = runTest {
+        val origin = manga(source = 1L, url = "/origin")
+        val lookup = CompletableDeferred<Manga?>()
+        val getManga = mockk<GetManga>()
+        val searchGateway = mockk<BestVersionCandidateSearchGateway>(relaxed = true)
+        coEvery { getManga.await(1L) } coAnswers { lookup.await() }
+
+        val model = buildModel(
+            getManga = getManga,
+            candidateSearchGateway = searchGateway,
+            defaultOriginMissing = false,
+        )
+        assertEquals(BestVersionStep.LoadingOrigin, model.state.value.step)
+        assertEquals(null, model.state.value.originManga)
+        coVerify(exactly = 0) { searchGateway.getGlobalSearchSources() }
+
+        lookup.complete(origin)
+        advanceUntilIdle()
+
+        assertEquals(BestVersionStep.ConfirmCandidates, model.state.value.step)
+        assertEquals(origin, model.state.value.originManga)
+        coVerify(exactly = 1) { searchGateway.getGlobalSearchSources() }
+        model.onDispose()
+    }
+
+    @Test
+    fun `late origin result after disposal does not publish or start candidate search`() = runTest {
+        val lookup = CompletableDeferred<Manga?>()
+        val getManga = mockk<GetManga>()
+        val searchGateway = mockk<BestVersionCandidateSearchGateway>(relaxed = true)
+        coEvery { getManga.await(1L) } coAnswers {
+            withContext(NonCancellable) {
+                lookup.await()
+            }
+        }
+
+        val model = buildModel(
+            getManga = getManga,
+            candidateSearchGateway = searchGateway,
+            defaultOriginMissing = false,
+        )
+        assertEquals(BestVersionStep.LoadingOrigin, model.state.value.step)
+
+        model.onDispose()
+        lookup.complete(manga(source = 1L, url = "/late-origin"))
+        advanceUntilIdle()
+
+        assertEquals(BestVersionStep.LoadingOrigin, model.state.value.step)
+        assertEquals(null, model.state.value.originManga)
+        coVerify(exactly = 0) { searchGateway.getGlobalSearchSources() }
     }
 
     @Test
@@ -341,6 +414,83 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
     }
 
     @Test
+    fun `confirmed pair is saved into origin group before a failed migration without folding unrelated members`() = runTest {
+        val origin = manga(source = 1L, url = "/origin")
+        val target = manga(source = 2L, url = "/target", id = 99L)
+        val originLink = CrossSourceMangaLink(1L, "/origin", "origin-group", "Origin", 1L, 1L)
+        val targetLink = CrossSourceMangaLink(2L, "/target", "target-group", "Target", 2L, 2L)
+        val unrelatedLink = CrossSourceMangaLink(3L, "/unrelated", "target-group", "Unrelated", 3L, 3L)
+        val getLinks = mockk<GetCrossSourceMangaLinks>()
+        val getPrimary = mockk<GetCrossSourceGroupPrimary>()
+        val restoreGroups = mockk<RestoreCrossSourceGroupState>(relaxed = true)
+        val migrateMangaUseCase = mockk<MigrateMangaUseCase>()
+        coEvery { getLinks.awaitBySourceUrl(1L, "/origin") } returns originLink
+        coEvery { getLinks.awaitBySourceUrl(2L, "/target") } returns targetLink
+        coEvery { getLinks.awaitByGroupId("target-group") } returns listOf(targetLink, unrelatedLink)
+        coEvery { getPrimary.awaitByGroupId("target-group") } returns CrossSourceGroupPrimary(
+            groupId = "target-group",
+            source = 2L,
+            url = "/target",
+            updatedAt = 2L,
+        )
+        coEvery {
+            migrateMangaUseCase(current = eq(origin), target = eq(target), replace = eq(false), presetFlags = any(), throttleFunc = any())
+        } returns MigrationOutcome.NotStarted(cause = IllegalStateException("copy unavailable"))
+        val model = buildModel(
+            migrateMangaUseCase = migrateMangaUseCase,
+            getCrossSourceMangaLinks = getLinks,
+            getCrossSourceGroupPrimary = getPrimary,
+            restoreCrossSourceGroupState = restoreGroups,
+        )
+        model.seedReadyToMigrate(origin, target)
+
+        model.confirmMigration(replace = false)
+        advanceUntilIdle()
+
+        val linkWrites = slot<List<CrossSourceMangaLink>>()
+        val primaryWrites = slot<List<CrossSourceGroupPrimary>>()
+        coVerify {
+            restoreGroups.await(
+                capture(linkWrites),
+                emptyList(),
+                capture(primaryWrites),
+                emptyList(),
+            )
+        }
+        assertEquals(setOf(1L to "/origin", 2L to "/target"), linkWrites.captured.map { it.source to it.url }.toSet())
+        assertEquals(setOf("origin-group"), linkWrites.captured.map { it.groupId }.toSet())
+        assertEquals(listOf(unrelatedLink.source to unrelatedLink.url), primaryWrites.captured.map { it.source to it.url })
+        coVerify(exactly = 1) { migrateMangaUseCase(current = eq(origin), target = eq(target), replace = eq(false), presetFlags = any(), throttleFunc = any()) }
+        assertTrue(model.state.value.step is BestVersionStep.Error)
+    }
+
+    @Test
+    fun `failed identity confirmation does not add group membership or run migration`() = runTest {
+        val origin = manga(source = 1L, url = "/origin")
+        val target = manga(source = 2L, url = "/target")
+        val identityController = mockk<CrossSourceIdentityDecisionController>()
+        coEvery { identityController.mutate(any(), any()) } returns
+            exh.recs.matching.CrossSourceIdentityMutationResult.FAILED
+        val getLinks = mockk<GetCrossSourceMangaLinks>(relaxed = true)
+        val restoreGroups = mockk<RestoreCrossSourceGroupState>(relaxed = true)
+        val migrateMangaUseCase = mockk<MigrateMangaUseCase>(relaxed = true)
+        val model = buildModel(
+            migrateMangaUseCase = migrateMangaUseCase,
+            getCrossSourceMangaLinks = getLinks,
+            restoreCrossSourceGroupState = restoreGroups,
+            identityDecisionController = identityController,
+        )
+        model.seedReadyToMigrate(origin, target)
+
+        model.confirmMigration(replace = false)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { getLinks.awaitBySourceUrl(any(), any()) }
+        coVerify(exactly = 0) { restoreGroups.await(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { migrateMangaUseCase(any(), any(), any()) }
+    }
+
+    @Test
     fun `confirmMigration is a no-op when no target resolves for the selected key`() = runTest {
         val origin = manga(source = 1L, url = "/origin")
         val migrateMangaUseCase = mockk<MigrateMangaUseCase>(relaxed = true)
@@ -414,6 +564,9 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
             sourceManager = mockk(relaxed = true),
             isLowRamDevice = false,
             candidateSearchGateway = mockk(relaxed = true),
+            getCrossSourceMangaLinks = mockk(relaxed = true),
+            getCrossSourceGroupPrimary = mockk(relaxed = true),
+            restoreCrossSourceGroupState = mockk(relaxed = true),
             identityController = identityController(),
         )
         val handle = model.javaClass.getDeclaredField("dispatcherHandle").apply { isAccessible = true }.get(model) as DispatcherHandle

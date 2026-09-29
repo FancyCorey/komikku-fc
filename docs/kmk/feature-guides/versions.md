@@ -6,6 +6,8 @@ Komikku FC can find the same manga on other sources, let the reader confirm whic
 
 Open a manga and choose **Find other versions** from its actions. Confirm which results are the same manga. **Find Best Version** lets you compare their chapters and pages before choosing whether to replace your library entry.
 
+Find Best Version searches sources available to global search, using your enabled-language and disabled-source settings, and honors your **Results per source** limit. Previously confirmed versions start selected; your title-matching default applies to other results. Your preview sample size and **Avoid first pages in preview** setting control automatic page samples. You can change every selection before confirming the comparison.
+
 ## What the workflow helps you decide
 
 The matching screen answers “are these the same manga?” The Best Version screen answers “which confirmed version is more useful to me?” Keeping those questions separate prevents a search result from becoming trusted merely because its title looks similar. The reader can inspect candidates, reject mismatches, compare chapter samples, retry an individual preview, and keep the current version without starting migration.
@@ -32,7 +34,7 @@ Choose **View in Reader** on the current version or another version to open its 
 
 Press **Back** to return to the comparison screen. Opening the reader does not select a best version or start migration. It is ordinary reading, so reading a chapter can update your saved reading progress.
 
-If the chapter cannot be found or the source cannot load it, the app explains the problem. Try another chapter or retry the source; a failed thumbnail alone does not mean that the full reader will fail.
+If a candidate's chapter list cannot be loaded, use **Retry** for the failed candidates; successful and unavailable candidates keep their own results. If a chapter cannot be found, choose a chapter from that candidate's own list. A failed thumbnail alone does not mean that the full reader will fail.
 
 ## Matching and comparison overview
 

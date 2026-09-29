@@ -1,14 +1,27 @@
 package exh.recs.evaluation
 
 import eu.kanade.tachiyomi.source.SourceRuntimeFailureRegistry
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
+import io.mockk.spyk
+import io.mockk.verify
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -83,6 +96,150 @@ private class FakeTasteRepository(
     override fun getAllDisabledSourceIdsAsFlow(): Flow<List<Long>> = emptyFlow()
     override suspend fun disableSource(sourceId: Long) {}
     override suspend fun enableSource(sourceId: Long) {}
+}
+
+class SourceRecommendationFitProbeCancellationTest {
+    private val aliases = mockk<GetTagAliases>()
+    private val profile = TasteProfile.EMPTY.copy(learnedTagWeights = mapOf("action" to 0.9))
+    private val source = spyk(FakeCatalogueSource())
+
+    @Test
+    fun `cancelling a suspended alias lookup stops the probe`() = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val left = CompletableDeferred<Unit>()
+        coEvery { aliases.awaitAliasMap() } coAnswers {
+            try {
+                entered.complete(Unit)
+                awaitCancellation()
+            } finally {
+                left.complete(Unit)
+            }
+        }
+        val probe = SourceRecommendationFitProbe(aliases, UnconfinedTestDispatcher(testScheduler))
+        var returned = false
+        val job = launch(start = CoroutineStart.UNDISPATCHED) {
+            probe.probe(source, profile)
+            returned = true
+        }
+
+        entered.await()
+        job.cancelAndJoin()
+
+        assertTrue(job.isCancelled)
+        assertTrue(left.isCompleted)
+        assertFalse(returned)
+        coVerify(exactly = 0) { aliases.awaitGroupToAliasesMap() }
+        verify(exactly = 0) { source.getFilterList() }
+    }
+
+    @Test
+    fun `cancelling a suspended group lookup prevents source calls`() = runTest {
+        val entered = CompletableDeferred<Unit>()
+        coEvery { aliases.awaitAliasMap() } returns emptyMap()
+        coEvery { aliases.awaitGroupToAliasesMap() } coAnswers {
+            entered.complete(Unit)
+            awaitCancellation()
+        }
+        val probe = SourceRecommendationFitProbe(aliases, UnconfinedTestDispatcher(testScheduler))
+        var returned = false
+        val job = launch(start = CoroutineStart.UNDISPATCHED) {
+            probe.probe(source, profile)
+            returned = true
+        }
+
+        entered.await()
+        job.cancelAndJoin()
+
+        assertTrue(job.isCancelled)
+        assertFalse(returned)
+        verify(exactly = 0) { source.getFilterList() }
+        coVerify(exactly = 0) { source.getSearchManga(any(), any(), any()) }
+    }
+
+    @Test
+    fun `cancelling a suspended search exits without an outcome`() = runTest {
+        SourceRuntimeFailureRegistry.clearAll()
+        val entered = CompletableDeferred<Unit>()
+        val left = CompletableDeferred<Unit>()
+        coEvery { aliases.awaitAliasMap() } returns emptyMap()
+        coEvery { aliases.awaitGroupToAliasesMap() } returns emptyMap()
+        coEvery { source.getSearchManga(any(), any(), any()) } coAnswers {
+            try {
+                entered.complete(Unit)
+                awaitCancellation()
+            } finally {
+                left.complete(Unit)
+            }
+        }
+        val probe = SourceRecommendationFitProbe(aliases, UnconfinedTestDispatcher(testScheduler))
+        var returned = false
+        val job = launch(start = CoroutineStart.UNDISPATCHED) {
+            probe.probe(source, profile)
+            returned = true
+        }
+
+        entered.await()
+        job.cancelAndJoin()
+
+        assertTrue(job.isCancelled)
+        assertTrue(left.isCompleted)
+        assertFalse(returned)
+        coVerify(exactly = 1) { source.getSearchManga(any(), any(), any()) }
+    }
+
+    @Test
+    fun `alias map cancellation stops the next lookup`() = runTest {
+        val cancellation = CancellationException("alias lookup cancelled")
+        coEvery { aliases.awaitAliasMap() } throws cancellation
+        coEvery { aliases.awaitGroupToAliasesMap() } returns emptyMap()
+        val probe = SourceRecommendationFitProbe(aliases, UnconfinedTestDispatcher(testScheduler))
+
+        val caught = assertThrows(CancellationException::class.java) {
+            kotlinx.coroutines.runBlocking { probe.probe(source, profile) }
+        }
+
+        assertSame(cancellation, caught)
+        coVerify(exactly = 0) { aliases.awaitGroupToAliasesMap() }
+        verify(exactly = 0) { source.getFilterList() }
+        coVerify(exactly = 0) { source.getSearchManga(any(), any(), any()) }
+    }
+
+    @Test
+    fun `group alias cancellation reaches the caller`() = runTest {
+        val cancellation = CancellationException("group lookup cancelled")
+        coEvery { aliases.awaitAliasMap() } returns emptyMap()
+        coEvery { aliases.awaitGroupToAliasesMap() } throws cancellation
+        val probe = SourceRecommendationFitProbe(aliases, UnconfinedTestDispatcher(testScheduler))
+
+        val caught = assertThrows(CancellationException::class.java) {
+            kotlinx.coroutines.runBlocking { probe.probe(source, profile) }
+        }
+
+        assertSame(cancellation, caught)
+        coVerify(exactly = 1) { aliases.awaitAliasMap() }
+        coVerify(exactly = 1) { aliases.awaitGroupToAliasesMap() }
+        verify(exactly = 0) { source.getFilterList() }
+        coVerify(exactly = 0) { source.getSearchManga(any(), any(), any()) }
+    }
+
+    @Test
+    fun `ordinary alias failures still allow probing`() = runTest {
+        SourceRuntimeFailureRegistry.clearAll()
+        coEvery { aliases.awaitAliasMap() } throws IllegalStateException("database unavailable")
+        coEvery { aliases.awaitGroupToAliasesMap() } throws IllegalStateException("database unavailable")
+        val probe = SourceRecommendationFitProbe(aliases, UnconfinedTestDispatcher(testScheduler))
+
+        val manga = eu.kanade.tachiyomi.source.model.SManga.create().apply {
+            url = "/manga/forest-adventure"
+            title = "Forest Adventure"
+            genre = "Action"
+        }
+        val outcome = probe.probe(FakeCatalogueSource(returns = listOf(manga)), profile)
+
+        assertTrue(outcome.querySuccessCount > 0)
+        coVerify(exactly = 1) { aliases.awaitAliasMap() }
+        coVerify(exactly = 1) { aliases.awaitGroupToAliasesMap() }
+    }
 }
 
 class SourceRecommendationFitProbeTest {

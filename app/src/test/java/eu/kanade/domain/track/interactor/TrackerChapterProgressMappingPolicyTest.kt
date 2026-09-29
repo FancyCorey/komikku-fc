@@ -56,6 +56,42 @@ class TrackerChapterProgressMappingPolicyTest {
     }
 
     @Test
+    fun `numeric matching chooses a deterministic duplicate chapter row`() {
+        val chapters = listOf(
+            chapter(1, 8.0, "/alpha/8"),
+            chapter(2, 8.0, "/beta/8"),
+        )
+
+        assertEquals(
+            "/alpha/8",
+            TrackerChapterProgressMappingPolicy.resolve(
+                chapters = chapters,
+                trackerProgress = 8.0,
+                allowReadingOrderFallback = false,
+            )?.url,
+        )
+    }
+
+    @Test
+    fun `shorter source fallback resolves duplicated highest chapter deterministically`() {
+        val chapters = listOf(
+            chapter(1, 109.0, "/alpha/109"),
+            chapter(2, 110.0, "/alpha/110"),
+            chapter(3, 110.0, "/beta/110"),
+            chapter(4, 127.0, "/alpha/127"),
+        )
+
+        assertEquals(
+            "/alpha/110",
+            TrackerChapterProgressMappingPolicy.resolve(
+                chapters = chapters,
+                trackerProgress = 126.0,
+                allowReadingOrderFallback = false,
+            )?.url,
+        )
+    }
+
+    @Test
     fun `gaps and fractional tracker progress do not invent an offset`() {
         val gapped = listOf(chapter(1, 8.0), chapter(2, 10.0), chapter(3, 11.0))
         val consecutive = listOf(chapter(1, 8.0), chapter(2, 9.0))

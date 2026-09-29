@@ -1,35 +1,43 @@
 # Komikku FC public release notes
 
-This page summarizes the features included in the current version. The in-app **Komikku FC What's new** screen keeps the detailed history of changes.
+This page separates the latest published release from the next candidate. **v0.8.22** is the latest published version; **v0.8.23** remains an unreleased candidate. The in-app **Komikku FC What's new** screen keeps the detailed history of changes.
 
-## Current Komikku FC feature version
+## Release status
 
-The current in-app feature version is **Komikku FC v0.8.22**.
+The next Komikku FC feature version is **v0.8.23**. The latest published snapshot remains **v0.8.22** until the candidate is released.
 
 ## App Updates
 
-Download [Komikku FC v0.8.22](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.22) from this fork's Releases page. Choose the APK for your device and read its installation notes. Future updates are distributed through the same Releases page.
+When published, download [Komikku FC v0.8.23](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.23) from this fork's Releases page. Until then, use the latest published [v0.8.22](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.22) release. Choose the APK for your device and read its installation notes. Future updates are distributed through the same Releases page.
+
+The v0.8.23 candidate adds retry and recovery handling for interrupted app-update work. This behavior is not part of published v0.8.22, and a retry does not guarantee that a partial download resumes from its previous byte.
 
 Use **More > About > Check for updates** to check manually. Automatic discovery depends on the installed version's update checker, the published release, network access, and your update settings; notifications also require Android notification permission. Installing over an existing app requires a compatible package and signing certificate. Do not assume a development APK can replace your public installation.
 
 Some older releases compare Komikku's version rather than the Komikku FC feature version and may miss a newer fork release. If no update appears, check the Releases page and read that release's installation instructions. Choose an APK compatible with your device and current installation. If Android reports an incompatible update, keep your existing installation and back up your data rather than uninstalling it to force the update.
 
-## Included feature families
+## Komikku FC feature overview
+
+The overview below covers capabilities across releases; it is not a list of features shipped in v0.8.22. Changes for v0.8.23 remain unavailable until that candidate is published.
 
 - Personalized For You and Top Picks views with your manga filters, results from sources that remain available, optional recent-catalogue discoveries, repeat-display reordering, bulk rating actions, and status explanations for each source.
 - Recommendations based on rated or linked manga groups, with results appearing source by source, a configurable initial result count, and separate explanations for slow or failed sources.
 - Shareable recommendation bundles and an import review that identifies missing or uncertain matches before you choose what to add to your library.
 - Searchable, sectioned Recommendation Settings covering taste and tags, known or rated manga, minimum chapters, source priority, matching, result limits, discovery, cache, and maintenance.
 - Rating-derived tag suggestions, taste diagnostics, source-quality marks and history, Source Evaluation continuation and reassessment, and searchable or sortable Sources to Try.
-- Love, Like, Dislike, and Not Interested as equal preference choices, with searchable collections, bulk actions, linked-version groups, preferred versions, and Action History undo that protects later changes.
+- Love, Like, Dislike, and Not Interested as equal preference choices, with searchable collections, bulk actions, linked-version groups, preferred versions, and Action History undo that protects later changes and shows accurate counts for group additions and moves.
 - Rating can include unrated confirmed versions, and group management merges every selected group and exposes the same commands from More and the overflow menu.
 - New Local Tracking entries infer Plan to read, Reading, or Completed from actual reading state; On hold and Dropped remain manual choices.
 - Rated Manga can choose a confirmed group's primary version from the version read most, then the one rated first. The behavior can be turned off, and a manual primary always wins.
 - Rating propagation, linked-version local tracking, automatic local status, tracker-to-local updates, tracking from ratings, and confirmed-version progress sharing start enabled and can be changed independently.
 - Cross-source matching and Best Version comparison with chapter selection, independent preview retry, full-screen samples, a keep-current baseline, and a separate handoff to Komikku's migration flow.
+- Find Best Version searches the sources and languages available to global search while respecting your Results per source limit. Previously confirmed matches start selected, your title-matching default applies to other results, and preview settings control automatic page samples.
+- When a confirmed source has fewer chapters than the saved Local Tracking progress, the shared chapter number stays at the higher value while that source is marked read through its highest available chapter at or below it. A saved chapter URL is preferred when its row exists; fallback chapter numbers resolve duplicate scanlation rows consistently.
+- Best Version adds the selected manga to its confirmed link group only after identity confirmation succeeds and before migration begins. Link group management shows covers and titles and supports adding, moving, merging, removing, ungrouping, and undoing changes. Cancelling an ungroup keeps the existing group intact.
 - Active-reading timer, recurring reading schedule, deferred completion preference and linked-version rating, and Jump to last read.
 - Settings switches stay beside their labels while long labels and descriptions wrap within the available space.
-- Tracking settings opened from the tracker use the available width without an unrelated settings category pane beside them.
+- The tracker's Local Tracking row has a shortcut to Tracking settings before local tracking exists; settings use the available width without an unrelated settings category pane beside them.
+- Adding an external tracker prevents repeated submissions while linking; if follow-up synchronization fails after the link is saved, the app reports the partial result and keeps the link. If the tracker accepts the title but Komikku cannot save the local link, the app warns you to check the tracker before trying again.
 - Tracking and recommendation settings explain their effect in everyday language, including which linked manga versions are affected and whether progress comes from the app or a connected tracker.
 - Local Tracking uses the same scrollable chapter picker as external trackers, while still allowing decimal or unusual chapter numbers to be entered manually.
 - Local progress can be corrected from chapter zero onward, and the local tracker title opens its confirmed source versions without replacing the separate global search for new versions.
@@ -39,13 +47,16 @@ Some older releases compare Komikku's version rather than the Komikku FC feature
 - Tracking settings can turn reading-order matching off for imported tracker progress and use chapter numbers only; exact chapter matches continue to sync normally.
 - Turning off linked-version local tracking now prevents rating and tracker-refresh paths from attaching or consolidating other confirmed versions, while a rated manga can still start its own local tracking when that separate setting is enabled.
 - Restoring Local Tracking reconciles saved progress with chapter rows so read markers and Resume return together.
+- Cancelling a restore finishes its local progress replay before stopping. Library restore removes orphaned OCR entries while retaining valid indexed pages.
+- If an extension replacement is interrupted, the app restores the previous version before retrying. Cleanup problems with one extension do not block other extensions, and files the app cannot identify are left untouched.
+- Active For You tag filters continue searching eligible sources within the existing attempt limit when earlier results do not match, rather than stopping after enough unfiltered rows.
 - Opening or refreshing another version that shares your Local Tracking entry marks chapters through your saved progress as read, including duplicate translations, independently of external-tracker sync. Versions opted out of sharing do not replay inherited progress, and saved chapter matches are not replaced with guesses.
 - Opening the Tracking sheet also refreshes local read markers, so its saved chapter and the chapter list agree immediately when reconciliation succeeds.
 - Starting a reading date or changing the local reading status no longer restores an older chapter number over the chapter just finished.
 - Linked-version loading ignores stale results after the dialog closes and handles disappearing sources without escaping as an app crash.
 - For You's minimum-chapter filter now leaves fresh candidates eligible until their source chapter list is known locally, instead of treating unloaded candidates as zero-chapter results and reducing a source row to one or two cards.
 - For You source diagnostics distinguish the current refresh count from the rolling Top Picks contribution behind a “Great fit” label.
-- Completion rating appears only for a newly completed final chapter, skips rereads and already-rated manga, and excludes already-rated versions from follow-up choices.
+- Completion rating is offered after a newly completed latest chapter only in an eligible primary-source reader session; it skips rereads and already-rated manga, and excludes already-rated versions from follow-up choices.
 - Alternate-source reading remains discoverable and switchable without adding a manga to the library or leaving selection shading, favorite icons, or workflow markers on ordinary cards. Adding it to the library remains an explicit action.
 - Long-pressing search results while choosing alternate versions now selects them without changing whether they are in the library.
 - Local Tracking includes a settings shortcut that returns to the tracking sheet, and active alternate-source reading keeps a persistent source-switch action.
@@ -53,12 +64,15 @@ Some older releases compare Komikku's version rather than the Komikku FC feature
 - The alternate-source chooser identifies the source you are currently reading from before listing other matches, so switching sources is easier to understand.
 - Switching back offers the primary source's chapters at your current reading position. Saved source links are available from either manga so you can switch again later.
 - Every Best Version card offers **View in Reader**, including cards whose preview samples failed, so you can inspect the full chapter and return to the comparison screen.
+- Reader errors show reader-specific messages for network, file, and extension failures, with a page-load message for other reader errors.
 - Best Version previews now show **Preview failed** with **Retry** when a sample image stays unresolved, instead of leaving a blank preview area.
+- Best Version lets you continue with matches already found while slower sources are still searching.
+- Same-manga source search marks a slow source as timed out in Best Version, version matching, and alternate-source reading while results from other sources can still appear.
 - Best Version fullscreen previews keep the title and source readable over light manga pages with a dark header scrim.
 - Best Version empty results now clearly offer **Keep current version** when no alternate match is found.
 - Installed extensions cannot replace the built-in Local source used by on-device manga.
-- Local, cancellable OCR indexing and search for downloaded pages, with scoped cleanup and no recognized text in backup or sync.
-- Komikku FC backup and restore support for ratings, recommendation settings, linked manga and preferred versions, source quality, evaluation results, and Local Tracking. Taste profile and Local tracking are separate backup choices; include both for linked reading progress.
+- Local OCR indexing and search for downloaded pages can be cancelled; indexed pages can be removed by manga or chapter. Recognized text is not included in backups or sync.
+- Komikku FC backup and restore support for ratings, recommendation settings, linked manga and preferred versions, source quality, and Local Tracking. Source Evaluation results and run history are not included in exported backups and are not rebuilt by restore. Taste profile and Local tracking are separate backup choices; include both for linked reading progress.
 - Android document-based recommendation and extension export with exact-created-file cleanup, plus supported package install and removal operations.
 - Evaluation Mode, diagnostics with limited identifying details, Action History entries that distinguish supported undo from events you cannot reverse locally, navigation warnings, and recovery information for extension failures. Fatal crashes are not guaranteed to be contained.
 - A grouped in-app Komikku FC change history that remains separate from Komikku's own release notes.
@@ -73,7 +87,7 @@ Komikku FC continues to use Komikku's existing Library, Browse, Reader, Settings
 
 ## Fork identity
 
-Komikku FC is an independent fork. It keeps the original Komikku artwork, uses the package name `app.komikku.kmk`, and uses this fork's releases for its own updates. The repository is now `FancyCorey/komikku-fc`; links using the former `komikku-KMK` name redirect to it. Official Komikku releases and support channels remain separate.
+Komikku FC is an independent fork. It has its own app logo, uses the package name `app.komikku.kmk`, and uses this fork's releases for its own updates. Supported launchers can use the monochrome logo for themed icons. The repository is now `FancyCorey/komikku-fc`; links using the former `komikku-KMK` name redirect to it. Official Komikku releases and support channels remain separate.
 
 ## Known limitation
 

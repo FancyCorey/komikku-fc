@@ -17,6 +17,7 @@ import eu.kanade.tachiyomi.source.SourceRuntimeOperation
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.source.safeHeadersOrNull
 import exh.source.getMainSource
+import kotlinx.coroutines.CancellationException
 import logcat.LogPriority
 import okhttp3.CacheControl
 import okhttp3.Call
@@ -30,6 +31,8 @@ import tachiyomi.domain.source.service.SourceManager
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.IOException
+import java.security.MessageDigest
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * A [Fetcher] that fetches page preview image for [PagePreview] object.
@@ -49,11 +52,26 @@ class PagePreviewFetcher(
     private val imageLoader: ImageLoader,
 ) : Fetcher {
 
+    private val fetcherId = nextFetcherId.incrementAndGet()
+    private val fetchAttemptCount = AtomicInteger()
+
     private val diskCacheKey: String
         get() = diskCacheKeyLazy.value
 
     override suspend fun fetch(): FetchResult {
-        return httpLoader()
+        val fetchAttempt = fetchAttemptCount.incrementAndGet()
+        return try {
+            httpLoader(fetchAttempt)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN, tag = "PagePreviewFetcher") {
+                "Preview fetch failed trace=${page.previewTraceId()} fetcher=$fetcherId attempt=$fetchAttempt " +
+                    "page=${page.index + 1} " +
+                    "errorTypes=${e.safeTypeChain()}"
+            }
+            throw e
+        }
     }
 
     private fun fileLoader(file: File): FetchResult {
@@ -68,7 +86,7 @@ class PagePreviewFetcher(
         )
     }
 
-    private suspend fun httpLoader(): FetchResult {
+    private suspend fun httpLoader(fetchAttempt: Int): FetchResult {
         if (isInCache() && options.diskCachePolicy.readEnabled) {
             return fileLoader(pagePreviewFile())
         }
@@ -91,7 +109,7 @@ class PagePreviewFetcher(
             }
 
             // Fetch from network
-            val response = executeNetworkRequest()
+            val response = executeNetworkRequest(fetchAttempt)
             val responseBody = checkNotNull(response.body) { "Null response source" }
             try {
                 // Read from page preview cache after page preview updated
@@ -126,7 +144,7 @@ class PagePreviewFetcher(
         }
     }
 
-    private suspend fun executeNetworkRequest(): Response {
+    private suspend fun executeNetworkRequest(fetchAttempt: Int): Response {
         // KMK v0.8.10-fix5: fetchPreviewImage() and the source's own client construction can throw
         // LinkageError just like any other source-owned code -- PagePreviewSource always extends
         // Source, so route through SourceRuntime and fall back to a direct image request instead of
@@ -138,11 +156,22 @@ class PagePreviewFetcher(
                     page.getPagePreviewInfo(),
                     getCacheControl(),
                 )
-            }.getOrNull()
+            }.getOrElse { failure ->
+                if (shouldFallbackToGenericPreviewRequest(failure)) {
+                    null
+                } else {
+                    throw failure
+                }
+            }
         } else {
             null
         } ?: callFactoryLazy.value.newCall(newRequest()).await()
         if (!response.isSuccessful && response.code != HTTP_NOT_MODIFIED) {
+            logcat(LogPriority.WARN, tag = "PagePreviewFetcher") {
+                "Preview response rejected trace=${page.previewTraceId()} fetcher=$fetcherId attempt=$fetchAttempt " +
+                    "page=${page.index + 1} " +
+                    "status=${response.code}"
+            }
             response.close()
             throw IOException(response.message)
         }
@@ -273,9 +302,26 @@ class PagePreviewFetcher(
     }
 
     companion object {
+        private val nextFetcherId = AtomicInteger()
+
         private val CACHE_CONTROL_NO_STORE = CacheControl.Builder().noStore().build()
         private val CACHE_CONTROL_NO_NETWORK_NO_CACHE = CacheControl.Builder().noCache().onlyIfCached().build()
 
         private const val HTTP_NOT_MODIFIED = 304
     }
 }
+
+internal fun PagePreview.previewTraceId(): String {
+    val input = "$source|$index|$imageUrl".toByteArray(Charsets.UTF_8)
+    return MessageDigest.getInstance("SHA-256")
+        .digest(input)
+        .take(8)
+        .joinToString(separator = "") { byte -> (byte.toInt() and 0xff).toString(16).padStart(2, '0') }
+}
+
+internal fun Throwable.safeTypeChain(): String =
+    generateSequence(this) { it.cause }
+        .take(4)
+        .joinToString(separator = "->") { it.javaClass.simpleName.ifEmpty { "Throwable" } }
+
+internal fun shouldFallbackToGenericPreviewRequest(failure: Throwable): Boolean = failure is LinkageError

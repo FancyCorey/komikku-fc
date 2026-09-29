@@ -102,16 +102,21 @@ class KmkEmptyStateIntegrationSourceAssertionsTest {
     }
 
     @Test
-    fun `Find Best Version illustration is wired only into the allCandidates-isEmpty branch`() {
+    fun `Find Best Version illustration is shown only after an empty staged search completes`() {
         val source = readSource("src/main/java/exh/recs/bestversion/BestVersionCompareScreen.kt")
 
-        assertTrue(source.contains("if (allCandidates.isEmpty()) {"))
+        val completedEmptyBranch = "if (allCandidates.isEmpty() && state.searchProgress == state.searchTotal) {"
+        val pendingEmptyBranch = "} else if (allCandidates.isEmpty()) {"
+        assertTrue(source.contains(completedEmptyBranch))
+        assertTrue(source.contains(pendingEmptyBranch))
         assertTrue(source.contains("KmkEmptyStateArtwork.FIND_BEST_VERSION_UNAVAILABLE"))
         assertTrue(source.contains("} else {"), "the non-empty candidates-rendering branch must still exist")
-        val emptyBranchIndex = source.indexOf("if (allCandidates.isEmpty()) {")
+        val emptyBranchIndex = source.indexOf(completedEmptyBranch)
         val illustrationIndex = source.indexOf("KmkEmptyStateArtwork.FIND_BEST_VERSION_UNAVAILABLE")
-        val elseBranchIndex = source.indexOf("} else {", emptyBranchIndex)
-        assertTrue(emptyBranchIndex < illustrationIndex && illustrationIndex < elseBranchIndex)
+        val pendingBranchIndex = source.indexOf(pendingEmptyBranch, emptyBranchIndex)
+        val candidatesBranchIndex = source.indexOf("} else {", pendingBranchIndex + pendingEmptyBranch.length)
+        assertTrue(emptyBranchIndex < illustrationIndex && illustrationIndex < pendingBranchIndex)
+        assertTrue(pendingBranchIndex < candidatesBranchIndex)
     }
 
     @Test

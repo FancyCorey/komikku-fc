@@ -62,19 +62,19 @@ object GroupPreviewCache {
             entries.remove(key)
             return null
         }
-        return entry.mangas
+        return entry.mangas.toList()
     }
 
     @Synchronized
     fun put(key: Key, mangas: List<Manga>, nowMs: Long = System.currentTimeMillis()) {
-        entries[key] = Entry(mangas, nowMs)
+        entries[key] = Entry(mangas.toList(), nowMs)
         while (entries.size > MAX_ENTRIES) {
             val oldestKey = entries.keys.firstOrNull() ?: break
             entries.remove(oldestKey)
         }
     }
 
-    /** Removes every cached entry. Called on refresh, taste/group change, language/source-order change, or disabled-source change. */
+    /** Removes every cached entry when the owning screen explicitly resets its preview state. */
     @Synchronized
     fun invalidateAll() {
         entries.clear()

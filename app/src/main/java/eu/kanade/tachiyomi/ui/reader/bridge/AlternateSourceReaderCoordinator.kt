@@ -93,17 +93,13 @@ class AlternateSourceReaderCoordinator(
                 return@guarded AlternateSourceReaderCommandResult.Invalid
             }
         }
+        val identityConfirmed = isPairConfirmed(session.bridgeKey)
         if (
             session.pendingRouteFingerprint != null ||
             activeRoute.role != session.currentRoute.role ||
             AlternateSourceReaderRouteFingerprint.of(activeRoute) != session.lastSafeRouteFingerprint ||
             session.currentRoute != activeRoute ||
-            !identityResolver.isConfirmed(
-                session.bridgeKey.primary.source,
-                session.bridgeKey.primary.url,
-                session.bridgeKey.alternate.source,
-                session.bridgeKey.alternate.url,
-            )
+            (session.currentRoute.role == AlternateSourceReaderRouteRole.ALTERNATE && !identityConfirmed)
         ) {
             clearInvalidRestoredState()
             return@guarded AlternateSourceReaderCommandResult.Invalid
@@ -263,6 +259,12 @@ class AlternateSourceReaderCoordinator(
         val session = activeSession() ?: return@guarded AlternateSourceReaderCommandResult.NoSession
         val updated = continuedSession(session, route)
             ?: return@guarded AlternateSourceReaderCommandResult.Invalid
+        if (
+            updated.currentRoute.role == AlternateSourceReaderRouteRole.ALTERNATE &&
+            !isPairConfirmed(updated.bridgeKey)
+        ) {
+            return@guarded AlternateSourceReaderCommandResult.Conflict
+        }
         sessionStore.write(updated)
         mutableState.value = mutableState.value.copy(
             phase = if (updated.currentRoute.role == AlternateSourceReaderRouteRole.PRIMARY) {
@@ -281,8 +283,10 @@ class AlternateSourceReaderCoordinator(
         val generation = begin(AlternateSourceReaderEvent.BeginReturn)
             ?: return@guarded AlternateSourceReaderCommandResult.Stale
         val state = getBridge.await(session.bridgeKey)
+        val identityConfirmed = isPairConfirmed(session.bridgeKey)
         val preferredUrl = if (
             preferContinuation &&
+            identityConfirmed &&
             state?.bridge?.key == session.bridgeKey &&
             state.bridge.deletedAt == null &&
             state.bridge.reviewState != tachiyomi.domain.taste.model.AlternateSourceBridgeReviewState.CONFLICT
@@ -318,12 +322,15 @@ class AlternateSourceReaderCoordinator(
         ) {
             return@guarded AlternateSourceReaderCommandResult.Stale
         }
-        val generation = begin(AlternateSourceReaderEvent.BeginReturn)
-            ?: return@guarded AlternateSourceReaderCommandResult.Stale
         val destinationRole = when (session.currentRoute.role) {
             AlternateSourceReaderRouteRole.PRIMARY -> AlternateSourceReaderRouteRole.ALTERNATE
             AlternateSourceReaderRouteRole.ALTERNATE -> AlternateSourceReaderRouteRole.PRIMARY
         }
+        if (destinationRole == AlternateSourceReaderRouteRole.ALTERNATE && !isPairConfirmed(session.bridgeKey)) {
+            return@guarded AlternateSourceReaderCommandResult.Conflict
+        }
+        val generation = begin(AlternateSourceReaderEvent.BeginReturn)
+            ?: return@guarded AlternateSourceReaderCommandResult.Stale
         val destination = resolve(session.bridgeKey, destinationRole, chapterUrl, 0)
             ?: return@guarded cancel(generation, AlternateSourceReaderCommandResult.Unavailable)
         returnLocked(session, destination, generation, explicitManualReturn = true)
@@ -331,6 +338,9 @@ class AlternateSourceReaderCoordinator(
 
     suspend fun automaticReturn(completedAlternateChapterUrl: String): AlternateSourceReaderCommandResult = guarded {
         val session = activeSession() ?: return@guarded AlternateSourceReaderCommandResult.NoSession
+        if (!isPairConfirmed(session.bridgeKey)) {
+            return@guarded AlternateSourceReaderCommandResult.Conflict
+        }
         val generation = begin(AlternateSourceReaderEvent.BeginReturn)
             ?: return@guarded AlternateSourceReaderCommandResult.Stale
         val bridge = getBridge.await(session.bridgeKey)

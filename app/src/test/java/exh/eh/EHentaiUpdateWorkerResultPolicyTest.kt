@@ -18,9 +18,8 @@ import org.junit.jupiter.api.Test
 // comment) that this project's test suite cannot instantiate directly -- constructing a real
 // CoroutineWorker requires androidx.work's WorkerParameters/WorkDatabase machinery, which is only
 // available through the `androidx.work:work-testing` artifact (typically paired with Robolectric
-// for a JVM Context). Neither is a dependency of this project (confirmed: no `work-testing` or
-// Robolectric reference exists in app/build.gradle.kts or gradle/androidx.versions.toml), so
-// end-to-end doWork() behavior (CancellationException rethrow through a live CoroutineWorker,
+// for a JVM Context). This test intentionally keeps the result policy independent of the Android
+// worker harness; end-to-end doWork() behavior (CancellationException rethrow through a live CoroutineWorker,
 // and the finally-block notification cleanup call) is verified by code inspection and the
 // `try/catch(CancellationException) { throw e } ... finally { cancelProgressNotification() }`
 // structure itself, not by an instrumented test in the implementation -- adding that dependency was

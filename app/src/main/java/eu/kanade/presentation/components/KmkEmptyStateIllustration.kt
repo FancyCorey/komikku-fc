@@ -56,8 +56,10 @@ enum class KmkEmptyStateArtwork {
  * (`0xFF6750A4`, Material purple, chosen only because it's *not* white/black/gray/red/green/cyan) that
  * is never actually seen: [Icon] always recolors through [tint] via `BlendMode.SrcIn`, which replaces
  * every visible pixel's color while preserving its alpha -- confirmed against this codebase's own
- * `LogoHeader.kt` (`Icon(painterResource(R.drawable.ic_komikku), tint = MaterialTheme.colorScheme.onSurface)`)
- * and `BrowseIcons.kt`'s `Image(..., colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.error))`.
+ * `LogoHeader.kt` (`Icon(painterResource(R.drawable.ic_fc_monochrome_in_app),
+ * tint = MaterialTheme.colorScheme.onSurface)`) and `BrowseIcons.kt`'s `Image(...,
+ * colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.error))`. The launcher and splash screen
+ * continue to use the full-colour fork artwork.
  * This is why the translucent star/triangle fills below (`fillAlpha = 0.14f`/`0.12f`) still read as a
  * translucent version of [tint] at runtime rather than a fixed color: SrcIn keeps the source alpha.
  *

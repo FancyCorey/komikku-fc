@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -78,6 +79,7 @@ import eu.kanade.tachiyomi.data.track.model.TrackSearch
 import eu.kanade.tachiyomi.util.system.openInBrowser
 import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.kmk.KMR
 import tachiyomi.presentation.core.components.ScrollbarLazyColumn
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.components.material.padding
@@ -99,6 +101,7 @@ fun TrackerSearch(
     onConfirmSelection: (private: Boolean) -> Unit,
     onDismissRequest: () -> Unit,
     supportsPrivateTracking: Boolean,
+    isRegistering: Boolean = false,
 ) {
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
@@ -112,7 +115,7 @@ fun TrackerSearch(
             Column {
                 TopAppBar(
                     navigationIcon = {
-                        IconButton(onClick = onDismissRequest) {
+                        IconButton(onClick = onDismissRequest, enabled = !isRegistering) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                                 contentDescription = stringResource(MR.strings.action_bar_up_description),
@@ -148,6 +151,7 @@ fun TrackerSearch(
                     actions = {
                         if (state.text.isNotEmpty()) {
                             IconButton(
+                                enabled = !isRegistering,
                                 onClick = {
                                     state.clearText()
                                     focusRequester.requestFocus()
@@ -179,14 +183,27 @@ fun TrackerSearch(
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
                 ) {
                     Button(
+                        enabled = !isRegistering,
                         onClick = { onConfirmSelection(false) },
                         modifier = Modifier.weight(1f),
                         elevation = ButtonDefaults.elevatedButtonElevation(),
                     ) {
-                        Text(text = stringResource(MR.strings.action_track))
+                        if (isRegistering) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .height(18.dp)
+                                    .width(18.dp),
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = stringResource(KMR.strings.track_registration_in_progress))
+                        } else {
+                            Text(text = stringResource(MR.strings.action_track))
+                        }
                     }
                     if (supportsPrivateTracking) {
                         Button(
+                            enabled = !isRegistering,
                             onClick = { onConfirmSelection(true) },
                             elevation = ButtonDefaults.elevatedButtonElevation(),
                         ) {

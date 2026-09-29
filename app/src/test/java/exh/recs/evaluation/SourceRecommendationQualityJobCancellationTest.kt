@@ -2,6 +2,9 @@ package exh.recs.evaluation
 
 import androidx.work.ListenableWorker.Result
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -86,23 +89,52 @@ class SourceRecommendationQualityJobCancellationTest {
         var state: SourceRecommendationQualityQueueState? =
             SourceRecommendationQualityQueueState(status = SourceRecommendationQualityQueueState.Status.Running)
         var finallyRan = false
+        var runnerCancelled = false
 
         val result = runSourceRecommendationQualityWork(
             collectUntilTerminal = { throw IllegalStateException("boom") },
             notifier = notifier,
             getState = { state },
             setState = { state = it },
-            cancelRunner = { fail("cancelRunner must not be called on an ordinary failure") },
+            cancelRunner = { runnerCancelled = true },
             finallyCleanup = { finallyRan = true },
             logUnexpectedError = { },
         )
 
         assertEquals(Result.failure(), result)
+        assertTrue(runnerCancelled)
         assertEquals(SourceRecommendationQualityQueueState.Status.Failed, state?.status)
         assertEquals(SourceEvaluationProbeErrorKind.INTERNAL.storageKey, state?.errorMessage)
         assertTrue(notifier.dismissProgressCalled)
         assertNull(notifier.showCompleteCall)
         assertTrue(finallyRan)
+    }
+
+    @Test
+    fun `observer failure cancels active work and lets its cleanup finish`() = runTest {
+        var cleanupFinished = false
+        val runner = launch {
+            try {
+                awaitCancellation()
+            } finally {
+                cleanupFinished = true
+            }
+        }
+        runCurrent()
+
+        val result = runSourceRecommendationQualityWork(
+            collectUntilTerminal = { throw IllegalStateException("observer failed") },
+            notifier = FakeNotifier(),
+            getState = { null },
+            setState = { },
+            cancelRunner = { runner.cancel() },
+            finallyCleanup = { },
+            logUnexpectedError = { },
+        )
+        assertEquals(Result.failure(), result)
+        assertTrue(runner.isCancelled)
+        runner.join()
+        assertTrue(cleanupFinished)
     }
 
     @Test

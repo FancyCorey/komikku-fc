@@ -37,6 +37,11 @@ class OcrErrorClassifierTest {
     }
 
     @Test
+    fun `resource limit classifies as ResourceLimit`() {
+        assertEquals(OcrErrorKey.ResourceLimit, OcrErrorClassifier.classify(OcrResourceLimitException()))
+    }
+
+    @Test
     fun `generic IOException classifies as Storage`() {
         assertEquals(OcrErrorKey.Storage, OcrErrorClassifier.classify(IOException("disk error")))
     }

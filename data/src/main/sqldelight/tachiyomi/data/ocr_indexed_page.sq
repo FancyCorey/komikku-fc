@@ -39,18 +39,32 @@ INSERT INTO ocr_indexed_page(
     raw_text, normalized_text, indexed_at, error_message,
     recognized_text_length, recognized_word_count, ocr_status
 )
-VALUES (
+SELECT
     :mangaId, :sourceId, :mangaUrl, :mangaTitle,
     :chapterId, :chapterUrl, :chapterName,
     :pageIndex, :pageUri, :pageIdentity, :pageModifiedAt, :pageSize,
     :engineKey, :engineVersion, :languageHint,
     :rawText, :normalizedText, :indexedAt, :errorMessage,
     :recognizedTextLength, :recognizedWordCount, :ocrStatus
+WHERE EXISTS (
+    SELECT 1 FROM mangas
+    WHERE mangas._id = :mangaId
+      AND mangas.source = :sourceId
+      AND mangas.url = :mangaUrl
+)
+AND EXISTS (
+    SELECT 1 FROM chapters
+    WHERE chapters._id = :chapterId
+      AND chapters.manga_id = :mangaId
+      AND chapters.url = :chapterUrl
 )
 ON CONFLICT(chapter_id, page_index, page_identity, engine_key, engine_version)
 DO UPDATE
 SET
     manga_title = :mangaTitle,
+    page_uri = :pageUri,
+    page_modified_at = :pageModifiedAt,
+    page_size = :pageSize,
     raw_text = :rawText,
     normalized_text = :normalizedText,
     indexed_at = :indexedAt,
@@ -67,7 +81,8 @@ WHERE engine_version = :engineVersion
   AND recognized_word_count > 0
   AND error_message IS NULL
   AND normalized_text LIKE '%' || :query || '%'
-ORDER BY manga_title ASC, chapter_name ASC, page_index ASC;
+ORDER BY manga_title ASC, chapter_name ASC, page_index ASC
+LIMIT 50;
 
 searchCandidatesForToken:
 SELECT id, manga_id, source_id, manga_title, chapter_id, chapter_name, page_index, raw_text, normalized_text
@@ -77,13 +92,16 @@ WHERE engine_version = :engineVersion
   AND recognized_word_count > 0
   AND error_message IS NULL
   AND normalized_text LIKE '%' || :token || '%'
-ORDER BY manga_title ASC, chapter_name ASC, page_index ASC;
+ORDER BY manga_title ASC, chapter_name ASC, page_index ASC
+LIMIT 50;
 
 getExistingPageState:
-SELECT page_identity, ocr_status, recognized_word_count, error_message
+SELECT page_identity, ocr_status, recognized_word_count, error_message,
+       page_modified_at, page_size
 FROM ocr_indexed_page
 WHERE chapter_id = :chapterId
   AND page_index = :pageIndex
+  AND page_identity = :pageIdentity
   AND engine_key = :engineKey
   AND engine_version = :engineVersion
 LIMIT 1;
@@ -100,6 +118,21 @@ WHERE manga_id = :mangaId;
 deleteByChapter:
 DELETE FROM ocr_indexed_page
 WHERE chapter_id = :chapterId;
+
+deleteOrphanedRows:
+DELETE FROM ocr_indexed_page
+WHERE NOT EXISTS (
+    SELECT 1 FROM mangas
+    WHERE mangas._id = ocr_indexed_page.manga_id
+      AND mangas.source = ocr_indexed_page.source_id
+      AND mangas.url = ocr_indexed_page.manga_url
+)
+OR NOT EXISTS (
+    SELECT 1 FROM chapters
+    WHERE chapters._id = ocr_indexed_page.chapter_id
+      AND chapters.manga_id = ocr_indexed_page.manga_id
+      AND chapters.url = ocr_indexed_page.chapter_url
+);
 
 deleteAll:
 DELETE FROM ocr_indexed_page;

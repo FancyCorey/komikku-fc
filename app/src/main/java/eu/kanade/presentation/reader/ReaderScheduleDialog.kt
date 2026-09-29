@@ -88,7 +88,7 @@ fun ReaderScheduleDialog(
     onSave: (mode: ReaderScheduleMode, windows: List<ReaderScheduleWindow>) -> Unit,
 ) {
     val context = LocalContext.current
-    val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+    val locale = LocalConfiguration.current.locales[0]
     val wholeDayLabel = stringResource(KMR.strings.reading_schedule_whole_day)
     // KMK v0.8.7: `mode`/`windows` are the persisted-on-Save draft. `onDismissRequest` (outside tap,
     // back press) no longer calls onSave — it now behaves like Cancel (discards the draft), per plan
@@ -369,7 +369,7 @@ private enum class AddWindowStage { WEEKDAYS, START_TIME, END_TIME, ERROR, INVAL
 @Composable
 private fun AddWindowFlow(initial: ReaderScheduleWindow?, onDone: (ReaderScheduleWindow?) -> Unit) {
     val context = LocalContext.current
-    val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+    val locale = LocalConfiguration.current.locales[0]
     var weekdays by rememberSaveable { mutableStateOf(initial?.weekdays ?: emptySet()) }
     var wholeDay by rememberSaveable { mutableStateOf(initial?.allDay ?: false) }
     var stage by rememberSaveable { mutableStateOf(AddWindowStage.WEEKDAYS) }

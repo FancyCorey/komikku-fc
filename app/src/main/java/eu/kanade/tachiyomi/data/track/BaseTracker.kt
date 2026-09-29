@@ -78,10 +78,10 @@ abstract class BaseTracker(
         trackPreferences.setCredentials(this, username, password)
     }
 
-    override suspend fun register(item: Track, mangaId: Long) {
+    override suspend fun register(item: Track, mangaId: Long): TrackerRegistrationResult {
         item.manga_id = mangaId
         try {
-            addTracks.bind(this, item, mangaId)
+            return addTracks.bind(this, item, mangaId)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {

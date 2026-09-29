@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test
  * The service skips a page only when:
  *   - state is not null (row exists for current engine version)
  *   - page_identity matches
+ *   - known content metadata matches
  *   - ocr_status == "success"
  *   - recognized_word_count > 0
  *   - retry mode is not FORCE_ALL
@@ -17,15 +18,11 @@ import org.junit.jupiter.api.Test
 class OcrSkipLogicTest {
 
     private val currentIdentity = "content://media/external/0001"
-    private val currentEngineVersion = "16.0.1-tiled-v2"
+    private val currentModifiedAt = 100L
+    private val currentSize = 1000L
 
-    private fun shouldSkip(state: OcrPageState?, currentIdentity: String, retryMode: OcrRetryMode): Boolean {
-        return retryMode != OcrRetryMode.FORCE_ALL &&
-            state != null &&
-            state.pageIdentity == currentIdentity &&
-            state.ocrStatus == OCR_STATUS_SUCCESS &&
-            state.recognizedWordCount > 0
-    }
+    private fun shouldSkip(state: OcrPageState?, currentIdentity: String, retryMode: OcrRetryMode): Boolean =
+        shouldSkipOcrPage(state, currentIdentity, currentModifiedAt, currentSize, retryMode)
 
     @Test
     fun `success row with matching identity and words is skipped`() {
@@ -34,6 +31,8 @@ class OcrSkipLogicTest {
             ocrStatus = OCR_STATUS_SUCCESS,
             recognizedWordCount = 42,
             errorMessage = null,
+            pageModifiedAt = currentModifiedAt,
+            pageSize = currentSize,
         )
         shouldSkip(state, currentIdentity, OcrRetryMode.SKIP_SUCCESS_RETRY_EMPTY_FAILED) shouldBe true
     }
@@ -50,6 +49,8 @@ class OcrSkipLogicTest {
             ocrStatus = OCR_STATUS_EMPTY,
             recognizedWordCount = 0,
             errorMessage = null,
+            pageModifiedAt = currentModifiedAt,
+            pageSize = currentSize,
         )
         shouldSkip(state, currentIdentity, OcrRetryMode.SKIP_SUCCESS_RETRY_EMPTY_FAILED) shouldBe false
     }
@@ -61,6 +62,8 @@ class OcrSkipLogicTest {
             ocrStatus = OCR_STATUS_FAILED,
             recognizedWordCount = 0,
             errorMessage = "Decode failed",
+            pageModifiedAt = currentModifiedAt,
+            pageSize = currentSize,
         )
         shouldSkip(state, currentIdentity, OcrRetryMode.SKIP_SUCCESS_RETRY_EMPTY_FAILED) shouldBe false
     }
@@ -72,6 +75,8 @@ class OcrSkipLogicTest {
             ocrStatus = OCR_STATUS_SUCCESS,
             recognizedWordCount = 0,
             errorMessage = null,
+            pageModifiedAt = currentModifiedAt,
+            pageSize = currentSize,
         )
         shouldSkip(state, currentIdentity, OcrRetryMode.SKIP_SUCCESS_RETRY_EMPTY_FAILED) shouldBe false
     }
@@ -83,6 +88,8 @@ class OcrSkipLogicTest {
             ocrStatus = OCR_STATUS_SUCCESS,
             recognizedWordCount = 10,
             errorMessage = null,
+            pageModifiedAt = currentModifiedAt,
+            pageSize = currentSize,
         )
         shouldSkip(state, currentIdentity, OcrRetryMode.SKIP_SUCCESS_RETRY_EMPTY_FAILED) shouldBe false
     }
@@ -94,8 +101,21 @@ class OcrSkipLogicTest {
             ocrStatus = OCR_STATUS_SUCCESS,
             recognizedWordCount = 100,
             errorMessage = null,
+            pageModifiedAt = currentModifiedAt,
+            pageSize = currentSize,
         )
         shouldSkip(state, currentIdentity, OcrRetryMode.FORCE_ALL) shouldBe false
+    }
+
+    @Test
+    fun `changed or unknown metadata requires fresh recognition`() {
+        val state = OcrPageState(currentIdentity, OCR_STATUS_SUCCESS, 42, null, currentModifiedAt, currentSize)
+        val mode = OcrRetryMode.SKIP_SUCCESS_RETRY_EMPTY_FAILED
+        shouldSkipOcrPage(state, currentIdentity, currentModifiedAt + 1, currentSize, mode) shouldBe false
+        shouldSkipOcrPage(state, currentIdentity, currentModifiedAt, currentSize + 1, mode) shouldBe false
+        shouldSkipOcrPage(state, currentIdentity, null, currentSize, mode) shouldBe false
+        shouldSkipOcrPage(state.copy(pageModifiedAt = null), currentIdentity, currentModifiedAt, currentSize, mode) shouldBe false
+        shouldSkipOcrPage(state.copy(pageSize = null), currentIdentity, currentModifiedAt, currentSize, mode) shouldBe false
     }
 }
 

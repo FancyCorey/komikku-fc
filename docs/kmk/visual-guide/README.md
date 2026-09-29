@@ -146,13 +146,13 @@ Extension operations cover loading, install consent, cancellation, removal, expo
 
 The Data and storage page keeps manual backup, restore, automatic frequency, last-backup status, and restore progress controls together. It reports only that a storage location is configured in this view, then gives a separate warning that backup files may contain sensitive data.
 
-Komikku FC's saved ratings, recommendation settings, linked-version groups, primary-version choices, source-quality information, and source-evaluation state can travel through Komikku's normal backup flow when selected. OCR text, temporary review state, and unsupported external account data remain outside the backup. Restore reports partial or failed records instead of presenting an incomplete restore as successful. See [Preserving Komikku FC data in Komikku backups](../feature-guides/backups.md).
+Komikku FC's saved ratings, recommendation settings, linked-version groups, primary-version choices, and source-quality information can travel through Komikku's normal backup flow when selected. Source Evaluation results and run history are not included in exported backups and are not rebuilt by restore. OCR text, temporary review state, and unsupported external account data remain outside the backup. Restore reports partial or failed records instead of presenting an incomplete restore as successful. See [Preserving Komikku FC data in Komikku backups](../feature-guides/backups.md).
 
 ## Review Komikku FC changes in the app
 
 ![Historical What's New screen showing v0.8.20-fix5 and earlier notes](kmk-whats-new.png)
 
-Komikku FC What's New groups the current and earlier fork releases, summarizes each release, and separates new behavior from fixes. The installed version is shown at the top. This image shows the older v0.8.20-fix5 screen, not the v0.8.22 release notes; open What's New in your installed app for those notes.
+Komikku FC What's New groups the current and earlier fork releases, summarizes each release, and separates new behavior from fixes. The installed version is shown at the top. This image shows the older v0.8.20-fix5 screen, not the v0.8.23 candidate notes; open What's New in your installed app for the version-specific notes.
 
 ## When sources or links fail
 
@@ -215,7 +215,7 @@ Use this table to find a screen or the written steps for each feature area.
 | Exact-file cleanup | [Export guide](../feature-guides/sharing.md) | The export family is represented visually by its consent screen; the guide explains the exact-document cleanup result and its limits. |
 | OCR Search Downloads | [Screenshot](ocr-search-downloads.png) and [feature guide](../feature-guides/ocr.md) | Indexed-page totals, storage use, indexing options, and cleanup controls. |
 | Backup and restore | [Screenshot](backup-and-restore.png) | Backup and restore controls, scheduling, status, warnings, and progress settings. |
-| Komikku FC What's New | [Historical screenshot](kmk-whats-new.png) | The v0.8.20-fix5 screen illustrates grouped history, summaries, and new/fix sections; it does not show v0.8.22 notes. |
+| Komikku FC What's New | [Historical screenshot](kmk-whats-new.png) | The v0.8.20-fix5 screen illustrates grouped history, summaries, and new/fix sections; it does not show v0.8.23 candidate notes. |
 | Extension operations | [Export confirmation](extension-export-confirmation.png) | The package boundary and the app data excluded from an export. |
 | When sources or links fail | [Feature explanation](../feature-guides/safety.md) | Written explanations of checking, rejection, cancellation, and cleanup behavior. |
 

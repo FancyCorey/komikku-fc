@@ -11,15 +11,23 @@ import eu.kanade.tachiyomi.extension.model.InstallStep
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.util.storage.getUriCompat
 import eu.kanade.tachiyomi.util.system.isPackageInstalled
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import logcat.LogPriority
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -27,6 +35,7 @@ import tachiyomi.core.common.util.system.logcat
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -36,16 +45,17 @@ import java.util.concurrent.ConcurrentHashMap
  */
 internal class ExtensionInstaller(
     private val context: Context,
+    basePreferences: BasePreferences = Injekt.get(),
+    private val httpClient: OkHttpClient = Injekt.get<NetworkHelper>().client,
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) {
 
     // KMK -->
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val activeJobs = ConcurrentHashMap<String, Job>()
     private val activeSteps = ConcurrentHashMap<Long, MutableStateFlow<InstallStep>>()
+    private val privateInstallMutex = Mutex()
     // KMK <--
-    private val extensionInstaller = Injekt.get<BasePreferences>().extensionInstaller()
-
-    private val httpClient: OkHttpClient = Injekt.get<NetworkHelper>().client
+    private val extensionInstaller = basePreferences.extensionInstaller()
 
     /**
      * Adds the given extension to the downloads queue and returns an observable containing its
@@ -59,6 +69,7 @@ internal class ExtensionInstaller(
         url: String,
         extension: Extension,
         installerOverride: BasePreferences.ExtensionInstaller? = null,
+        temporaryLease: PrivateExtensionFileStore.Lease? = null,
     ): Flow<InstallStep> {
         // KMK <--
         val pkgName = extension.pkgName +
@@ -72,31 +83,20 @@ internal class ExtensionInstaller(
         activeSteps[downloadId] = step
 
         val job = scope.launch {
-            val tmpFile = File(context.cacheDir, "extension_$pkgName.apk")
+            val tmpFile = File(context.cacheDir, "extension_${UUID.randomUUID()}.apk")
             try {
                 step.value = InstallStep.Downloading
                 val request = Request.Builder().url(url).build()
-                httpClient.newCall(request).execute()
-                    // KMK -->
-                    .use { response ->
-                        // KMK <--
-
-                        if (!response.isSuccessful) {
-                            throw Exception("Failed to download extension")
-                        }
-                        // KMK -->
-                        tmpFile.outputStream().use { output ->
-                            response.body.byteStream().use { input ->
-                                // KMK <--
-                                input.copyTo(output)
-                            }
-                        }
-                    }
+                httpClient.newCall(request).downloadExtensionTo(tmpFile)
+                ensureActive()
 
                 step.value = InstallStep.Installing
                 // KMK -->
-                installApk(downloadId, tmpFile, installerOverride)
+                installApk(downloadId, tmpFile, step, installerOverride, temporaryLease)
                 // KMK <--
+            } catch (e: CancellationException) {
+                tmpFile.delete()
+                throw e
             } catch (e: Exception) {
                 if (e is InterruptedException) {
                     // Canceled
@@ -112,12 +112,15 @@ internal class ExtensionInstaller(
 
         activeJobs[pkgName] = job
 
-        return step.asStateFlow()
-            .onCompletion {
-                activeJobs.remove(pkgName)
-                activeSteps.remove(downloadId)
-                job.cancel()
+        val finishDownload: suspend () -> Unit = {
+            withContext(NonCancellable) {
+                job.cancelAndJoin()
             }
+            activeJobs.remove(pkgName, job)
+            activeSteps.remove(downloadId, step)
+        }
+        temporaryLease?.finishDownload = finishDownload
+        return step.asStateFlow().onCompletion { finishDownload() }
     }
 
     /**
@@ -126,10 +129,12 @@ internal class ExtensionInstaller(
      * @param tempFile The file of the extension to install. Delete after use.
      */
     // KMK -->
-    private fun installApk(
+    private suspend fun installApk(
         downloadId: Long,
         tempFile: File,
+        step: MutableStateFlow<InstallStep>,
         installerOverride: BasePreferences.ExtensionInstaller? = null,
+        temporaryLease: PrivateExtensionFileStore.Lease? = null,
     ) {
         val installer = installerOverride ?: extensionInstaller.get()
         // KMK <--
@@ -143,18 +148,28 @@ internal class ExtensionInstaller(
                 context.startActivity(intent)
             }
             BasePreferences.ExtensionInstaller.PRIVATE -> {
-                try {
-                    if (ExtensionLoader.installPrivateExtensionFile(context, tempFile)) {
-                        updateInstallStep(downloadId, InstallStep.Installed)
-                    } else {
-                        updateInstallStep(downloadId, InstallStep.Error)
+                privateInstallMutex.withLock {
+                    currentCoroutineContext().ensureActive()
+                    try {
+                        val installed = if (temporaryLease == null) {
+                            ExtensionLoader.installPrivateExtensionFile(context, tempFile)
+                        } else {
+                            ExtensionLoader.installPrivateExtensionFile(context, tempFile, temporaryLease)
+                        }
+                        if (installed) {
+                            step.value = InstallStep.Installed
+                        } else {
+                            step.value = InstallStep.Error
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        logcat(LogPriority.ERROR, e) { "Failed to read downloaded extension file." }
+                        step.value = InstallStep.Error
+                    } finally {
+                        tempFile.delete()
                     }
-                } catch (e: Exception) {
-                    logcat(LogPriority.ERROR, e) { "Failed to read downloaded extension file." }
-                    updateInstallStep(downloadId, InstallStep.Error)
                 }
-
-                tempFile.delete()
             }
             else -> {
                 val intent = ExtensionInstallService.getIntent(

@@ -27,7 +27,7 @@ class ReaderRouteOwnershipAdoptionSourceTest {
     @Test
     fun `schedule gate precedes initial page preparation and clear closes route owner`() {
         val scheduleGate = source.indexOf("if (!isChapterNavigationBlockedBySchedule())")
-        val pagePreparation = source.indexOf("prepareViewerChapters(route, selectedReaderChapter, page)")
+        val pagePreparation = source.indexOf("prepareViewerChapters(route, selectedReaderChapter, initialPage)")
         assertTrue(scheduleGate in 0..<pagePreparation)
         assertTrue(source.contains("routeOwner.close()"))
         assertTrue(source.contains("route?.release()"))

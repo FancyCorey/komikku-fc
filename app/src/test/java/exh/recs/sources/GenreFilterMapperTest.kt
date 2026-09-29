@@ -54,6 +54,40 @@ class GenreFilterMapperTest {
     }
 
     @Test
+    fun `format select is not treated as a genre filter`() {
+        val formatFilter = select("Format", "Manga", "Webtoon", "Webcomic")
+        val filterList = FilterList(formatFilter)
+
+        val params = GenreFilterMapper.buildSearch(filterList, listOf("Webtoon"))
+
+        assertEquals(0, formatFilter.state)
+        assertEquals("Webtoon", params.textQuery)
+    }
+
+    @Test
+    fun `status select is not treated as a genre filter`() {
+        val statusFilter = select("Status", "Any", "Ongoing", "Completed")
+        val filterList = FilterList(statusFilter)
+
+        val params = GenreFilterMapper.buildSearch(filterList, listOf("Ongoing"))
+
+        assertEquals(0, statusFilter.state)
+        assertEquals("Ongoing", params.textQuery)
+    }
+
+    @Test
+    fun `tag and theme selects remain eligible for genre matching`() {
+        val tagFilter = select("Tags", "Any", "Action", "Romance")
+        GenreFilterMapper.buildSearch(FilterList(tagFilter), listOf("Action"))
+        assertEquals(1, tagFilter.state)
+
+        val themeFilter = select("Theme", "Any", "Action", "Romance")
+        GenreFilterMapper.buildSearch(FilterList(themeFilter), listOf("Action"))
+
+        assertEquals(1, themeFilter.state)
+    }
+
+    @Test
     fun `autoComplete value is added to state when genre matches`() {
         val acFilter = autoComplete("Tags", listOf("Action", "Romance", "Fantasy"))
         val filterList = FilterList(acFilter)
@@ -208,14 +242,26 @@ class GenreFilterMapperTest {
     }
 
     @Test
-    fun `blocked genre does not downgrade a filter already set to STATE_INCLUDE`() {
+    fun `blocked genre overrides a generated include`() {
         val actionFilter = triState("Action")
         val filterList = FilterList(group("Genre", listOf(actionFilter)))
 
-        // Action is both desired and blocked — INCLUDE wins because code only touches STATE_IGNORE entries
-        GenreFilterMapper.buildSearch(filterList, listOf("Action"), blockedGenres = listOf("Action"))
+        // A profile-level block must remain authoritative when it conflicts with a desired genre.
+        val params = GenreFilterMapper.buildSearch(filterList, listOf("Action"), blockedGenres = listOf("Action"))
 
-        assertEquals(Filter.TriState.STATE_INCLUDE, actionFilter.state)
+        assertEquals(Filter.TriState.STATE_EXCLUDE, actionFilter.state)
+        assertEquals("", params.textQuery)
+    }
+
+    @Test
+    fun `desired genre does not replace an existing exclusion`() {
+        val actionFilter = triState("Action").apply { state = Filter.TriState.STATE_EXCLUDE }
+        val filterList = FilterList(group("Genre", listOf(actionFilter)))
+
+        val params = GenreFilterMapper.buildSearch(filterList, listOf("Action"))
+
+        assertEquals(Filter.TriState.STATE_EXCLUDE, actionFilter.state)
+        assertEquals("", params.textQuery)
     }
 
     @Test
@@ -241,19 +287,19 @@ class GenreFilterMapperTest {
     }
 
     @Test
-    fun `forceTextOnly skips blocked genre filter application`() {
-        val hentaiFilter = triState("Hentai")
-        val filterList = FilterList(group("Genre", listOf(hentaiFilter)))
+    fun `forceTextOnly omits blocked desired genre without mutating filters`() {
+        val actionFilter = triState("Action")
+        val filterList = FilterList(group("Genre", listOf(actionFilter)))
 
-        GenreFilterMapper.buildSearch(
+        val params = GenreFilterMapper.buildSearch(
             filterList,
             listOf("Action"),
             forceTextOnly = true,
-            blockedGenres = listOf("Hentai"),
+            blockedGenres = listOf("Action"),
         )
 
-        // forceTextOnly must suppress both inclusion AND exclusion filter mutations
-        assertEquals(Filter.TriState.STATE_IGNORE, hentaiFilter.state)
+        assertEquals(Filter.TriState.STATE_IGNORE, actionFilter.state)
+        assertEquals("", params.textQuery)
     }
 
     @Test

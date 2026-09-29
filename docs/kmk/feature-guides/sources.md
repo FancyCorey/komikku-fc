@@ -61,6 +61,12 @@ A higher-priority source is considered earlier. It does not bypass your manga fi
 
 The page also contains exploration and repeat-display controls. See [Recommendation settings](recommendation-settings.md) and [Recommendations](recommendations.md) for their effects. The For You preview shows a saved recommendation snapshot; it is not a live source check.
 
+## Filter manga within a source
+
+When For You opens a source, its recommendation restrictions continue to apply to that visit. If the carried restriction context is invalid, Browse withholds those results and asks you to reopen the source from For You.
+
+Recommendation searches use a source's selector only when its label identifies a **genre**, **tag**, **category**, or **theme**. Format and status selectors are left unchanged. Unmatched labels are not guessed as genre filters; the requested terms remain in the source-search text.
+
 ## Keep preference and quality separate
 
 **Like** and **Dislike** describe whether you want recommendations from a source. Quality marks describe a problem with that source's catalogue, such as poor quality or explicit content. They are separate choices; clearing one does not necessarily clear the other.

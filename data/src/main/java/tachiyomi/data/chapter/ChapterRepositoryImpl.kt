@@ -1,5 +1,6 @@
 package tachiyomi.data.chapter
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import logcat.LogPriority
 import tachiyomi.core.common.util.lang.toLong
@@ -78,9 +79,18 @@ class ChapterRepositoryImpl(
 
     override suspend fun removeChaptersWithIds(chapterIds: List<Long>) {
         try {
-            handler.await { chaptersQueries.removeChaptersWithIds(chapterIds) }
+            if (chapterIds.isEmpty()) return
+            handler.await(inTransaction = true) {
+                chaptersQueries.deleteOcrRowsWithChapterIds(chapterIds)
+                chaptersQueries.removeChaptersWithIds(chapterIds)
+            }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            logcat(LogPriority.ERROR, e)
+            logcat(LogPriority.ERROR, e) {
+                "Failed to remove ${chapterIds.size} chapter(s) and their OCR rows"
+            }
+            throw e
         }
     }
 

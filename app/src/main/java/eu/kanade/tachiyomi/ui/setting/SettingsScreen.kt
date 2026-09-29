@@ -32,7 +32,9 @@ class SettingsScreen(
     @Composable
     override fun Content() {
         val parentNavigator = LocalNavigator.currentOrThrow
-        if (!isTabletUi()) {
+        // Contextual shortcuts open the requested settings page by itself. Keep the two-pane shell
+        // for the general Settings entry point, but omit the unrelated category list for Tracking.
+        if (!isTabletUi() || destination == Destination.Tracking.id) {
             Navigator(
                 screen = when (destination) {
                     Destination.About.id -> AboutScreen()

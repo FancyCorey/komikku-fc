@@ -29,6 +29,7 @@ internal object PersonalRecommendationScorer {
         val blocked: Boolean,
         val matchedGroups: List<String>,
         val reasons: List<String>,
+        val hasNegativeTasteEvidence: Boolean = false,
     )
 
     fun score(candidate: Manga, profile: TasteProfile, aliasMap: Map<String, String>): ScoredCandidate {
@@ -95,6 +96,10 @@ internal object PersonalRecommendationScorer {
             blocked = false,
             matchedGroups = (explicitMatches + learnedMatches).distinct(),
             reasons = reasons,
+            hasNegativeTasteEvidence = candidateGroups.any {
+                profile.explicitTagPreferences[it] == TagPreference.DISLIKE.value ||
+                    (profile.learnedTagWeights[it] ?: 0.0) < 0.0
+            },
         )
     }
 
@@ -108,9 +113,9 @@ internal object PersonalRecommendationScorer {
      * evidence: it is meant to boost a candidate that already has taste evidence, not make an
      * otherwise-unrelated candidate eligible by itself. Confirmed on a live device: candidate-memory
      * rows existed with a positive score, `matchedGroupsJson = null`, purely from source affinity --
-     * this is the "generic or unrelated manga" symptom the v0.8.13 relevance gate fixes. For You and
-     * candidate-memory merge must always use the strict (true) default; only pass false for a caller
-     * that has an explicit, documented reason to rank without requiring taste evidence.
+     * this is the "generic or unrelated manga" symptom the v0.8.13 relevance gate fixes.
+     * [allowNeutralCandidates] admits candidates without positive matches only in the bounded Latest
+     * lane. Negative tag evidence cannot be offset by source affinity in that exploration lane.
      */
     fun rankCandidates(
         candidates: List<Manga>,
@@ -118,11 +123,16 @@ internal object PersonalRecommendationScorer {
         aliasMap: Map<String, String>,
         limit: Int = 10,
         requirePositiveTasteEvidence: Boolean = true,
+        allowNeutralCandidates: Boolean = false,
     ): List<ScoredCandidate> {
         return candidates
             .map { score(it, profile, aliasMap) }
             .filter { !it.blocked }
-            .filter { !requirePositiveTasteEvidence || it.matchedGroups.isNotEmpty() }
+            .filter {
+                !requirePositiveTasteEvidence ||
+                    it.matchedGroups.isNotEmpty() ||
+                    (allowNeutralCandidates && it.score >= 0.0 && !it.hasNegativeTasteEvidence)
+            }
             .sortedByDescending { it.score }
             .take(limit)
     }

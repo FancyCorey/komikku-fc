@@ -49,9 +49,9 @@ class SourceRecommendationQualityNotifier(
     private val progressBuilder = context.notificationBuilder(
         Notifications.CHANNEL_SOURCE_RECOMMENDATION_QUALITY,
     ) {
-        setSmallIcon(R.drawable.ic_komikku)
+        setSmallIcon(R.drawable.ic_launcher_fc_monochrome)
         setColor(ContextCompat.getColor(context, R.color.ic_launcher))
-        setLargeIcon(BitmapFactory.decodeResource(context.resources, R.drawable.komikku))
+        setLargeIcon(BitmapFactory.decodeResource(context.resources, R.drawable.ic_launcher_fc_full))
         setAutoCancel(false)
         setOngoing(true)
         setOnlyAlertOnce(true)
@@ -91,7 +91,7 @@ class SourceRecommendationQualityNotifier(
             Notifications.ID_SOURCE_RECOMMENDATION_QUALITY_COMPLETE,
             Notifications.CHANNEL_SOURCE_RECOMMENDATION_QUALITY,
         ) {
-            setSmallIcon(R.drawable.ic_komikku)
+            setSmallIcon(R.drawable.ic_launcher_fc_monochrome)
             setColor(ContextCompat.getColor(context, R.color.ic_launcher))
             setAutoCancel(true)
             setContentTitle(context.stringResource(KMR.strings.source_recommendation_quality_job_completed))

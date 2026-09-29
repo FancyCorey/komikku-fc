@@ -38,7 +38,7 @@
             app:layout_constraintDimensionRatio="w,2:3"
             app:layout_constraintStart_toEndOf="@+id/reorder"
             app:layout_constraintTop_toTopOf="parent"
-            tools:src="@mipmap/ic_launcher" />
+            tools:src="@drawable/ic_launcher_fc_full" />
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/infoLayout"

@@ -151,6 +151,29 @@ class RecommendationFocusPolicyTest {
     }
 
     @Test
+    fun `missing genre metadata is not treated as a dislike`() {
+        val untagged = recommendation(1, emptyList())
+        val horror = recommendation(2, listOf("Horror"))
+
+        val exclusionOnly = RecommendationFocusPolicy.apply(
+            listOf(untagged, horror),
+            criteria(exclude = setOf("horror")),
+            emptyMap(),
+        ) as RecommendationFocusPolicy.Outcome.Filtered
+
+        assertEquals(listOf(untagged), exclusionOnly.matched.map { it.recommendation })
+
+        val include = RecommendationFocusPolicy.apply(
+            listOf(untagged, recommendation(3, listOf("Action"))),
+            criteria(include = setOf("action")),
+            emptyMap(),
+        ) as RecommendationFocusPolicy.Outcome.Filtered
+
+        assertEquals(listOf(recommendation(3, listOf("Action"))), include.matched.map { it.recommendation })
+        assertEquals(2, include.all.size, "Show Broader Results retains candidates whose tags cannot be matched")
+    }
+
+    @Test
     fun `matching is case-insensitive and punctuation-tolerant via the shared normalizer`() {
         val candidate = recommendation(1, listOf("Sci-Fi"))
 

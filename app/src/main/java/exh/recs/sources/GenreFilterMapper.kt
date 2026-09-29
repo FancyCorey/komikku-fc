@@ -27,6 +27,20 @@ import tachiyomi.domain.taste.model.normalizeTag
  */
 internal object GenreFilterMapper {
 
+    // Select filters are also commonly used for status, ordering, language, and format. Only
+    // selectors whose own label identifies a genre-like field may be changed here; an unknown
+    // label remains eligible for the text-query fallback instead of being guessed as a genre.
+    private val genreSelectNames = setOf(
+        "genre",
+        "genres",
+        "tag",
+        "tags",
+        "category",
+        "categories",
+        "theme",
+        "themes",
+    )
+
     data class SearchParams(
         val filters: FilterList,
         val textQuery: String,
@@ -65,9 +79,10 @@ internal object GenreFilterMapper {
         forceTextOnly: Boolean = false,
         blockedGenres: List<String> = emptyList(),
     ): SearchParams {
+        val blockedKeys = blockedGenres.map { it.normalize() }.toSet()
         if (forceTextOnly) {
             // Build text query from desired genres, adding first alias variant where available
-            val text = desiredGenres.flatMap { genre ->
+            val text = desiredGenres.filterNot { it.normalize() in blockedKeys }.flatMap { genre ->
                 val normKey = genre.normalize()
                 val extras = (aliasCandidates[normKey].orEmpty() + BUILT_IN_SYNONYMS[normKey].orEmpty())
                     .take(1)
@@ -80,6 +95,7 @@ internal object GenreFilterMapper {
 
         for (genre in desiredGenres) {
             val normKey = genre.normalize()
+            if (normKey in blockedKeys) continue
             // Build ordered normalized candidate labels: original first, then user aliases, then built-in
             val candidateNorms = buildList {
                 add(normKey)
@@ -95,6 +111,10 @@ internal object GenreFilterMapper {
                         for (child in filter.state) {
                             when (child) {
                                 is Filter.TriState -> if (child.name.normalize() in candidateNorms) {
+                                    if (child.state == Filter.TriState.STATE_EXCLUDE) {
+                                        matched = true
+                                        break@outer
+                                    }
                                     child.state = Filter.TriState.STATE_INCLUDE
                                     matched = true
                                     break@outer
@@ -108,11 +128,14 @@ internal object GenreFilterMapper {
                         }
                     }
                     is Filter.Select<*> -> {
-                        val idx = filter.values.indexOfFirst { it.toString().normalize() in candidateNorms }
-                        if (idx >= 0) {
-                            filter.state = idx
-                            matched = true
-                            break@outer
+                        val selectName = filter.name.normalize()
+                        if (selectName.split(" ").any { it in genreSelectNames }) {
+                            val idx = filter.values.indexOfFirst { it.toString().normalize() in candidateNorms }
+                            if (idx >= 0) {
+                                filter.state = idx
+                                matched = true
+                                break@outer
+                            }
                         }
                     }
                     is Filter.AutoComplete -> {
@@ -141,9 +164,7 @@ internal object GenreFilterMapper {
                 outer@ for (filter in filterList) {
                     if (filter is Filter.Group<*>) {
                         for (child in filter.state) {
-                            if (child is Filter.TriState && child.name.normalize() in candidateNorms &&
-                                child.state == Filter.TriState.STATE_IGNORE
-                            ) {
+                            if (child is Filter.TriState && child.name.normalize() in candidateNorms) {
                                 child.state = Filter.TriState.STATE_EXCLUDE
                                 break@outer
                             }

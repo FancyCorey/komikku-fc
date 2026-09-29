@@ -40,10 +40,10 @@ internal interface SourceRecommendationQualityWorkerNotifier {
  * The exact cancellation/failure/success control flow of [SourceRecommendationQualityJob.doWork]
  * (once targets are resolved), extracted so it can be exercised directly in a JVM unit test (see
  * `SourceRecommendationQualityJobCancellationTest`) without a real [androidx.work.CoroutineWorker]
- * instance -- this project has neither Robolectric nor `androidx.work:work-testing` (confirmed
- * absent from the dependency graph before adding this seam). [SourceRecommendationQualityJob.doWork]
- * calls this with the real [SourceRecommendationQualityRunner] and
- * [SourceRecommendationQualityJobState] wiring, so production behavior is unchanged.
+ * instance. Keeping this narrow seam makes cancellation and failure cleanup deterministic while
+ * WorkManager persistence remains covered by dedicated test-database tests.
+ * [SourceRecommendationQualityJob.doWork] calls this with the real [SourceRecommendationQualityRunner]
+ * and [SourceRecommendationQualityJobState] wiring, so production behavior is unchanged.
  */
 internal suspend fun runSourceRecommendationQualityWork(
     collectUntilTerminal: suspend (onState: (SourceRecommendationQualityQueueState) -> Unit) -> Unit,
@@ -78,6 +78,7 @@ internal suspend fun runSourceRecommendationQualityWork(
         notifier.dismissProgress()
         throw e
     } catch (e: Exception) {
+        cancelRunner()
         logUnexpectedError(e)
         setState(getState()?.copy(status = SourceRecommendationQualityQueueState.Status.Failed, errorMessage = SourceEvaluationProbeErrorClassifier.classifyToStorageKey(e)))
         notifier.dismissProgress()

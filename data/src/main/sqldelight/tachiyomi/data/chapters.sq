@@ -139,6 +139,10 @@ removeChaptersWithIds:
 DELETE FROM chapters
 WHERE _id IN :chapterIds;
 
+deleteOcrRowsWithChapterIds:
+DELETE FROM ocr_indexed_page
+WHERE chapter_id IN :chapterIds;
+
 resetIsSyncing:
 UPDATE chapters
 SET is_syncing = 0

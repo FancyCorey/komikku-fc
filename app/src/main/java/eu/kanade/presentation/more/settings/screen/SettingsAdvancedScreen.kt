@@ -980,6 +980,10 @@ object SettingsAdvancedScreen : SearchableSettings {
                                 stringResource(KMR.strings.for_you_debug_fixture_mode_top_picks),
                             exh.recs.ForYouDebugFixtureMode.TOP_PICKS_PARTIAL_FAILURE.prefValue to
                                 stringResource(KMR.strings.for_you_debug_fixture_mode_top_picks_partial_failure),
+                            exh.recs.ForYouDebugFixtureMode.INSTALLED_CORPUS.prefValue to
+                                stringResource(KMR.strings.for_you_debug_fixture_mode_installed_corpus),
+                            exh.recs.ForYouDebugFixtureMode.INSTALLED_CORPUS_SLOW_SOURCE.prefValue to
+                                stringResource(KMR.strings.for_you_debug_fixture_mode_installed_corpus_slow_source),
                         ),
                     )
                 } else {

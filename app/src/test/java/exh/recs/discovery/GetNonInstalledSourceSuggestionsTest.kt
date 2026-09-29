@@ -3,6 +3,7 @@ package exh.recs.discovery
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.extension.model.Extension
+import exh.recs.sourceprefs.RecommendationSourcePreferenceStore
 import exh.util.FakePreferenceStore
 import io.mockk.coEvery
 import io.mockk.every
@@ -14,9 +15,16 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import mihon.domain.extension.model.ExtensionStore
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import tachiyomi.domain.taste.interactor.GetSourceEvaluations
 import tachiyomi.domain.taste.interactor.GetSourceRecommendationFit
+import tachiyomi.domain.taste.model.RecommendationQualityVerdict
+import tachiyomi.domain.taste.model.SourceEvaluation
+import tachiyomi.domain.taste.model.SourceEvaluationKeys
+import tachiyomi.domain.taste.model.SourceEvaluationMetadataConfidence
+import tachiyomi.domain.taste.model.SourceEvaluationVerdict
+import tachiyomi.domain.taste.model.SourceRecommendationFit
 
 class GetNonInstalledSourceSuggestionsTest {
     private val signer = "a".repeat(64)
@@ -60,14 +68,81 @@ class GetNonInstalledSourceSuggestionsTest {
         assertTrueEmpty(subject(available, isDebugBuild = true, fixtureSigner = "").subscribe().first())
     }
 
+    @Test
+    fun `flow ignores expired and old evidence while retaining current evidence`() = runTest {
+        val oldExt = extension("old.pkg", 10L, "Old Source")
+        val expiredExt = extension("expired.pkg", 11L, "Expired Source")
+        val oldFitExt = extension("old-fit.pkg", 12L, "Old Fit Source")
+        val currentExt = extension("current.pkg", 13L, "Current Source")
+        val expiredFitExt = extension("expired-fit.pkg", 14L, "Expired Fit Source")
+
+        val oldEvaluation = evaluation(oldExt, 10L, SourceEvaluationKeys.CURRENT_VERSION - 1, null, SourceEvaluationVerdict.REJECTED)
+        val expiredEvaluation = evaluation(expiredExt, 11L, SourceEvaluationKeys.CURRENT_VERSION, 0L, SourceEvaluationVerdict.REJECTED)
+        val oldFitEvaluation = evaluation(oldFitExt, 12L, SourceEvaluationKeys.CURRENT_VERSION, null, SourceEvaluationVerdict.STRONG_FIT)
+        val currentEvaluation = evaluation(currentExt, 13L, SourceEvaluationKeys.CURRENT_VERSION, null, SourceEvaluationVerdict.STRONG_FIT)
+        val expiredFitEvaluation = evaluation(
+            expiredFitExt,
+            14L,
+            SourceEvaluationKeys.CURRENT_VERSION,
+            null,
+            SourceEvaluationVerdict.STRONG_FIT,
+        )
+
+        val rows = subject(
+            available = MutableStateFlow(listOf(oldExt, expiredExt, oldFitExt, currentExt, expiredFitExt)),
+            isDebugBuild = true,
+            fixtureSigner = signer,
+            likedKeys = setOf(
+                availableKey(oldExt),
+                availableKey(expiredExt),
+            ),
+            evaluationRows = listOf(oldEvaluation, expiredEvaluation, oldFitEvaluation, currentEvaluation, expiredFitEvaluation),
+            fitRows = listOf(
+                fit(oldFitEvaluation, SourceRecommendationFit.CURRENT_VERSION - 1, null, 99),
+                fit(currentEvaluation, SourceRecommendationFit.CURRENT_VERSION, null, 7),
+                fit(expiredFitEvaluation, SourceRecommendationFit.CURRENT_VERSION, 0L, 99),
+            ),
+        ).subscribe().first()
+
+        assertEquals(
+            setOf("old.pkg", "expired.pkg", "old-fit.pkg", "current.pkg", "expired-fit.pkg"),
+            rows.map { it.extension.pkgName }.toSet(),
+        )
+        assertTrue(
+            rows.single { it.extension.pkgName == "old.pkg" }.reasons.any {
+                it is NonInstalledSuggestionReason.UserLikedSource
+            },
+        )
+        assertTrue(
+            rows.single { it.extension.pkgName == "expired.pkg" }.reasons.any {
+                it is NonInstalledSuggestionReason.UserLikedSource
+            },
+        )
+        assertEquals(
+            0,
+            rows.single { it.extension.pkgName == "old-fit.pkg" }
+                .rankingEvidence.visibleCandidateCount,
+        )
+        assertEquals(
+            7,
+            rows.single { it.extension.pkgName == "current.pkg" }
+                .rankingEvidence.visibleCandidateCount,
+        )
+        assertEquals(0, rows.single { it.extension.pkgName == "expired-fit.pkg" }.rankingEvidence.visibleCandidateCount)
+    }
+
     private fun subject(
         available: MutableStateFlow<List<Extension.Available>>,
         isDebugBuild: Boolean,
         fixtureSigner: String,
+        likedKeys: Set<String> = emptySet(),
+        evaluationRows: List<SourceEvaluation> = emptyList(),
+        fitRows: List<SourceRecommendationFit> = emptyList(),
     ): GetNonInstalledSourceSuggestions {
         val preferences = SourcePreferences(FakePreferenceStore()).apply {
             sourcesToTryFixtureMode().set(SourcesToTryDebugFixtureMode.SUGGESTION_VISIBLE.prefValue)
             recommendationSourceLanguages().set(setOf("en"))
+            likedRecommendationSourceKeys().set(RecommendationSourcePreferenceStore.serialize(likedKeys))
             showNsfwSource().set(true)
             blockExplicitPornHentaiSources().set(false)
         }
@@ -77,10 +152,10 @@ class GetNonInstalledSourceSuggestionsTest {
             every { manager.untrustedExtensionsFlow } returns MutableStateFlow(emptyList())
         }
         val evaluations = mockk<GetSourceEvaluations>().also { interactor ->
-            every { interactor.subscribeAll() } returns MutableStateFlow(emptyList())
+            every { interactor.subscribeAll() } returns MutableStateFlow(evaluationRows)
         }
         val fits = mockk<GetSourceRecommendationFit>().also { interactor ->
-            coEvery { interactor.awaitAll() } returns emptyList()
+            coEvery { interactor.awaitAll() } returns fitRows
         }
         return GetNonInstalledSourceSuggestions(
             extensionManager = extensionManager,
@@ -118,6 +193,91 @@ class GetNonInstalledSourceSuggestionsTest {
             ),
         )
     }
+
+    private fun availableKey(extension: Extension.Available): String =
+        RecommendationSourcePreferenceStore.availableKey(
+            extension.signatureHash,
+            extension.pkgName,
+            extension.sources.single().id,
+        )
+
+    private fun evaluation(
+        extension: Extension.Available,
+        sourceId: Long,
+        version: Int,
+        expiresAt: Long?,
+        verdict: SourceEvaluationVerdict,
+    ) = SourceEvaluation(
+        evaluationKey = buildDismissalKey(extension.signatureHash, extension.pkgName, sourceId),
+        sourceId = sourceId,
+        extensionPkgName = extension.pkgName,
+        signatureHash = extension.signatureHash,
+        extensionName = extension.name,
+        sourceName = extension.sources.single().name,
+        lang = extension.sources.single().lang,
+        baseUrl = extension.sources.single().baseUrl,
+        repoName = extension.storeName,
+        sourceCount = extension.sources.size,
+        isNsfw = extension.isNsfw,
+        evaluationVersion = version,
+        evaluatedAt = 1L,
+        expiresAt = expiresAt,
+        sampleCount = 10,
+        popularCount = 10,
+        latestCount = 0,
+        searchCount = 0,
+        searchSuccessCount = 0,
+        likedTitleMatchCount = 0,
+        preferredTagMatchCount = 0,
+        blockedTagMatchCount = 0,
+        explicitSignalCount = 0,
+        ecchiSignalCount = 0,
+        errorCount = 0,
+        qualityScore = 0.9,
+        recommendationFitScore = 0.8,
+        searchReliabilityScore = 0.0,
+        explicitScore = 0.0,
+        ecchiScore = 0.0,
+        verdict = verdict,
+        sampledTitlesJson = "Title 1",
+        sampledTagsJson = null,
+        errorMessage = null,
+        catalogueMetadataConfidence = SourceEvaluationMetadataConfidence.HIGH,
+    )
+
+    private fun fit(
+        evaluation: SourceEvaluation,
+        version: Int,
+        expiresAt: Long?,
+        visibleCandidateCount: Int,
+    ) = SourceRecommendationFit(
+        fitKey = SourceRecommendationFit.fitKeyFor(evaluation.evaluationKey),
+        evaluationKey = evaluation.evaluationKey,
+        sourceId = evaluation.sourceId,
+        extensionPkgName = evaluation.extensionPkgName,
+        signatureHash = evaluation.signatureHash,
+        extensionName = evaluation.extensionName,
+        sourceName = evaluation.sourceName,
+        lang = evaluation.lang,
+        evaluatedAt = 1L,
+        queryCount = 1,
+        querySuccessCount = 1,
+        rawResultCount = visibleCandidateCount,
+        visibleCandidateCount = visibleCandidateCount,
+        filteredOutCount = 0,
+        blockedTagCandidateCount = 0,
+        matchedGroupCount = 1,
+        topPicksContribution = 1,
+        noMatchesCount = 0,
+        errorCount = 0,
+        avgCandidateScore = 0.9,
+        recommendationQualityScore = 0.9,
+        verdict = RecommendationQualityVerdict.GREAT,
+        reasonsJson = "[]",
+        errorMessage = null,
+        evaluationVersion = version,
+        expiresAt = expiresAt,
+    )
 
     private fun assertTrueEmpty(rows: List<NonInstalledSourceSuggestion>) {
         assertEquals(emptyList<NonInstalledSourceSuggestion>(), rows)

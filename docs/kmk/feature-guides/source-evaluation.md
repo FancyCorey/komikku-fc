@@ -26,9 +26,12 @@ The saved result shows how well the source fits, how much information supports t
 | --- | --- | --- |
 | Ready | Available sources have not yet been checked with these settings. | Start a check. |
 | Running | The current queue is being processed and progress is saved. | Leave the screen or cancel. |
-| Partial | Some sources completed while others were skipped or failed. | Review the explanations and continue checking the remaining sources. |
+| Cancelling | The current queue is finishing its cancellation request. | Wait for the result before starting another check. |
 | Completed | The selected queue reached a result. | Reassess when inputs change. |
+| Cancelled | You stopped the queue before all selected sources were checked. | Review the saved results and continue the remaining work when appropriate. |
 | Failed | The operation itself could not continue. | Retry after the stated condition changes. |
+| Connectivity lost | The queue stopped because the required connection was lost. | Restore the connection, then use the retry action shown by the screen. |
+| No actionable work | The queue had no source it could process with the current inputs. | Review the setup and available sources before starting again. |
 
 Leaving the screen does not mark unfinished checks as complete. Continue uses saved progress when it still matches your current settings and installed extensions.
 

@@ -9,6 +9,7 @@ import exh.recs.matching.ConfirmedMangaGroupTargets
 import exh.recs.sources.SourceGenreCatalogCache
 import exh.util.FakePreferenceStore
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +44,9 @@ import tachiyomi.domain.taste.interactor.SetMangaTasteBatch
 import tachiyomi.domain.taste.interactor.UpsertRecommendationCache
 import tachiyomi.domain.taste.interactor.UpsertRecommendationCandidateMemory
 import tachiyomi.domain.taste.interactor.UpsertRecommendationDiscoveryProgress
+import tachiyomi.domain.taste.model.TagAlias
 import tachiyomi.domain.taste.model.TasteProfile
+import tachiyomi.domain.taste.repository.TasteRepository
 import tachiyomi.domain.track.repository.TrackRepository
 import tachiyomi.domain.tracker.repository.LocalTrackerRepository
 import java.nio.file.Files
@@ -127,15 +130,19 @@ class BrowsePersonalRecommendationsFocusAliasTest {
     fun `refresh populates State focusAliasMap from GetTagAliases merged with built-in synonyms`() = runTest {
         val getTasteProfile = mockk<GetTasteProfile>()
         coEvery { getTasteProfile.await() } returns nonEmptyProfile()
-        val getTagAliases = mockk<GetTagAliases>()
-        coEvery { getTagAliases.awaitAliasMap() } returns mapOf("space opera" to "sci fi")
-        coEvery { getTagAliases.awaitGroupToAliasesMap() } returns emptyMap()
+        val repository = mockk<TasteRepository>()
+        coEvery { repository.getAllTagAliases() } returns listOf(
+            TagAlias("Space opera", "space opera", "adventure", "Adventure"),
+            TagAlias("Space opera", "space opera", "sci fi", "Science fiction"),
+        )
+        val getTagAliases = GetTagAliases(repository)
 
         val model = buildModel(getTasteProfile, getTagAliases)
         model.refresh()
         advanceUntilIdle()
 
-        // The user's own persisted alias (from GetTagAliases.awaitAliasMap()) is present.
+        coVerify(exactly = 1) { repository.getAllTagAliases() }
+        // The last alias entry retains precedence, as in the existing alias map.
         assertEquals("sci fi", model.state.value.focusAliasMap["space opera"])
         // GenreFilterMapper.BUILT_IN_SYNONYMS is merged in too -- "yuri" is a built-in variant of
         // "girls love" that the user table above never mentioned.
@@ -146,9 +153,12 @@ class BrowsePersonalRecommendationsFocusAliasTest {
     fun `refresh populates State focusKnownGroups from the alias system, not limited to currently loaded results`() = runTest {
         val getTasteProfile = mockk<GetTasteProfile>()
         coEvery { getTasteProfile.await() } returns nonEmptyProfile()
-        val getTagAliases = mockk<GetTagAliases>()
-        coEvery { getTagAliases.awaitAliasMap() } returns emptyMap()
-        coEvery { getTagAliases.awaitGroupToAliasesMap() } returns mapOf("mecha" to listOf("robot", "gundam"))
+        val repository = mockk<TasteRepository>()
+        coEvery { repository.getAllTagAliases() } returns listOf(
+            TagAlias("Robot", "robot", "mecha", "Mecha"),
+            TagAlias("Gundam", "gundam", "mecha", "Mecha"),
+        )
+        val getTagAliases = GetTagAliases(repository)
 
         // sourceManager is a relaxed mock returning no visible sources, so state.items stays
         // empty for this whole test -- "mecha" reaching focusKnownGroups here can only have come
@@ -157,6 +167,7 @@ class BrowsePersonalRecommendationsFocusAliasTest {
         model.refresh()
         advanceUntilIdle()
 
+        coVerify(exactly = 1) { repository.getAllTagAliases() }
         assertTrue(model.state.value.items.isEmpty(), "precondition: no source results were loaded")
         assertTrue(
             "mecha" in model.state.value.focusKnownGroups,

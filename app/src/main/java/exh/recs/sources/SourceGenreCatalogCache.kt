@@ -2,6 +2,7 @@ package exh.recs.sources
 
 import eu.kanade.tachiyomi.source.model.FilterList
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 // KMK HR-2026-08-26-FOCUS-CRITERION-CATALOG-COMPLETENESS (C3/E4.3) -->
 /**
@@ -58,74 +59,32 @@ import java.util.concurrent.ConcurrentHashMap
  * about" owner, rather than requiring [BrowsePersonalRecommendationsScreenModel] to track that
  * history itself.
  *
- * Bounded two ways: [SourceGenreFilterExtractor] itself caps labels per source, and [snapshot] caps
- * the total unioned catalog size so an installation with many verbose sources can never make the
- * focus picker unbounded. [everEligibleSourceIds] (see its own doc) is bounded too, by the total
- * number of DISTINCT source ids this process has ever seen installed-and-enabled -- a small,
- * realistic count (this app's own installed-extension total, typically dozens, never attacker- or
- * caller-controllable), not an unbounded or ever-growing history store.
+ * Memory has two hard limits: [snapshot] caps the combined label output, and the cache evicts its
+ * oldest-generation source entry after [MAX_RETAINED_SOURCES]. A generation floor prevents an
+ * evicted or removed source from being restored by an older refresh.
  */
 internal object SourceGenreCatalogCache {
 
     /** Caps the total catalog size across every cached source -- see the class doc. */
-    private const val MAX_TOTAL_LABELS = 2000
+    internal const val MAX_TOTAL_LABELS = 2000
 
-    /**
-     * [labels] is the currently active label set for a source (possibly empty -- see the class
-     * doc), and [generation] is the highest generation that has ever produced the CURRENT value of
-     * [labels] for this key -- once a key has an [Entry] at all, it is never removed from
-     * [bySource]; only its [Entry] is atomically replaced, which is what lets an empty [labels] set
-     * still carry forward a real, un-erasable generation barrier.
-     */
+    /** Far above a normal installed-source count, but finite under malformed or synthetic input. */
+    internal const val MAX_RETAINED_SOURCES = 4096
+
+    /** Labels and the newest refresh generation accepted for one retained source. */
     private data class Entry(val labels: Set<String>, val generation: Long)
 
     private val bySource = ConcurrentHashMap<Long, Entry>()
 
-    /**
-     * KMK F2-03 production-caller-boundary correction: every source id this process has EVER seen
-     * passed as `eligibleSourceIds` to [pruneIneligibleSources], retained for the life of the
-     * process. Monotonically grows, never shrinks -- see the class doc for why this is a bounded,
-     * realistic set rather than an unbounded history store.
-     *
-     * This is what makes [SourceGenreCatalogCache] itself the "refresh-participation owner" an
-     * independent review required: without it, [pruneIneligibleSources] could only see a source id
-     * that was CURRENTLY known (either already cached, or passed in this exact call's eligible set)
-     * -- so a source that was eligible in an OLDER refresh, never recorded anything before being
-     * uninstalled, would be invisible to a NEWER refresh's own eligible-set computation (it is gone
-     * from `sourceManager.getVisibleSources()` entirely) and would therefore never get a barrier
-     * raised for it. [everEligibleSourceIds] closes this: because every refresh's [pruneIneligibleSources]
-     * call folds its own eligible set into this running union FIRST, a source id the CURRENT call's
-     * `eligibleSourceIds` omits but a PAST call's `eligibleSourceIds` included is still discoverable
-     * as "known to this process, currently ineligible" -- without the caller needing to track or
-     * pass any historical information itself. The caller-facing contract stays exactly "here is
-     * what's eligible right now"; the cache remembers the rest.
-     */
-    private val everEligibleSourceIds: MutableSet<Long> = ConcurrentHashMap.newKeySet()
+    private val generationFloor = AtomicLong(Long.MIN_VALUE)
 
     /**
-     * Records the outcome of a genre-filter fetch for [sourceId], made at [generation] (a
-     * caller-owned monotonic counter -- see the class doc and
-     * [BrowsePersonalRecommendationsScreenModel]'s own atomic capture of its per-refresh
-     * generation).
-     *
-     * The entire decision -- reject as stale, or accept and compute the new [Entry] -- happens
-     * inside one [ConcurrentHashMap.compute] call for [sourceId], so it is atomic with respect to
-     * every other concurrent [record] or [pruneIneligibleSources] call for the SAME source id (see
-     * the class doc for why this matters). Concurrent calls for DIFFERENT source ids never contend
-     * with each other at all -- [ConcurrentHashMap]'s per-key locking is independent per bucket.
-     *
-     * - [generation] strictly older than the source's current entry: discarded outright, whichever
-     *   branch below it would otherwise have taken.
-     * - [result] success, non-empty extraction: the entry's labels become the fresh extraction.
-     * - [result] success, empty extraction: the entry's labels become empty -- a genuinely
-     *   successful "no genre filters" result must prune any stale labels from an earlier fetch, but
-     *   the entry (and its generation) is never deleted, so the generation barrier survives.
-     * - [result] failure: the entry's labels are carried forward UNCHANGED from whatever they were
-     *   -- a transient fetch failure must never erase a previously known-good catalog contribution
-     *   -- but the entry's generation still advances to this call's [generation], so a later, even
-     *   older call cannot sneak in behind this failure either.
+     * Records one source result. Older generations are ignored, a successful empty result clears
+     * stale labels, and a failed fetch keeps the source's last successful labels.
      */
+    @Synchronized
     fun record(sourceId: Long, generation: Long, result: Result<FilterList>) {
+        if (generation < generationFloor.get()) return
         bySource.compute(sourceId) { _, existing ->
             if (existing != null && generation < existing.generation) return@compute existing
             val filterList = result.getOrNull()
@@ -135,36 +94,24 @@ internal object SourceGenreCatalogCache {
                 Entry(SourceGenreFilterExtractor.extract(filterList), generation)
             }
         }
+        trimToRetainedSourceLimit()
     }
 
     /**
-     * Clears active labels and raises the generation barrier (to at least [generation] -- the
-     * pruning refresh's own immutable generation) for every source id this process has ever known
-     * about that is not present in [eligibleSourceIds]: every currently-cached key (covers a source
-     * that has since been uninstalled, whose stale cache entry would otherwise linger) UNIONED with
-     * every id in [everEligibleSourceIds] (covers a source that was eligible in a PAST refresh,
-     * never recorded anything, and has since disappeared entirely -- see that property's own doc for
-     * why this is required, not merely convenient). [eligibleSourceIds] is folded into
-     * [everEligibleSourceIds] FIRST, so the running history is always current. Each touched source id
-     * goes through the same atomic [ConcurrentHashMap.compute] step [record] uses, so a concurrent
-     * [record] call for the same source id can never race this operation for that key.
-     *
-     * The caller-facing contract is deliberately minimal: pass only THIS refresh's own currently
-     * eligible source ids and its own generation. The caller never needs to track, diff, or persist
-     * any historical source-id information itself -- see [everEligibleSourceIds]'s own doc for why
-     * that responsibility belongs here instead.
-     *
-     * Deliberately independent of any per-refresh LANGUAGE filter -- a language filter is transient,
-     * per-refresh, user-togglable state, not a durable "this source is gone" signal, and pruning on
-     * it would make the catalog flicker as the user changes that filter.
+     * Removes retained labels for sources that are no longer installed and enabled. The generation
+     * floor rejects delayed results from an older refresh, including a source that had not recorded
+     * labels before it was removed. Language filters are intentionally excluded because changing a
+     * temporary language choice must not erase the source catalog.
      */
+    @Synchronized
     fun pruneIneligibleSources(eligibleSourceIds: Set<Long>, generation: Long) {
-        everEligibleSourceIds.addAll(eligibleSourceIds)
-        val targets = (bySource.keys + everEligibleSourceIds) - eligibleSourceIds
+        if (generation < generationFloor.get()) return
+        generationFloor.updateAndGet { maxOf(it, generation) }
+        val targets = bySource.keys - eligibleSourceIds
         for (sourceId in targets) {
             bySource.compute(sourceId) { _, existing ->
                 if (existing != null && generation < existing.generation) return@compute existing
-                Entry(emptySet(), generation)
+                null
             }
         }
     }
@@ -176,6 +123,7 @@ internal object SourceGenreCatalogCache {
      * always truncates to the SAME bounded result, not because source id or alphabetical order is
      * meaningful to the focus picker itself (which re-sorts for display independently).
      */
+    @Synchronized
     fun snapshot(): Set<String> {
         return bySource.entries
             .sortedBy { it.key }
@@ -187,9 +135,21 @@ internal object SourceGenreCatalogCache {
     }
 
     /** Test-only: resets accumulated state so tests never leak into each other via this singleton. */
+    @Synchronized
     internal fun clearForTesting() {
         bySource.clear()
-        everEligibleSourceIds.clear()
+        generationFloor.set(Long.MIN_VALUE)
+    }
+
+    internal fun retainedSourceCountForTesting(): Int = bySource.size
+
+    private fun trimToRetainedSourceLimit() {
+        while (bySource.size > MAX_RETAINED_SOURCES) {
+            val oldest = bySource.entries.minWithOrNull(compareBy({ it.value.generation }, { it.key })) ?: return
+            if (bySource.remove(oldest.key, oldest.value)) {
+                generationFloor.updateAndGet { maxOf(it, oldest.value.generation) }
+            }
+        }
     }
 }
 // KMK <--

@@ -258,6 +258,19 @@ class SourceGenreCatalogCacheTest {
             SourceGenreCatalogCache.snapshot(),
             "a source repeatedly reaffirmed as eligible must never be accidentally pruned by its own history",
         )
+        assertEquals(1, SourceGenreCatalogCache.retainedSourceCountForTesting())
+    }
+
+    @Test
+    fun `retained source identities never exceed the hard limit`() {
+        repeat(SourceGenreCatalogCache.MAX_RETAINED_SOURCES + 1) { index ->
+            failure(index.toLong(), generation = 1)
+        }
+
+        assertEquals(SourceGenreCatalogCache.MAX_RETAINED_SOURCES, SourceGenreCatalogCache.retainedSourceCountForTesting())
+
+        success(0L, generation = 0, "Stale")
+        assertTrue(SourceGenreCatalogCache.snapshot().isEmpty(), "eviction must not allow an older refresh to re-enter")
     }
 
     // KMK F2-03 corrective slice B: staleness -- a late-arriving result from an OLDER, superseded
@@ -438,22 +451,17 @@ class SourceGenreCatalogCacheTest {
     // dependent on ConcurrentHashMap's unspecified iteration order.
     @Test
     fun `snapshot truncates deterministically by source id then alphabetically when exceeding the bound`() {
-        // MAX_TOTAL_LABELS is 2000 and private; use a source count comfortably small enough to stay
-        // well under any real bound while still proving the ordering rule itself directly, rather
-        // than trying to exceed the literal cap from a unit test.
-        success(3L, generation = 1, "Zebra", "Apple")
-        success(1L, generation = 1, "Mango", "Banana")
-        success(2L, generation = 1, "Kiwi")
+        repeat(SourceGenreCatalogCache.MAX_TOTAL_LABELS + 1) { index ->
+            success(index.toLong(), generation = 1, "Label ${index.toString().padStart(4, '0')}")
+        }
 
-        // Not a set comparison -- reconstructs the exact expected ORDER (source id ascending, then
-        // alphabetical within a source) to prove snapshot() is actually deterministic, not merely
-        // that it returns the right elements.
-        val expectedOrder = listOf("banana", "mango", "kiwi", "apple", "zebra")
+        val expectedOrder = List(SourceGenreCatalogCache.MAX_TOTAL_LABELS) { index ->
+            "label ${index.toString().padStart(4, '0')}"
+        }
         val actualOrder = SourceGenreCatalogCache.snapshot().toList()
 
+        assertEquals(SourceGenreCatalogCache.MAX_TOTAL_LABELS, actualOrder.size)
         assertEquals(expectedOrder, actualOrder, "snapshot must order by ascending source id, then alphabetically within a source")
-
-        // Determinism across repeated calls with the same accumulated state.
         assertEquals(actualOrder, SourceGenreCatalogCache.snapshot().toList())
     }
 

@@ -4,6 +4,8 @@ import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import exh.recs.RecommendationSourceFilter
+import exh.recs.evaluation.SourceEvaluationDisplayPolicy
+import exh.recs.evaluation.SourceRecommendationFitEligibility
 import exh.recs.sourceprefs.RecommendationSourcePreferenceStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -55,7 +57,7 @@ class GetNonInstalledSourceSuggestions(
             qualityDislikedPref.changes(),
         ) { dislikedRaw, evaluationList, qualityDislikedRaw ->
             val evaluationsByKey: Map<String, SourceEvaluation> =
-                evaluationList.associateBy { it.evaluationKey }
+                SourceEvidenceSelectionPolicy.latestEvaluations(evaluationList)
             Triple(dislikedRaw, evaluationsByKey, qualityDislikedRaw)
         }
 
@@ -67,12 +69,19 @@ class GetNonInstalledSourceSuggestions(
             dislikedAndEvaluationsFlow,
         ) { (available, installed, untrusted), dismissedRaw, _, likedRaw, (dislikedRaw, evaluations, qualityDislikedRaw) ->
             val fits = try {
-                getSourceRecommendationFit.awaitAll().associateBy { it.evaluationKey }
+                SourceEvidenceSelectionPolicy.latestFits(getSourceRecommendationFit.awaitAll())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR) { "source recommendation-fit table unavailable; falling back to catalogue evidence" }
                 emptyMap()
+            }
+            val evidenceNow = System.currentTimeMillis()
+            val currentEvaluations = evaluations.filterValues {
+                !SourceEvaluationDisplayPolicy.isStaleForRanking(it, evidenceNow)
+            }
+            val currentFits = fits.filterValues {
+                SourceRecommendationFitEligibility.isFitCurrent(it, evidenceNow)
             }
             val nsfwEnabled = sourcePreferences.showNsfwSource().get()
             // KMK -->
@@ -106,8 +115,8 @@ class GetNonInstalledSourceSuggestions(
                 likedKeys = likedKeys,
                 dislikedKeys = dislikedKeys,
                 // KMK -->
-                evaluations = evaluations,
-                fits = fits,
+                evaluations = currentEvaluations,
+                fits = currentFits,
                 // KMK <--
                 qualityDislikedKeys = qualityDislikedKeys, // KMK v0.8.1-fix4
             )
@@ -128,7 +137,7 @@ class GetNonInstalledSourceSuggestions(
                 qualityDislikedKeys = qualityDislikedKeys,
                 // The debug fixture only needs verdict filtering; keep its narrow contract while
                 // the production scorer receives the full persisted evaluation record above.
-                evaluations = evaluations.mapValues { it.value.verdict },
+                evaluations = currentEvaluations.mapValues { it.value.verdict },
                 existing = scored,
             )
         }

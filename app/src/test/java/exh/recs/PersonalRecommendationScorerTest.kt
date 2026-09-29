@@ -215,6 +215,54 @@ class PersonalRecommendationScorerTest {
     }
 
     @Test
+    fun `neutral candidate is allowed only for bounded exploration`() {
+        val candidate = manga(listOf("Unmapped Source Label"))
+        val p = profile()
+
+        assertTrue(PersonalRecommendationScorer.rankCandidates(listOf(candidate), p, emptyMap()).isEmpty())
+        assertEquals(
+            1,
+            PersonalRecommendationScorer.rankCandidates(
+                listOf(candidate),
+                p,
+                emptyMap(),
+                allowNeutralCandidates = true,
+            ).size,
+        )
+    }
+
+    @Test
+    fun `source affinity cannot turn a disliked tag into neutral exploration`() {
+        val p = profile(
+            explicitTagPreferences = mapOf("harem" to TagPreference.DISLIKE.value),
+            sourceAffinity = mapOf(1L to 5.0),
+        )
+        assertTrue(
+            PersonalRecommendationScorer.rankCandidates(
+                listOf(manga(listOf("Harem"))),
+                p,
+                emptyMap(),
+                allowNeutralCandidates = true,
+            ).isEmpty(),
+        )
+    }
+
+    @Test
+    fun `bounded exploration still rejects a negative candidate`() {
+        val candidate = manga(listOf("Harem"))
+        val p = profile(explicitTagPreferences = mapOf("harem" to TagPreference.DISLIKE.value))
+
+        assertTrue(
+            PersonalRecommendationScorer.rankCandidates(
+                listOf(candidate),
+                p,
+                emptyMap(),
+                allowNeutralCandidates = true,
+            ).isEmpty(),
+        )
+    }
+
+    @Test
     fun `candidate with a preferred tag and source affinity remains included and ranks higher than an otherwise equal candidate without source affinity`() {
         val withAffinity = manga(listOf("Villainess"), sourceId = 42L)
         val withoutAffinity = manga(listOf("Villainess"), sourceId = 43L)

@@ -13,6 +13,11 @@ interface LocalTrackerRepository {
 
     suspend fun upsertWork(work: LocalTrackedWork)
 
+    /** Updates inherited progress without allowing an older snapshot to replace newer progress. */
+    suspend fun upsertInheritedWork(work: LocalTrackedWork) {
+        upsertWork(work)
+    }
+
     suspend fun deleteWork(id: String)
 
     /** Consolidates one local work into another as one atomic database operation. */

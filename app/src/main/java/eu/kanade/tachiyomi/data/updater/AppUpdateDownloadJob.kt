@@ -32,11 +32,9 @@ import eu.kanade.tachiyomi.util.system.toast
 import eu.kanade.tachiyomi.util.system.workManager
 import exh.log.xLogE
 import exh.source.ExhPreferences
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import okhttp3.internal.http2.ErrorCode
 import okhttp3.internal.http2.StreamResetException
 import tachiyomi.core.common.i18n.stringResource
@@ -48,7 +46,6 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
 import java.io.File
-import java.lang.ref.WeakReference
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -62,14 +59,25 @@ class AppUpdateDownloadJob(private val context: Context, workerParams: WorkerPar
     private val network: NetworkHelper by injectLazy()
 
     // KMK -->
-    private val exhPreferences = Injekt.get<ExhPreferences>()
+    private val exhPreferences: ExhPreferences by injectLazy()
     // KMK <--
 
     override suspend fun doWork(): Result {
+        val attemptId = inputData.getString(EXTRA_ATTEMPT_INPUT) ?: "legacy-$id"
+        val attemptStore = AppUpdateAttemptStore(context)
+        val isLegacyWork = inputData.getString(EXTRA_ATTEMPT_INPUT) == null
+        val ownsAttempt = if (isLegacyWork) {
+            attemptStore.adoptIfEmpty(attemptId)
+        } else {
+            attemptStore.isCurrent(attemptId)
+        }
+        if (!ownsAttempt) return Result.success()
+
         // KMK -->
         val idleRun = inputData.getBoolean(SCHEDULED_RUN, false)
         if (idleRun) {
             if (!context.packageManager.canRequestPackageInstalls()) {
+                cleanupDownloadedApk()
                 return Result.failure()
             }
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
@@ -93,23 +101,22 @@ class AppUpdateDownloadJob(private val context: Context, workerParams: WorkerPar
         val title = inputData.getString(EXTRA_DOWNLOAD_TITLE) ?: context.stringResource(MR.strings.app_name)
 
         if (url.isNullOrEmpty()) {
+            cleanupDownloadedApk()
             return Result.failure()
         }
 
         setForegroundSafely()
-        // KMK -->
-        instance = WeakReference(this)
-        // KMK <--
 
-        withIOContext {
-            downloadApk(title, url)
+        val result = withIOContext {
+            downloadApk(title, url, attemptId)
         }
 
-        // KMK -->
-        instance = null
-        // KMK <--
-
-        return Result.success()
+        return when (result) {
+            DownloadOutcome.Completed -> Result.success()
+            DownloadOutcome.Retry -> Result.retry()
+            DownloadOutcome.Failure -> Result.failure()
+            DownloadOutcome.Cancelled -> Result.success()
+        }
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
@@ -129,7 +136,9 @@ class AppUpdateDownloadJob(private val context: Context, workerParams: WorkerPar
      *
      * @param url url location of file
      */
-    private suspend fun downloadApk(title: String, url: String) = coroutineScope {
+    private suspend fun downloadApk(title: String, url: String, attemptId: String): DownloadOutcome = coroutineScope {
+        val apkFile = File(context.externalCacheDir, UPDATE_FILE_NAME)
+
         // Show notification download starting.
         with(notifier) {
             onDownloadStarted(title)
@@ -171,25 +180,23 @@ class AppUpdateDownloadJob(private val context: Context, workerParams: WorkerPar
         }
 
         try {
-            // File where the apk will be saved.
-            val apkFile = File(context.externalCacheDir, "update.apk")
-
             // KMK -->
             network.downloadFileWithResume(url, apkFile, progressListener)
             if (isStopped) {
                 cancel()
-                return@coroutineScope
+                return@coroutineScope DownloadOutcome.Cancelled
             }
             // KMK <--
 
             notifier.cancel()
             // KMK -->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                startInstalling(apkFile, title)
+                startInstalling(apkFile, title, attemptId)
             } else {
                 // KMK <--
                 notifier.promptInstall(apkFile.getUriCompat(context))
             }
+            DownloadOutcome.Completed
         } catch (e: Exception) {
             xLogE("App update stopped:", e)
             val shouldCancel = e is CancellationException ||
@@ -197,6 +204,7 @@ class AppUpdateDownloadJob(private val context: Context, workerParams: WorkerPar
                 (e is StreamResetException && e.errorCode == ErrorCode.CANCEL)
             if (shouldCancel) {
                 notifier.cancel()
+                return@coroutineScope DownloadOutcome.Cancelled
             } else {
                 notifier.onDownloadError(
                     url,
@@ -205,66 +213,118 @@ class AppUpdateDownloadJob(private val context: Context, workerParams: WorkerPar
                     // KMK <--
                 )
             }
+            when (
+                AppUpdateDownloadResultPolicy.classify(
+                    error = e,
+                    runAttemptCount = runAttemptCount,
+                    maxAttempts = MAX_RUN_ATTEMPTS,
+                )
+            ) {
+                AppUpdateDownloadResultPolicy.Outcome.Retry -> DownloadOutcome.Retry
+                AppUpdateDownloadResultPolicy.Outcome.Failure -> {
+                    cleanupDownloadedApk()
+                    DownloadOutcome.Failure
+                }
+                AppUpdateDownloadResultPolicy.Outcome.Cancelled -> DownloadOutcome.Cancelled
+            }
         }
     }
 
     // KMK -->
     @RequiresApi(31)
-    private suspend fun startInstalling(file: File, title: String) {
+    private suspend fun startInstalling(file: File, title: String, attemptId: String) {
+        val attemptStore = AppUpdateAttemptStore(context)
+        if (!attemptStore.isCurrent(attemptId)) return
+        val packageInstaller = context.packageManager.packageInstaller
+        var sessionId: Int? = null
+        var committed = false
         try {
-            val packageInstaller = context.packageManager.packageInstaller
-            val data = file.inputStream()
+            file.inputStream().use { data ->
+                val installParams = PackageInstaller.SessionParams(
+                    PackageInstaller.SessionParams.MODE_FULL_INSTALL,
+                )
+                installParams.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+                val createdSessionId = packageInstaller.createSession(installParams)
+                sessionId = createdSessionId
 
-            val installParams = PackageInstaller.SessionParams(
-                PackageInstaller.SessionParams.MODE_FULL_INSTALL,
-            )
-            installParams.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
-            val sessionId = packageInstaller.createSession(installParams)
-            val session = packageInstaller.openSession(sessionId)
-            session.openWrite("package", 0, -1).use { packageInSession ->
-                data.copyTo(packageInSession)
+                packageInstaller.openSession(createdSessionId).use { session ->
+                    session.openWrite("package", 0, -1).use { packageInSession ->
+                        data.copyTo(packageInSession)
+                    }
+
+                    val newIntent = Intent(context, AppUpdateBroadcast::class.java)
+                        .setAction(PACKAGE_INSTALLED_ACTION)
+                        .putExtra(EXTRA_FILE_URI, file.getUriCompat(context).toString())
+                        .putExtra(EXTRA_DOWNLOAD_TITLE, title)
+                        .putExtra(EXTRA_ATTEMPT_ID, attemptId)
+                        .putExtra(EXTRA_SESSION_ID, createdSessionId)
+
+                    val pendingIntent = PendingIntent.getBroadcast(
+                        context,
+                        createdSessionId,
+                        newIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+                    )
+                    val statusReceiver = pendingIntent.intentSender
+                    committed = attemptStore.runIfCurrent(attemptId) {
+                        session.commit(statusReceiver)
+                    }
+                    if (!committed) {
+                        packageInstaller.abandonSession(createdSessionId)
+                        return
+                    }
+                }
             }
 
-            val newIntent = Intent(context, AppUpdateBroadcast::class.java)
-                .setAction(PACKAGE_INSTALLED_ACTION)
-                .putExtra(EXTRA_FILE_URI, file.getUriCompat(context).toString())
-                .putExtra(EXTRA_DOWNLOAD_TITLE, title)
-
-            val pendingIntent = PendingIntent.getBroadcast(
-                context,
-                sessionId,
-                newIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
-            )
-            val statusReceiver = pendingIntent.intentSender
-            session.commit(statusReceiver)
-            notifier.onInstalling(file.getUriCompat(context))
-            withContext(Dispatchers.IO) {
-                data.close()
+            if (!attemptStore.runIfCurrentAndRun(attemptId) {
+                    notifier.onInstalling(file.getUriCompat(context))
+                }
+            ) {
+                return
             }
             launchUI {
                 delay(1000)
-                val hasNotification = context.notificationManager
-                    .activeNotifications.any { it.id == Notifications.ID_APP_INSTALL }
-                // If the package manager crashes for whatever reason (china phone)
-                // set a timeout and let the user manually install
-                if (packageInstaller.getSessionInfo(sessionId) == null && !hasNotification) {
-                    notifier.cancelInstallNotification()
-                    notifier.promptInstall(file.getUriCompat(context))
+                attemptStore.runIfCurrentAndRun(attemptId) {
+                    val hasNotification = context.notificationManager
+                        .activeNotifications.any { it.id == Notifications.ID_APP_INSTALL }
+                    // If the package manager crashes for whatever reason (china phone)
+                    // set a timeout and let the user manually install
+                    if (packageInstaller.getSessionInfo(sessionId!!) == null && !hasNotification) {
+                        notifier.cancelInstallNotification()
+                        notifier.promptInstall(file.getUriCompat(context))
+                    }
                 }
             }
         } catch (error: Exception) {
+            if (!committed) {
+                sessionId?.let { id ->
+                    runCatching {
+                        packageInstaller.abandonSession(id)
+                    }.onFailure { cleanupFailure ->
+                        error.addSuppressed(cleanupFailure)
+                    }
+                }
+            }
             if (shouldPropagateInstallationCancellation(error)) {
                 throw error
             }
             // Either install package can't be found (probably bots) or there's a security exception
             // with the download manager. Nothing we can workaround.
-            context.toast(context.stringResource(MR.strings.update_check_notification_download_error))
-            notifier.cancelInstallNotification()
-            notifier.promptInstall(file.getUriCompat(context))
+            attemptStore.runIfCurrentAndRun(attemptId) {
+                context.toast(context.stringResource(MR.strings.update_check_notification_download_error))
+                notifier.cancelInstallNotification()
+                notifier.promptInstall(file.getUriCompat(context))
+            }
         }
     }
     // KMK <--
+
+    private fun cleanupDownloadedApk() {
+        val apkFile = context.externalCacheDir?.resolve(UPDATE_FILE_NAME) ?: return
+        if (apkFile.exists() && !apkFile.delete()) {
+            xLogE("Unable to remove failed app update download: ${apkFile.absolutePath}")
+        }
+    }
 
     companion object {
         private const val TAG = "AppUpdateDownload"
@@ -273,15 +333,16 @@ class AppUpdateDownloadJob(private val context: Context, workerParams: WorkerPar
         const val PACKAGE_INSTALLED_ACTION =
             "${BuildConfig.APPLICATION_ID}.SESSION_SELF_API_PACKAGE_INSTALLED"
         internal const val EXTRA_FILE_URI = "${BuildConfig.APPLICATION_ID}.AppInstaller.FILE_URI"
+        internal const val EXTRA_ATTEMPT_ID = "${BuildConfig.APPLICATION_ID}.AppInstaller.ATTEMPT_ID"
+        internal const val EXTRA_SESSION_ID = "${BuildConfig.APPLICATION_ID}.AppInstaller.SESSION_ID"
+        internal const val EXTRA_ATTEMPT_INPUT = "update_attempt_id"
         private const val SCHEDULED_RUN = "scheduled_run"
         // KMK <--
 
         const val EXTRA_DOWNLOAD_URL = "DOWNLOAD_URL"
         const val EXTRA_DOWNLOAD_TITLE = "DOWNLOAD_TITLE"
-
-        // KMK -->
-        private var instance: WeakReference<AppUpdateDownloadJob>? = null
-        // KMK <--
+        const val MAX_RUN_ATTEMPTS = 3
+        private const val UPDATE_FILE_NAME = "update.apk"
 
         fun start(
             context: Context,
@@ -291,9 +352,11 @@ class AppUpdateDownloadJob(private val context: Context, workerParams: WorkerPar
             scheduled: Boolean = false,
             // KMK <--
         ) {
+            val attemptId = java.util.UUID.randomUUID().toString()
             val data = Data.Builder()
             data.putString(EXTRA_DOWNLOAD_URL, url)
             data.putString(EXTRA_DOWNLOAD_TITLE, title)
+            data.putString(EXTRA_ATTEMPT_INPUT, attemptId)
             val request = OneTimeWorkRequestBuilder<AppUpdateDownloadJob>()
                 .addTag(TAG)
                 .apply {
@@ -336,11 +399,30 @@ class AppUpdateDownloadJob(private val context: Context, workerParams: WorkerPar
                 }
                 .build()
 
-            context.workManager.enqueueUniqueWork(TAG, ExistingWorkPolicy.REPLACE, request)
+            check(
+                AppUpdateAttemptStore(context).beginAndRun(attemptId) {
+                    context.workManager.enqueueUniqueWork(TAG, ExistingWorkPolicy.REPLACE, request)
+                },
+            ) { "Unable to record app update attempt" }
         }
 
         fun stop(context: Context) {
-            context.workManager.cancelUniqueWork(TAG)
+            AppUpdateAttemptStore(context).clearAndRun {
+                context.workManager.cancelUniqueWork(TAG)
+            }
         }
+
+        internal fun stop(context: Context, attemptId: String) {
+            AppUpdateAttemptStore(context).runIfCurrentAndRun(attemptId) {
+                context.workManager.cancelUniqueWork(TAG)
+            }
+        }
+    }
+
+    private enum class DownloadOutcome {
+        Completed,
+        Retry,
+        Failure,
+        Cancelled,
     }
 }

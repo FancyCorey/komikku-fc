@@ -18,7 +18,7 @@ import java.util.UUID
  */
 data class RatedLinkKey(val source: Long, val url: String)
 
-enum class GroupJournalActionType { MERGE, REMOVE_FROM_GROUP, UNGROUP, SET_PRIMARY }
+enum class GroupJournalActionType { MERGE, REMOVE_FROM_GROUP, UNGROUP, SET_PRIMARY, ADD_MEMBER, MOVE_MEMBER }
 
 /** Immutable snapshot of a `manga_cross_source_link` row, safe to re-upsert verbatim during restore. */
 data class GroupLinkSnapshot(

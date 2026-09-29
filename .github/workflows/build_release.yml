@@ -33,8 +33,8 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           set -euo pipefail
-          [[ "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-fix[0-9]+)?$ ]] || {
-            echo "Release tags must use vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-fixNUMBER." >&2
+          [[ "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-fix[0-9]+|-fc-bridge)?$ ]] || {
+            echo "Release tags must use vMAJOR.MINOR.PATCH, -fixNUMBER, or -fc-bridge." >&2
             exit 1
           }
           printf 'tag=%s\n' "${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
@@ -49,19 +49,38 @@ jobs:
         shell: bash
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}" >/dev/null
-          version_name="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"/\1/p' app/build.gradle.kts | head -n 1)"
-          version_code="$(sed -n 's/^[[:space:]]*versionCode = \([0-9][0-9]*\).*$/\1/p' app/build.gradle.kts | head -n 1)"
+          source_version_name="$(sed -n 's/^private val defaultAndroidVersionName = "\([^"]*\)"/\1/p' app/build.gradle.kts | head -n 1)"
+          source_version_code="$(sed -n 's/^private val defaultAndroidVersionCode = \([0-9][0-9]*\).*$/\1/p' app/build.gradle.kts | head -n 1)"
+          version_code="${source_version_code}"
           kmk_feature_version="$(sed -n 's/^[[:space:]]*const val VERSION_NAME = "KMK-Recs \([^"]*\)"/\1/p' app/src/main/java/exh/recs/KmkRecsReleaseNotes.kt | head -n 1)"
-          test -n "${version_name}" || { echo "Could not read app versionName from app/build.gradle.kts" >&2; exit 1; }
-          test -n "${version_code}" || { echo "Could not read Android versionCode." >&2; exit 1; }
+          test -n "${source_version_name}" || { echo "Could not read default Android version name from app/build.gradle.kts" >&2; exit 1; }
+          test -n "${source_version_code}" || { echo "Could not read default Android versionCode." >&2; exit 1; }
           test -n "${kmk_feature_version}" || { echo "Could not read KMK feature version from KmkRecsReleaseNotes.kt" >&2; exit 1; }
-          test "${kmk_feature_version}" = "${RELEASE_TAG}" || {
-            echo "KMK feature version [${kmk_feature_version}] does not match release tag [${RELEASE_TAG}]" >&2
-            exit 1
-          }
+          if [[ "${RELEASE_TAG}" == *-fc-bridge ]]; then
+            bridge_version="${RELEASE_TAG%-fc-bridge}"
+            version_name="${bridge_version#v}"
+            test -n "${version_name}" || {
+              echo "Compatibility tag [${RELEASE_TAG}] did not contain an Android version." >&2
+              exit 1
+            }
+            previous_tag="$(gh api repos/FancyCorey/komikku-fc/releases/latest --jq '.tag_name')"
+            previous_dir="${RUNNER_TEMP}/bridge-previous-release"
+            mkdir -p "${previous_dir}"
+            gh release download "${previous_tag}" --repo FancyCorey/komikku-fc --pattern RELEASE_MANIFEST.json --dir "${previous_dir}"
+            previous_manifest="${previous_dir}/RELEASE_MANIFEST.json"
+            previous_code="$(jq -er 'if has("version_code") then .version_code elif .tag == "v0.8.21-fix2" then 93 else error("Missing previous version_code") end | select(type == "number" and . == floor and . > 0)' "${previous_manifest}")"
+            version_code="$((previous_code + 1))"
+          else
+            version_name="${source_version_name}"
+            test "${kmk_feature_version}" = "${RELEASE_TAG}" || {
+              echo "KMK feature version [${kmk_feature_version}] does not match release tag [${RELEASE_TAG}]" >&2
+              exit 1
+            }
+          fi
           printf 'commit=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           printf 'version_name=%s\n' "${version_name}" >> "$GITHUB_OUTPUT"
           printf 'version_code=%s\n' "${version_code}" >> "$GITHUB_OUTPUT"
@@ -111,9 +130,15 @@ jobs:
           set -euo pipefail
           # Keep development-test and public compilation out of the same compiler heap.
           ./gradlew spotlessCheck :app:testDebugUnitTest :source-local:testDebugUnitTest :domain:testDebugUnitTest :data:testDebugUnitTest --max-workers=1 --no-parallel
-          gradle_args=(:app:assembleKmkPublicTest -Penable-updater --max-workers=1 --no-parallel)
+          gradle_args=(:app:assembleKmkPublicTest -Penable-updater "-Pkmk.releaseVersionCode=${{ steps.identity.outputs.version_code }}" --max-workers=1 --no-parallel)
           if [ "${{ steps.google_drive.outputs.enabled }}" = "true" ]; then
             gradle_args+=(-Penable-google-drive-sync)
+          fi
+          if [[ "${{ steps.release.outputs.tag }}" == *-fc-bridge ]]; then
+            bridge_version="${{ steps.release.outputs.tag }}"
+            bridge_version="${bridge_version%-fc-bridge}"
+            bridge_version="${bridge_version#v}"
+            gradle_args+=("-Pkmk.releaseVersionName=${bridge_version}")
           fi
           ./gradlew "${gradle_args[@]}"
 
@@ -162,7 +187,7 @@ jobs:
           # The first public manifest predates the version_code field.
           previous_code="$(jq -er 'if has("version_code") then .version_code elif .tag == "v0.8.21-fix2" then 93 else error("Missing previous version_code") end | select(type == "number" and . == floor and . > 0)' "${manifest}")"
           test "${VERSION_CODE}" -gt "${previous_code}" || { echo "Android versionCode must increase above ${previous_code}." >&2; exit 1; }
-          previous_certificate="$(jq -er '.certificate_sha256 | select(test("^[0-9a-fA-F]{64}$")) | ascii_downcase' "${manifest}")"
+          previous_certificate="$(jq -er '.certificate_sha256 | gsub(":"; "") | ascii_downcase | select(test("^[0-9a-f]{64}$"))' "${manifest}")"
           printf 'certificate_sha256=%s\n' "${previous_certificate}" >> "$GITHUB_OUTPUT"
 
       - name: Sign release APKs
@@ -216,8 +241,9 @@ jobs:
             printf '%s\n' "${badging}" | grep -F "versionName='${VERSION_NAME}'"
             printf '%s\n' "${badging}" | grep -F "versionCode='${VERSION_CODE}'"
             "${apksigner}" verify --verbose --print-certs "${apk}"
-            current_fingerprint="$("${apksigner}" verify --print-certs "${apk}" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ { print $2 }')"
+            current_fingerprint="$("${apksigner}" verify --print-certs "${apk}" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ { print $2 }' | tr -d ':' | tr '[:upper:]' '[:lower:]')"
             test -n "${current_fingerprint}"
+            [[ "${current_fingerprint}" =~ ^[0-9a-f]{64}$ ]] || { echo "Invalid signing certificate fingerprint format." >&2; exit 1; }
             if [ -z "${certificate_fingerprint}" ]; then
               certificate_fingerprint="${current_fingerprint}"
             else

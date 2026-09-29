@@ -42,6 +42,27 @@ class CombinedPicksAccumulatorTest {
     // --- Basic accumulation ---
 
     @Test
+    fun `row ranking is the prefix of detail ranking across updates`() {
+        val boosted = setOf(2L)
+        for (source in 1L..3L) {
+            val candidates = (1L..75L).filter { id ->
+                source == 1L || (source == 2L && id % 2 == 0L) || (source == 3L && id % 3 == 0L)
+            }.map { id ->
+                rec(
+                    manga(id * 10 + source, source = source, title = "Work $id", author = "Author $id"),
+                    score = (id % 7).toDouble(),
+                    groups = if (id % 2 == 0L) listOf("action", "fantasy") else listOf("comedy"),
+                )
+            }
+            acc.add(candidates, sourceId = source)
+            val detail = acc.rank(boosted, cap = 50)
+            assertEquals(acc.rank(boosted, cap = 20), detail.take(20))
+        }
+        acc.clear()
+        assertEquals(acc.rank(boosted, cap = 20), acc.rank(boosted, cap = 50).take(20))
+    }
+
+    @Test
     fun `isEmpty returns true initially`() {
         assertTrue(acc.isEmpty())
     }

@@ -4,7 +4,7 @@ Recommendation settings use the same lists, sections, search, and navigation pat
 
 ## Where you find it
 
-Open For You and select its settings action. The layout adapts to your screen size; on a larger screen, the same destinations may appear in a quick-access panel. Choose **For You sources**, **Taste and filters**, [**Source Evaluation**](source-evaluation.md), [**Sources to try**](sources.md), or **Management and diagnostics**.
+Open **Settings > Recommendation Settings**, or open For You and select its settings action. The layout adapts to your screen size; on a larger screen, the same destinations may appear in a quick-access panel. Choose **For You sources**, **Taste and filters**, [**Source Evaluation**](source-evaluation.md), [**Sources to try**](sources.md), or **Management and diagnostics**.
 
 ## How the settings are organized
 

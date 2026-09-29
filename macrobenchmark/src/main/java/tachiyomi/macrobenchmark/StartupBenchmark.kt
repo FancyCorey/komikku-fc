@@ -33,6 +33,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
+import java.util.regex.Pattern
 
 /**
  * Run this benchmark from Studio to see startup measurements, and captured system traces
@@ -76,10 +77,11 @@ class PopulatedForYouBenchmark {
         startupMode = StartupMode.WARM,
         setupBlock = {
             pressHome()
+            startActivityAndWait()
+            dismissFirstRunUiIfPresent()
         },
     ) {
         startActivityAndWait()
-        dismissFirstRunUiIfPresent()
         val browse = device.wait(Until.findObject(By.text("Browse")), 10_000)
             ?: error("Browse tab did not appear")
         browse.click()
@@ -87,7 +89,9 @@ class PopulatedForYouBenchmark {
         val forYou = device.wait(Until.findObject(By.text("For You")), 10_000)
             ?: error("For You tab did not appear")
         forYou.click()
-        device.wait(Until.hasObject(By.textContains("Fixture")), 20_000)
+        check(device.wait(Until.hasObject(By.text(Pattern.compile("Fixture (alpha|beta) manga [0-9]+"))), 20_000)) {
+            "Populated For You content did not appear"
+        }
         device.waitForIdle()
         device.swipe(
             device.displayWidth / 2,
@@ -123,7 +127,12 @@ class PopulatedLibraryBenchmark {
         },
     ) {
         startActivityAndWait()
-        device.wait(Until.hasObject(By.res(LIBRARY_READY_CONTENT_TEST_TAG)), 20_000)
+        val populatedLibrary = By.res(LIBRARY_READY_CONTENT_TEST_TAG).hasDescendant(
+            By.text(Pattern.compile("Fixture (Manga [0-9]+|Shared Work .+)")),
+        )
+        check(device.wait(Until.hasObject(populatedLibrary), 20_000)) {
+            "Populated library content did not appear"
+        }
         device.waitForIdle()
         device.swipe(
             device.displayWidth / 2,
@@ -261,12 +270,7 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
  * [nextFirstRunUiStep]'s own KDoc.
  */
 internal fun MacrobenchmarkScope.dismissFirstRunUiIfPresent() {
-    // The disposable PerfClone can retain a stale tree URI such as KMKData/(invalid) in both
-    // DocumentsUI and the benchmark app's onboarding preferences. Reset only those disposable
-    // benchmark states before onboarding; this keeps the journey deterministic without touching
-    // user/tablet data.
-    device.executeShellCommand("pm clear $BENCHMARK_PACKAGE")
-    device.executeShellCommand("pm clear $DOCUMENTS_UI_PACKAGE")
+    // Preserve prepared libraries and storage grants across benchmark iterations.
     device.executeShellCommand("mkdir -p $DOCUMENTS_UI_BENCHMARK_FOLDER_PATH")
     startActivityAndWait()
 
@@ -322,6 +326,15 @@ internal fun MacrobenchmarkScope.dismissFirstRunUiIfPresent() {
         )
         val transition = nextFirstRunUiStep(observation, previousObservation, repeatCount)
         repeatCount = transition.repeatCountForNextCall
+        previousObservation = observation
+        if (System.currentTimeMillis() > deadline) {
+            failFirstRunSetup(
+                "Timed out after ${FIRST_RUN_UI_PREPARATION_TIMEOUT_MS}ms waiting for " +
+                    "Library readiness (last observation: $observation)",
+                observation,
+                snapshot,
+            )
+        }
         if (state != FirstRunUiState.STORAGE_PICKER) {
             invalidRootDrawerAttempts = 0
         }
@@ -462,22 +475,17 @@ internal fun MacrobenchmarkScope.dismissFirstRunUiIfPresent() {
                         }
                     }
                     FirstRunUiState.LIBRARY_READY -> error("unreachable: Ready is handled above")
-                    // UNKNOWN: nothing recognized to click yet (e.g. a dialog mid-composition
-                    // right after launch) -- back off briefly and let the next iteration
-                    // re-observe, rather than clicking blindly or busy-looping.
-                    FirstRunUiState.UNKNOWN -> Thread.sleep(300)
+                    FirstRunUiState.UNKNOWN -> {
+                        val libraryTab = if (appWindowVisible) device.findObject(By.text("Library")) else null
+                        if (libraryTab != null) {
+                            libraryTab.click()
+                            device.waitForIdle()
+                        } else {
+                            Thread.sleep(300)
+                        }
+                    }
                 }
             }
-        }
-        previousObservation = observation
-
-        if (System.currentTimeMillis() > deadline) {
-            failFirstRunSetup(
-                "Timed out after ${FIRST_RUN_UI_PREPARATION_TIMEOUT_MS}ms waiting for " +
-                    "Library readiness (last observation: $observation)",
-                observation,
-                snapshot,
-            )
         }
     }
 }

@@ -39,6 +39,25 @@ enum class OcrRetryMode {
 
 typealias OcrProgressCallback = suspend (OcrIndexProgress) -> Unit
 
+internal fun shouldSkipOcrPage(
+    state: OcrPageState?,
+    pageIdentity: String,
+    pageModifiedAt: Long?,
+    pageSize: Long?,
+    retryMode: OcrRetryMode,
+): Boolean =
+    retryMode != OcrRetryMode.FORCE_ALL &&
+        state != null &&
+        state.pageIdentity == pageIdentity &&
+        state.pageModifiedAt != null &&
+        pageModifiedAt != null &&
+        state.pageModifiedAt == pageModifiedAt &&
+        state.pageSize != null &&
+        pageSize != null &&
+        state.pageSize == pageSize &&
+        state.ocrStatus == OCR_STATUS_SUCCESS &&
+        state.recognizedWordCount > 0
+
 class OcrIndexService(
     private val context: Context,
     private val recognizer: OcrTextRecognizer = MlKitLatinOcrTextRecognizer(context),
@@ -46,14 +65,29 @@ class OcrIndexService(
     private val repository: OcrIndexRepository = Injekt.get(),
 ) {
 
+    fun close() {
+        runCatching { recognizer.close() }
+    }
+
     suspend fun runIndexing(
         scope: OcrScope,
         retryMode: OcrRetryMode = OcrRetryMode.SKIP_SUCCESS_RETRY_EMPTY_FAILED,
         maxPages: Int = 0,
         onProgress: OcrProgressCallback,
     ) {
+        val runGeneration = repository.beginIndexing()
+        runIndexingInternal(scope, retryMode, maxPages, runGeneration, onProgress)
+    }
+
+    private suspend fun runIndexingInternal(
+        scope: OcrScope,
+        retryMode: OcrRetryMode,
+        maxPages: Int,
+        runGeneration: Long,
+        onProgress: OcrProgressCallback,
+    ) {
         val allPages = try {
-            pageProvider.enumeratePages(scope)
+            pageProvider.enumeratePages(scope, maxPages)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -63,7 +97,7 @@ class OcrIndexService(
             return
         }
 
-        val effectivePages = if (maxPages > 0) allPages.take(maxPages) else allPages
+        val effectivePages = allPages
         val total = effectivePages.size
         var completed = 0
         var recognized = 0
@@ -94,6 +128,7 @@ class OcrIndexService(
                 repository.getExistingPageState(
                     chapterId = pageRef.chapter.id,
                     pageIndex = pageRef.pageIndex,
+                    pageIdentity = pageRef.pageIdentity,
                     engineKey = recognizer.engineKey,
                     engineVersion = recognizer.engineVersion,
                 )
@@ -103,11 +138,13 @@ class OcrIndexService(
                 null
             }
 
-            val shouldSkip = retryMode != OcrRetryMode.FORCE_ALL &&
-                state != null &&
-                state.pageIdentity == pageRef.pageIdentity &&
-                state.ocrStatus == OCR_STATUS_SUCCESS &&
-                state.recognizedWordCount > 0
+            val shouldSkip = shouldSkipOcrPage(
+                state = state,
+                pageIdentity = pageRef.pageIdentity,
+                pageModifiedAt = pageRef.pageModifiedAt,
+                pageSize = pageRef.pageSize,
+                retryMode = retryMode,
+            )
 
             if (shouldSkip) {
                 completed++
@@ -131,6 +168,7 @@ class OcrIndexService(
                 val stream = pageRef.streamProvider()
                 val rawText = if (stream != null) {
                     val result = recognizer.recognizeText(OcrImageInput(stream, pageRef.pageIdentity))
+                    if (result.isLimited) throw OcrResourceLimitException()
                     result.rawText
                 } else {
                     ""
@@ -144,7 +182,7 @@ class OcrIndexService(
                     else -> OCR_STATUS_SUCCESS
                 }
 
-                repository.upsertPage(
+                val writeAccepted = repository.upsertPage(
                     mangaId = pageRef.manga.id,
                     sourceId = pageRef.manga.source,
                     mangaUrl = pageRef.manga.url,
@@ -167,7 +205,21 @@ class OcrIndexService(
                     recognizedTextLength = rawText.length.toLong(),
                     recognizedWordCount = wordCount,
                     ocrStatus = ocrStatus,
+                    runGeneration = runGeneration,
                 )
+                if (!writeAccepted) {
+                    onProgress(
+                        OcrIndexProgress(
+                            completedPages = completed,
+                            recognizedPages = recognized,
+                            emptyPages = empty,
+                            totalPages = total,
+                            failedPages = failed,
+                            isCancelled = true,
+                        ),
+                    )
+                    return
+                }
                 completed++
                 if (ocrStatus == OCR_STATUS_SUCCESS) recognized++ else empty++
             } catch (e: CancellationException) {
@@ -182,7 +234,7 @@ class OcrIndexService(
                 failed++
                 completed++
                 try {
-                    repository.upsertPage(
+                    val writeAccepted = repository.upsertPage(
                         mangaId = pageRef.manga.id,
                         sourceId = pageRef.manga.source,
                         mangaUrl = pageRef.manga.url,
@@ -208,7 +260,23 @@ class OcrIndexService(
                         recognizedTextLength = 0L,
                         recognizedWordCount = 0L,
                         ocrStatus = OCR_STATUS_FAILED,
+                        runGeneration = runGeneration,
                     )
+                    if (!writeAccepted) {
+                        onProgress(
+                            OcrIndexProgress(
+                                completedPages = completed,
+                                recognizedPages = recognized,
+                                emptyPages = empty,
+                                totalPages = total,
+                                failedPages = failed,
+                                isCancelled = true,
+                            ),
+                        )
+                        return
+                    }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                     logcat(LogPriority.ERROR) { "OCR: failed to write error row" }
                 }

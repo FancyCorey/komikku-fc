@@ -11,10 +11,13 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -23,6 +26,9 @@ import tachiyomi.domain.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.manga.repository.MangaRepository
 import tachiyomi.domain.source.service.SourceManager
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class SameMangaCandidateSearcherLifecycleTest {
 
@@ -50,6 +56,109 @@ class SameMangaCandidateSearcherLifecycleTest {
 
         assertTrue(job.isCancelled)
         assertTrue(results.isEmpty())
+    }
+
+    @Test
+    fun `stalled source times out without discarding another source success`() = runTest {
+        val first = FakeSource(9_910_013) { page(manga("/success", "Shared")) }
+        val stalled = FakeSource(9_910_014) { awaitCancellation() }
+        val results = mutableListOf<SameMangaSourceResult>()
+
+        searcher(UnconfinedTestDispatcher(testScheduler), identityNetworkToLocalManga()).search(
+            queries = listOf("query"),
+            settings = settings(),
+            originManga = origin(),
+            sources = listOf(first, stalled),
+            onResult = results::add,
+        )
+
+        assertEquals(1, results.count { it.result is SameMangaCandidateResult.Success })
+        val failure = results.single { it.result is SameMangaCandidateResult.Error }
+            .result as SameMangaCandidateResult.Error
+        assertTrue(failure.throwable is java.util.concurrent.TimeoutException)
+        assertEquals(20_000L, testScheduler.currentTime)
+    }
+
+    @Test
+    fun `blocking sources publish timeout results while source calls remain blocked`() = runTest {
+        val workerCount = 5
+        val entered = CountDownLatch(workerCount)
+        val release = CountDownLatch(1)
+        val sourceDispatcher = Executors.newFixedThreadPool(workerCount).asCoroutineDispatcher()
+        val enteredSourceIds = java.util.concurrent.ConcurrentHashMap.newKeySet<Long>()
+        val blockedSources = (0 until workerCount * 2).map { index ->
+            val sourceId = 9_910_030L + index
+            FakeSource(sourceId) {
+                enteredSourceIds.add(sourceId)
+                entered.countDown()
+                check(release.await(5, TimeUnit.SECONDS))
+                page(manga("/blocked-$index", "Blocked"))
+            }
+        }
+        val queuedHealthySource = FakeSource(9_910_040) { page(manga("/healthy", "Healthy")) }
+        val allSources = blockedSources + queuedHealthySource
+        val results = mutableListOf<SameMangaSourceResult>()
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) {
+            searcher(
+                sourceDispatcher,
+                identityNetworkToLocalManga(),
+                timeoutDispatcher = UnconfinedTestDispatcher(testScheduler),
+            ).search(
+                queries = listOf("query"),
+                settings = settings(),
+                originManga = origin(),
+                sources = allSources,
+                onResult = results::add,
+            )
+        }
+
+        try {
+            assertTrue(entered.await(5, TimeUnit.SECONDS), "Blocking sources did not occupy all workers")
+            advanceTimeBy(20_000L)
+            runCurrent()
+
+            assertEquals(20_000L, testScheduler.currentTime)
+            assertTrue(!job.isCompleted, "Search should remain suspended until non-cooperative calls return")
+            assertEquals(allSources.size, results.size, "Timeouts should be published independently of blocked calls")
+            assertTrue(results.all { it.result is SameMangaCandidateResult.Error })
+            assertTrue(
+                results.all {
+                    (it.result as SameMangaCandidateResult.Error).throwable is java.util.concurrent.TimeoutException
+                },
+            )
+            assertEquals(workerCount, enteredSourceIds.size)
+
+            release.countDown()
+            job.join()
+            assertTrue(job.isCompleted, "Releasing blocked sources should allow search cleanup")
+            assertEquals(allSources.size, results.size, "Late source returns must not publish duplicate results")
+
+            val recoveryCalls = java.util.concurrent.atomic.AtomicInteger()
+            val recoverySource = FakeSource(9_910_041) {
+                recoveryCalls.incrementAndGet()
+                page(manga("/recovered", "Recovered"))
+            }
+            val recoveryResults = mutableListOf<SameMangaSourceResult>()
+            searcher(
+                sourceDispatcher,
+                identityNetworkToLocalManga(),
+                timeoutDispatcher = sourceDispatcher,
+            ).search(
+                queries = listOf("query"),
+                settings = settings(),
+                originManga = origin(),
+                sources = listOf(recoverySource),
+                onResult = recoveryResults::add,
+            )
+
+            assertEquals(1, recoveryCalls.get(), "The released worker pool should accept a later search")
+            assertEquals(1, recoveryResults.size)
+            assertTrue(recoveryResults.single().result is SameMangaCandidateResult.Success)
+        } finally {
+            release.countDown()
+            job.cancelAndJoin()
+            sourceDispatcher.close()
+        }
     }
 
     @Test
@@ -236,6 +345,134 @@ class SameMangaCandidateSearcherLifecycleTest {
     }
 
     @Test
+    fun `bounded global scope uses global sources and honors configured per-source result cap`() = runTest {
+        val sourcePreferences = mockk<SourcePreferences>(relaxed = true)
+        every { sourcePreferences.enabledLanguages().get() } returns setOf("en")
+        every { sourcePreferences.disabledSources().get() } returns setOf("9911023")
+        every { sourcePreferences.pinnedSources().get() } returns emptySet()
+        val queries = mutableListOf<String>()
+        val enabled = FakeSource(9_911_022) { query ->
+            queries += query
+            page(manga("/first", "Origin"), manga("/second", "Origin"))
+        }
+        val disabled = FakeSource(9_911_023) { page(manga("/disabled", "Origin")) }
+        val sourceManager = mockk<SourceManager>()
+        every { sourceManager.getVisibleSources() } returns listOf(enabled, disabled)
+        val results = mutableListOf<SameMangaSourceResult>()
+
+        SameMangaCandidateSearcher(
+            sourcePreferences = sourcePreferences,
+            sourceManager = sourceManager,
+            networkToLocalManga = identityNetworkToLocalManga(),
+            coroutineDispatcher = UnconfinedTestDispatcher(testScheduler),
+            getIdentityDecisions = mockk<tachiyomi.domain.taste.interactor.GetCrossSourceIdentityDecisions>().also {
+                coEvery { it.await(any()) } returns null
+            },
+        ).search(
+            queries = listOf("Origin"),
+            settings = settings(resultCap = 1),
+            originManga = origin(),
+            scope = SameMangaSearchScope.GLOBAL_BOUNDED,
+            onResult = results::add,
+        )
+
+        assertEquals(listOf(enabled.id), results.map { it.source.id })
+        assertEquals(listOf("Origin"), queries)
+        val success = results.single().result as SameMangaCandidateResult.Success
+        assertEquals(listOf("/first"), success.results.map(Manga::url))
+    }
+
+    @Test
+    fun `bounded global scope retains three candidates per eligible source regardless of identity conflicts`() = runTest {
+        val sourcePreferences = mockk<SourcePreferences>(relaxed = true)
+        every { sourcePreferences.enabledLanguages().get() } returns setOf("en")
+        every { sourcePreferences.disabledSources().get() } returns setOf("9911033")
+        every { sourcePreferences.pinnedSources().get() } returns emptySet()
+        val first = FakeSource(9_911_031) {
+            page(*(1..4).map { manga("/first-$it", "Unrelated first $it") }.toTypedArray())
+        }
+        val second = FakeSource(9_911_032) {
+            page(*(1..4).map { manga("/second-$it", "Unrelated second $it") }.toTypedArray())
+        }
+        val disabled = FakeSource(9_911_033) {
+            page(manga("/disabled", "Unrelated disabled"))
+        }
+        val sourceManager = mockk<SourceManager>()
+        every { sourceManager.getVisibleSources() } returns listOf(first, second, disabled)
+        val confirmed = MangaIdentityKey(first.id, "/first-2")
+        val pair = tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.canonicalPair(
+            tachiyomi.domain.taste.model.CrossSourceRecordKey(99, "/origin"),
+            tachiyomi.domain.taste.model.CrossSourceRecordKey(confirmed.source, confirmed.url),
+        )
+        val confirmation = tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.userDecision(
+            pair = pair,
+            value = tachiyomi.domain.taste.model.CrossSourceIdentityDecisionValue.USER_CONFIRMED,
+            previous = null,
+            timestamp = 10_000,
+        )
+        val identityDecisions = mockk<tachiyomi.domain.taste.interactor.GetCrossSourceIdentityDecisions>()
+        coEvery { identityDecisions.await(any()) } answers {
+            confirmation.takeIf { it.pair == firstArg() }
+        }
+        val results = mutableListOf<SameMangaSourceResult>()
+
+        SameMangaCandidateSearcher(
+            sourcePreferences = sourcePreferences,
+            sourceManager = sourceManager,
+            networkToLocalManga = identityNetworkToLocalManga(),
+            coroutineDispatcher = UnconfinedTestDispatcher(testScheduler),
+            getIdentityDecisions = identityDecisions,
+        ).search(
+            queries = listOf("Origin"),
+            settings = settings(resultCap = 3),
+            originManga = origin("Origin"),
+            scope = SameMangaSearchScope.GLOBAL_BOUNDED,
+            onResult = results::add,
+        )
+
+        assertEquals(setOf(first.id, second.id), results.map { it.source.id }.toSet())
+        val bySource = results.associate { it.source.id to (it.result as SameMangaCandidateResult.Success) }
+        assertEquals(listOf("/first-1", "/first-2", "/first-3"), bySource.getValue(first.id).results.map(Manga::url))
+        assertEquals(listOf("/second-1", "/second-2", "/second-3"), bySource.getValue(second.id).results.map(Manga::url))
+        assertEquals(setOf(confirmed), bySource.getValue(first.id).confirmedKeys)
+        assertTrue(bySource.getValue(second.id).confirmedKeys.isEmpty())
+    }
+
+    @Test
+    fun `global search carries authoritative confirmation keys to the caller`() = runTest {
+        val source = FakeSource(9_910_022, name = "Grouped") {
+            page(manga("/confirmed", "An alternate title"))
+        }
+        val pair = tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.canonicalPair(
+            tachiyomi.domain.taste.model.CrossSourceRecordKey(99, "/origin"),
+            tachiyomi.domain.taste.model.CrossSourceRecordKey(source.id, "/confirmed"),
+        )
+        val confirmation = tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.userDecision(
+            pair = pair,
+            value = tachiyomi.domain.taste.model.CrossSourceIdentityDecisionValue.USER_CONFIRMED,
+            previous = null,
+            timestamp = 10_000,
+        )
+        val results = mutableListOf<SameMangaSourceResult>()
+
+        searcher(
+            dispatcher = UnconfinedTestDispatcher(testScheduler),
+            networkToLocalManga = identityNetworkToLocalManga(),
+            identityDecision = confirmation,
+        ).search(
+            queries = listOf("Origin"),
+            settings = settings(),
+            originManga = origin(),
+            sources = listOf(source),
+            scope = SameMangaSearchScope.GLOBAL,
+            onResult = results::add,
+        )
+
+        val success = results.single().result as SameMangaCandidateResult.Success
+        assertEquals(setOf(MangaIdentityKey(source.id, "/confirmed")), success.confirmedKeys)
+    }
+
+    @Test
     fun `current user rejection is suppressed before candidate delivery`() = runTest {
         val source = FakeSource(6) { page(manga("/rejected", "Same"), manga("/unknown", "Same")) }
         val rejected = tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.userDecision(
@@ -269,11 +506,13 @@ class SameMangaCandidateSearcherLifecycleTest {
         dispatcher: CoroutineDispatcher,
         networkToLocalManga: NetworkToLocalManga = mockk(relaxed = true),
         identityDecision: tachiyomi.domain.taste.model.CrossSourceIdentityDecision? = null,
+        timeoutDispatcher: CoroutineDispatcher = dispatcher,
     ) = SameMangaCandidateSearcher(
         sourcePreferences = mockk<SourcePreferences>(relaxed = true),
         sourceManager = mockk<SourceManager>(relaxed = true),
         networkToLocalManga = networkToLocalManga,
         coroutineDispatcher = dispatcher,
+        timeoutDispatcher = timeoutDispatcher,
         getIdentityDecisions = mockk<tachiyomi.domain.taste.interactor.GetCrossSourceIdentityDecisions>().also {
             coEvery { it.await(any()) } answers {
                 identityDecision?.takeIf { decision -> decision.pair == firstArg() }

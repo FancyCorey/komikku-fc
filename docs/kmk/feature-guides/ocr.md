@@ -1,6 +1,6 @@
 # Search text in downloaded pages
 
-**OCR Search Downloads** reads text from downloaded manga pages and saves it for searching on your device. Use it to find a phrase inside a page, not just a manga title. OCR means recognizing text in an image; it can misread words or miss them entirely.
+**OCR Search Downloads** reads text from downloaded pages belonging to manga in your library and saves it for searching on your device. Use it to find a phrase inside a page, not just a manga title. OCR means recognizing text in an image; it can misread words or miss them entirely.
 
 ## Where you find it
 
@@ -10,7 +10,7 @@ Open **More > OCR Search Downloads**. The search screen lets you process all dow
 
 First process your downloads, then enter the words you want to find. Processing can take time, storage, and battery. The current text reader uses Latin-script recognition, so do not expect reliable results for every language, unusual lettering, or low-quality image.
 
-Only downloaded pages are processed. This feature does not fetch every remote chapter or upload your page images for recognition. A page with no recognized text cannot provide a search match, even if the image contains words you can see.
+Only downloaded pages for manga currently in your library are processed. Downloads belonging to manga outside the library are not included in the all-download action. This feature does not fetch every remote chapter or upload your page images for recognition. A page with no recognized text cannot provide a search match, even if the image contains words you can see.
 
 ## Choose how much to process
 
@@ -83,6 +83,6 @@ flowchart TD
     Clear --> All["Entire OCR index"]
 ```
 
-The index is local and can be rebuilt. Cleanup changes only the search index and does not delete downloaded page files.
+The index is local and can be rebuilt. Cleanup changes only the search index and does not delete downloaded page files. Deleting a manga or chapter from the library does not automatically remove its OCR rows; use the chapter or manga cleanup action from an OCR result when you want to remove them. When **Clear database** removes non-library manga from selected sources, it also removes those manga's OCR rows but leaves downloaded page files in place. Restoring library entries removes OCR rows that no longer match a chapter or manga. None of these cleanup actions deletes downloaded page files.
 
 Recognized text remains on the device and is excluded from Komikku FC backup and sync. Cleanup removes the search index, not manga pages or downloaded files.

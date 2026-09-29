@@ -13,11 +13,15 @@ import exh.recs.RecommendationSourceOrdering
 import exh.recs.isRetryableForDiscovery
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import mihon.domain.manga.model.toDomainManga
 import tachiyomi.core.common.util.QuerySanitizer.sanitize
 import tachiyomi.domain.manga.interactor.NetworkToLocalManga
@@ -28,26 +32,29 @@ import tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy
 import tachiyomi.domain.taste.model.CrossSourceRecordKey
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Search scope used by the shared candidate searcher.
  *
  * [MATCHING] is intentionally bounded and follows the recommendation source controls. [GLOBAL]
- * mirrors the app's normal global-search source set and first-page behavior so user-facing
- * "Other Versions" discovery is not narrowed by recommendation settings or exact-title matching.
+ * mirrors the app's normal global-search source set and first-page behavior. [GLOBAL_BOUNDED] uses
+ * that global source set while retaining the configured per-source cap and candidate assessment.
  */
 enum class SameMangaSearchScope {
     MATCHING,
     GLOBAL,
+    GLOBAL_BOUNDED,
 }
 
 /**
  * Shared bounded same-manga candidate search used by
  * [CrossExtensionMatchScreenModel] and [BestVersionCompareScreenModel].
  *
- * Applies recommendation-language filtering, source priority ordering, an optional per-source
- * result cap, origin filtering, and multi-query deduplication. The GLOBAL scope mirrors the
- * normal global-search source set for user-facing cross-source discovery; it does not change the
- * normal global search screen itself.
+ * MATCHING applies recommendation-language filtering and source priority ordering. GLOBAL uses
+ * normal global-search source eligibility and retains full first-page results; GLOBAL_BOUNDED uses
+ * that same source set and configured result cap for Best Version, retaining first-page candidates
+ * for the explicit global-search surface to inspect manually. Every scope excludes the origin and
+ * deduplicates across queries.
  */
 class SameMangaCandidateSearcher(
     private val sourcePreferences: SourcePreferences = Injekt.get(),
@@ -55,6 +62,7 @@ class SameMangaCandidateSearcher(
     private val networkToLocalManga: NetworkToLocalManga = Injekt.get(),
     private val coroutineDispatcher: CoroutineDispatcher,
     private val getIdentityDecisions: GetCrossSourceIdentityDecisions = Injekt.get(),
+    private val timeoutDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     fun getMatchingSources(): List<Source> {
         val recLanguages = RecommendationSourceFilter.normalizeLanguages(
@@ -90,9 +98,9 @@ class SameMangaCandidateSearcher(
     }
 
     /**
-     * Searches [sources] (or the source scope selected by [scope]) with [queries]. Matching
-     * searches use the configured per-source cap; global searches return the complete first page
-     * from each source. The [originManga] is excluded from results. Returns one
+     * Searches [sources] (or the source scope selected by [scope]) with [queries]. MATCHING and
+     * GLOBAL_BOUNDED searches use the configured per-source cap; GLOBAL searches return the
+     * complete first page from each source. The [originManga] is excluded from results. Returns one
      * [SameMangaSourceResult] per source.
      */
     suspend fun search(
@@ -104,27 +112,63 @@ class SameMangaCandidateSearcher(
         onResult: suspend (SameMangaSourceResult) -> Unit,
     ) = coroutineScope {
         val cap = when (scope) {
-            SameMangaSearchScope.MATCHING -> SameMangaMatchSettings.clampResultCap(settings.resultsPerSource)
+            SameMangaSearchScope.MATCHING,
+            SameMangaSearchScope.GLOBAL_BOUNDED,
+            -> SameMangaMatchSettings.clampResultCap(settings.resultsPerSource)
             // Normal global search renders the complete first page from each enabled source.
             SameMangaSearchScope.GLOBAL -> null
         }
         val searchSources = sources ?: when (scope) {
             SameMangaSearchScope.MATCHING -> getMatchingSources()
-            SameMangaSearchScope.GLOBAL -> getGlobalSearchSources()
+            SameMangaSearchScope.GLOBAL,
+            SameMangaSearchScope.GLOBAL_BOUNDED,
+            -> getGlobalSearchSources()
         }
 
         searchSources.map { source ->
             async {
                 currentCoroutineContext().ensureActive()
-                val result = searchOneSource(
-                    source = source,
-                    queries = queries,
-                    cap = cap,
-                    originManga = originManga,
-                    retainAllCandidates = scope == SameMangaSearchScope.GLOBAL,
-                )
-                currentCoroutineContext().ensureActive()
-                onResult(SameMangaSourceResult(source, result))
+                val timedOut = AtomicBoolean(false)
+                val resultPublished = AtomicBoolean(false)
+                val sourceSearch = async(start = CoroutineStart.LAZY) {
+                    searchOneSource(
+                        source = source,
+                        queries = queries,
+                        cap = cap,
+                        originManga = originManga,
+                        retainAllCandidates = scope != SameMangaSearchScope.MATCHING,
+                    )
+                }
+                val timeoutJob = launch(timeoutDispatcher) {
+                    delay(SOURCE_SEARCH_TIMEOUT_MS)
+                    if (resultPublished.compareAndSet(false, true)) {
+                        timedOut.set(true)
+                        sourceSearch.cancel()
+                        onResult(
+                            SameMangaSourceResult(
+                                source,
+                                SameMangaCandidateResult.Error(
+                                    java.util.concurrent.TimeoutException(
+                                        "Candidate search timed out for ${source.id}",
+                                    ),
+                                ),
+                            ),
+                        )
+                    }
+                }
+                sourceSearch.start()
+                try {
+                    val result = sourceSearch.await()
+                    currentCoroutineContext().ensureActive()
+                    if (resultPublished.compareAndSet(false, true)) {
+                        onResult(SameMangaSourceResult(source, result))
+                    }
+                } catch (e: CancellationException) {
+                    if (!timedOut.get()) throw e
+                    currentCoroutineContext().ensureActive()
+                } finally {
+                    timeoutJob.cancel()
+                }
             }
         }.awaitAll()
     }
@@ -237,6 +281,10 @@ class SameMangaCandidateSearcher(
             if (!unwrapped.isRecoverableSourceRuntimeFailure()) throw e
             SameMangaCandidateResult.Error(unwrapped)
         }
+    }
+
+    private companion object {
+        private const val SOURCE_SEARCH_TIMEOUT_MS = 20_000L
     }
 }
 // KMK <--

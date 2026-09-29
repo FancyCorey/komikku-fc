@@ -23,6 +23,7 @@ import exh.recs.matching.SameMangaCandidateResult
 import exh.recs.matching.SameMangaMatchSettings
 import exh.recs.matching.SameMangaPreselectionMode
 import exh.recs.matching.SameMangaPreselectionPolicy
+import exh.recs.matching.SameMangaSearchScope
 import exh.source.isEhBasedSource
 import exh.util.DispatcherHandle
 import exh.util.ownedFixedThreadPoolDispatcherHandle
@@ -50,10 +51,16 @@ import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.service.SourceManager
+import tachiyomi.domain.taste.interactor.GetCrossSourceGroupPrimary
+import tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks
+import tachiyomi.domain.taste.interactor.RestoreCrossSourceGroupState
 import tachiyomi.domain.taste.interactor.UpsertMangaSourceQualitySignal
+import tachiyomi.domain.taste.model.CrossSourceGroupPrimary
+import tachiyomi.domain.taste.model.CrossSourceMangaLink
 import tachiyomi.domain.taste.model.MangaSourceQualitySignal
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.util.UUID
 
 sealed interface BestVersionStep {
     data object LoadingOrigin : BestVersionStep
@@ -200,6 +207,9 @@ class BestVersionCompareScreenModel(
         ),
     private val fixtureOperationId: String? = null,
     private val fixtureRouteResolver: BestVersionPairedFixtureRouteResolverContract? = null,
+    private val getCrossSourceMangaLinks: GetCrossSourceMangaLinks = Injekt.get(),
+    private val getCrossSourceGroupPrimary: GetCrossSourceGroupPrimary = Injekt.get(),
+    private val restoreCrossSourceGroupState: RestoreCrossSourceGroupState = Injekt.get(),
     private val identityController: exh.recs.matching.CrossSourceIdentityDecisionController =
         exh.recs.matching.CrossSourceIdentityDecisionController(),
 ) : StateScreenModel<BestVersionCompareScreenModel.State>(State()) {
@@ -212,6 +222,13 @@ class BestVersionCompareScreenModel(
     )
 
     private var searchJob: Job? = null
+    private var chapterLoadJob: Job? = null
+    private var chapterRetryJob: Job? = null
+    private var previewJob: Job? = null
+    private var fullscreenPageListJob: Job? = null
+    private var originLookupJob: Job? = null
+    private var chapterLoadGeneration = 0L
+    private var previewRunGeneration = 0L
     private var originManga: Manga? = null
     private var disposed = false
     private var activeCandidateSearchGateway = candidateSearchGateway
@@ -248,6 +265,9 @@ class BestVersionCompareScreenModel(
         // Per-candidate retry generations prevent an older preview request from overwriting a
         // newer retry result after both requests overlap.
         val candidatePreviewGenerations: PersistentMap<MangaIdentityKey, Int> = persistentMapOf(),
+        // Run generation prevents a completed preview request from publishing after a newer
+        // startPreview() call has replaced the preview set.
+        val previewRunGeneration: Long = 0L,
         // The reader-quality fullscreen preview has its own
         // state -- only one candidate's fullscreen preview can be open at a time (matches the
         // existing UI, which tracks a single fullscreenCandidateKey). Null when the dialog is
@@ -288,6 +308,13 @@ class BestVersionCompareScreenModel(
     ) {
         val searchProgress: Int get() = candidates.count { it.value !is SameMangaCandidateResult.Loading }
         val searchTotal: Int get() = candidates.size
+        val canConfirmCandidates: Boolean
+            get() = originManga != null &&
+                (
+                    searchProgress == searchTotal || candidates.values.any {
+                        it is SameMangaCandidateResult.Success && it.results.isNotEmpty()
+                    }
+                    )
 
         // KMK v0.8.18: identity key for the origin/current manga, used to recognize origin rows
         // across selection, chapter-loading, and preview without repeating the source+url comparison.
@@ -314,8 +341,9 @@ class BestVersionCompareScreenModel(
     }
 
     init {
-        screenModelScope.launch {
+        originLookupJob = screenModelScope.launch {
             val manga = getMangaInteractor.await(originMangaId)
+            if (!currentCoroutineContext().isActive) return@launch
             if (manga == null) {
                 mutableState.update {
                     it.copy(step = BestVersionStep.Error(BestVersionErrorReason.OriginMissing))
@@ -352,8 +380,15 @@ class BestVersionCompareScreenModel(
     // close action twice.
     override fun onDispose() {
         super.onDispose()
+        originLookupJob?.cancel()
         searchJob?.cancel()
+        chapterLoadJob?.cancel()
+        chapterRetryJob?.cancel()
+        previewJob?.cancel()
+        fullscreenPageListJob?.cancel()
         migrationJob?.cancel()
+        previewRunGeneration++
+        mutableState.update { it.copy(previewRunGeneration = previewRunGeneration) }
         if (!disposed) {
             disposed = true
             dispatcherHandle.close()
@@ -362,7 +397,7 @@ class BestVersionCompareScreenModel(
 
     private fun startSearch(manga: Manga) {
         val settings = resolveSettings()
-        val sources = activeCandidateSearchGateway.getMatchingSources()
+        val sources = activeCandidateSearchGateway.getGlobalSearchSources()
         mutableState.update {
             it.copy(
                 step = BestVersionStep.SearchingCandidates,
@@ -383,6 +418,7 @@ class BestVersionCompareScreenModel(
                     settings = settings,
                     originManga = manga,
                     sources = sources,
+                    scope = SameMangaSearchScope.GLOBAL_BOUNDED,
                 ) { result ->
                     if (isActive && !disposed) {
                         updateCandidate(result.source, result.result, settings.preselectionMode)
@@ -420,13 +456,27 @@ class BestVersionCompareScreenModel(
                     val key = MangaIdentityKey(manga.source, manga.url)
                     if (origin != null && manga.source == origin.source && manga.url == origin.url) return@mapNotNull null
                     if (key in current.manuallyDeselectedKeys) return@mapNotNull null
-                    if (origin != null && SameMangaPreselectionPolicy.shouldSelect(preselectionMode, origin, manga)) key else null
+                    if (key in result.confirmedKeys ||
+                        (origin != null && SameMangaPreselectionPolicy.shouldSelect(preselectionMode, origin, manga))
+                    ) {
+                        key
+                    } else {
+                        null
+                    }
                 }.toSet()
                 current.selectedKeys + newKeys
             } else {
                 current.selectedKeys
             }
-            current.copy(candidates = newCandidates, selectedKeys = newSelected)
+            current.copy(
+                step = if (current.step == BestVersionStep.SearchingCandidates) {
+                    BestVersionStep.ConfirmCandidates
+                } else {
+                    current.step
+                },
+                candidates = newCandidates,
+                selectedKeys = newSelected,
+            )
         }
     }
 
@@ -453,6 +503,10 @@ class BestVersionCompareScreenModel(
     // real candidates are selected (e.g. no matches found, or the user deselected every real
     // candidate and just wants to confirm they're already on the best version).
     fun confirmCandidates() {
+        if (!state.value.canConfirmCandidates) return
+        // A staged candidate list can be visible while slower sources are still finishing. Once
+        // the user confirms, stop that search so late results cannot change the chapter workload.
+        searchJob?.cancel()
         val compare = state.value.compareCandidates
         if (compare.isEmpty()) return
         loadChapters(compare)
@@ -470,6 +524,8 @@ class BestVersionCompareScreenModel(
         if (retryableKeys.isEmpty()) return
         val candidates = current.compareCandidates.filter { MangaIdentityKey(it.source, it.url) in retryableKeys }
         val targetChapterNumber = current.selectedChapterNumber
+        chapterRetryJob?.cancel()
+        val retryGeneration = ++chapterLoadGeneration
         mutableState.update {
             it.copy(
                 candidateChapters = it.candidateChapters.mutate { chapters ->
@@ -477,11 +533,14 @@ class BestVersionCompareScreenModel(
                 },
             )
         }
-        screenModelScope.launch(coroutineDispatcher) {
+        // Keep retries under the same owner as the initial chapter load. Without this, a retry
+        // could outlive a newer confirm/retry operation and write stale chapter state after the
+        // newer generation had already published its result.
+        chapterRetryJob = screenModelScope.launch(coroutineDispatcher) {
             val results = candidates.map { manga ->
                 async { loadCandidateChapter(manga, targetChapterNumber, bypassSuppression = true) }
             }.awaitAll()
-            if (isActive) {
+            if (isActive && !disposed && retryGeneration == chapterLoadGeneration) {
                 mutableState.update { currentState ->
                     currentState.copy(
                         candidateChapters = currentState.candidateChapters.mutate { chapters ->
@@ -500,8 +559,11 @@ class BestVersionCompareScreenModel(
 
     private fun loadChapters(candidates: List<Manga>) {
         val origin = originManga ?: return
+        chapterLoadJob?.cancel()
+        chapterRetryJob?.cancel()
+        val loadGeneration = ++chapterLoadGeneration
         mutableState.update { it.copy(step = BestVersionStep.LoadingChapters) }
-        screenModelScope.launch(coroutineDispatcher) {
+        chapterLoadJob = screenModelScope.launch(coroutineDispatcher) {
             // Load origin chapters to determine default chapter
             val originChapters = try {
                 getChaptersByMangaId.await(origin.id)
@@ -528,31 +590,42 @@ class BestVersionCompareScreenModel(
 
             val nonOriginCandidates = candidates.filterNot { it.source == origin.source && it.url == origin.url }
 
-            // For each selected candidate, fetch chapter list from source
-            // KMK R2-AUG-05: each async result also carries the candidate's raw fetched chapter list
-            // (null when the fetch itself failed/had no source) so a successful fetch's full chapter
-            // list survives into State.candidateChapterLists for the bounded manual chapter picker,
-            // regardless of whether BestVersionChapterMatcher found an Exact, Nearest, or no match.
-            val chapterResults = nonOriginCandidates.map { manga ->
-                async { loadCandidateChapter(manga, targetChapterNumber) }
-            }.awaitAll()
+            // Publish the origin and loading candidates immediately. Previously the screen stayed on
+            // LoadingChapters until every candidate's request completed because the whole set was
+            // awaited before the first state update. One slow source could therefore hide usable
+            // matches and make Best Version appear stuck even when other candidates were ready.
+            // Each child remains independently bounded by loadCandidateChapter's SourceRuntime and
+            // timeout contract; the generation check prevents a superseded load from publishing.
+            val initialChapterStates = nonOriginCandidates.associate {
+                MangaIdentityKey(it.source, it.url) to CandidateChapterState.Loading
+            } + (originKey to originChapterState)
+            if (!isActive || disposed || loadGeneration != chapterLoadGeneration) return@launch
+            mutableState.update {
+                it.copy(
+                    originChapters = originChapters,
+                    selectedChapterNumber = targetChapterNumber,
+                    candidateChapters = initialChapterStates.toPersistentMap(),
+                    candidateChapterLists = persistentMapOf(),
+                    step = BestVersionStep.SelectChapter,
+                )
+            }
 
-            if (isActive) {
-                val chapterMap = (
-                    chapterResults.map { (key, state, _) -> key to state } + (originKey to originChapterState)
-                    ).toMap().toPersistentMap()
-                val chapterLists = chapterResults
-                    .mapNotNull { (key, _, chapters) -> chapters?.let { key to it } }
-                    .toMap()
-                    .toPersistentMap()
-                mutableState.update {
-                    it.copy(
-                        originChapters = originChapters,
-                        selectedChapterNumber = targetChapterNumber,
-                        candidateChapters = chapterMap,
-                        candidateChapterLists = chapterLists,
-                        step = BestVersionStep.SelectChapter,
-                    )
+            // Each candidate publishes independently. Do not await a source in list order: one
+            // slow or stalled source must not prevent later candidates from becoming usable.
+            nonOriginCandidates.forEach { manga ->
+                launch {
+                    val (key, chapterState, chapters) = loadCandidateChapter(manga, targetChapterNumber)
+                    if (!isActive || disposed || loadGeneration != chapterLoadGeneration) return@launch
+                    mutableState.update {
+                        it.copy(
+                            candidateChapters = it.candidateChapters.mutate { states ->
+                                states[key] = chapterState
+                            },
+                            candidateChapterLists = it.candidateChapterLists.mutate { lists ->
+                                if (chapters != null) lists[key] = chapters
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -673,6 +746,8 @@ class BestVersionCompareScreenModel(
     // second candidate's fullscreen preview before the first one's page-list fetch resolved could
     // let the FIRST (now stale) response populate the dialog the user opened SECOND.
     fun openFullscreenCandidate(key: MangaIdentityKey) {
+        fullscreenPageListJob?.cancel()
+        fullscreenPageListJob = null
         val chapterState = state.value.candidateChapters[key] as? CandidateChapterState.Available ?: return
         val manga = state.value.compareCandidates.find { it.source == key.source && it.url == key.url } ?: return
         val source = sourceManager.get(manga.source) as? HttpSource
@@ -696,9 +771,11 @@ class BestVersionCompareScreenModel(
                 fullscreenOpenGeneration = nextGeneration,
             )
         }
-        screenModelScope.launch(coroutineDispatcher) {
-            val result = SourceRuntime.run(source, SourceRuntimeOperation.PageList, coroutineDispatcher) {
-                getPageList(chapterState.chapter)
+        fullscreenPageListJob = screenModelScope.launch(coroutineDispatcher) {
+            val result = withTimeoutOrNull(FULLSCREEN_PAGE_LIST_TIMEOUT_MS) {
+                SourceRuntime.run(source, SourceRuntimeOperation.PageList, coroutineDispatcher) {
+                    getPageList(chapterState.chapter)
+                }
             }
             if (!isActive || disposed) return@launch
             mutableState.update { current ->
@@ -707,31 +784,41 @@ class BestVersionCompareScreenModel(
                 // with a stale result. Keyed on the generation captured before this coroutine ever
                 // started, not on the current preview's runtime type.
                 if (current.fullscreenOpenGeneration != nextGeneration) return@update current
-                result.fold(
-                    onSuccess = { pages ->
-                        current.copy(
-                            fullscreenPreview = if (pages.isEmpty()) {
-                                FullscreenPreviewState.Error(
-                                    BestVersionErrorReason.Recommendation(RecommendationErrorKind.Internal),
-                                )
-                            } else {
-                                FullscreenPreviewState.Loaded(key = key, pages = pages)
-                            },
-                        )
-                    },
-                    onFailure = { throwable ->
-                        current.copy(
-                            fullscreenPreview = FullscreenPreviewState.Error(
-                                BestVersionErrorReason.Recommendation(RecommendationErrorClassifier.classify(throwable)),
-                            ),
-                        )
-                    },
-                )
+                if (result == null) {
+                    current.copy(
+                        fullscreenPreview = FullscreenPreviewState.Error(
+                            BestVersionErrorReason.Recommendation(RecommendationErrorKind.Timeout),
+                        ),
+                    )
+                } else {
+                    result.fold(
+                        onSuccess = { pages ->
+                            current.copy(
+                                fullscreenPreview = if (pages.isEmpty()) {
+                                    FullscreenPreviewState.Error(
+                                        BestVersionErrorReason.Recommendation(RecommendationErrorKind.Internal),
+                                    )
+                                } else {
+                                    FullscreenPreviewState.Loaded(key = key, pages = pages)
+                                },
+                            )
+                        },
+                        onFailure = { throwable ->
+                            current.copy(
+                                fullscreenPreview = FullscreenPreviewState.Error(
+                                    BestVersionErrorReason.Recommendation(RecommendationErrorClassifier.classify(throwable)),
+                                ),
+                            )
+                        },
+                    )
+                }
             }
         }
     }
 
     fun closeFullscreenCandidate() {
+        fullscreenPageListJob?.cancel()
+        fullscreenPageListJob = null
         mutableState.update {
             it.copy(
                 fullscreenPreview = null,
@@ -839,51 +926,55 @@ class BestVersionCompareScreenModel(
             // resulting page may carry a new URL (if the source regenerates one per fetch) or the
             // same one (if it's stable), and either way this never substitutes another candidate's or
             // another source's page.
-            val retryPage = if (forceRetry && !source.isEhBasedSource() && chapter != null) {
-                SourceRuntime.run(source, SourceRuntimeOperation.PageList, coroutineDispatcher) {
-                    getPageList(chapter)
-                }.getOrNull()?.getOrNull(pageIndex) ?: page
-            } else {
-                page
-            }
-            // KMK: mirrors HttpPageLoader.internalLoadPage's own "skip resolution if the source
-            // already provided imageUrl in the page-list response" check -- many sources never
-            // implement getImageUrl() at all because they don't need a second call, and calling it
-            // anyway can throw. A forced EH-source retry is the one documented exception
-            // (HttpPageLoader.retryPage nulls the cached URL first for EH sources specifically,
-            // since theirs can expire/rotate) -- mirrored here via isEhBasedSource() instead of
-            // mutating page.imageUrl. For a forced non-EH retry, [retryPage] above already carries
-            // whatever URL the fresh page-list fetch just returned, so this check naturally uses that
-            // fresh value instead of falling back to getImageUrl (which would violate its own
-            // null-only contract).
-            val alreadyProvided = retryPage.imageUrl
-            val skipResolve = !alreadyProvided.isNullOrEmpty() && !(forceRetry && source.isEhBasedSource())
-            val resolution = if (skipResolve) {
-                Result.success(alreadyProvided)
-            } else {
-                SourceRuntime.run(source, SourceRuntimeOperation.ImageUrl, coroutineDispatcher) {
-                    (this as HttpSource).getImageUrl(retryPage)
+            val result = withTimeoutOrNull(FULLSCREEN_PAGE_IMAGE_TIMEOUT_MS) {
+                val retryPage = if (forceRetry && !source.isEhBasedSource() && chapter != null) {
+                    SourceRuntime.run(source, SourceRuntimeOperation.PageList, coroutineDispatcher) {
+                        getPageList(chapter)
+                    }.getOrNull()?.getOrNull(pageIndex) ?: page
+                } else {
+                    page
                 }
-            }
-            val result = resolution.fold(
-                onSuccess = { imageUrl ->
-                    val outcome = BestVersionImageOutcomePolicy.classifyResolvedUrl(imageUrl)
-                    if (outcome == BestVersionImageOutcome.Usable) {
-                        PreviewPageImageState.Resolved(
-                            SampledPage(
-                                pageIndex,
-                                eu.kanade.domain.manga.model.PagePreview(pageIndex, imageUrl, manga.source),
-                            ),
-                        )
-                    } else {
-                        PreviewPageImageState.Failed(BestVersionImageOutcomePolicy.toErrorReason(outcome))
+                // KMK: mirrors HttpPageLoader.internalLoadPage's own "skip resolution if the source
+                // already provided imageUrl in the page-list response" check -- many sources never
+                // implement getImageUrl() at all because they don't need a second call, and calling it
+                // anyway can throw. A forced EH-source retry is the one documented exception
+                // (HttpPageLoader.retryPage nulls the cached URL first for EH sources specifically,
+                // since theirs can expire/rotate) -- mirrored here via isEhBasedSource() instead of
+                // mutating page.imageUrl. For a forced non-EH retry, [retryPage] above already carries
+                // whatever URL the fresh page-list fetch just returned, so this check naturally uses
+                // that fresh value instead of falling back to getImageUrl (which would violate its own
+                // null-only contract).
+                val alreadyProvided = retryPage.imageUrl
+                val skipResolve = !alreadyProvided.isNullOrEmpty() && !(forceRetry && source.isEhBasedSource())
+                val resolution = if (skipResolve) {
+                    Result.success(alreadyProvided)
+                } else {
+                    SourceRuntime.run(source, SourceRuntimeOperation.ImageUrl, coroutineDispatcher) {
+                        (this as HttpSource).getImageUrl(retryPage)
                     }
-                },
-                onFailure = { throwable ->
-                    PreviewPageImageState.Failed(
-                        BestVersionErrorReason.Recommendation(RecommendationErrorClassifier.classify(throwable)),
-                    )
-                },
+                }
+                resolution.fold(
+                    onSuccess = { imageUrl ->
+                        val outcome = BestVersionImageOutcomePolicy.classifyResolvedUrl(imageUrl)
+                        if (outcome == BestVersionImageOutcome.Usable) {
+                            PreviewPageImageState.Resolved(
+                                SampledPage(
+                                    pageIndex,
+                                    eu.kanade.domain.manga.model.PagePreview(pageIndex, imageUrl, manga.source),
+                                ),
+                            )
+                        } else {
+                            PreviewPageImageState.Failed(BestVersionImageOutcomePolicy.toErrorReason(outcome))
+                        }
+                    },
+                    onFailure = { throwable ->
+                        PreviewPageImageState.Failed(
+                            BestVersionErrorReason.Recommendation(RecommendationErrorClassifier.classify(throwable)),
+                        )
+                    },
+                )
+            } ?: PreviewPageImageState.Failed(
+                BestVersionErrorReason.Recommendation(RecommendationErrorKind.Timeout),
             )
 
             if (!isActive || disposed) return@launch
@@ -913,6 +1004,9 @@ class BestVersionCompareScreenModel(
     // moves straight to ComparePreview so the all-Skipped state can render its own clear message,
     // without ever touching the network.
     fun startPreview() {
+        previewJob?.cancel()
+        previewRunGeneration++
+        val runGeneration = previewRunGeneration
         val compare = state.value.compareCandidates
         val chapterMap = state.value.candidateChapters
         val sampleSize = state.value.sampleSize
@@ -947,11 +1041,12 @@ class BestVersionCompareScreenModel(
                 step = BestVersionStep.LoadingPreview,
                 candidatePreviews = previews,
                 candidatePreviewGenerations = generations,
+                previewRunGeneration = runGeneration,
             )
         }
 
         val previewGenerationSnapshot = state.value.candidatePreviewGenerations
-        screenModelScope.launch(coroutineDispatcher) {
+        previewJob = screenModelScope.launch(coroutineDispatcher) {
             previewable.map { manga ->
                 val key = MangaIdentityKey(manga.source, manga.url)
                 val generation = previewGenerationSnapshot[key] ?: 0
@@ -963,7 +1058,12 @@ class BestVersionCompareScreenModel(
                     }
                     if (isActive && !disposed) {
                         mutableState.update { current ->
-                            if (current.candidatePreviewGenerations[key] != generation) return@update current
+                            if (
+                                current.previewRunGeneration != runGeneration ||
+                                current.candidatePreviewGenerations[key] != generation
+                            ) {
+                                return@update current
+                            }
                             current.copy(candidatePreviews = current.candidatePreviews.mutate { it[key] = result })
                         }
                     }
@@ -977,8 +1077,10 @@ class BestVersionCompareScreenModel(
                 // wraps its own work in a per-candidate timeout, so `awaitAll()` is bounded by that
                 // timeout regardless of how many candidates are running concurrently.
             }.awaitAll()
-            if (isActive) {
-                mutableState.update { it.copy(step = BestVersionStep.ComparePreview) }
+            if (isActive && !disposed) {
+                mutableState.update { current ->
+                    if (current.previewRunGeneration != runGeneration) current else current.copy(step = BestVersionStep.ComparePreview)
+                }
             }
         }
     }
@@ -1136,6 +1238,8 @@ class BestVersionCompareScreenModel(
         // paginating a chapter list. The candidate remains retryable and other candidates can
         // still reach the selection step.
         private const val CHAPTER_LIST_TIMEOUT_MS = 20_000L
+        private const val FULLSCREEN_PAGE_LIST_TIMEOUT_MS = 20_000L
+        private const val FULLSCREEN_PAGE_IMAGE_TIMEOUT_MS = 20_000L
         // KMK v0.8.17-fix1: bounded per-candidate preview timeout (page-list fetch + per-page image-
         // URL resolution). 25s balances slow-but-real sources against not leaving the screen stuck on
         // a single hung candidate; matches the ballpark of other KMK source-operation timeouts.
@@ -1243,6 +1347,11 @@ class BestVersionCompareScreenModel(
                     }
                     return@launch
                 }
+                // Identity confirmation is an explicit user action. Persist that pair into the
+                // origin's group before migration starts so a later copy/migration failure does
+                // not erase the confirmed relationship. Only the selected pair is moved; other
+                // members of a pre-existing target group remain in that group.
+                ensureConfirmedPairGroup(origin, target)
                 // KMK Confirmed Blocker Remediation Phase 4: migrateMangaUseCase now returns a
                 // truthful mihon.domain.migration.usecases.MigrationOutcome instead of Unit -- a
                 // non-fatal exception partway through the migration previously vanished silently,
@@ -1352,6 +1461,59 @@ class BestVersionCompareScreenModel(
         }
     }
 
+    private suspend fun ensureConfirmedPairGroup(origin: Manga, target: Manga) {
+        val originLink = getCrossSourceMangaLinks.awaitBySourceUrl(origin.source, origin.url)
+        val targetLink = getCrossSourceMangaLinks.awaitBySourceUrl(target.source, target.url)
+        val groupId = originLink?.groupId ?: UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        val linksToWrite = listOf(
+            CrossSourceMangaLink(
+                source = origin.source,
+                url = origin.url,
+                groupId = groupId,
+                title = origin.title,
+                createdAt = originLink?.createdAt ?: now,
+                updatedAt = now,
+            ),
+            CrossSourceMangaLink(
+                source = target.source,
+                url = target.url,
+                groupId = groupId,
+                title = target.title,
+                createdAt = targetLink?.createdAt ?: now,
+                updatedAt = now,
+            ),
+        ).distinctBy { it.source to it.url }
+
+        val oldTargetGroupId = targetLink?.groupId?.takeIf { it != groupId }
+        val primaryUpserts = mutableListOf<CrossSourceGroupPrimary>()
+        val primaryDeletes = mutableListOf<String>()
+        if (oldTargetGroupId != null) {
+            val oldMembers = getCrossSourceMangaLinks.awaitByGroupId(oldTargetGroupId)
+                .filterNot { it.source == target.source && it.url == target.url }
+            val oldPrimary = getCrossSourceGroupPrimary.awaitByGroupId(oldTargetGroupId)
+            if (oldPrimary?.source == target.source && oldPrimary.url == target.url) {
+                val replacement = oldMembers.firstOrNull()
+                if (replacement == null) {
+                    primaryDeletes += oldTargetGroupId
+                } else {
+                    primaryUpserts += CrossSourceGroupPrimary(
+                        groupId = oldTargetGroupId,
+                        source = replacement.source,
+                        url = replacement.url,
+                        updatedAt = now,
+                    )
+                }
+            }
+        }
+        restoreCrossSourceGroupState.await(
+            linkUpserts = linksToWrite,
+            linkDeletes = emptyList(),
+            primaryUpserts = primaryUpserts,
+            primaryDeletes = primaryDeletes,
+        )
+    }
+
     private suspend fun saveQualitySignal(origin: Manga, target: Manga) {
         val source = sourceManager.get(target.source)
         val signal = MangaSourceQualitySignal(
@@ -1380,22 +1542,20 @@ class BestVersionCompareScreenModel(
     }
 
     private fun resolveSettings(): SameMangaMatchSettings {
+        val preselectionMode = SameMangaPreselectionMode.resolve(
+            sourcePreferences.sameMangaMatchPreselectionMode().get(),
+            sourcePreferences.sameMangaMatchPreselectResults().get(),
+        )
         return SameMangaMatchSettings(
             resultsPerSource = SameMangaMatchSettings.clampResultCap(
                 sourcePreferences.sameMangaMatchResultsPerSource().get(),
             ),
-            preselectResults = SameMangaPreselectionMode.resolve(
-                sourcePreferences.sameMangaMatchPreselectionMode().get(),
-                sourcePreferences.sameMangaMatchPreselectResults().get(),
-            ) != SameMangaPreselectionMode.NONE,
+            preselectResults = preselectionMode != SameMangaPreselectionMode.NONE,
             previewSampleSize = SameMangaMatchSettings.clampSampleSize(
                 sourcePreferences.bestVersionPreviewSampleSize().get(),
             ),
             avoidFirstPages = sourcePreferences.bestVersionAvoidFirstPages().get(),
-            preselectionMode = SameMangaPreselectionMode.resolve(
-                sourcePreferences.sameMangaMatchPreselectionMode().get(),
-                sourcePreferences.sameMangaMatchPreselectResults().get(),
-            ),
+            preselectionMode = preselectionMode,
         )
     }
 }

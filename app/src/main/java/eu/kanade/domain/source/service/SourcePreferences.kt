@@ -366,8 +366,8 @@ class SourcePreferences(
     // stale preference cannot activate this path in release-derived builds.
     fun sourcesToTryFixtureMode() = preferenceStore.getString("sources_to_try_fixture_mode", "off")
 
-    // Debug-only For You fixture. Its consumer also requires BuildConfig.DEBUG, so this private
-    // preference cannot change a release-derived recommendation route.
+    // For You's synthetic fixture is available in debug and the designated benchmark build only.
+    // Other release-derived builds ignore this preference when resolving recommendation inputs.
     fun forYouFixtureMode() = preferenceStore.getString(
         "for_you_fixture_mode",
         if (BuildConfig.KMK_BENCHMARK_FIXTURE) "top_picks" else "off",
@@ -394,7 +394,7 @@ class SourcePreferences(
     // KMK <-- v0.6.20
 
     // KMK --> v0.7.8: same-manga matching and best-version comparison settings
-    /** Max results per source for bounded same-manga workflows (Love/Like/Dislike/Seen/Favorite/Best-version). Valid: 1, 2, 5, 10. Default 2. */
+    /** Max results per source for bounded same-manga workflows (Love/Like/Dislike/Seen/Favorite/Best-version). Valid: 1–10. Default 2. */
     fun sameMangaMatchResultsPerSource() = preferenceStore.getInt("same_manga_match_results_per_source", 2)
 
     /** Legacy boolean retained for reading preferences created before selection modes. */

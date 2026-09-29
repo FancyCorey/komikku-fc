@@ -6,7 +6,7 @@ import android.graphics.Bitmap
 import android.view.LayoutInflater
 import androidx.annotation.ColorInt
 import androidx.core.view.isVisible
-import eu.kanade.presentation.util.formattedMessage
+import eu.kanade.presentation.util.readerErrorMessage
 import eu.kanade.tachiyomi.databinding.ReaderErrorBinding
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.ui.reader.model.InsertPage
@@ -475,7 +475,7 @@ class PagerPageHolder(
             }
         }
 
-        errorLayout?.errorMessage?.text = with(context) { error?.formattedMessage }
+        errorLayout?.errorMessage?.text = with(context) { error?.readerErrorMessage }
             ?: context.stringResource(MR.strings.decode_image_error)
 
         errorLayout?.root?.isVisible = true

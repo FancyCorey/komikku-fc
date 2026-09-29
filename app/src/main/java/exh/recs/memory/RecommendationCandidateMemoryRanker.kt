@@ -64,6 +64,7 @@ object RecommendationCandidateMemoryRanker {
             exh.recs.RecommendationDisplayReranker.InteractionSignals.NONE,
         exposureNow: Long = 0L,
         exposureWindowDays: Int = exh.recs.RecommendationExposurePolicy.DEFAULT_WINDOW_DAYS,
+        allowNeutralLatest: Boolean = false,
     ): List<PersonalRecommendation> {
         // Build deduped candidate set: local id → (manga, source, lane)
         val candidateById = mutableMapOf<Long, Triple<Manga, Long, exh.recs.RecommendationDiscoveryLane>>()
@@ -107,7 +108,11 @@ object RecommendationCandidateMemoryRanker {
             // rule (or a manga whose only positive signal is source affinity) could keep competing
             // for display forever, since memory rows are never deleted, only re-filtered here on
             // every merge.
-            if (result.blocked || result.score <= 0.0 || result.matchedGroups.isEmpty()) return@mapNotNull null
+            // Preserve bounded Latest exploration through rescoring, including zero-score metadata gaps.
+            val neutralLatest = allowNeutralLatest && lane == exh.recs.RecommendationDiscoveryLane.LATEST_CATALOGUE &&
+                result.score >= 0.0 && !result.hasNegativeTasteEvidence
+            val positiveMatch = result.score > 0.0 && result.matchedGroups.isNotEmpty()
+            if (result.blocked || (!positiveMatch && !neutralLatest)) return@mapNotNull null
 
             sourceIdByMangaId[manga.id] = candidateSourceId
             PersonalRecommendation(

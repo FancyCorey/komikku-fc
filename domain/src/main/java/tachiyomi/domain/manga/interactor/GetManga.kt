@@ -27,6 +27,20 @@ class GetManga(
         return mangaRepository.getMangaByIdAsFlow(id)
     }
 
+    suspend fun await(ids: Collection<Long>): List<Manga> {
+        // Leave room below the 999-parameter limit used by older SQLite versions.
+        return ids.distinct().chunked(900).flatMap { batch ->
+            try {
+                mangaRepository.getMangaByIds(batch)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e)
+                batch.mapNotNull { await(it) }
+            }
+        }
+    }
+
     fun subscribe(url: String, sourceId: Long): Flow<Manga?> {
         return mangaRepository.getMangaByUrlAndSourceIdAsFlow(url, sourceId)
     }

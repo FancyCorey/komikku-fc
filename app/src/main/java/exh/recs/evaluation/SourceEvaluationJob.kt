@@ -43,10 +43,10 @@ internal interface SourceEvaluationWorkerNotifier {
  * The exact cancellation/failure/success control flow of [SourceEvaluationJob.doWork] (once
  * candidates/options are resolved), extracted so it can be exercised directly in a JVM unit test
  * (see `SourceEvaluationJobCancellationTest`) without a real [androidx.work.CoroutineWorker]
- * instance -- this project has neither Robolectric nor `androidx.work:work-testing` (confirmed
- * absent from the dependency graph before adding this seam). [SourceEvaluationJob.doWork] calls
- * this with the real [SourceEvaluationRunner] and [SourceEvaluationJobState] wiring, so production
- * behavior is unchanged.
+ * instance. Keeping this narrow seam makes cancellation and failure cleanup deterministic while
+ * WorkManager persistence remains covered by dedicated test-database tests.
+ * [SourceEvaluationJob.doWork] calls this with the real [SourceEvaluationRunner] and
+ * [SourceEvaluationJobState] wiring, so production behavior is unchanged.
  */
 internal suspend fun runSourceEvaluationWork(
     collectUntilTerminal: suspend (onState: (SourceEvaluationQueueState) -> Unit) -> Unit,

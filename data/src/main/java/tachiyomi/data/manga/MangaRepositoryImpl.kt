@@ -216,7 +216,10 @@ class MangaRepositoryImpl(
     }
 
     override suspend fun deleteManga(mangaId: Long) {
-        handler.await { mangasQueries.deleteById(mangaId) }
+        handler.await(inTransaction = true) {
+            mangasQueries.deleteOcrRowsWithMangaId(mangaId)
+            mangasQueries.deleteById(mangaId)
+        }
     }
 
     override suspend fun getReadMangaNotInLibraryView(): List<LibraryManga> {

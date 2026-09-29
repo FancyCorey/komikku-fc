@@ -358,22 +358,6 @@ class RecordLocalTrackedChapterProgress(
                 .singleOrNull { it.source == targetSource && it.url == targetUrl }
         }
         if (targetSourceRow?.inheritanceOptedOut == true) return
-        if (existingTargetWork != null && targetSourceRow == null) {
-            // A confirmed version can be discovered after its local work was created through
-            // another source. Reattach it before applying the same progress inheritance path.
-            localTrackerRepository.upsertSource(
-                tachiyomi.domain.tracker.model.LocalTrackedWorkSource(
-                    workId = existingTargetWork.id,
-                    source = targetSource,
-                    url = targetUrl,
-                    title = targetManga.title,
-                    confidence = 100,
-                    confirmation = tachiyomi.domain.tracker.model.LocalTrackedWorkSourceConfirmation.USER_CONFIRMED,
-                    createdAt = progressAt,
-                    updatedAt = progressAt,
-                ),
-            )
-        }
         val mapping = LocalTrackedProgressSourceMappingPolicy.resolve(
             originSource = origin.source,
             originUrl = origin.url,
@@ -383,17 +367,13 @@ class RecordLocalTrackedChapterProgress(
             bridges = bridges,
             mappings = mappings,
         )
-        val targetChapter = if (mapping != null) {
-            chapterRepository.getChapterByUrlAndMangaId(mapping.targetChapterUrl, targetManga.id)
-        } else {
-            resolveRecognizedChapter(manga = targetManga, originChapterNumber = originChapterNumber)
-        }
+        // An available confirmed URL is authoritative. If refresh has not produced that target
+        // chapter row yet, fall back to the greatest recognized number at or below the saved
+        // progress; duplicate rows at that boundary use the mapping policy's stable representative.
+        val targetChapter = mapping?.let {
+            chapterRepository.getChapterByUrlAndMangaId(it.targetChapterUrl, targetManga.id)
+        } ?: resolveRecognizedChapter(manga = targetManga, originChapterNumber = originChapterNumber)
         if (targetChapter == null) return
-        markChaptersReadThrough(
-            manga = targetManga,
-            chapterUrl = targetChapter.url,
-            chapterNumber = targetChapter.chapterNumber.takeIf { targetChapter.isRecognizedNumber },
-        )
         val targetChapterUrl = targetChapter.url
         val targetWork = existingTargetWork ?: run {
             val sourceWork = originWork ?: return
@@ -408,19 +388,6 @@ class RecordLocalTrackedChapterProgress(
                 lastProgressAt = null,
                 updatedAt = progressAt,
             )
-            localTrackerRepository.upsertWork(newWork)
-            localTrackerRepository.upsertSource(
-                tachiyomi.domain.tracker.model.LocalTrackedWorkSource(
-                    workId = newWork.id,
-                    source = targetSource,
-                    url = targetUrl,
-                    title = targetManga.title,
-                    confidence = 100,
-                    confirmation = tachiyomi.domain.tracker.model.LocalTrackedWorkSourceConfirmation.USER_CONFIRMED,
-                    createdAt = progressAt,
-                    updatedAt = progressAt,
-                ),
-            )
             newWork
         }
         val update = tachiyomi.domain.tracker.model.MappedLocalTrackedProgress(
@@ -431,18 +398,54 @@ class RecordLocalTrackedChapterProgress(
             chapterNumber = targetChapter.chapterNumber.takeIf { targetChapter.isRecognizedNumber },
             progressAt = progressAt,
         )
+        // Keep the shared work's aggregate at the greatest progress observed across sources even
+        // when this source has fewer chapters. The source-specific row and read flags still use
+        // the concrete target chapter (for example, 110) while the aggregate can remain 126.
+        val aggregateUpdate = update.copy(
+            chapterNumber = listOfNotNull(originChapterNumber, update.chapterNumber).maxOrNull(),
+        )
         val existingTargetProgress = localTrackerRepository.getSourceProgress(
             workId = targetWork.id,
             source = targetSource,
             url = targetUrl,
         )
-        val decision = LocalTrackedProgressInheritancePolicy.decide(
-            enabled = true,
-            confirmedGroupMember = true,
-            optedOut = targetSourceRow?.inheritanceOptedOut ?: false,
-            target = targetWork,
-            update = update,
-        )
+        val sharesOriginWork = originWork?.id == targetWork.id
+        val decision = if (sharesOriginWork) {
+            // The aggregate already represents all linked sources. Do not reject a shorter
+            // target's source row merely because its last available chapter is below the aggregate.
+            tachiyomi.domain.tracker.model.LocalTrackedProgressInheritanceDecision.ALREADY_RECORDED
+        } else {
+            LocalTrackedProgressInheritancePolicy.decide(
+                enabled = true,
+                confirmedGroupMember = true,
+                optedOut = targetSourceRow?.inheritanceOptedOut ?: false,
+                target = targetWork,
+                update = aggregateUpdate,
+            )
+        }
+        if (decision != tachiyomi.domain.tracker.model.LocalTrackedProgressInheritanceDecision.ALREADY_RECORDED &&
+            decision != tachiyomi.domain.tracker.model.LocalTrackedProgressInheritanceDecision.APPLY
+        ) {
+            return
+        }
+        if (existingTargetWork == null) {
+            localTrackerRepository.upsertWork(targetWork)
+        }
+        if (targetSourceRow == null) {
+            // Attach a confirmed version only after its chapter mapping and progress decision pass.
+            localTrackerRepository.upsertSource(
+                tachiyomi.domain.tracker.model.LocalTrackedWorkSource(
+                    workId = targetWork.id,
+                    source = targetSource,
+                    url = targetUrl,
+                    title = targetManga.title,
+                    confidence = 100,
+                    confirmation = tachiyomi.domain.tracker.model.LocalTrackedWorkSourceConfirmation.USER_CONFIRMED,
+                    createdAt = progressAt,
+                    updatedAt = progressAt,
+                ),
+            )
+        }
         if (decision == tachiyomi.domain.tracker.model.LocalTrackedProgressInheritanceDecision.ALREADY_RECORDED) {
             // The work-level chapter may already match while this source's row is stale. Keep
             // the aggregate conflict decision, but advance the source-specific row independently.
@@ -450,7 +453,7 @@ class RecordLocalTrackedChapterProgress(
             if (status != targetWork.status || targetWork.startDate == null ||
                 (status != LocalTrackedWorkStatus.COMPLETED && targetWork.finishDate != null)
             ) {
-                localTrackerRepository.upsertWork(
+                localTrackerRepository.upsertInheritedWork(
                     targetWork.copy(
                         status = status,
                         startDate = targetWork.startDate ?: progressAt,
@@ -475,11 +478,15 @@ class RecordLocalTrackedChapterProgress(
                     ),
                 )
             }
+            markChaptersReadThrough(
+                manga = targetManga,
+                chapterUrl = targetChapter.url,
+                chapterNumber = targetChapter.chapterNumber.takeIf { targetChapter.isRecognizedNumber },
+            )
             return
         }
-        if (decision != tachiyomi.domain.tracker.model.LocalTrackedProgressInheritanceDecision.APPLY) return
-        val updatedWork = LocalTrackedProgressInheritancePolicy.apply(targetWork, update) ?: return
-        localTrackerRepository.upsertWork(updatedWork)
+        val updatedWork = LocalTrackedProgressInheritancePolicy.apply(targetWork, aggregateUpdate) ?: return
+        localTrackerRepository.upsertInheritedWork(updatedWork)
         localTrackerRepository.recordSourceProgress(
             LocalTrackedWorkSourceProgress(
                 workId = targetWork.id,
@@ -493,6 +500,11 @@ class RecordLocalTrackedChapterProgress(
                 inheritedFromUrl = origin.url,
                 updatedAt = progressAt,
             ),
+        )
+        markChaptersReadThrough(
+            manga = targetManga,
+            chapterUrl = targetChapter.url,
+            chapterNumber = targetChapter.chapterNumber.takeIf { targetChapter.isRecognizedNumber },
         )
     }
 

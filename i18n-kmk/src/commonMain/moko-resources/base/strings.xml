@@ -280,6 +280,7 @@
     <string name="taste_recommendations_tab">For You</string>
     <string name="taste_recommendations_empty">Rate some manga to get personalized recommendations</string>
     <string name="taste_settings_title">Recommendation Settings</string>
+    <string name="rec_settings_summary">Choose how recommendations use your library, preferences, and sources.</string>
     <string name="taste_settings_tag_prefs">Tag Preferences</string>
     <string name="taste_settings_tag_prefs_empty">No tag preferences set</string>
     <string name="taste_settings_add_tag">Add tag</string>
@@ -345,6 +346,7 @@
          not enough, see the v0.8.13 relevance gate). -->
     <string name="rec_source_status_explain_filtered">The search found manga, but every result was excluded -- either already in your library/rated/marked not-interested, blocked by a tag you\'ve blocked, or it didn\'t share any tag you\'ve rated positively (a source you like alone isn\'t enough to show a manga).</string>
     <string name="rec_source_status_explain_error">This source ran into an error during the last For You refresh. Try refreshing again, or check Source Evaluation for a more detailed error if it keeps happening.</string>
+    <string name="rec_browse_restrictions_unavailable">For You restrictions could not be applied. Go back and open this source again.</string>
     <string name="rec_source_status_explain_disabled">This source is turned off in For You sources, so it wasn\'t searched.</string>
     <string name="rec_source_status_explain_not_searched_limit">For You searches only a bounded number of sources per refresh to stay fast. This source wasn\'t reached this time -- it may be searched on a future refresh.</string>
     <string name="rec_source_status_explain_duplicate_hidden">This source found manga, but every result was already showing from another source for the same title, so it was hidden here to avoid duplicates.</string>
@@ -1112,6 +1114,7 @@
     <!-- KMK v0.7.46: typed OCR error messages, replacing raw exception text -->
     <!-- KMK --> <string name="ocr_error_storage">OCR failed — could not read or write local storage.</string>
     <!-- KMK --> <string name="ocr_error_image_decode">OCR failed — could not read this page image.</string>
+    <!-- KMK --> <string name="ocr_error_resource_limit">OCR skipped this page because it exceeds the resource limit.</string>
     <!-- KMK --> <string name="ocr_error_no_downloaded_pages">No downloaded pages were found to index.</string>
     <!-- KMK --> <string name="ocr_error_cancelled">OCR was cancelled.</string>
     <!-- KMK --> <string name="ocr_error_file_access">OCR failed — the app could not access this file.</string>
@@ -1134,6 +1137,7 @@
     <!-- KMK --> <string name="rec_error_file_access">Could not access this file</string>
     <!-- KMK v0.8.10-fix2 --> <string name="rec_error_extension_incompatible">Extension incompatible or missing dependency</string>
     <!-- KMK --> <string name="rec_error_internal">This source could not load recommendations. Try again or open the source directly.</string>
+    <!-- KMK --> <string name="reader_page_load_error">Reader content could not be loaded. Please try again.</string>
     <!-- KMK --> <string name="rec_error_rate_limited">This source is rate-limiting requests. Try again in a moment.</string>
     <!-- KMK --> <string name="rec_error_authentication">This source requires sign-in or access was denied.</string>
     <!-- KMK --> <string name="rec_error_server">This source's server reported an error. Try again in a moment.</string>
@@ -1259,6 +1263,16 @@
     <!-- KMK --> <string name="link_group_management_error">Could not load linked manga versions.</string>
     <!-- KMK --> <string name="link_group_management_delete_group">Remove entire link group</string>
     <!-- KMK --> <string name="link_group_management_remove_link">Remove</string>
+    <!-- KMK --> <string name="link_group_management_create_group">Create group</string>
+    <!-- KMK --> <string name="link_group_management_add_to_group">Add title</string>
+    <!-- KMK --> <string name="link_group_management_merge_groups">Merge into group</string>
+    <!-- KMK --> <string name="link_group_management_move_member">Move</string>
+    <!-- KMK --> <string name="link_group_management_ungroup">Ungroup all</string>
+    <!-- KMK --> <string name="link_group_management_ungroup_confirm">Remove every title from this group?</string>
+    <!-- KMK --> <string name="link_group_management_undo">Undo</string>
+    <!-- KMK --> <string name="link_group_management_done">Done</string>
+    <!-- KMK --> <string name="link_group_management_cancel">Cancel</string>
+    <!-- KMK --> <string name="link_group_management_operation_failed">The change could not be saved.</string>
 
     <!-- KMK v0.7.31: C1 — rec-quality error category badge -->
     <!-- KMK --> <string name="source_evaluation_rec_error_kind">Error kind: %1$s</string>
@@ -1655,6 +1669,8 @@
     <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_off">Off (normal For You)</string>
     <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_top_picks">Show prepared Top Picks</string>
     <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_top_picks_partial_failure">Show Top Picks with two unavailable sources</string>
+    <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_installed_corpus">Use installed fixture recommendation corpus</string>
+    <!-- Komikku FC --> <string name="for_you_debug_fixture_mode_installed_corpus_slow_source">Use corpus with one slow, cancellable source</string>
 
     <!-- KMK v0.8.20-fix1: explicit confirmation before a reader-schedule window is removed. -->
     <!-- KMK --> <string name="reading_schedule_delete_window_title">Remove this time window?</string>
@@ -1764,6 +1780,9 @@
     <string name="local_tracking_reconcile">Reconcile with external trackers</string>
     <string name="local_tracking_other_versions">Track other versions</string>
     <string name="local_tracking_share_progress_with_version">Keep reading progress in sync</string>
+    <string name="track_registration_in_progress">Adding…</string>
+    <string name="tracking_added_sync_failed">Tracking was added, but a follow-up sync failed. Check its status before adding it again.</string>
+    <string name="tracking_remote_added_local_save_failed">The tracker accepted this title, but Komikku could not save the link locally. Check the tracker before trying again.</string>
     <string name="local_tracking_reconcile_title">Reconcile tracking data</string>
     <string name="local_tracking_reconcile_notice">Review each tracker before importing locally or exporting remotely. No title match writes data automatically.</string>
     <string name="local_tracking_no_metadata">No supported metadata available</string>

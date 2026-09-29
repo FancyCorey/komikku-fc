@@ -1047,7 +1047,33 @@ class ReaderViewModel @JvmOverloads constructor(
     suspend fun init(mangaId: Long, initialChapterId: Long /* SY --> */, page: Int?/* SY <-- */): Result<Boolean> {
         if (!needsInit()) return Result.success(true)
         val requestedChapterId = chapterId.takeUnless { it == -1L } ?: initialChapterId
-        return when (val replacement = replaceReaderRoute(mangaId, requestedChapterId, page)) {
+        val restoredPage = chapterPageIndex.takeIf { chapterId >= 0 }
+        return when (val replacement = replaceReaderRoute(mangaId, requestedChapterId, page, restoredPage)) {
+            is ReaderRouteReplacementResult.Applied -> {
+                restoreAlternateSourceReaderSession()
+                Result.success(true)
+            }
+            is ReaderRouteReplacementResult.Failed -> {
+                if (replacement.cause is ReaderMangaUnavailableException) {
+                    Result.success(false)
+                } else {
+                    Result.failure(replacement.cause)
+                }
+            }
+            ReaderRouteReplacementResult.Stale,
+            ReaderRouteReplacementResult.Closed,
+            ReaderRouteReplacementResult.GenerationExhausted,
+            -> Result.success(false)
+        }
+    }
+
+    /** Replaces the active route when Android delivers a new reader intent to this activity. */
+    suspend fun openFromIntent(
+        mangaId: Long,
+        chapterId: Long,
+        page: Int?,
+    ): Result<Boolean> {
+        return when (val replacement = replaceReaderRoute(mangaId, chapterId, page)) {
             is ReaderRouteReplacementResult.Applied -> {
                 restoreAlternateSourceReaderSession()
                 Result.success(true)
@@ -1070,8 +1096,9 @@ class ReaderViewModel @JvmOverloads constructor(
         mangaId: Long,
         requestedChapterId: Long,
         page: Int?,
+        restoredPage: Int? = null,
     ): ReaderRouteReplacementResult = routeOwner.replace(
-        build = { generation -> buildReaderRoute(mangaId, requestedChapterId, page, generation) },
+        build = { generation -> buildReaderRoute(mangaId, requestedChapterId, page, generation, restoredPage) },
         commit = ::commitReaderRoute,
     )
 
@@ -1090,6 +1117,7 @@ class ReaderViewModel @JvmOverloads constructor(
         requestedChapterId: Long,
         page: Int?,
         generation: Long,
+        restoredPage: Int? = null,
     ): ReaderRouteState {
         val manga = getManga.await(mangaId) ?: throw ReaderMangaUnavailableException()
         sourceManager.isInitialized.first { it }
@@ -1210,7 +1238,13 @@ class ReaderViewModel @JvmOverloads constructor(
         )
         try {
             if (!isChapterNavigationBlockedBySchedule()) {
-                route.viewerChapters = prepareViewerChapters(route, selectedReaderChapter, page)
+                val initialPage = ReaderInitialChapterPolicy.resolvePage(
+                    requestedChapterId,
+                    selectedChapter.id,
+                    page,
+                    restoredPage,
+                )
+                route.viewerChapters = prepareViewerChapters(route, selectedReaderChapter, initialPage)
             }
             return route
         } catch (e: Throwable) {

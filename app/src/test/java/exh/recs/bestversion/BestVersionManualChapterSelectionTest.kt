@@ -26,8 +26,11 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.domain.taste.interactor.GetCrossSourceGroupPrimary
 import tachiyomi.domain.taste.interactor.GetCrossSourceIdentityDecisions
+import tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks
 import tachiyomi.domain.taste.interactor.ReplaceCrossSourceIdentityDecisions
+import tachiyomi.domain.taste.interactor.RestoreCrossSourceGroupState
 
 // KMK R2-AUG-05-ACTUAL-BEST-VERSION-FAILURE-PATH -->
 /**
@@ -90,6 +93,9 @@ class BestVersionManualChapterSelectionTest {
             isLowRamDevice = false,
             dispatcherHandle = DispatcherHandle(StandardTestDispatcher()),
             candidateSearchGateway = mockk(relaxed = true),
+            getCrossSourceMangaLinks = mockk(relaxed = true),
+            getCrossSourceGroupPrimary = mockk(relaxed = true),
+            restoreCrossSourceGroupState = mockk(relaxed = true),
             identityController = identityController(),
         )
     }

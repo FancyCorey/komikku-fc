@@ -471,7 +471,7 @@ open class RecommendsScreenModel(
 
                         // KMK v0.8.6: populate the GROUP_PREVIEW cache with the final, normalized,
                         // already-budgeted result. Never touched for single-manga/merged rows.
-                        if (cacheKey != null) {
+                        if (cacheKey != null && isActive && generationGuard.isCurrent(myGeneration)) {
                             GroupPreviewCache.put(cacheKey, budgeted)
                         }
 

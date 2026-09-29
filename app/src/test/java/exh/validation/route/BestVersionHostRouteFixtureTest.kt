@@ -17,6 +17,8 @@ import exh.recs.matching.CrossSourceIdentityDecisionController
 import exh.recs.matching.MangaIdentityKey
 import exh.recs.matching.SameMangaCandidateResult
 import exh.recs.matching.SameMangaMatchSettings
+import exh.recs.matching.SameMangaPreselectionMode
+import exh.recs.matching.SameMangaSearchScope
 import exh.recs.matching.SameMangaSourceResult
 import exh.util.CrossSourceIdentityUndoJournal
 import exh.util.DispatcherHandle
@@ -31,6 +33,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonObject
 import mihon.domain.migration.models.MigrationFlag
 import mihon.domain.migration.usecases.MigrateMangaUseCase
@@ -45,11 +48,66 @@ import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.service.SourceManager
+import tachiyomi.domain.taste.interactor.GetCrossSourceGroupPrimary
 import tachiyomi.domain.taste.interactor.GetCrossSourceIdentityDecisions
+import tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks
 import tachiyomi.domain.taste.interactor.ReplaceCrossSourceIdentityDecisions
+import tachiyomi.domain.taste.interactor.RestoreCrossSourceGroupState
 import tachiyomi.domain.taste.interactor.UpsertMangaSourceQualitySignal
 
 class BestVersionHostRouteFixtureTest {
+    @Test
+    fun `exact-title preselection leaves capped global candidates visible and respects manual overrides`() {
+        HostRouteTestEnvironment().use { environment ->
+            val candidateSource = source(9011L, "Other source")
+            val candidate = manga(candidateSource.id, "/confirmed", 9_011L).copy(ogTitle = "A different title")
+            val key = MangaIdentityKey(candidate.source, candidate.url)
+            val titleMatch = manga(candidateSource.id, "/title-match", 9_012L).copy(ogTitle = origin().ogTitle)
+            val nonExact = manga(candidateSource.id, "/non-exact", 9_013L).copy(ogTitle = "A separate title")
+            val preferences = SourcePreferences(FakePreferenceStore()).apply {
+                sameMangaMatchPreselectionMode().set("exact_name")
+                sameMangaMatchResultsPerSource().set(3)
+                bestVersionPreviewSampleSize().set(2)
+                bestVersionAvoidFirstPages().set(false)
+            }
+            val gateway = ScriptedBestVersionSearchGateway(
+                sources = listOf(candidateSource),
+                results = mapOf(
+                    candidateSource to SameMangaCandidateResult.Success(
+                        results = listOf(candidate, titleMatch, nonExact),
+                        confirmedKeys = setOf(key),
+                    ),
+                ),
+            )
+            BestVersionHostRouteFixture(
+                environment = environment,
+                origin = origin(),
+                gateway = gateway,
+                sourcePreferences = preferences,
+            ).use { route ->
+                route.advanceUntilIdle()
+
+                assertEquals(SameMangaSearchScope.GLOBAL_BOUNDED, gateway.lastScope)
+                assertEquals(3, gateway.lastSettings?.resultsPerSource)
+                assertEquals(true, gateway.lastSettings?.preselectResults)
+                assertEquals(SameMangaPreselectionMode.EXACT_NAME, gateway.lastSettings?.preselectionMode)
+                assertEquals(2, gateway.lastSettings?.previewSampleSize)
+                assertEquals(false, gateway.lastSettings?.avoidFirstPages)
+                val visibleResults = (route.state.candidates.getValue(candidateSource) as SameMangaCandidateResult.Success).results
+                assertEquals(listOf(candidate, titleMatch, nonExact), visibleResults)
+                assertTrue(key in route.state.selectedKeys)
+                assertTrue(MangaIdentityKey(titleMatch.source, titleMatch.url) in route.state.selectedKeys)
+                val nonExactKey = MangaIdentityKey(nonExact.source, nonExact.url)
+                assertFalse(nonExactKey in route.state.selectedKeys)
+
+                route.model.toggleSelection(key)
+                assertFalse(key in route.state.selectedKeys)
+                route.model.toggleSelection(nonExactKey)
+                assertTrue(nonExactKey in route.state.selectedKeys)
+            }
+        }
+    }
+
     @Test
     fun `missing origin reaches the typed terminal error without searching`() {
         HostRouteTestEnvironment().use { environment ->
@@ -112,6 +170,141 @@ class BestVersionHostRouteFixtureTest {
     }
 
     @Test
+    fun `candidate results become visible before all sources finish`() {
+        HostRouteTestEnvironment().use { environment ->
+            val fastSource = source(9041L, "Fast")
+            val slowSource = source(9042L, "Slow")
+            val releaseSlowSource = CompletableDeferred<Unit>()
+            val fast = manga(9041L, "/fast", 9041L)
+            val slow = manga(9042L, "/slow", 9042L)
+            val gateway = object : BestVersionCandidateSearchGateway {
+                override fun getGlobalSearchSources(): List<Source> = listOf(fastSource, slowSource)
+
+                override suspend fun search(
+                    queries: List<String>,
+                    settings: SameMangaMatchSettings,
+                    originManga: Manga,
+                    sources: List<Source>,
+                    scope: SameMangaSearchScope,
+                    onResult: suspend (SameMangaSourceResult) -> Unit,
+                ) {
+                    assertEquals(SameMangaSearchScope.GLOBAL_BOUNDED, scope)
+                    onResult(SameMangaSourceResult(fastSource, SameMangaCandidateResult.Success(listOf(fast))))
+                    releaseSlowSource.await()
+                    onResult(SameMangaSourceResult(slowSource, SameMangaCandidateResult.Success(listOf(slow))))
+                }
+            }
+
+            BestVersionHostRouteFixture(environment, origin(), gateway).use { route ->
+                route.runCurrent()
+
+                assertEquals(BestVersionStep.ConfirmCandidates, route.state.step)
+                assertEquals(1, route.state.searchProgress)
+                assertEquals(2, route.state.searchTotal)
+                assertTrue(route.state.candidates.getValue(fastSource) is SameMangaCandidateResult.Success)
+            }
+        }
+    }
+
+    @Test
+    fun `confirmation waits when pending sources have not returned a match`() {
+        HostRouteTestEnvironment().use { environment ->
+            val fastSource = source(9043L, "Fast")
+            val slowSource = source(9044L, "Slow")
+            val fast = manga(9043L, "/fast", 9043L)
+            val releaseSlowSource = CompletableDeferred<Unit>()
+            val gateway = object : BestVersionCandidateSearchGateway {
+                override fun getGlobalSearchSources(): List<Source> = listOf(fastSource, slowSource)
+
+                override suspend fun search(
+                    queries: List<String>,
+                    settings: SameMangaMatchSettings,
+                    originManga: Manga,
+                    sources: List<Source>,
+                    scope: SameMangaSearchScope,
+                    onResult: suspend (SameMangaSourceResult) -> Unit,
+                ) {
+                    assertEquals(SameMangaSearchScope.GLOBAL_BOUNDED, scope)
+                    onResult(SameMangaSourceResult(fastSource, SameMangaCandidateResult.Success(emptyList())))
+                    releaseSlowSource.await()
+                    onResult(SameMangaSourceResult(slowSource, SameMangaCandidateResult.Error(IllegalStateException("slow"))))
+                }
+            }
+
+            BestVersionHostRouteFixture(environment, origin(), gateway).use { route ->
+                route.runCurrent()
+                route.model.confirmCandidates()
+
+                assertEquals(BestVersionStep.ConfirmCandidates, route.state.step)
+                assertEquals(1, route.state.searchProgress)
+                assertEquals(2, route.state.searchTotal)
+            }
+        }
+    }
+
+    @Test
+    fun `confirmation uses current matches and cancels slower search`() {
+        HostRouteTestEnvironment().use { environment ->
+            val fastSource = source(9045L, "Fast")
+            val slowSource = source(9046L, "Slow")
+            val fast = manga(9045L, "/fast", 9045L)
+            val releaseSlowSource = CompletableDeferred<Unit>()
+            coEvery { fastSource.getMangaUpdate(any(), any(), false, true) } answers {
+                SMangaUpdate(firstArg(), listOf(sourceChapter(5f)))
+            }
+            val sourceManager = mockk<SourceManager>(relaxed = true).also { manager ->
+                every { manager.get(900L) } returns httpSource(900L, "Origin")
+                every { manager.get(9045L) } returns fastSource
+            }
+            val chapters = mockk<GetChaptersByMangaId>().also { interactor ->
+                coEvery { interactor.await(9_000L) } returns listOf(domainChapter(5.0, 9_000L))
+            }
+            val gateway = object : BestVersionCandidateSearchGateway {
+                override fun getGlobalSearchSources(): List<Source> = listOf(fastSource, slowSource)
+
+                override suspend fun search(
+                    queries: List<String>,
+                    settings: SameMangaMatchSettings,
+                    originManga: Manga,
+                    sources: List<Source>,
+                    scope: SameMangaSearchScope,
+                    onResult: suspend (SameMangaSourceResult) -> Unit,
+                ) {
+                    assertEquals(SameMangaSearchScope.GLOBAL_BOUNDED, scope)
+                    onResult(SameMangaSourceResult(fastSource, SameMangaCandidateResult.Success(listOf(fast))))
+                    releaseSlowSource.await()
+                    onResult(SameMangaSourceResult(slowSource, SameMangaCandidateResult.Success(emptyList())))
+                }
+            }
+
+            BestVersionHostRouteFixture(
+                environment = environment,
+                origin = origin(),
+                gateway = gateway,
+                sourceManager = sourceManager,
+                getChapters = chapters,
+            ).use { route ->
+                route.runCurrent()
+                assertEquals(1, route.state.searchProgress)
+                assertEquals(2, route.state.searchTotal)
+
+                route.model.confirmCandidates()
+                route.runCurrent()
+
+                assertEquals(BestVersionStep.SelectChapter, route.state.step)
+                assertTrue(route.state.candidateChapters[MangaIdentityKey(fast.source, fast.url)] is CandidateChapterState.Available)
+                assertTrue(route.state.searchProgress < route.state.searchTotal)
+
+                releaseSlowSource.complete(Unit)
+                route.runCurrent()
+
+                assertTrue(route.state.searchProgress < route.state.searchTotal)
+                assertTrue(route.state.candidates.getValue(slowSource) is SameMangaCandidateResult.Loading)
+            }
+        }
+    }
+
+    @Test
     fun `chapter route distinguishes available unavailable and source error`() {
         HostRouteTestEnvironment().use { environment ->
             val availableSource = source(904L, "Available")
@@ -153,13 +346,59 @@ class BestVersionHostRouteFixtureTest {
             ).use { route ->
                 route.advanceUntilIdle()
                 route.model.confirmCandidates()
-                route.advanceUntilIdle()
+                route.runCurrent()
 
                 assertEquals(BestVersionStep.SelectChapter, route.state.step)
                 assertTrue(route.state.candidateChapters.getValue(MangaIdentityKey(900L, "/origin")) is CandidateChapterState.Available)
                 assertTrue(route.state.candidateChapters.getValue(MangaIdentityKey(904L, "/available")) is CandidateChapterState.Available)
                 assertEquals(CandidateChapterState.Unavailable, route.state.candidateChapters.getValue(MangaIdentityKey(905L, "/unavailable")))
                 assertTrue(route.state.candidateChapters.getValue(MangaIdentityKey(906L, "/error")) is CandidateChapterState.ChapterError)
+            }
+        }
+    }
+
+    @Test
+    fun `chapter route publishes ready candidates before a slow candidate finishes`() {
+        HostRouteTestEnvironment().use { environment ->
+            val fastSource = source(907L, "Fast")
+            val slowSource = source(908L, "Slow")
+            val fast = manga(907L, "/fast", 47L)
+            val slow = manga(908L, "/slow", 48L)
+            coEvery { fastSource.getMangaUpdate(any(), any(), false, true) } answers {
+                SMangaUpdate(firstArg(), listOf(sourceChapter(5f)))
+            }
+            coEvery { slowSource.getMangaUpdate(any(), any(), false, true) } coAnswers {
+                awaitCancellation()
+            }
+            val sourceManager = mockk<SourceManager>(relaxed = true).also { manager ->
+                every { manager.get(900L) } returns httpSource(900L, "Origin")
+                every { manager.get(907L) } returns fastSource
+                every { manager.get(908L) } returns slowSource
+            }
+            val chapters = mockk<GetChaptersByMangaId>().also { interactor ->
+                coEvery { interactor.await(9_000L) } returns listOf(domainChapter(5.0, 9_000L))
+            }
+            val gateway = ScriptedBestVersionSearchGateway(
+                sources = listOf(fastSource, slowSource),
+                results = mapOf(
+                    fastSource to SameMangaCandidateResult.Success(listOf(fast)),
+                    slowSource to SameMangaCandidateResult.Success(listOf(slow)),
+                ),
+            )
+            BestVersionHostRouteFixture(
+                environment = environment,
+                origin = origin(),
+                gateway = gateway,
+                sourceManager = sourceManager,
+                getChapters = chapters,
+            ).use { route ->
+                route.advanceUntilIdle()
+                route.model.confirmCandidates()
+                route.advanceUntilIdle()
+
+                assertEquals(BestVersionStep.SelectChapter, route.state.step)
+                assertTrue(route.state.candidateChapters[MangaIdentityKey(907L, "/fast")] is CandidateChapterState.Available)
+                assertTrue(route.state.candidateChapters[MangaIdentityKey(908L, "/slow")] is CandidateChapterState.ChapterError)
             }
         }
     }
@@ -281,6 +520,64 @@ class BestVersionHostRouteFixtureTest {
     }
 
     @Test
+    fun `a newer chapter load cancels an in-flight retry instead of leaving it as a stale writer`() {
+        HostRouteTestEnvironment().use { environment ->
+            val originSource = httpSource(900L, "Origin")
+            val retrySource = httpSource(9913L, "Retry")
+            val retryCandidate = manga(9913L, "/retry", 49L)
+            var chapterFetches = 0
+            coEvery { retrySource.getMangaUpdate(any(), any(), false, true) } coAnswers {
+                chapterFetches++
+                when (chapterFetches) {
+                    1 -> throw RuntimeException("offline")
+                    2 -> {
+                        delay(100)
+                        SMangaUpdate(firstArg(), listOf(sourceChapter(99f)))
+                    }
+                    else -> SMangaUpdate(firstArg(), listOf(sourceChapter(7f)))
+                }
+            }
+            val sourceManager = mockk<SourceManager>(relaxed = true).also { manager ->
+                every { manager.get(900L) } returns originSource
+                every { manager.get(9913L) } returns retrySource
+            }
+            val chapters = mockk<GetChaptersByMangaId>().also { interactor ->
+                coEvery { interactor.await(9_000L) } returns listOf(domainChapter(5.0, 9_000L))
+            }
+            val gateway = ScriptedBestVersionSearchGateway(
+                sources = listOf(retrySource),
+                results = mapOf(
+                    retrySource to SameMangaCandidateResult.Success(listOf(retryCandidate)),
+                ),
+            )
+            BestVersionHostRouteFixture(
+                environment = environment,
+                origin = origin(),
+                gateway = gateway,
+                sourceManager = sourceManager,
+                getChapters = chapters,
+            ).use { route ->
+                route.advanceUntilIdle()
+                route.model.confirmCandidates()
+                route.advanceUntilIdle()
+
+                val retryKey = MangaIdentityKey(9913L, "/retry")
+                assertTrue(route.state.candidateChapters.getValue(retryKey) is CandidateChapterState.ChapterError)
+
+                route.model.retryFailedChapterLoads()
+                route.runCurrent()
+                route.runCurrent()
+                assertEquals(2, chapterFetches)
+                route.model.confirmCandidates()
+                route.runCurrent()
+
+                val chapterState = route.state.candidateChapters.getValue(retryKey)
+                assertFalse(chapterState is CandidateChapterState.Available && chapterState.chapter.chapter_number == 99f)
+            }
+        }
+    }
+
+    @Test
     fun `preview route retries every failed candidate and excludes loaded and skipped`() {
         HostRouteTestEnvironment().use { environment ->
             val originSource = httpSource(900L, "Origin")
@@ -377,15 +674,17 @@ class BestVersionHostRouteFixtureTest {
             val started = CompletableDeferred<Unit>()
             val lateCallback = CompletableDeferred<Unit>()
             val gateway = object : BestVersionCandidateSearchGateway {
-                override fun getMatchingSources() = listOf(source)
+                override fun getGlobalSearchSources() = listOf(source)
 
                 override suspend fun search(
                     queries: List<String>,
                     settings: SameMangaMatchSettings,
                     originManga: Manga,
                     sources: List<Source>,
+                    scope: SameMangaSearchScope,
                     onResult: suspend (SameMangaSourceResult) -> Unit,
                 ) {
+                    assertEquals(SameMangaSearchScope.GLOBAL_BOUNDED, scope)
                     started.complete(Unit)
                     try {
                         awaitCancellation()
@@ -404,7 +703,10 @@ class BestVersionHostRouteFixtureTest {
             environment.advanceUntilIdle()
 
             assertTrue(lateCallback.isCompleted)
-            assertEquals(stateAtLeave, route.state)
+            assertEquals(
+                stateAtLeave.copy(previewRunGeneration = stateAtLeave.previewRunGeneration + 1),
+                route.state,
+            )
             assertTrue(route.state.candidates.getValue(source) is SameMangaCandidateResult.Loading)
         }
     }
@@ -878,6 +1180,9 @@ private class BestVersionHostRouteFixture(
                 fixtureOperationId = fixtureOperationId,
                 fixtureRouteResolver = fixtureRouteResolver,
                 identityController = identityController,
+                getCrossSourceMangaLinks = GetCrossSourceMangaLinks(identityRepository),
+                getCrossSourceGroupPrimary = GetCrossSourceGroupPrimary(identityRepository),
+                restoreCrossSourceGroupState = RestoreCrossSourceGroupState(identityRepository),
             )
         }
     }
@@ -900,6 +1205,10 @@ private class BestVersionHostRouteFixture(
         environment.advanceUntilIdle()
     }
 
+    fun runCurrent() {
+        environment.runCurrent()
+    }
+
     override fun close() {
         if (closed) return
         closed = true
@@ -914,20 +1223,29 @@ private class ScriptedBestVersionSearchGateway(
     var searchCount = 0
         private set
 
-    override fun getMatchingSources(): List<Source> = sources
+    var lastSettings: SameMangaMatchSettings? = null
+        private set
+
+    override fun getGlobalSearchSources(): List<Source> = sources
 
     override suspend fun search(
         queries: List<String>,
         settings: SameMangaMatchSettings,
         originManga: Manga,
         sources: List<Source>,
+        scope: SameMangaSearchScope,
         onResult: suspend (SameMangaSourceResult) -> Unit,
     ) {
+        lastScope = scope
+        lastSettings = settings
         searchCount++
         sources.forEach { source ->
             onResult(SameMangaSourceResult(source, results.getValue(source)))
         }
     }
+
+    var lastScope: SameMangaSearchScope? = null
+        private set
 }
 
 private fun source(id: Long, name: String): Source = mockk<Source>().also { source ->

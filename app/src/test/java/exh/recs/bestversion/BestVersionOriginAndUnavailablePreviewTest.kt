@@ -1,8 +1,11 @@
 package exh.recs.bestversion
 
 // KMK v0.8.18 -->
+import eu.kanade.tachiyomi.source.Source
 import exh.recs.RecommendationErrorKind
 import exh.recs.matching.MangaIdentityKey
+import exh.recs.matching.SameMangaCandidateResult
+import io.mockk.mockk
 import kotlinx.collections.immutable.persistentMapOf
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -53,6 +56,56 @@ class BestVersionOriginAndUnavailablePreviewTest {
     fun `originKey is null before origin loads`() {
         val state = baseState(origin = null)
         assertNull(state.originKey)
+    }
+
+    @Test
+    fun `a non-empty partial result can be confirmed while other sources load`() {
+        val origin = manga(1L, "/origin")
+        val target = manga(2L, "/target")
+        val state = baseState(origin).copy(
+            candidates = persistentMapOf(
+                mockk<Source>(relaxed = true) to SameMangaCandidateResult.Success(listOf(target)),
+                mockk<Source>(relaxed = true) to SameMangaCandidateResult.Loading,
+            ),
+        )
+
+        assertTrue(state.searchProgress < state.searchTotal)
+        assertTrue(state.canConfirmCandidates)
+    }
+
+    @Test
+    fun `partial results without a match cannot be confirmed`() {
+        val state = baseState(manga(1L, "/origin")).copy(
+            candidates = persistentMapOf(
+                mockk<Source>(relaxed = true) to SameMangaCandidateResult.Success(emptyList()),
+                mockk<Source>(relaxed = true) to SameMangaCandidateResult.Loading,
+            ),
+        )
+
+        assertTrue(!state.canConfirmCandidates)
+    }
+
+    @Test
+    fun `completed empty search can keep the origin`() {
+        val state = baseState(manga(1L, "/origin")).copy(
+            candidates = persistentMapOf(
+                mockk<Source>(relaxed = true) to SameMangaCandidateResult.Success(emptyList()),
+            ),
+        )
+
+        assertTrue(state.canConfirmCandidates)
+    }
+
+    @Test
+    fun `partial match cannot be confirmed before origin loads`() {
+        val state = baseState(origin = null).copy(
+            candidates = persistentMapOf(
+                mockk<Source>(relaxed = true) to SameMangaCandidateResult.Success(listOf(manga(2L, "/target"))),
+                mockk<Source>(relaxed = true) to SameMangaCandidateResult.Loading,
+            ),
+        )
+
+        assertTrue(!state.canConfirmCandidates)
     }
 
     // --- keep-current behavior ---

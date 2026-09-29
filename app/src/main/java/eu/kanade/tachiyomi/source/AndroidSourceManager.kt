@@ -16,6 +16,7 @@ import eu.kanade.tachiyomi.source.online.all.NHentai
 import eu.kanade.tachiyomi.source.online.all.Pururin
 import eu.kanade.tachiyomi.source.online.english.EightMuses
 import exh.log.xLogD
+import exh.recs.ForYouDebugFixture
 import exh.source.BlacklistedSources
 import exh.source.DelegatedHttpSource
 import exh.source.EHENTAI_EXT_SOURCES
@@ -214,6 +215,11 @@ class AndroidSourceManager(
                 sourceKey = sourceKey,
                 isDebugBuild = BuildConfig.DEBUG,
                 mode = sourcePreferences.browseFixtureFailureMode().get(),
+            )
+            ?: ForYouDebugFixture.browseSource(
+                sourceKey = sourceKey,
+                fixtureBuildEnabled = BuildConfig.DEBUG || BuildConfig.KMK_BENCHMARK_FIXTURE,
+                preferenceValue = sourcePreferences.forYouFixtureMode().get(),
             )
             ?: stubSourcesMap.getOrPut(sourceKey) {
                 runBlocking { createStubSource(sourceKey) }

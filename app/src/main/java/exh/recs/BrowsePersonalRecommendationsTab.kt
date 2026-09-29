@@ -772,6 +772,9 @@ fun Screen.personalRecommendationsTab(): TabContent {
             // screen-owned Scaffold), so the overlay is layered here around just this tab's content.
             Box(modifier = Modifier.fillMaxSize()) {
                 PersonalRecommendationsContent(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(end = exh.recs.settings.EdgeQuickAccessPanelLayoutPolicy.MIN_TOUCH_TARGET_DP.dp),
                     state = state,
                     focusCriteria = focusCriteria,
                     showBroaderResults = showBroaderResults,
@@ -782,7 +785,14 @@ fun Screen.personalRecommendationsTab(): TabContent {
                     onClickItem = { manga -> navigator.push(MangaScreen(manga.id, true)) },
                     onClickSource = { source ->
                         val ctx = state.searchContexts[source.id]
-                        navigator.push(BrowseSourceScreen(source.id, ctx?.textQuery))
+                        navigator.push(
+                            BrowseSourceScreen(
+                                sourceId = source.id,
+                                listingQuery = ctx?.textQuery,
+                                filtersJson = ctx?.filtersJson,
+                                forYouRestrictionsJson = ctx?.restrictionsJson,
+                            ),
+                        )
                     },
                     onClickTopPicks = {
                         val presentation = RecommendationFocusPresentationPolicy.apply(state.combinedDetailResult, focusCriteria, state.focusAliasMap)
@@ -887,6 +897,7 @@ fun Screen.personalRecommendationsTab(): TabContent {
 
 @Composable
 private fun PersonalRecommendationsContent(
+    modifier: Modifier = Modifier,
     state: BrowsePersonalRecommendationsScreenModel.State,
     focusCriteria: RecommendationFocusPolicy.FocusCriteria = RecommendationFocusPolicy.FocusCriteria.EMPTY,
     // KMK v0.8.21-fix5: R4/AUG-14 completion -- transient "Show Broader Results" state, owned by
@@ -941,7 +952,7 @@ private fun PersonalRecommendationsContent(
         state.isOffline -> {
             EmptyScreen(
                 message = stringResource(KMR.strings.rec_for_you_offline),
-                modifier = Modifier.fillMaxSize().padding(contentPadding),
+                modifier = modifier.fillMaxSize().padding(contentPadding),
                 actions = persistentListOf(
                     EmptyScreenAction(
                         stringRes = MR.strings.action_retry,
@@ -956,7 +967,7 @@ private fun PersonalRecommendationsContent(
         // batched refresh work has registered them so a slow source cannot hide completed results.
         state.isLoading && state.items.isEmpty() -> {
             Box(
-                modifier = Modifier.fillMaxSize().padding(contentPadding),
+                modifier = modifier.fillMaxSize().padding(contentPadding),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator()
@@ -965,7 +976,7 @@ private fun PersonalRecommendationsContent(
         state.profileIsEmpty -> {
             // The profile is genuinely empty here: loading and offline states were handled above.
             Column(
-                modifier = Modifier.fillMaxSize().padding(contentPadding),
+                modifier = modifier.fillMaxSize().padding(contentPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
@@ -1027,7 +1038,7 @@ private fun PersonalRecommendationsContent(
             if (hasNoResults) {
                 // A no-results illustration is shown only after every source has finished.
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(contentPadding),
+                    modifier = modifier.fillMaxSize().padding(contentPadding),
                 ) {
                     if (focusCriteria.isActive) {
                         ActiveFocusSummary(
@@ -1051,7 +1062,7 @@ private fun PersonalRecommendationsContent(
                 }
             } else {
                 // KMK <--
-                Column(modifier = Modifier.fillMaxSize()) {
+                Column(modifier = modifier.fillMaxSize()) {
                     if (focusCriteria.isActive) {
                         ActiveFocusSummary(
                             focusCriteria = focusCriteria,

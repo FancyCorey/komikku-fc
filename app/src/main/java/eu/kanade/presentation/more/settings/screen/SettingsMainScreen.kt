@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.LocalContentColor
@@ -48,6 +49,7 @@ import eu.kanade.presentation.util.Screen
 import exh.assets.EhAssets
 import exh.assets.ehassets.EhLogo
 import exh.assets.ehassets.MangadexLogo
+import exh.recs.settings.RecommendationSettingsIndexScreen
 import kotlinx.collections.immutable.persistentListOf
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.kmk.KMR
@@ -226,6 +228,12 @@ object SettingsMainScreen : Screen() {
             subtitleRes = MR.strings.pref_browse_summary,
             icon = Icons.Outlined.Explore,
             screen = SettingsBrowseScreen,
+        ),
+        Item(
+            titleRes = KMR.strings.taste_settings_title,
+            subtitleRes = KMR.strings.rec_settings_summary,
+            icon = Icons.Outlined.Star,
+            screen = RecommendationSettingsIndexScreen,
         ),
         Item(
             titleRes = MR.strings.label_data_storage,

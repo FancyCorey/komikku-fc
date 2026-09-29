@@ -40,6 +40,7 @@ import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.util.system.toast
+import exh.ocr.OcrIndexRepository
 import exh.util.EvaluationModeFormatter
 import exh.util.rememberEvaluationModeEnabled
 import kotlinx.collections.immutable.persistentListOf
@@ -49,7 +50,7 @@ import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.launchUI
 import tachiyomi.core.common.util.lang.toLong
 import tachiyomi.core.common.util.lang.withNonCancellableContext
-import tachiyomi.data.Database
+import tachiyomi.data.DatabaseHandler
 import tachiyomi.domain.source.interactor.GetSourcesWithNonLibraryManga
 import tachiyomi.domain.source.model.Source
 import tachiyomi.domain.source.model.SourceWithCount
@@ -230,7 +231,8 @@ class ClearDatabaseScreen : Screen() {
 
 private class ClearDatabaseScreenModel : StateScreenModel<ClearDatabaseScreenModel.State>(State.Loading) {
     private val getSourcesWithNonLibraryManga: GetSourcesWithNonLibraryManga = Injekt.get()
-    private val database: Database = Injekt.get()
+    private val database: DatabaseHandler = Injekt.get()
+    private val ocrIndexRepository: OcrIndexRepository = Injekt.get()
 
     init {
         screenModelScope.launchIO {
@@ -249,8 +251,7 @@ private class ClearDatabaseScreenModel : StateScreenModel<ClearDatabaseScreenMod
 
     suspend fun removeMangaBySourceId(keepReadManga: Boolean) = withNonCancellableContext {
         val state = state.value as? State.Ready ?: return@withNonCancellableContext
-        database.mangasQueries.deleteNonLibraryManga(state.selection, keepReadManga.toLong())
-        database.historyQueries.removeResettedHistory()
+        clearNonLibraryMangaAndOcrRows(database, ocrIndexRepository, state.selection, keepReadManga)
     }
 
     fun toggleSelection(source: Source) = mutableState.update { state ->
@@ -303,5 +304,18 @@ private class ClearDatabaseScreenModel : StateScreenModel<ClearDatabaseScreenMod
             val selection: List<Long> = emptyList(),
             val showConfirmation: Boolean = false,
         ) : State
+    }
+}
+
+internal suspend fun clearNonLibraryMangaAndOcrRows(
+    database: DatabaseHandler,
+    ocrIndexRepository: OcrIndexRepository,
+    sourceIds: List<Long>,
+    keepReadManga: Boolean,
+) = ocrIndexRepository.withInvalidatedGeneration {
+    database.await(inTransaction = true) {
+        mangasQueries.deleteOcrRowsForNonLibraryManga(sourceIds, keepReadManga.toLong())
+        mangasQueries.deleteNonLibraryManga(sourceIds, keepReadManga.toLong())
+        historyQueries.removeResettedHistory()
     }
 }

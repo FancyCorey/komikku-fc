@@ -11,7 +11,7 @@ import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updateMargins
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
-import eu.kanade.presentation.util.formattedMessage
+import eu.kanade.presentation.util.readerErrorMessage
 import eu.kanade.tachiyomi.databinding.ReaderErrorBinding
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
@@ -312,7 +312,7 @@ class WebtoonPageHolder(
             }
         }
 
-        errorLayout?.errorMessage?.text = with(context) { error?.formattedMessage }
+        errorLayout?.errorMessage?.text = with(context) { error?.readerErrorMessage }
             ?: context.stringResource(MR.strings.decode_image_error)
 
         return errorLayout!!

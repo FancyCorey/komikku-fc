@@ -8,7 +8,7 @@ Open **Settings > Data and storage**, then use Komikku's backup or restore actio
 
 ## What Komikku FC adds to a backup
 
-Use the app's normal backup actions to choose a file location or schedule. Alongside library data, a backup can include your ratings, recommendation settings, linked manga versions and preferred versions, source-quality choices, and evaluation results.
+Use the app's normal backup actions to choose a file location or schedule. Alongside library data, a backup can include your ratings, recommendation settings, linked manga versions and preferred versions, plus saved source-quality choices.
 
 Check these options before creating the file:
 

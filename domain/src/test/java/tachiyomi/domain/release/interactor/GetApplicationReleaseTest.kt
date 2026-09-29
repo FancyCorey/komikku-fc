@@ -29,6 +29,8 @@ class GetApplicationReleaseTest {
             "v0.8.22.0" to false,
             "r999999" to false,
             "latest" to false,
+            "v1.14.2-fc-bridge" to false,
+            "fc-bridge-v1.14.2" to false,
             "v999999999999999999999.1" to false,
         )
         for ((tag, shouldUpdate) in cases) {
@@ -68,6 +70,29 @@ class GetApplicationReleaseTest {
             GetApplicationRelease.Arguments(false, true, 1000, "", "FancyCorey/komikku-KMK", true),
         )
         (result as GetApplicationRelease.Result.NewUpdate).release.version shouldBe "r2000"
+    }
+
+    @Test
+    fun `legacy bridge reaches old public clients without masking future fork updates`() = runTest {
+        val bridgeTag = "v1.14.2-fc-bridge"
+        LegacyStableReleaseComparator.isNewVersion(false, 0, "1.14.1", "v0.8.22") shouldBe false
+        for (oldVersion in listOf("1.12.0", "1.13.0", "1.14.0", "1.14.1")) {
+            LegacyStableReleaseComparator.isNewVersion(false, 0, oldVersion, bridgeTag) shouldBe true
+        }
+
+        every { preference.get() } returns 0
+        every { preference.set(any()) } answers { }
+        val bridge = Release(bridgeTag, "Compatibility", "bridge", "same-signed-apk")
+        val current = Release("v0.8.23", "Current", "current", "same-signed-apk")
+        coEvery { releaseService.releaseNotes(any()) } returns listOf(bridge, current)
+        val arguments = GetApplicationRelease.Arguments(false, false, 0, "v0.8.23", "FancyCorey/komikku-fc", true)
+        getApplicationRelease.await(arguments) shouldBe GetApplicationRelease.Result.NoNewUpdate
+
+        val future = Release("v0.8.24", "Future", "future", "future-apk")
+        for (releases in listOf(listOf(bridge, future, current), listOf(future, bridge, current))) {
+            coEvery { releaseService.releaseNotes(any()) } returns releases
+            (getApplicationRelease.await(arguments) as GetApplicationRelease.Result.NewUpdate).release.version shouldBe "v0.8.24"
+        }
     }
 
     private lateinit var getApplicationRelease: GetApplicationRelease

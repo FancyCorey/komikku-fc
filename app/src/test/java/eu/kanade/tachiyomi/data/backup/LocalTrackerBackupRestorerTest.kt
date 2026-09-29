@@ -1,11 +1,19 @@
 package eu.kanade.tachiyomi.data.backup
 
+import eu.kanade.domain.track.interactor.RecordLocalTrackedChapterProgress
 import eu.kanade.tachiyomi.data.backup.create.creators.LocalTrackerBackupCreator
 import eu.kanade.tachiyomi.data.backup.models.Backup
 import eu.kanade.tachiyomi.data.backup.models.BackupLocalTrackedWork
 import eu.kanade.tachiyomi.data.backup.models.BackupLocalTrackedWorkSource
 import eu.kanade.tachiyomi.data.backup.restore.restorers.LocalTrackerBackupRestorer
+import io.mockk.coEvery
+import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.protobuf.ProtoBuf
@@ -780,12 +788,161 @@ class LocalTrackerBackupRestorerTest {
         assertTrue(thrown != null)
     }
 
+    @Test
+    fun `cancellation after child write restores the previous graph and retains root cancellation`() =
+        kotlinx.coroutines.test.runTest {
+            val existing = LocalTrackedWork(
+                id = "existing",
+                title = "Existing",
+                normalizedTitle = "existing",
+                status = tachiyomi.domain.tracker.model.LocalTrackedWorkStatus.READING,
+                lastChapterSource = 1L,
+                lastChapterNumber = 1.0,
+                lastChapterUrl = "/old-1",
+                lastChapterLabel = "Chapter 1",
+                lastProgressAt = 1L,
+                createdAt = 1L,
+                updatedAt = 1L,
+            )
+            val sourceWriteStarted = CompletableDeferred<Unit>()
+            val sourceWriteRelease = CompletableDeferred<Unit>()
+            val repository = FakeLocalTrackerRepository(
+                existing,
+                sourceWriteStarted = sourceWriteStarted,
+                sourceWriteRelease = sourceWriteRelease,
+            )
+            val previousSource = graphSource("/old").copy(workId = "existing")
+            val previousProgress = graphProgress("/old").copy(workId = "existing")
+            repository.sources[1L to "/old"] = previousSource
+            repository.sourceProgresses += previousProgress
+            repository.lists["existing"] = mutableListOf("Reading")
+            repository.listEntries["existing"] = mutableListOf(LocalTrackedWorkList("Reading", 1L))
+
+            val restore = async {
+                LocalTrackerBackupRestorer(repository).restore(
+                    listOf(
+                        BackupLocalTrackedWork(
+                            id = "existing",
+                            title = "Incoming",
+                            normalizedTitle = "incoming",
+                            status = "READING",
+                            lastChapterSource = 1L,
+                            lastChapterNumber = 2.0,
+                            lastChapterUrl = "/new-2",
+                            lastChapterLabel = "Chapter 2",
+                            lastProgressAt = 2L,
+                            createdAt = 1L,
+                            updatedAt = 2L,
+                            sources = listOf(
+                                BackupLocalTrackedWorkSource(
+                                    source = 1L,
+                                    url = "/old",
+                                    title = "Incoming",
+                                    confidence = 100,
+                                    confirmation = "USER_CONFIRMED",
+                                    createdAt = 1L,
+                                    updatedAt = 2L,
+                                ),
+                            ),
+                        ),
+                    ),
+                )
+            }
+
+            sourceWriteStarted.await()
+            restore.cancel(CancellationException("root-cancelled"))
+            restore.cancelAndJoin()
+
+            var thrown: CancellationException? = null
+            try {
+                restore.await()
+            } catch (e: CancellationException) {
+                thrown = e
+            }
+
+            assertEquals("root-cancelled", thrown?.message)
+            assertEquals(existing, repository.works["existing"])
+            assertEquals(mapOf(1L to "/old" to previousSource), repository.sources)
+            assertEquals(listOf(previousProgress), repository.sourceProgresses)
+            assertEquals(listOf(LocalTrackedWorkList("Reading", 1L)), repository.listEntries["existing"])
+        }
+
+    @Test
+    fun `cancellation after partial reconciliation finishes replay then propagates`() =
+        kotlinx.coroutines.test.runTest {
+            val repository = FakeLocalTrackerRepository(
+                LocalTrackedWork(
+                    id = "seed", title = "Seed", normalizedTitle = "seed",
+                    status = tachiyomi.domain.tracker.model.LocalTrackedWorkStatus.READING,
+                    lastChapterSource = null, lastChapterNumber = null, lastChapterUrl = null,
+                    lastChapterLabel = null, lastProgressAt = null, createdAt = 1L, updatedAt = 1L,
+                ),
+            )
+            val started = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val interactor = mockk<RecordLocalTrackedChapterProgress>()
+            coEvery { interactor.synchronize() } coAnswers {
+                repository.upsertSourceProgress(graphProgress("/chapter").copy(workId = "seed", chapterLabel = "partial"))
+                started.complete(Unit)
+                release.await()
+                repository.upsertSourceProgress(graphProgress("/chapter").copy(workId = "seed", chapterLabel = "complete"))
+            }
+            val restore = async { LocalTrackerBackupRestorer(repository, interactor).restore(emptyList()) }
+            started.await()
+            restore.cancel(CancellationException("restore-cancelled"))
+            release.complete(Unit)
+            var cancellation: CancellationException? = null
+            try {
+                restore.await()
+            } catch (failure: CancellationException) {
+                cancellation = failure
+            }
+            assertEquals("restore-cancelled", cancellation?.message)
+            assertEquals("complete", repository.sourceProgresses.single().chapterLabel)
+        }
+
+    @Test
+    fun `cancellation during chapter reconciliation propagates`() =
+        kotlinx.coroutines.test.runTest {
+            val interactor = mockk<RecordLocalTrackedChapterProgress>()
+            coEvery { interactor.synchronize() } throws CancellationException("sync-cancelled")
+
+            var thrown: CancellationException? = null
+            try {
+                LocalTrackerBackupRestorer(
+                    repository = FakeLocalTrackerRepository(
+                        LocalTrackedWork(
+                            id = "seed",
+                            title = "Seed",
+                            normalizedTitle = "seed",
+                            status = tachiyomi.domain.tracker.model.LocalTrackedWorkStatus.READING,
+                            lastChapterSource = null,
+                            lastChapterNumber = null,
+                            lastChapterUrl = null,
+                            lastChapterLabel = null,
+                            lastProgressAt = null,
+                            createdAt = 1L,
+                            updatedAt = 1L,
+                        ),
+                    ),
+                    recordLocalTrackedChapterProgress = interactor,
+                ).restore(emptyList())
+            } catch (e: CancellationException) {
+                thrown = e
+            }
+
+            assertEquals("sync-cancelled", thrown?.message)
+        }
+
     private class FakeLocalTrackerRepository(
         initial: LocalTrackedWork,
         private val failure: Throwable? = null,
         private val failOnSource: Boolean = false,
         private val failOnDeleteWork: Boolean = false,
+        private val sourceWriteStarted: CompletableDeferred<Unit>? = null,
+        sourceWriteRelease: CompletableDeferred<Unit>? = null,
     ) : LocalTrackerRepository {
+        private var sourceWriteRelease = sourceWriteRelease
         val works = linkedMapOf(initial.id to initial)
         val sources = linkedMapOf<Pair<Long, String>, LocalTrackedWorkSource>()
         val sourceProgresses = mutableListOf<LocalTrackedWorkSourceProgress>()
@@ -802,8 +959,13 @@ class LocalTrackerBackupRestorerTest {
             flow.value = works.values.toList()
         }
         override suspend fun deleteWork(id: String) {
+            currentCoroutineContext().ensureActive()
             if (failOnDeleteWork) error("delete failed")
             works.remove(id)
+            sources.entries.removeIf { it.value.workId == id }
+            sourceProgresses.removeIf { it.workId == id }
+            lists.remove(id)
+            listEntries.remove(id)
         }
         override suspend fun getSources(workId: String) = sources.values.filter { it.workId == workId }
         override suspend fun getWorkIdBySourceUrl(source: Long, url: String) = sources[source to url]?.workId
@@ -815,6 +977,11 @@ class LocalTrackerBackupRestorerTest {
             if (failOnSource) error("source write failed")
             sources[source.source to source.url] = source
             sourceLookupFlow.value = source.workId
+            sourceWriteRelease?.let { release ->
+                sourceWriteRelease = null
+                sourceWriteStarted?.complete(Unit)
+                release.await()
+            }
         }
         override suspend fun deleteSource(workId: String, source: Long, url: String) {
             sources.remove(source to url)

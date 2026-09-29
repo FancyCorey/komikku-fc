@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.data.updater
 
 import eu.kanade.tachiyomi.BuildConfig
+import eu.kanade.tachiyomi.data.connections.discord.DOWNLOAD_BUTTON_URL
 import exh.recs.KmkRecsReleaseNotes
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -17,8 +18,14 @@ class AppUpdateCheckerRepositoryTest {
 
     @Test
     fun `stable and preview checks stay inside the KMK fork`() {
-        assertEquals("FancyCorey/komikku-KMK", getGithubRepo(peekIntoPreview = false))
-        assertEquals("FancyCorey/komikku-KMK", getGithubRepo(peekIntoPreview = true))
+        assertEquals("FancyCorey/komikku-fc", getGithubRepo(peekIntoPreview = false))
+        assertEquals("FancyCorey/komikku-fc", getGithubRepo(peekIntoPreview = true))
+    }
+
+    @Test
+    fun `download links use the canonical fork repository`() {
+        assertEquals("https://github.com/FancyCorey/komikku-fc/releases", DOWNLOAD_BUTTON_URL)
+        assertTrue(RELEASE_URL.startsWith("https://github.com/FancyCorey/komikku-fc/releases/"))
     }
 
     @Test

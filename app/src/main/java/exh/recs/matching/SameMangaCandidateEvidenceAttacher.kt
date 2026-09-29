@@ -58,6 +58,7 @@ object SameMangaCandidateEvidenceAttacher {
         return SameMangaCandidateResult.Success(
             results = assessed.map(AssessedCandidate::manga),
             evidence = evidence,
+            confirmedKeys = confirmedKeys.intersect(assessed.map { MangaIdentityKey(it.manga.source, it.manga.url) }.toSet()),
         )
     }
 

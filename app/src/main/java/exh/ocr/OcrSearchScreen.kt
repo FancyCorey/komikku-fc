@@ -402,8 +402,22 @@ class OcrSearchScreen : Screen() {
         state.errorKey?.let { key ->
             Snackbar(
                 action = {
-                    TextButton(onClick = screenModel::clearError) {
-                        Text(stringResource(tachiyomi.i18n.MR.strings.action_ok))
+                    TextButton(
+                        onClick = if (state.errorAction == OcrSearchScreenModel.ErrorAction.RETRY_SEARCH) {
+                            screenModel::retrySearch
+                        } else {
+                            screenModel::clearError
+                        },
+                    ) {
+                        Text(
+                            stringResource(
+                                if (state.errorAction == OcrSearchScreenModel.ErrorAction.RETRY_SEARCH) {
+                                    tachiyomi.i18n.MR.strings.action_retry
+                                } else {
+                                    tachiyomi.i18n.MR.strings.action_ok
+                                },
+                            ),
+                        )
                     }
                 },
             ) {
@@ -456,6 +470,7 @@ private fun MaxPagesRow(currentLimit: Int, onSelect: (Int) -> Unit) {
 private fun ocrErrorMessageRes(key: OcrErrorKey) = when (key) {
     OcrErrorKey.Storage -> KMR.strings.ocr_error_storage
     OcrErrorKey.ImageDecode -> KMR.strings.ocr_error_image_decode
+    OcrErrorKey.ResourceLimit -> KMR.strings.ocr_error_resource_limit
     OcrErrorKey.NoDownloadedPages -> KMR.strings.ocr_error_no_downloaded_pages
     OcrErrorKey.Cancelled -> KMR.strings.ocr_error_cancelled
     OcrErrorKey.PermissionOrFileAccess -> KMR.strings.ocr_error_file_access

@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.ui.manga.track
 
 import android.app.Application
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -66,10 +67,12 @@ import eu.kanade.presentation.track.TrackStatusSelector
 import eu.kanade.presentation.track.TrackerSearch
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.formattedMessage
+import eu.kanade.tachiyomi.data.track.BaseTracker
 import eu.kanade.tachiyomi.data.track.DeletableTracker
 import eu.kanade.tachiyomi.data.track.EnhancedTracker
 import eu.kanade.tachiyomi.data.track.Tracker
 import eu.kanade.tachiyomi.data.track.TrackerManager
+import eu.kanade.tachiyomi.data.track.TrackerRegistrationResult
 import eu.kanade.tachiyomi.data.track.model.TrackSearch
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.MetadataSource
@@ -956,12 +959,19 @@ data class TrackInfoDialogHomeScreen(
                 val manga = getMangaForTracking(item) ?: return@launchNonCancellable
                 try {
                     val matchResult = item.tracker.match(manga) ?: throw Exception()
-                    item.tracker.register(matchResult, mangaId)
-                    recordSuccessfulTrackerBinding(
-                        evaluationModeEnabled = Injekt.get<SourcePreferences>().evaluationMode().get(),
-                        mangaId = mangaId,
-                        trackerId = matchResult.tracker_id,
-                        remoteId = matchResult.remote_id,
+                    registerAndRecordTrackerBinding(
+                        register = { item.tracker.register(matchResult, mangaId) },
+                        record = {
+                            recordSuccessfulTrackerBinding(
+                                evaluationModeEnabled = Injekt.get<SourcePreferences>().evaluationMode().get(),
+                                mangaId = mangaId,
+                                trackerId = matchResult.tracker_id,
+                                remoteId = matchResult.remote_id,
+                            )
+                        },
+                        onReceiptFailure = {
+                            logcat(LogPriority.ERROR) { "Tracker binding succeeded but its action-history receipt failed" }
+                        },
                     )
                 } catch (_: Exception) {
                     withUIContext { Injekt.get<Application>().toast(MR.strings.error_no_match) }
@@ -1031,14 +1041,26 @@ data class TrackInfoDialogHomeScreen(
             trackerManager.get(trackerId)?.let { tracker ->
                 try {
                     tracker.searchById(remoteId)?.let { track ->
-                        tracker.register(track, mangaId)
-                        recordSuccessfulTrackerBinding(
-                            evaluationModeEnabled = Injekt.get<SourcePreferences>().evaluationMode().get(),
-                            mangaId = mangaId,
-                            trackerId = track.tracker_id,
-                            remoteId = track.remote_id,
-                        )
-                        return true
+                        when (
+                            registerAndRecordTrackerBinding(
+                                register = { tracker.register(track, mangaId) },
+                                record = {
+                                    recordSuccessfulTrackerBinding(
+                                        evaluationModeEnabled = Injekt.get<SourcePreferences>().evaluationMode().get(),
+                                        mangaId = mangaId,
+                                        trackerId = track.tracker_id,
+                                        remoteId = track.remote_id,
+                                    )
+                                },
+                                onReceiptFailure = {
+                                    logcat(LogPriority.ERROR) { "Tracker binding succeeded but its action-history receipt failed" }
+                                },
+                            )
+                        ) {
+                            TrackerRegistrationResult.Linked,
+                            TrackerRegistrationResult.RemoteAcceptedLocalSaveFailed,
+                            -> return true
+                        }
                     }
                 } catch (e: CancellationException) {
                     throw e
@@ -1615,6 +1637,7 @@ data class TrackerSearchScreen(
         }
 
         val state by screenModel.state.collectAsState()
+        BackHandler(enabled = state.isRegistering) { }
 
         val textFieldState = rememberTextFieldState(initialQuery)
         TrackerSearch(
@@ -1624,18 +1647,27 @@ data class TrackerSearchScreen(
             queryResult = state.queryResult,
             selected = state.selected,
             onSelectedChange = screenModel::updateSelection,
+            isRegistering = state.isRegistering,
             onConfirmSelection = f@{ private: Boolean ->
                 val selected = state.selected ?: return@f
+                if (!screenModel.beginRegistration()) return@f
                 selected.private = private
                 scope.launch {
-                    if (screenModel.registerTracking(selected)) {
-                        navigator.pop()
-                    } else {
-                        context.toast(MR.strings.unknown_error)
+                    try {
+                        when (screenModel.registerTracking(selected)) {
+                            TrackerRegistrationResult.Linked,
+                            TrackerRegistrationResult.RemoteAcceptedLocalSaveFailed,
+                            -> navigator.pop()
+                            null -> if (!screenModel.trackerReportsRegistrationErrors) {
+                                context.toast(MR.strings.unknown_error)
+                            }
+                        }
+                    } finally {
+                        screenModel.finishRegistration()
                     }
                 }
             },
-            onDismissRequest = navigator::pop,
+            onDismissRequest = { if (!state.isRegistering) navigator.pop() },
             supportsPrivateTracking = screenModel.supportsPrivateTracking,
         )
     }
@@ -1649,8 +1681,10 @@ data class TrackerSearchScreen(
 
         val supportsPrivateTracking = tracker.supportsPrivateTracking
         val trackerName = tracker.name
+        val trackerReportsRegistrationErrors = tracker is BaseTracker
 
         private val searchRequestGate = TrackerSearchRequestGate()
+        private val registrationRequestGate = TrackerRegistrationRequestGate()
         private var searchJob: Job? = null
 
         init {
@@ -1661,6 +1695,7 @@ data class TrackerSearchScreen(
         }
 
         fun trackingSearch(query: String) {
+            if (mutableState.value.isRegistering) return
             val request = searchRequestGate.begin(query.sanitize()) ?: return
             searchJob?.cancel()
             searchJob = screenModelScope.launch {
@@ -1672,6 +1707,7 @@ data class TrackerSearchScreen(
                         runTrackerSearch { tracker.search(request.query) }
                     }
                     if (!searchRequestGate.isCurrent(request)) return@launch
+                    if (mutableState.value.isRegistering) return@launch
                     mutableState.update { oldState ->
                         oldState.copy(
                             queryResult = result,
@@ -1684,30 +1720,54 @@ data class TrackerSearchScreen(
             }
         }
 
-        suspend fun registerTracking(item: TrackSearch): Boolean = try {
-            tracker.register(item, mangaId)
-            recordSuccessfulTrackerBinding(
-                evaluationModeEnabled = Injekt.get<SourcePreferences>().evaluationMode().get(),
-                mangaId = mangaId,
-                trackerId = item.tracker_id,
-                remoteId = item.remote_id,
-            )
-            true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logcat(LogPriority.ERROR) { "Tracker registration failed" }
-            false
+        suspend fun registerTracking(item: TrackSearch): TrackerRegistrationResult? {
+            return try {
+                registerAndRecordTrackerBinding(
+                    register = { tracker.register(item, mangaId) },
+                    record = {
+                        recordSuccessfulTrackerBinding(
+                            evaluationModeEnabled = Injekt.get<SourcePreferences>().evaluationMode().get(),
+                            mangaId = mangaId,
+                            trackerId = item.tracker_id,
+                            remoteId = item.remote_id,
+                        )
+                    },
+                    onReceiptFailure = {
+                        // The tracker link is already persisted. Do not turn journal failure into
+                        // a retryable registration error that could create a duplicate entry.
+                        logcat(LogPriority.ERROR) { "Tracker binding succeeded but its action-history receipt failed" }
+                    },
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR) { "Tracker registration failed" }
+                null
+            }
         }
 
         fun updateSelection(selected: TrackSearch) {
+            if (mutableState.value.isRegistering) return
             mutableState.update { it.copy(selected = selected) }
+        }
+
+        fun beginRegistration(): Boolean {
+            if (!registrationRequestGate.tryBegin()) return false
+            searchJob?.cancel()
+            mutableState.update { it.copy(isRegistering = true) }
+            return true
+        }
+
+        fun finishRegistration() {
+            registrationRequestGate.finish()
+            mutableState.update { it.copy(isRegistering = false) }
         }
 
         @Immutable
         data class State(
             val queryResult: Result<List<TrackSearch>>? = null,
             val selected: TrackSearch? = null,
+            val isRegistering: Boolean = false,
         )
     }
 }

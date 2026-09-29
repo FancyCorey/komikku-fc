@@ -1,5 +1,6 @@
 package eu.kanade.presentation.track
 
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -38,13 +39,21 @@ class TrackingSearchClaritySourceTest {
     }
 
     @Test
-    fun `tracking confirmation closes only after registration succeeds`() {
+    fun `tracking confirmation closes after remote acceptance and stays open on registration failure`() {
         val source = read("src/main/java/eu/kanade/tachiyomi/ui/manga/track/TrackInfoDialog.kt")
+        val resultHandling = source
+            .substringAfter("when (screenModel.registerTracking(selected))")
+            .substringBefore("} finally {")
+        val acceptedCases = resultHandling.substringBefore("null ->")
+        val failedCase = resultHandling.substringAfter("null ->")
 
-        assertTrue(source.contains("if (screenModel.registerTracking(selected))"))
-        assertTrue(source.contains("navigator.pop()"))
-        assertTrue(source.contains("context.toast(MR.strings.unknown_error)"))
-        assertTrue(source.contains("suspend fun registerTracking(item: TrackSearch): Boolean"))
+        assertTrue(resultHandling.contains("null ->"))
+        assertTrue(acceptedCases.contains("TrackerRegistrationResult.Linked"))
+        assertTrue(acceptedCases.contains("TrackerRegistrationResult.RemoteAcceptedLocalSaveFailed"))
+        assertTrue(acceptedCases.contains("-> navigator.pop()"))
+        assertTrue(failedCase.contains("context.toast(MR.strings.unknown_error)"))
+        assertFalse(failedCase.contains("navigator.pop()"))
+        assertTrue(source.contains("suspend fun registerTracking(item: TrackSearch): TrackerRegistrationResult?"))
     }
 
     @Test

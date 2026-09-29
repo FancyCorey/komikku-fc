@@ -4,6 +4,10 @@ import eu.kanade.domain.track.interactor.RecordLocalTrackedChapterProgress
 import eu.kanade.tachiyomi.data.backup.models.BackupLocalTrackedWork
 import eu.kanade.tachiyomi.data.backup.models.BackupLocalTrackedWorkSourceProgress
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import tachiyomi.domain.tracker.model.LocalTrackedWork
 import tachiyomi.domain.tracker.model.LocalTrackedWorkList
 import tachiyomi.domain.tracker.model.LocalTrackedWorkSource
@@ -157,7 +161,9 @@ class LocalTrackerBackupRestorer(
                     )
                 }
             } catch (e: CancellationException) {
-                rollback(row.id, previousGraph)?.let(e::addSuppressed)
+                withContext(NonCancellable) {
+                    rollback(row.id, previousGraph)?.let(e::addSuppressed)
+                }
                 throw e
             } catch (e: Exception) {
                 val rollbackFailure = rollback(row.id, previousGraph)
@@ -168,10 +174,19 @@ class LocalTrackerBackupRestorer(
             }
         }
         recordLocalTrackedChapterProgress?.let { interactor ->
-            runCatching { interactor.synchronize() }
-                .onFailure { error ->
-                    errors += "Local tracker chapter reconciliation failed: ${error::class.simpleName}"
+            try {
+                currentCoroutineContext().ensureActive()
+                // Reconciliation writes local chapter flags as well as tracker rows; finish the
+                // local-only replay before honoring cancellation rather than leaving half a replay.
+                withContext(NonCancellable) {
+                    interactor.synchronize()
                 }
+                currentCoroutineContext().ensureActive()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                errors += "Local tracker chapter reconciliation failed: ${e::class.simpleName}"
+            }
         }
         return errors
     }

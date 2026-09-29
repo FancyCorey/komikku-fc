@@ -203,7 +203,7 @@ private fun ColumnScope.FilterPage(
         }
         else -> {
             HeadingItem(MR.strings.action_filter_tracked)
-            trackers.map { service ->
+            trackers.forEach { service ->
                 val filterTracker by screenModel.libraryPreferences.filterTracking(service.id.toInt()).collectAsState()
                 TriStateItem(
                     label = service.name,
@@ -270,7 +270,7 @@ private fun ColumnScope.SortPage(
         )
     }
 
-    options.map { (titleRes, mode) ->
+    options.forEach { (titleRes, mode) ->
         if (mode == LibrarySort.Type.Random) {
             BaseSortItem(
                 label = stringResource(titleRes),
@@ -280,7 +280,7 @@ private fun ColumnScope.SortPage(
                     screenModel.setSort(category, mode, LibrarySort.Direction.Ascending)
                 },
             )
-            return@map
+            return@forEach
         }
         SortItem(
             label = stringResource(titleRes),

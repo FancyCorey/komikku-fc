@@ -34,9 +34,9 @@ class OcrNotifier(private val context: Context) : OcrIndexWorkerNotifier {
     }
 
     private val progressBuilder = context.notificationBuilder(Notifications.CHANNEL_OCR_INDEXING) {
-        setSmallIcon(R.drawable.ic_komikku)
+        setSmallIcon(R.drawable.ic_launcher_fc_monochrome)
         setColor(ContextCompat.getColor(context, R.color.ic_launcher))
-        setLargeIcon(BitmapFactory.decodeResource(context.resources, R.drawable.komikku))
+        setLargeIcon(BitmapFactory.decodeResource(context.resources, R.drawable.ic_launcher_fc_full))
         setAutoCancel(false)
         setOngoing(true)
         setOnlyAlertOnce(true)
@@ -77,7 +77,7 @@ class OcrNotifier(private val context: Context) : OcrIndexWorkerNotifier {
     override fun showComplete(recognizedPages: Int, emptyPages: Int, failedPages: Int) {
         context.cancelNotification(Notifications.ID_OCR_INDEX_PROGRESS)
         context.notify(Notifications.ID_OCR_INDEX_COMPLETE, Notifications.CHANNEL_OCR_INDEXING) {
-            setSmallIcon(R.drawable.ic_komikku)
+            setSmallIcon(R.drawable.ic_launcher_fc_monochrome)
             setColor(ContextCompat.getColor(context, R.color.ic_launcher))
             setAutoCancel(true)
             setContentTitle(context.stringResource(KMR.strings.ocr_indexing_complete))

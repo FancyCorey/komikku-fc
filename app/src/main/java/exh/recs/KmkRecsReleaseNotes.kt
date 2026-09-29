@@ -2,9 +2,9 @@
 
 // KMK -->
 object KmkRecsReleaseNotes {
-    const val VERSION_CODE = 786
-    const val VERSION_NAME = "KMK-Recs v0.8.22"
-    const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.22"
+    const val VERSION_CODE = 787
+    const val VERSION_NAME = "KMK-Recs v0.8.23"
+    const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.23"
 
     /** Projects the retained historical notes into the current public product name. */
     fun displayMarkdown(): String = MARKDOWN.replace("KMK-Recs", "Komikku FC")
@@ -21,6 +21,45 @@ object KmkRecsReleaseNotes {
     // ...") that is now expressed by its category heading instead. See the v0.8.10-fix9
     // implementation report for the exact conversion approach and verification.
     val MARKDOWN = """
+        ## KMK-Recs v0.8.23
+
+        Updates to search, linked-version groups, tracking, reading, and recovery.
+
+        #### What's Changed
+
+        ##### New
+        - **OCR search:** search text in downloaded pages, follow indexing progress, recover interrupted indexing, and open results in the Reader.
+        - **Updater recovery:** resume interrupted app updates and extension operations, and clean up incomplete downloads or installs.
+
+        ##### Improve
+        - **Find Best Version search:** search sources available to global search while honoring your configured results-per-source limit. Previously confirmed versions start selected; title-selection and preview settings continue to apply.
+        - **Local tracking continuity:** preserve mapped chapter progress across linked manga versions and refreshes, including safe handling for missing, duplicate, decimal, and offset chapter labels.
+        - **Direct Tracking settings:** the tracker's Local Tracking row has a shortcut to Tracking settings before local tracking exists; settings use the available width without an unrelated settings category pane beside them.
+        - **Recommendation Settings access:** open Recommendation Settings directly from the main Settings screen, as well as from For You.
+        - **Shorter linked sources:** keep the shared Local Tracking chapter at the higher saved progress while marking chapters only through the highest available chapter at or below it. A saved URL match wins when available; missing URL rows fall back by number, with duplicate scanlation rows resolved consistently.
+        - **Alternate-source reading:** keep reader navigation and source switching aligned with the selected chapter instead of reopening an already-resolved chooser.
+        - **Recommendation stability:** invalidate hidden-title and source-genre caches when their inputs change, and keep source evaluation work cancellable and recoverable.
+        - **For You refresh:** show successful source results as they arrive instead of waiting for the slowest source.
+        - **Extension lifecycle:** make private extension downloads, installation, recovery, and cleanup explicit so interrupted work can be retried safely.
+        - **Focused recommendations:** continue checking eligible sources within the existing search limit when earlier results do not match your selected tags.
+        - **Source filter handoff:** preserve source formats and statuses as source data while applying only clearly labelled genre, tag, category, or theme selectors; unsupported labels remain text-search terms.
+        - **App identity:** use the Komikku FC logo in the launcher, splash screen, app header, and notifications, with a monochrome version for supported themed launchers.
+
+        ##### Fix
+        - **External tracking:** prevent repeated add requests while linking is in progress, and keep a saved link when follow-up synchronization fails. If the tracker accepts a title but Komikku cannot save the link locally, the app warns you to check the tracker before trying again.
+        - **Reader errors:** show reader-specific messages for network, file, and extension failures, with a page-load message for other reader errors.
+        - **For You source filters:** keep your profile restrictions active when a source-filter context cannot be restored, and explain how to reopen the source.
+        - **Reader state:** reuse the existing reader route and state when OCR or alternate-source actions hand a chapter back to reading.
+        - **Jump to last read:** recheck the saved chapter if the displayed list changes during the jump, and cancel positioning when you leave the manga screen.
+        - **Backup and restore:** retain the relationships needed for local progress and recommendation data without storing source packages or credentials.
+        - **Best Version partial results:** continue with matches already found while slower sources are still searching; later results cannot change the comparison after you continue.
+        - **Same-manga source search:** a slow source is marked as timed out in Best Version, version matching, and alternate-source reading while results from other sources can still appear.
+        - **Confirmed versions:** save the selected source as a confirmed link-group member only after identity confirmation succeeds, before migration starts.
+        - **Link group management:** inspect covers and titles, add or move one version, merge groups, remove one member or ungroup a whole group, and undo a saved change. Cancelling an ungroup keeps the existing group intact.
+        - **Action History:** show the correct number of versions added to or moved between groups.
+        - **Interrupted restore:** finish local progress reconciliation before stopping a cancelled restore, and remove orphaned OCR pages without deleting valid entries.
+        - **Interrupted extension replacement:** the app restores the previous version before retrying. Cleanup problems with one extension do not block others, and files the app cannot identify are left untouched.
+
         ## KMK-Recs v0.8.22
 
         Smoother rating and local-tracking workflows for manga with multiple source versions.
@@ -59,7 +98,9 @@ object KmkRecsReleaseNotes {
 
         ##### Fix
         - **App updates:** update checks now compare Komikku FC release versions correctly, ignore unfinished releases, and download an APK rather than a release information file.
+        - **Best Version preview requests:** a failed source request is no longer retried through a second generic request; unavailable samples stay visibly failed and can be retried.
         - **Best Version preview timeout:** a sample image that stays unresolved now produces a visible Preview failed message with Retry instead of leaving a blank preview area.
+        - **Best Version preview loading:** samples that have not entered the lazy preview row no longer trigger a false timeout warning; only image requests that are still in progress count as pending.
         - **Best Version fullscreen readability:** the preview title and source now sit on a dark header scrim so they remain readable over light manga pages.
         - **Completion rating flow:** completion prompts appear only for a new final-chapter completion and do not return during rereads after a rating is saved.
         - **For You chapter minimum:** fresh manga whose source chapter list has not been loaded locally are no longer mistaken for zero-chapter manga and removed from For You. The setting now filters only candidates with a known local chapter count below the selected minimum, so a high threshold does not collapse a source row to one or two cards.

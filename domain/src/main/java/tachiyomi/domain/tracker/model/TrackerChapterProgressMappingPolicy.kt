@@ -20,6 +20,9 @@ object TrackerChapterProgressMappingPolicy {
             .filter { it.chapterNumber <= trackerProgress }
             .maxOfOrNull { it.chapterNumber }
         if (numericTarget != null) {
+            // Chapter numbers define the progress boundary; duplicate scanlation rows at that
+            // boundary do not make the boundary ambiguous. Pick one stable representative row
+            // for persisted URL/label data while all rows through the number are marked read.
             return representativeFor(recognized, numericTarget)
         }
         if (!allowReadingOrderFallback) return null
@@ -51,6 +54,5 @@ object TrackerChapterProgressMappingPolicy {
     private fun representativeFor(chapters: List<Chapter>, chapterNumber: Double): Chapter? =
         chapters.asSequence()
             .filter { it.chapterNumber == chapterNumber }
-            .sortedWith(compareByDescending<Chapter> { it.sourceOrder }.thenBy { it.url })
-            .firstOrNull()
+            .minWithOrNull(compareBy<Chapter> { it.sourceOrder }.thenBy { it.url }.thenBy { it.id })
 }

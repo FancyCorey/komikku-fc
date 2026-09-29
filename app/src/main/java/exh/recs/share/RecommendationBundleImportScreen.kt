@@ -26,6 +26,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
@@ -42,7 +43,6 @@ import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 @Composable
 private fun LoadErrorKey.toLocalString(): String = when (this) {
@@ -269,7 +269,7 @@ class RecommendationBundleImportScreen(
         ) {
             Column(modifier = Modifier.padding(MaterialTheme.padding.medium), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(text = bundle.title, style = MaterialTheme.typography.titleMedium)
-                val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(bundle.createdAt))
+                val dateStr = SimpleDateFormat("yyyy-MM-dd", LocalConfiguration.current.locales[0]).format(Date(bundle.createdAt))
                 Text(
                     text = stringResource(
                         KMR.strings.rec_bundle_import_bundle_info,

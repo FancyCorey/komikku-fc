@@ -491,6 +491,127 @@ class AlternateSourceReaderCoordinatorTest {
     }
 
     @Test
+    fun `manual return ignores bridge continuation when identity is no longer confirmed`() = runTest {
+        val store = sessionStore().also { it.write(readerSession()) }
+        coEvery { identityResolver.isConfirmed(any(), any(), any(), any()) } returnsMany listOf(true, false)
+        coEvery { getBridge.await(readerBridgeKey()) } returns bridgeState(
+            continuationUrl = "/chapter/bridge-continuation",
+        )
+        coEvery {
+            routeResolver.resolve(
+                readerBridgeKey(),
+                AlternateSourceReaderRouteRole.PRIMARY,
+                "/chapter/primary",
+                0,
+            )
+        } returns AlternateSourceReaderRouteResolver.Result.Resolved(
+            readerRoute(AlternateSourceReaderRouteRole.PRIMARY),
+        )
+
+        val coordinator = coordinator(store) { true }
+        assertEquals(
+            AlternateSourceReaderCommandResult.Restored,
+            coordinator.restore(readerRoute(AlternateSourceReaderRouteRole.ALTERNATE)),
+        )
+
+        assertEquals(
+            AlternateSourceReaderCommandResult.Returned,
+            coordinator.manualReturn(preferContinuation = true),
+        )
+        coVerify(exactly = 0) {
+            routeResolver.resolve(
+                readerBridgeKey(),
+                AlternateSourceReaderRouteRole.PRIMARY,
+                "/chapter/bridge-continuation",
+                0,
+            )
+        }
+    }
+
+    @Test
+    fun `automatic and manual alternate returns stop when identity is no longer confirmed`() = runTest {
+        val store = sessionStore().also { it.write(readerSession()) }
+        coEvery { identityResolver.isConfirmed(any(), any(), any(), any()) } returnsMany listOf(true, false, false)
+        coEvery { getBridge.await(readerBridgeKey()) } returns bridgeState()
+        coEvery {
+            routeResolver.resolve(
+                readerBridgeKey(),
+                AlternateSourceReaderRouteRole.PRIMARY,
+                "/chapter/primary",
+                0,
+            )
+        } returns AlternateSourceReaderRouteResolver.Result.Resolved(
+            readerRoute(AlternateSourceReaderRouteRole.PRIMARY),
+        )
+        val coordinator = coordinator(store) { true }
+        assertEquals(
+            AlternateSourceReaderCommandResult.Restored,
+            coordinator.restore(readerRoute(AlternateSourceReaderRouteRole.ALTERNATE)),
+        )
+
+        assertEquals(
+            AlternateSourceReaderCommandResult.Conflict,
+            coordinator.automaticReturn("/chapter/alternate"),
+        )
+        assertEquals(
+            AlternateSourceReaderCommandResult.Returned,
+            coordinator.manualReturnToChapter(
+                readerBridgeKey(),
+                READER_SESSION_ID,
+                "/chapter/alternate",
+                "/chapter/primary",
+            ),
+        )
+    }
+
+    @Test
+    fun `restored primary session remains recoverable when identity is no longer confirmed`() = runTest {
+        val primary = readerRoute(AlternateSourceReaderRouteRole.PRIMARY)
+        val store = sessionStore().also { it.write(readerSession(currentRoute = primary)) }
+        coEvery { identityResolver.isConfirmed(any(), any(), any(), any()) } returns false
+        coEvery { getBridge.await(readerBridgeKey()) } returns bridgeState()
+        val coordinator = coordinator(store) { error("must not switch routes") }
+
+        assertEquals(
+            AlternateSourceReaderCommandResult.Restored,
+            coordinator.restore(primary),
+        )
+        assertEquals(primary, coordinator.state.value.session?.currentRoute)
+    }
+
+    @Test
+    fun `restored alternate session is rejected when identity is no longer confirmed`() = runTest {
+        val alternate = readerRoute(AlternateSourceReaderRouteRole.ALTERNATE)
+        val store = sessionStore().also { it.write(readerSession(currentRoute = alternate)) }
+        coEvery { identityResolver.isConfirmed(any(), any(), any(), any()) } returns false
+        val coordinator = coordinator(store) { error("must not switch a rejected session") }
+
+        assertEquals(
+            AlternateSourceReaderCommandResult.Invalid,
+            coordinator.restore(alternate),
+        )
+        assertFalse(store.hasStoredState())
+        assertEquals(AlternateSourceReaderPhase.DEGRADED, coordinator.state.value.phase)
+    }
+
+    @Test
+    fun `continuing to an alternate route requires a current confirmed identity`() = runTest {
+        val store = sessionStore().also { it.write(readerSession()) }
+        coEvery { identityResolver.isConfirmed(any(), any(), any(), any()) } returnsMany listOf(true, false)
+        coEvery { getBridge.await(readerBridgeKey()) } returns bridgeState()
+        val coordinator = coordinator(store) { error("must not switch without confirmed identity") }
+
+        assertEquals(
+            AlternateSourceReaderCommandResult.Restored,
+            coordinator.restore(readerRoute(AlternateSourceReaderRouteRole.ALTERNATE)),
+        )
+        assertEquals(
+            AlternateSourceReaderCommandResult.Conflict,
+            coordinator.continueAlternate(readerRoute(AlternateSourceReaderRouteRole.ALTERNATE)),
+        )
+    }
+
+    @Test
     fun `cancellation and fatal identity failures propagate`() {
         val store = sessionStore()
         coEvery { identityResolver.isConfirmed(any(), any(), any(), any()) } throws CancellationException("stop")

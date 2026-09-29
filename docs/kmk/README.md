@@ -33,7 +33,7 @@ Feature pages have short filenames, such as `ratings.md`, `versions.md`, and `ba
 
 ## Design principles
 
-- Library, Browse, Reader, Settings, backup, tracking, and extension features continue to use Komikku's existing screens and internal flows.
+- Library, Browse, Reader, Settings, backup, tracking, and extension features continue to use Komikku's familiar screens and navigation.
 - Komikku FC saves data through Komikku's existing database and settings. Supported source failures keep their own results so other sources can still be useful; this does not guarantee that every extension crash can be contained.
 - Cancelling work stops pending operations where supported. It does not reverse completed file writes, installations, or outside tracker updates.
 - Evaluation Mode changes visible names in screenshots; it does not change saved identifiers, user data, source requests, or the item an action affects.

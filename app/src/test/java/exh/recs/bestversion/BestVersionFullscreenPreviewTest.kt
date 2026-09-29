@@ -21,12 +21,14 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import mihon.domain.migration.usecases.MigrateMangaUseCase
@@ -121,6 +123,45 @@ class BestVersionFullscreenPreviewTest {
                 ),
             ),
         )
+    }
+
+    @Test
+    fun `starting preview again cancels the previous run and keeps its result out of state`() = runTest {
+        val origin = manga(1L, "/origin")
+        val target = manga(2L, "/candidate")
+        val source = httpSource(2L)
+        val page = Page(0, "", "https://example.com/preview.jpg")
+        var pageListCalls = 0
+        var firstRequestCancelled = false
+        coEvery { source.getPageList(any()) } coAnswers {
+            pageListCalls++
+            if (pageListCalls == 1) {
+                try {
+                    awaitCancellation()
+                } finally {
+                    firstRequestCancelled = true
+                }
+                error("the first preview request should be cancelled")
+            } else {
+                listOf(page)
+            }
+        }
+        val sourceManager = mockk<SourceManager>(relaxed = true)
+        every { sourceManager.get(2L) } returns source
+        val model = buildModel(sourceManager)
+        model.seedPreviewable(origin, target, sourceChapter())
+        SourceRuntimeFailureRegistry.clear(2L)
+
+        model.startPreview()
+        runCurrent()
+        model.startPreview()
+        advanceUntilIdle()
+
+        val key = MangaIdentityKey(2L, "/candidate")
+        assertEquals(2, pageListCalls)
+        assertTrue(firstRequestCancelled)
+        assertEquals(BestVersionStep.ComparePreview, model.state.value.step)
+        assertTrue(model.state.value.candidatePreviews[key] is CandidatePreviewState.Loaded)
     }
 
     private fun identityController(): CrossSourceIdentityDecisionController {
@@ -231,6 +272,43 @@ class BestVersionFullscreenPreviewTest {
     }
 
     @Test
+    fun `openFullscreenCandidate times out a stalled page list and retry can succeed`() = runTest {
+        val origin = manga(1L, "/origin")
+        val target = manga(2L, "/candidate")
+        val key = MangaIdentityKey(2L, "/candidate")
+        val pages = listOf(Page(0, "", "https://example.com/0.jpg"))
+        val source = httpSource(2L)
+        var attempts = 0
+        coEvery { source.getPageList(any()) } coAnswers {
+            attempts += 1
+            if (attempts == 1) awaitCancellation() else pages
+        }
+        val sourceManager = mockk<SourceManager>(relaxed = true)
+        every { sourceManager.get(2L) } returns source
+        val model = buildModel(sourceManager)
+        model.seedPreviewable(origin, target, sourceChapter())
+        SourceRuntimeFailureRegistry.clear(2L)
+
+        model.openFullscreenCandidate(key)
+        advanceUntilIdle()
+
+        assertEquals(
+            FullscreenPreviewState.Error(
+                BestVersionErrorReason.Recommendation(RecommendationErrorKind.Timeout),
+            ),
+            model.state.value.fullscreenPreview,
+        )
+
+        model.retryFullscreenCandidate()
+        advanceUntilIdle()
+
+        val loaded = model.state.value.fullscreenPreview as? FullscreenPreviewState.Loaded
+        assertEquals(key, loaded?.key)
+        assertEquals(pages, loaded?.pages)
+        coVerify(exactly = 2) { source.getPageList(any()) }
+    }
+
+    @Test
     fun `retryFullscreenCandidate reloads a failed full page list for the same candidate`() = runTest {
         val origin = manga(1L, "/origin")
         val target = manga(2L, "/candidate")
@@ -291,6 +369,46 @@ class BestVersionFullscreenPreviewTest {
         assertNull(loaded.pageImages[4], "an unrequested page must remain untouched (never eagerly resolved)")
         coVerify(exactly = 1) { source.getImageUrl(pages[2]) }
         coVerify(exactly = 0) { source.getImageUrl(pages[0]) }
+    }
+
+    @Test
+    fun `fullscreen image URL resolution times out and retry can succeed`() = runTest {
+        val origin = manga(1L, "/origin")
+        val target = manga(2L, "/candidate")
+        val key = MangaIdentityKey(2L, "/candidate")
+        val source = httpSource(2L)
+        coEvery { source.getPageList(any()) } returns listOf(Page(0, "", null))
+        var attempts = 0
+        coEvery { source.getImageUrl(any()) } coAnswers {
+            attempts += 1
+            if (attempts == 1) awaitCancellation() else "https://example.com/0.jpg"
+        }
+        val sourceManager = mockk<SourceManager>(relaxed = true)
+        every { sourceManager.get(2L) } returns source
+        val model = buildModel(sourceManager)
+        model.seedPreviewable(origin, target, sourceChapter())
+        SourceRuntimeFailureRegistry.clear(2L)
+
+        model.openFullscreenCandidate(key)
+        advanceUntilIdle()
+        model.requestFullscreenPageImage(0)
+        advanceUntilIdle()
+
+        val failed = model.state.value.fullscreenPreview as FullscreenPreviewState.Loaded
+        assertEquals(
+            PreviewPageImageState.Failed(
+                BestVersionErrorReason.Recommendation(RecommendationErrorKind.Timeout),
+            ),
+            failed.pageImages[0],
+        )
+
+        model.retryFullscreenPageImage(0)
+        advanceUntilIdle()
+
+        val retried = model.state.value.fullscreenPreview as FullscreenPreviewState.Loaded
+        assertTrue(retried.pageImages[0] is PreviewPageImageState.Resolved)
+        coVerify(exactly = 2) { source.getPageList(any()) }
+        coVerify(exactly = 2) { source.getImageUrl(any()) }
     }
 
     @Test
@@ -538,7 +656,14 @@ class BestVersionFullscreenPreviewTest {
         // is what actually distinguishes "an older overlapping open" from "a request queued before a
         // later one on the same dispatcher."
         val sourceAGate = kotlinx.coroutines.CompletableDeferred<List<Page>>()
-        coEvery { sourceA.getPageList(any()) } coAnswers { sourceAGate.await() }
+        var sourceACancelled = false
+        coEvery { sourceA.getPageList(any()) } coAnswers {
+            try {
+                sourceAGate.await()
+            } finally {
+                sourceACancelled = true
+            }
+        }
         coEvery { sourceB.getPageList(any()) } returns listOf(Page(0, "", "https://example.com/b-0.jpg"))
         val sourceManager = mockk<SourceManager>(relaxed = true)
         every { sourceManager.get(2L) } returns sourceA
@@ -556,6 +681,7 @@ class BestVersionFullscreenPreviewTest {
         val loadedAfterB = model.state.value.fullscreenPreview as? FullscreenPreviewState.Loaded
         assertTrue(loadedAfterB != null, "candidate B's open must have resolved")
         assertEquals(keyB, loadedAfterB!!.key)
+        assertTrue(sourceACancelled, "opening B should cancel A's cooperative page-list request")
 
         // Now let A's stale fetch finally complete -- it must be silently dropped, not overwrite B.
         sourceAGate.complete(listOf(Page(0, "", "https://example.com/a-0.jpg")))
@@ -573,7 +699,14 @@ class BestVersionFullscreenPreviewTest {
         val keyA = MangaIdentityKey(2L, "/candidate-a")
         val sourceA = httpSource(2L, "A")
         val gate = kotlinx.coroutines.CompletableDeferred<List<Page>>()
-        coEvery { sourceA.getPageList(any()) } coAnswers { gate.await() }
+        var sourceCancelled = false
+        coEvery { sourceA.getPageList(any()) } coAnswers {
+            try {
+                gate.await()
+            } finally {
+                sourceCancelled = true
+            }
+        }
         val sourceManager = mockk<SourceManager>(relaxed = true)
         every { sourceManager.get(2L) } returns sourceA
         val model = buildModel(sourceManager, dispatcher = StandardTestDispatcher(testScheduler))
@@ -584,11 +717,40 @@ class BestVersionFullscreenPreviewTest {
         advanceUntilIdle()
         model.closeFullscreenCandidate()
         assertNull(model.state.value.fullscreenPreview)
+        assertTrue(sourceCancelled, "closing the dialog should cancel its cooperative page-list request")
 
         gate.complete(listOf(Page(0, "", "https://example.com/a-0.jpg")))
         advanceUntilIdle()
 
         assertNull(model.state.value.fullscreenPreview, "a stale open must never repopulate the dialog after it was explicitly closed")
+    }
+
+    @Test
+    fun `disposing the screen model cancels its in-flight fullscreen page list`() = runTest {
+        val origin = manga(1L, "/origin")
+        val candidate = manga(2L, "/candidate")
+        val key = MangaIdentityKey(2L, "/candidate")
+        val source = httpSource(2L)
+        var sourceCancelled = false
+        coEvery { source.getPageList(any()) } coAnswers {
+            try {
+                awaitCancellation()
+            } finally {
+                sourceCancelled = true
+            }
+        }
+        val sourceManager = mockk<SourceManager>(relaxed = true)
+        every { sourceManager.get(2L) } returns source
+        val model = buildModel(sourceManager, dispatcher = StandardTestDispatcher(testScheduler))
+        forceOriginMangaAndCandidates(model, origin, candidate, candidate)
+        SourceRuntimeFailureRegistry.clear(2L)
+
+        model.openFullscreenCandidate(key)
+        advanceUntilIdle()
+        model.onDispose()
+        advanceUntilIdle()
+
+        assertTrue(sourceCancelled, "disposing the screen model should cancel its cooperative page-list request")
     }
 
     // --- C2 (E4.1): a forced non-EH retry must obtain a genuinely fresh URL, not reuse a stale one ---

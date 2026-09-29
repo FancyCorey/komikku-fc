@@ -75,6 +75,10 @@ SELECT *
 FROM mangas
 WHERE _id IN :ids;
 
+deleteOcrRowsWithMangaId:
+DELETE FROM ocr_indexed_page
+WHERE manga_id = :mangaId;
+
 -- TODO: this should ideally never really have more than 1 result
 getMangaByUrlAndSource:
 SELECT *
@@ -215,6 +219,26 @@ SELECT source, COUNT(*) AS manga_count
 FROM mangas
 WHERE favorite = 0
 GROUP BY source;
+
+deleteOcrRowsForNonLibraryManga:
+DELETE FROM ocr_indexed_page
+WHERE manga_id IN (
+    SELECT _id
+    FROM mangas
+    WHERE favorite = 0
+    AND source IN :sourceIds
+    AND (
+        :keepReadManga = 0
+        OR _id NOT IN (
+            SELECT DISTINCT manga_id
+            FROM chapters
+            WHERE read = 1
+            OR last_page_read != 0
+        )
+    ) AND _id NOT IN (
+        SELECT DISTINCT manga_id FROM merged WHERE manga_id != merge_id
+    )
+);
 
 deleteNonLibraryManga:
 DELETE FROM mangas

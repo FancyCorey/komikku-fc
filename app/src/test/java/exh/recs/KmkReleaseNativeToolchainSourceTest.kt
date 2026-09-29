@@ -32,16 +32,24 @@ class KmkReleaseNativeToolchainSourceTest {
         assertFalse(testCommand.contains("assembleKmkPublicTest"))
         assertTrue(testCommand.contains(":domain:testDebugUnitTest :data:testDebugUnitTest"))
         assertTrue(testCommand.contains("--max-workers=1 --no-parallel"))
-        assertTrue(workflow.contains("gradle_args=(:app:assembleKmkPublicTest -Penable-updater --max-workers=1 --no-parallel)"))
+        assertTrue(workflow.contains("gradle_args=(:app:assembleKmkPublicTest -Penable-updater"))
+        assertTrue(workflow.contains("-Pkmk.releaseVersionCode=${'$'}{{ steps.identity.outputs.version_code }}"))
+        assertTrue(workflow.contains("release_dir=\"app/build/outputs/apk/kmkPublicTest\""))
+        assertTrue(workflow.contains("app-${'$'}{artifact}-kmkPublicTest.apk"))
     }
 
     @Test
     fun `release workflow requires upgrade continuity before creating a draft`() {
         val workflow = File("../.github/workflows/build_release.yml").readText()
+        val identityStart = workflow.indexOf("id: identity")
+        val identityEnd = workflow.indexOf("name: Verify upgrade continuity with the published release")
         val continuity = workflow.indexOf("name: Verify upgrade continuity with the published release")
         val signing = workflow.indexOf("name: Sign release APKs")
         val draft = workflow.indexOf("name: Create draft release")
 
+        assertTrue(identityStart >= 0 && identityEnd > identityStart)
+        val identityStep = workflow.substring(identityStart, identityEnd)
+        assertTrue(identityStep.contains("GH_TOKEN: ${'$'}{{ github.token }}"))
         assertTrue(continuity >= 0 && continuity < signing && signing < draft)
         assertTrue(workflow.contains("releases/latest --jq '.tag_name'"))
         assertTrue(workflow.contains("test \"${'$'}{VERSION_CODE}\" -gt \"${'$'}{previous_code}\""))
@@ -50,8 +58,48 @@ class KmkReleaseNativeToolchainSourceTest {
         assertTrue(workflow.indexOf("name: Refuse changes to an already published tag") in signing until draft)
         assertTrue(workflow.contains("releases/tags/${'$'}{RELEASE_TAG}"))
         assertTrue(workflow.contains("jq -e '.draft == true'"))
-        assertTrue(workflow.contains("^v[0-9]+\\.[0-9]+\\.[0-9]+(-fix[0-9]+)?${'$'}"))
+        assertTrue(workflow.contains("^v[0-9]+\\.[0-9]+\\.[0-9]+(-fix[0-9]+|-fc-bridge)?${'$'}"))
+        assertTrue(workflow.contains("bridge_version=\"${'$'}{RELEASE_TAG%-fc-bridge}\""))
+        assertTrue(workflow.contains("version_name=\"${'$'}{bridge_version#v}\""))
+        assertTrue(workflow.contains("-Pkmk.releaseVersionName=${'$'}{bridge_version}"))
+        assertTrue(workflow.contains("gh release download \"${'$'}{previous_tag}\" --repo FancyCorey/komikku-fc"))
+        assertTrue(workflow.contains("version_code=\"${'$'}((previous_code + 1))\""))
+        assertTrue(workflow.contains("-Pkmk.releaseVersionCode=${'$'}{{ steps.identity.outputs.version_code }}"))
+        assertTrue(appBuildVersionOverride())
+        assertTrue(
+            workflow.contains(
+                "sed -n 's/^private val defaultAndroidVersionName = \"\\([^\"]*\\)\"/\\1/p' app/build.gradle.kts",
+            ),
+        )
+        assertTrue(File("../app/build.gradle.kts").readText().contains("private val defaultAndroidVersionName = \"1.14.1\""))
+        assertTrue(File("../app/build.gradle.kts").readText().contains("private val defaultAndroidVersionCode = 96"))
+        assertFalse(workflow.contains("sed -n 's/^[[:space:]]*versionName ="))
+        assertTrue(workflow.contains("package: name='app.komikku.kmk'"))
+        assertTrue(workflow.contains("test \"${'$'}{kmk_feature_version}\" = \"${'$'}{RELEASE_TAG}\""))
         assertFalse(workflow.contains("tag=\"${'$'}{{ steps.release.outputs.tag }}\""))
+    }
+
+    @Test
+    fun `release note helper uses the renamed public repository`() {
+        val script = File("../.github/scripts/release_note_generate.sh").readText()
+
+        assertTrue(script.contains("https://api.github.com/repos/FancyCorey/komikku-fc/compare/"))
+        assertFalse(script.contains("FancyCorey/komikku-KMK"))
+    }
+
+    @Test
+    fun `release workflow canonicalizes signing certificate fingerprints`() {
+        val workflow = File("../.github/workflows/build_release.yml").readText()
+
+        assertTrue(workflow.contains("gsub(\":\"; \"\") | ascii_downcase"))
+        assertTrue(workflow.contains("tr -d ':' | tr '[:upper:]' '[:lower:]'"))
+        assertTrue(workflow.contains("^[0-9a-f]{64}$"))
+    }
+
+    private fun appBuildVersionOverride(): Boolean {
+        val appBuild = File("../app/build.gradle.kts").readText()
+        return appBuild.contains("providers.gradleProperty(\"kmk.releaseVersionName\").orNull") &&
+            appBuild.contains("providers.gradleProperty(\"kmk.releaseVersionCode\")")
     }
 
     @Test

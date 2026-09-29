@@ -1718,8 +1718,9 @@ class MangaScreenModel(
     private fun removeChaptersDatabase() {
         screenModelScope.launchNonCancellable {
             try {
-                successState?.chapters?.map { it.id }
-                    ?.let { deleteChaptersFromDb.await(it) }
+                successState?.chapters?.let { chapters ->
+                    deleteChaptersFromDb.await(chapters.map { it.id })
+                }
             } catch (e: Throwable) {
                 logcat(LogPriority.ERROR) { "Manga chapter-record deletion failed" }
             }

@@ -73,6 +73,86 @@ class RecommendationHostRouteFixtureTest {
     }
 
     @Test
+    fun `fast source publishes while a slow sibling in the same batch is pending`() {
+        HostRouteTestEnvironment().use { environment ->
+            val slowStarted = CompletableDeferred<Unit>()
+            val releaseSlow = CompletableDeferred<Unit>()
+            val fast = SyntheticRecommendationSource(212L, "Fast source") { pageOf("fast") }
+            val slow = SyntheticRecommendationSource(213L, "Slow source") {
+                slowStarted.complete(Unit)
+                releaseSlow.await()
+                pageOf("slow")
+            }
+
+            RecommendationHostRouteFixture(environment, listOf(slow, fast)).use { route ->
+                route.refresh()
+                environment.runCurrent()
+
+                assertTrue(slowStarted.isCompleted, "the slow source must have reached its controlled wait")
+                val fastResult = route.state.items[fast]
+                assertTrue(
+                    fastResult is PersonalRecommendationResult.Success && fastResult.result.isNotEmpty(),
+                    "a completed source must be visible without waiting for its slow batch sibling",
+                )
+                val combinedResult = route.state.combinedResult
+                assertTrue(
+                    combinedResult is PersonalRecommendationResult.Success && combinedResult.result.isNotEmpty(),
+                    "Top Picks must publish from completed sources while a sibling remains pending",
+                )
+                assertTrue(route.state.isLoading, "the refresh remains active while the slow sibling is pending")
+
+                releaseSlow.complete(Unit)
+                environment.advanceUntilIdle()
+                assertFalse(route.state.isLoading)
+                assertTrue(route.state.items.getValue(slow) is PersonalRecommendationResult.Success)
+            }
+        }
+    }
+
+    @Test
+    fun `combined duplicate representative follows source priority when sources complete out of order`() {
+        HostRouteTestEnvironment().use { environment ->
+            val prioritySourceStarted = CompletableDeferred<Unit>()
+            val releasePrioritySource = CompletableDeferred<Unit>()
+            val prioritySource = SyntheticRecommendationSource(900L, "Priority source") {
+                prioritySourceStarted.complete(Unit)
+                releasePrioritySource.await()
+                duplicateWorkPage("priority")
+            }
+            val earlySource = SyntheticRecommendationSource(800L, "Early source") {
+                duplicateWorkPage("early")
+            }
+
+            RecommendationHostRouteFixture(
+                environment = environment,
+                sources = listOf(prioritySource, earlySource),
+                localMangaId = { _, _ -> 1L },
+            ).use { route ->
+                route.refresh()
+                environment.runCurrent()
+
+                assertTrue(prioritySourceStarted.isCompleted)
+                assertTrue(route.state.isLoading)
+                assertTrue(route.state.items[earlySource] is PersonalRecommendationResult.Success)
+                val partialTopPicks = route.state.combinedResult as PersonalRecommendationResult.Success
+                assertEquals(earlySource.id, partialTopPicks.result.single().manga.source)
+
+                releasePrioritySource.complete(Unit)
+                environment.advanceUntilIdle()
+
+                assertFalse(route.state.isLoading)
+                val topPicks = route.state.combinedResult as PersonalRecommendationResult.Success
+                assertEquals(1, topPicks.result.size)
+                assertEquals(
+                    prioritySource.id,
+                    topPicks.result.single().manga.source,
+                    "the merged representative must follow configured source priority, not completion order",
+                )
+            }
+        }
+    }
+
+    @Test
     fun `partial route retains successful source when a sibling source fails`() {
         HostRouteTestEnvironment().use { environment ->
             val success = SyntheticRecommendationSource(303L, "Working") { pageOf("working") }
@@ -108,6 +188,34 @@ class RecommendationHostRouteFixtureTest {
                 assertTrue(route.state.items.values.all { it is PersonalRecommendationResult.Error })
                 assertEquals(route.state.total, route.state.progress)
                 assertFalse(route.state.isLoading)
+            }
+        }
+    }
+
+    @Test
+    fun `bounded source scan continues past empty sources to fill a recommendation gap`() {
+        HostRouteTestEnvironment().use { environment ->
+            val calls = mutableListOf<Long>()
+            val sources = (1001L..1020L).map { id ->
+                SyntheticRecommendationSource(id, "Empty $id") {
+                    calls += id
+                    MangasPage(emptyList(), false)
+                }
+            } + SyntheticRecommendationSource(1021L, "Useful") {
+                calls += 1021L
+                pageOf("useful")
+            }
+
+            RecommendationHostRouteFixture(environment, sources).use { route ->
+                route.refreshToIdle()
+
+                assertEquals(21, calls.distinct().size)
+                assertTrue(1021L in calls)
+                assertTrue(route.state.items.getValue(sources.last()) is PersonalRecommendationResult.Success)
+                assertTrue(
+                    (route.state.items.getValue(sources.last()) as PersonalRecommendationResult.Success)
+                        .result.isNotEmpty(),
+                )
             }
         }
     }
@@ -254,6 +362,7 @@ private class RecommendationHostRouteFixture(
     private val environment: HostRouteTestEnvironment,
     private val sources: List<Source>,
     forYouFixtureMode: ForYouDebugFixtureMode = ForYouDebugFixtureMode.OFF,
+    private val localMangaId: (Manga, Int) -> Long = { manga, index -> manga.source * 1_000 + index + 1 },
 ) : AutoCloseable {
     private var closed = false
     private val sourcePreferences = SourcePreferences(FakePreferenceStore()).apply {
@@ -273,6 +382,7 @@ private class RecommendationHostRouteFixture(
         )
     }
     private val getTagAliases = mockk<GetTagAliases>().also { interactor ->
+        coEvery { interactor.awaitAll() } returns emptyList()
         coEvery { interactor.awaitAliasMap() } returns emptyMap()
         coEvery { interactor.awaitGroupToAliasesMap() } returns emptyMap()
     }
@@ -281,7 +391,7 @@ private class RecommendationHostRouteFixture(
     }
     private val networkToLocalManga = mockk<NetworkToLocalManga>().also { interactor ->
         coEvery { interactor.invoke(any<List<Manga>>(), any()) } answers {
-            firstArg<List<Manga>>().mapIndexed { index, manga -> manga.copy(id = manga.source * 1_000 + index + 1) }
+            firstArg<List<Manga>>().mapIndexed { index, manga -> manga.copy(id = localMangaId(manga, index)) }
         }
     }
     private val getMangaTaste = mockk<GetMangaTaste>().also { interactor ->
@@ -405,5 +515,21 @@ private fun pageOf(prefix: String): MangasPage = MangasPage(
             initialized = true,
         )
     },
+    hasNextPage = false,
+)
+
+private fun duplicateWorkPage(urlPrefix: String): MangasPage = MangasPage(
+    mangas = listOf(
+        SManga(
+            url = "/$urlPrefix-shared-work",
+            title = "Shared work",
+            author = "Shared author",
+            artist = "Shared artist",
+            description = "Same candidate from a different source",
+            genre = "action",
+            status = SManga.ONGOING,
+            initialized = true,
+        ),
+    ),
     hasNextPage = false,
 )

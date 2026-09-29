@@ -1,7 +1,6 @@
 package eu.kanade.tachiyomi.data.updater
 
 import android.content.Context
-import android.os.Build
 import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.util.system.isFossBuildType
 import eu.kanade.tachiyomi.util.system.isPreviewBuildType
@@ -61,14 +60,12 @@ class AppUpdateChecker(
 
                 // KMK -->
                 if (autoUpdate && result is GetApplicationRelease.Result.NewUpdate) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        AppUpdateDownloadJob.start(
-                            context = context,
-                            url = result.release.downloadLink,
-                            title = result.release.version,
-                            scheduled = true,
-                        )
-                    }
+                    AppUpdateDownloadJob.start(
+                        context = context,
+                        url = result.release.downloadLink,
+                        title = result.release.version,
+                        scheduled = true,
+                    )
                 }
                 // KMK <--
             }
@@ -96,7 +93,7 @@ class AppUpdateChecker(
 
 val GITHUB_REPO: String by lazy { getGithubRepo() }
 
-fun getGithubRepo(peekIntoPreview: Boolean = false): String = "FancyCorey/komikku-KMK"
+fun getGithubRepo(peekIntoPreview: Boolean = false): String = "FancyCorey/komikku-fc"
 
 fun getUpdateVersionName(): String = KmkRecsReleaseNotes.VERSION_NAME.removePrefix("KMK-Recs ")
 

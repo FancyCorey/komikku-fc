@@ -49,6 +49,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -90,7 +91,7 @@ import eu.kanade.presentation.reader.appbars.NavBarType
 import eu.kanade.presentation.reader.appbars.ReaderAppBars
 import eu.kanade.presentation.reader.settings.ReaderSettingsDialog
 import eu.kanade.presentation.theme.TachiyomiTheme
-import eu.kanade.presentation.util.formattedMessage
+import eu.kanade.presentation.util.readerErrorMessage
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.coil.TachiyomiImageDecoder
 import eu.kanade.tachiyomi.data.connections.discord.DiscordRPCService
@@ -261,19 +262,19 @@ class ReaderActivity : BaseActivity() {
         viewModel.evaluateSchedule()
 
         if (viewModel.needsInit()) {
-            val manga = intent.extras?.getLong("manga", -1) ?: -1L
-            val chapter = intent.extras?.getLong("chapter", -1) ?: -1L
-            // SY -->
-            val page = intent.extras?.getInt("page", -1).takeUnless { it == -1 }
-            // SY <--
-            if (manga == -1L || chapter == -1L) {
+            val route = parseReaderRouteIntent(
+                mangaId = intent.getLongExtra("manga", -1L),
+                chapterId = intent.getLongExtra("chapter", -1L),
+                page = intent.getIntExtra("page", -1),
+            )
+            if (route == null) {
                 finish()
                 return
             }
-            NotificationReceiver.dismissNotification(this, manga.hashCode(), Notifications.ID_NEW_CHAPTERS)
+            NotificationReceiver.dismissNotification(this, route.mangaId.hashCode(), Notifications.ID_NEW_CHAPTERS)
 
             lifecycleScope.launchNonCancellable {
-                val initResult = viewModel.init(manga, chapter/* SY --> */, page/* SY <-- */)
+                val initResult = viewModel.init(route.mangaId, route.chapterId/* SY --> */, route.page/* SY <-- */)
                 if (!initResult.getOrDefault(false)) {
                     val exception = initResult.exceptionOrNull() ?: IllegalStateException("Unknown err")
                     withUIContext {
@@ -394,9 +395,11 @@ class ReaderActivity : BaseActivity() {
             val alternateSourcePresentation by viewModel.alternateSourcePresentation.collectAsStateWithLifecycle()
             val isBlockedBySchedule by viewModel.isReadingBlockedBySchedule.collectAsStateWithLifecycle()
             val showPageNumber by readerPreferences.showPageNumber().collectAsState()
-            val settingsScreenModel = remember {
+            val settingsCoroutineScope = rememberCoroutineScope()
+            val settingsScreenModel = remember(settingsCoroutineScope) {
                 ReaderSettingsScreenModel(
                     readerState = viewModel.state,
+                    coroutineScope = settingsCoroutineScope,
                     onChangeReadingMode = viewModel::setMangaReadingMode,
                     onChangeOrientation = viewModel::setMangaOrientationType,
                 )
@@ -861,6 +864,27 @@ class ReaderActivity : BaseActivity() {
                 // KMK <--
 
                 null -> {}
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val route = parseReaderRouteIntent(
+            mangaId = intent.getLongExtra("manga", -1L),
+            chapterId = intent.getLongExtra("chapter", -1L),
+            page = intent.getIntExtra("page", -1),
+        ) ?: return
+        setIntent(intent)
+        NotificationReceiver.dismissNotification(this, route.mangaId.hashCode(), Notifications.ID_NEW_CHAPTERS)
+
+        lifecycleScope.launchNonCancellable {
+            val result = viewModel.openFromIntent(route.mangaId, route.chapterId, route.page)
+            if (!result.getOrDefault(false)) {
+                val exception = result.exceptionOrNull() ?: IllegalStateException("Unknown err")
+                withUIContext {
+                    setInitialChapterError(exception)
+                }
             }
         }
     }
@@ -1495,7 +1519,7 @@ class ReaderActivity : BaseActivity() {
         val category = ReaderInitialChapterLoadFailurePolicy.category(error)
         logcat(LogPriority.ERROR) { "Reader initial chapter load failed (${category.name})" }
         finish()
-        toast(with(this) { error.formattedMessage })
+        toast(with(this) { error.readerErrorMessage })
     }
 
     /**

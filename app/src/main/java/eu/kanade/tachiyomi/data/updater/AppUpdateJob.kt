@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.data.updater
 
 import android.content.Context
 import androidx.core.app.NotificationCompat
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -32,7 +33,10 @@ class AppUpdateJob(private val context: Context, workerParams: WorkerParameters)
             throw e
         } catch (e: Exception) {
             xLogE("Unable to check for update", e)
-            Result.failure()
+            when (AppUpdateJobResultPolicy.classify(runAttemptCount, MAX_RUN_ATTEMPTS)) {
+                AppUpdateJobResultPolicy.Outcome.Retry -> Result.retry()
+                AppUpdateJobResultPolicy.Outcome.Failure -> Result.failure()
+            }
         }
     }
 
@@ -43,6 +47,7 @@ class AppUpdateJob(private val context: Context, workerParams: WorkerParameters)
 
     companion object {
         private const val TAG = "AppUpdateChecker"
+        const val MAX_RUN_ATTEMPTS = 3
 
         fun setupTask(context: Context) {
             val constraints = Constraints.Builder()
@@ -57,6 +62,7 @@ class AppUpdateJob(private val context: Context, workerParams: WorkerParameters)
             )
                 .addTag(TAG)
                 .setConstraints(constraints)
+                .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.MINUTES)
                 .build()
 
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(TAG, ExistingPeriodicWorkPolicy.UPDATE, request)

@@ -709,6 +709,8 @@ private fun groupJournalEntrySummary(context: Context, entry: GroupJournalEntry)
     GroupJournalActionType.REMOVE_FROM_GROUP -> context.pluralStringResource(KMR.plurals.eval_undo_summary_group_remove, count = entry.touchedKeys.size, entry.touchedKeys.size)
     GroupJournalActionType.UNGROUP -> context.pluralStringResource(KMR.plurals.eval_undo_summary_group_ungroup, count = entry.touchedKeys.size, entry.touchedKeys.size)
     GroupJournalActionType.SET_PRIMARY -> context.stringResource(KMR.strings.eval_undo_summary_group_primary)
+    GroupJournalActionType.ADD_MEMBER -> context.pluralStringResource(KMR.plurals.eval_undo_summary_group_add, count = entry.touchedKeys.size, entry.touchedKeys.size)
+    GroupJournalActionType.MOVE_MEMBER -> context.pluralStringResource(KMR.plurals.eval_undo_summary_group_move, count = entry.touchedKeys.size, entry.touchedKeys.size)
 }
 
 private fun crossSourceIdentityJournalEntrySummary(
