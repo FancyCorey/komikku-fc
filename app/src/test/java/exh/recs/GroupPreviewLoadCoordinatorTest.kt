@@ -71,7 +71,7 @@ class GroupPreviewLoadCoordinatorTest {
     }
 
     @Test
-    fun `CancellationException propagates through runBounded`() = runBlocking {
+    fun `CancellationException propagates through runBounded`(): Unit = runBlocking {
         val coordinator = GroupPreviewLoadCoordinator(maxConcurrent = 4, timeoutMs = 5_000L)
         assertThrows(CancellationException::class.java) {
             runBlocking { coordinator.runBounded { throw CancellationException("cancelled") } }

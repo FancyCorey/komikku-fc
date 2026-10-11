@@ -1714,7 +1714,7 @@
     <!-- KMK --> <string name="alternate_source_reader_confirm_pair_title">Confirm the same manga?</string>
     <!-- KMK --> <string name="alternate_source_reader_confirm_pair_message">Confirm that the selected title is another version of the manga you are reading.</string>
     <!-- KMK --> <string name="alternate_source_reader_confirm_provisional_title">Use this provisional match?</string>
-    <!-- KMK --> <string name="alternate_source_reader_confirm_provisional_message">The chapter alignment is uncertain. You can correct it or return to the primary source at any time.</string>
+    <!-- KMK --> <string name="alternate_source_reader_confirm_provisional_message">The chapter alignment may be uncertain. You can correct it or return to the primary source at any time.</string>
     <!-- KMK --> <string name="alternate_source_reader_confirm_skip_title">Mark this alternate chapter as not matching?</string>
     <!-- KMK --> <string name="alternate_source_reader_confirm_skip_message">The current chapter will remain open while you choose another match.</string>
     <!-- KMK --> <string name="alternate_source_reader_resolving_entry">Opening the alternate chapter…</string>

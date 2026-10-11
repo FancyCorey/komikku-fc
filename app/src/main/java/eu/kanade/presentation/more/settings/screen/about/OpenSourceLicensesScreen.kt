@@ -4,11 +4,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
-import com.mikepenz.aboutlibraries.ui.compose.util.htmlReadyLicenseContent
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.R
@@ -21,6 +21,7 @@ class OpenSourceLicensesScreen : Screen() {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val context = LocalContext.current
         Scaffold(
             topBar = { scrollBehavior ->
                 AppBar(
@@ -37,11 +38,21 @@ class OpenSourceLicensesScreen : Screen() {
                     .fillMaxSize(),
                 contentPadding = contentPadding,
                 onLibraryClick = {
+                    val noticeResource = OpenSourceLicenseNotices.forLibrary(it.uniqueId)
+                    val notice = noticeResource?.let { resource ->
+                        OpenSourceLicenseNotice(
+                            title = resource.title,
+                            content = context.resources.openRawResource(resource.resourceId)
+                                .bufferedReader(Charsets.UTF_8)
+                                .use { reader -> reader.readText() },
+                        )
+                    }
                     navigator.push(
                         OpenSourceLibraryLicenseScreen(
                             name = it.name,
                             website = it.website,
-                            license = it.licenses.firstOrNull()?.htmlReadyLicenseContent.orEmpty(),
+                            licenses = it.licenses.toOpenSourceLicenseEntries(),
+                            notice = notice,
                         ),
                     )
                 },

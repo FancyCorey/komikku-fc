@@ -12,6 +12,10 @@ When published, download [Komikku FC v0.8.23](https://github.com/FancyCorey/komi
 
 The v0.8.23 candidate adds retry and recovery handling for interrupted app-update work. This behavior is not part of published v0.8.22, and a retry does not guarantee that a partial download resumes from its previous byte.
 
+The v0.8.23 candidate also lets you retry a failed alternate-source search or chapter lookup from the reader.
+
+The v0.8.23 candidate also applies the currently selected warning and chapter-end choices when you start the reading timer.
+
 Use **More > About > Check for updates** to check manually. Automatic discovery depends on the installed version's update checker, the published release, network access, and your update settings; notifications also require Android notification permission. Installing over an existing app requires a compatible package and signing certificate. Do not assume a development APK can replace your public installation.
 
 Some older releases compare Komikku's version rather than the Komikku FC feature version and may miss a newer fork release. If no update appears, check the Releases page and read that release's installation instructions. Choose an APK compatible with your device and current installation. If Android reports an incompatible update, keep your existing installation and back up your data rather than uninstalling it to force the update.
@@ -66,6 +70,7 @@ The overview below covers capabilities across releases; it is not a list of feat
 - Every Best Version card offers **View in Reader**, including cards whose preview samples failed, so you can inspect the full chapter and return to the comparison screen.
 - Reader errors show reader-specific messages for network, file, and extension failures, with a page-load message for other reader errors.
 - Best Version previews now show **Preview failed** with **Retry** when a sample image stays unresolved, instead of leaving a blank preview area.
+- Best Version fullscreen previews can retry a page when its image download or decoding fails, while keeping pages that already loaded intact.
 - Best Version lets you continue with matches already found while slower sources are still searching.
 - Same-manga source search marks a slow source as timed out in Best Version, version matching, and alternate-source reading while results from other sources can still appear.
 - Best Version fullscreen previews keep the title and source readable over light manga pages with a dark header scrim.
@@ -89,6 +94,8 @@ Komikku FC continues to use Komikku's existing Library, Browse, Reader, Settings
 
 Komikku FC is an independent fork. It has its own app logo, uses the package name `app.komikku.kmk`, and uses this fork's releases for its own updates. Supported launchers can use the monochrome logo for themed icons. The repository is now `FancyCorey/komikku-fc`; links using the former `komikku-KMK` name redirect to it. Official Komikku releases and support channels remain separate.
 
-## Known limitation
+## Known limitations
 
 Bulk preference actions made directly from For You are recorded in Action History, but the immediate completion message does not provide an inline **Undo** action. Reversal remains available through Action History when its conflict checks allow it.
+
+Local Tracking cannot be started for titles that come from the built-in Local source. Choosing **Track locally** on such a title does not save a tracking entry and shows a general error. Use a title from an installed source, or an external tracker, instead.

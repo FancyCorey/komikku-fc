@@ -102,6 +102,9 @@ Komikku FC is built from the work of contributors to
 [Mihon](https://github.com/mihonapp/mihon).
 
 The application does not host or provide manga, and its developers are not
-affiliated with content providers. The source is available under the
-[Apache License 2.0](./LICENSE).
+affiliated with content providers. Repository source is generally available
+under the [Apache License 2.0](./LICENSE); the
+[`core:image-decoder` module](./core/image-decoder/LICENSE) uses Mozilla Public
+License 2.0. Third-party components retain their own terms; see the
+[component notes](./docs/kmk/third-party-components.md).
 

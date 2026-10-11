@@ -251,6 +251,7 @@ class BrowsePersonalRecommendationsScreenModel(
     // Keep debug-only fixture eligibility injectable for host tests that run under a non-debug
     // variant. Production callers retain the real build flag by default.
     private val isDebugBuild: Boolean = BuildConfig.DEBUG,
+    private val naturalObservationSink: ((String) -> Unit)? = null,
     // KMK <--
     private val getTasteProfile: GetTasteProfile = Injekt.get(),
     private val getTagAliases: GetTagAliases = Injekt.get(),
@@ -378,6 +379,25 @@ class BrowsePersonalRecommendationsScreenModel(
     private var searchJob: Job? = null
     private var loadJob: Job? = null
     private val loadLaunchLock = Any()
+    private val naturalObservation = ForYouRefreshTelemetry.naturalSession(
+        enabled = ::naturalObservationEnabled,
+        maxCacheContexts = MAX_SOURCE_ATTEMPTS,
+        clock = clock,
+        sink = naturalObservationSink,
+    )
+
+    private fun naturalObservationEnabled(): Boolean =
+        ForYouDebugFixture.resolveMode(
+            fixtureBuildEnabled = isDebugBuild || BuildConfig.KMK_BENCHMARK_FIXTURE,
+            preferenceValue = sourcePreferences.forYouFixtureMode().get(),
+        ) == ForYouDebugFixtureMode.OFF && exh.util.DeveloperOptionsGatePolicy.canExposeDiagnostics(
+            sourcePreferences.developerOptionsEnabled().get(),
+            sourcePreferences.evaluationMode().get(),
+        )
+
+    override fun onDispose() {
+        naturalObservation.close()
+    }
     private val enricher = RecommendationCandidateEnricher(networkToLocalManga, coroutineDispatcher)
     // KMK --> v0.7.38: candidate discovery memory helpers
     private val memoryStore = RecommendationCandidateMemoryStore(getMemory, upsertMemory, pruneMemory)
@@ -424,6 +444,7 @@ class BrowsePersonalRecommendationsScreenModel(
         val successfulStrategy: RecommendationQueryStrategyType?,
         val status: RecommendationSourceRunStatus,
         val isUseful: Boolean,
+        val observation: List<ForYouNaturalRequestObservation.Contribution> = emptyList(),
     )
 
     init {
@@ -526,7 +547,9 @@ class BrowsePersonalRecommendationsScreenModel(
     /** Serializes refresh requests so a superseded load cannot cancel a newer search job. */
     private fun requestLoad(forceRefresh: Boolean, retrySourceIds: Set<Long>? = null) {
         synchronized(loadLaunchLock) {
-            ForYouRefreshTelemetry.superseded(mutableState.value.resultGeneration)
+            val previousGeneration = mutableState.value.resultGeneration
+            naturalObservation.supersession(previousGeneration, previousGeneration + 1)
+            ForYouRefreshTelemetry.superseded(previousGeneration)
             loadJob?.cancel()
             searchJob?.cancel()
             // Reserve the generation before launching work. A cancelled older load can otherwise
@@ -534,6 +557,7 @@ class BrowsePersonalRecommendationsScreenModel(
             val refreshGeneration = mutableState.updateAndGet {
                 it.copy(resultGeneration = it.resultGeneration + 1)
             }.resultGeneration
+            naturalObservation.generationStart(refreshGeneration)
             activeRefreshGeneration.updateAndGet { currentGeneration ->
                 RecommendationRefreshGenerationPolicy.activate(currentGeneration, refreshGeneration)
             }
@@ -1023,6 +1047,7 @@ class BrowsePersonalRecommendationsScreenModel(
                             outcome.status,
                             completedSourceResults,
                             sourcePriority,
+                            observation = outcome.observation,
                         )
                     }
                     outcomeChannel.close()
@@ -1176,7 +1201,10 @@ class BrowsePersonalRecommendationsScreenModel(
         // KMK <--
 
         if (!forceRefresh) {
-            val cached = loadFromCache(source.id, queryKey, fingerprint, tasteByKey, visibility, hideKnownManga, seenKeys, minChapterCount)
+            val cached = loadFromCacheObserved(
+                source.id, queryKey, fingerprint, tasteByKey, visibility, hideKnownManga, seenKeys,
+                minChapterCount, refreshGeneration,
+            )
             if (cached != null) {
                 ForYouRefreshTelemetry.cacheHit(refreshGeneration, cached.size)
                 // KMK --> v0.7.38: merge cached page-1 results with remembered candidates from all pages
@@ -1552,14 +1580,26 @@ class BrowsePersonalRecommendationsScreenModel(
             // catch(Error) below. A genuinely fatal error or CancellationException still
             // propagates directly out of SourceRuntime.run() itself, before ever reaching this
             // line.
-            val page = SourceRuntime.run(
+            val observationQuery = if (naturalObservationEnabled()) {
+                plan.type.name + ":" + searchParams.textQuery + ":" +
+                    serializeRecommendationFilters(searchParams.filters, filterSerializer)
+            } else {
+                ""
+            }
+            val pageRequest = naturalObservation.requestStart(
+                refreshGeneration,
+                source.id,
+                observationQuery,
+                fingerprint,
+                1,
+            )
+            val page = runObservedPersonalizedSearch(
                 source,
-                SourceRuntimeOperation.Search,
-                coroutineDispatcher,
-                bypassSuppression = bypassSourceFailureSuppression,
-            ) {
-                getSearchManga(1, searchParams.textQuery, searchParams.filters)
-            }.getOrThrowSourceRuntimeException()
+                searchParams,
+                1,
+                pageRequest,
+                bypassSourceFailureSuppression,
+            )
 
             val rawSMangas = RecommendationRawCandidatePolicy.distinctWithinLimit(page.mangas, rawCap) { it.url }
             if (rawSMangas.isNotEmpty()) hadRawResults = true
@@ -1587,7 +1627,8 @@ class BrowsePersonalRecommendationsScreenModel(
 
             val reason = recommendations.flatMap { it.matchedGroups }
                 .distinct().take(MAX_REASON_TAGS).joinToString(", ").ifBlank { null }
-            saveToCache(source.id, queryKey, fingerprint, recommendations.map { it.manga }, recommendations.map { it.score }, reason)
+            val writtenCache = saveToCache(source.id, queryKey, fingerprint, recommendations.map { it.manga }, recommendations.map { it.score }, reason)
+            naturalObservation.rememberCache(cacheKey(source.id, queryKey), fingerprint, pageRequest, writtenCache, writtenCache.expiresAt)
 
             // KMK --> v0.7.38: upsert page-1 results to memory + try additional page
             // memoryStore.upsertBatch already rethrows CancellationException and swallows
@@ -1684,6 +1725,7 @@ class BrowsePersonalRecommendationsScreenModel(
                 sourcePreferences.recommendationDiscoveryCandidateBudget().get(),
             )
             val additionalPageResults = mutableListOf<PersonalRecommendation>()
+            val additionalContributions = mutableListOf<ForYouNaturalRequestObservation.Contribution>()
             var lastAdditionalPage = 0
             if (
                 discoveryEffortLevel.additionalPagesPerRefresh > 0 &&
@@ -1710,7 +1752,7 @@ class BrowsePersonalRecommendationsScreenModel(
                         clock(),
                     ) ?: break
                     if (nextPage != plannedPage) break
-                    val (pageResults, probedPage, consumedCandidateCount) = discoverAdditionalPage(
+                    val additionalPage = discoverAdditionalPageObserved(
                         source = source,
                         progressRecords = currentProgressRecords,
                         queryKey = queryKey,
@@ -1728,7 +1770,11 @@ class BrowsePersonalRecommendationsScreenModel(
                         hideKnownManga = hideKnownManga,
                         // KMK <--
                         candidateBudget = remainingCandidateBudget,
+                        refreshGeneration = refreshGeneration,
+                        observationQuery = observationQuery,
                     )
+                    val (pageResults, probedPage, consumedCandidateCount) = additionalPage
+                    additionalPage.observation?.let(additionalContributions::add)
                     if (probedPage == 0) break
                     lastAdditionalPage = probedPage
                     remainingCandidateBudget -= consumedCandidateCount
@@ -1834,6 +1880,13 @@ class BrowsePersonalRecommendationsScreenModel(
                     // KMK <--
                     status = status,
                     isUseful = mergedRecommendations.isNotEmpty(),
+                    observation = buildNaturalContributions(
+                        pageRequest,
+                        recommendations,
+                        additionalContributions,
+                        resolvedRememberedKeys = remembered.map { it.sourceId to it.url }.toSet(),
+                        latestKeys = latestAdditive.map { it.manga.source to it.manga.url }.toSet(),
+                    ),
                 ),
                 hadRawResults = hadRawResults,
                 lastError = lastError,
@@ -2658,6 +2711,26 @@ class BrowsePersonalRecommendationsScreenModel(
         minChapterCount: Int = 0,
         // KMK <--
     ): List<PersonalRecommendation>? {
+        return loadFromCacheObserved(
+            sourceId, queryKey, fingerprint, tasteByKey, visibility, hideKnownManga, seenKeys, minChapterCount, null,
+        )
+    }
+
+    private suspend fun loadFromCacheObserved(
+        sourceId: Long,
+        queryKey: String,
+        fingerprint: String,
+        tasteByKey: Map<MangaTasteKey, MangaTaste>,
+        visibility: RatedMangaVisibility,
+        hideKnownManga: Boolean,
+        // KMK --> v0.6.20
+        seenKeys: Set<SeenMangaKey> = emptySet(),
+        // KMK <--
+        // KMK --> v0.7.41: min-chapter context so cached results obey the same policy as live results
+        minChapterCount: Int = 0,
+        // KMK <--
+        observationGeneration: Long?,
+    ): List<PersonalRecommendation>? {
         val cacheKey = cacheKey(sourceId, queryKey)
         val entry = getRecommendationCache.await(cacheKey) ?: return null
 
@@ -2707,7 +2780,7 @@ class BrowsePersonalRecommendationsScreenModel(
         // KMK <--
 
         // Single shared visibility contract for cached candidates (favorite/rated/seen/known/min-chapter).
-        return resolved.mapNotNull { (manga, score) ->
+        val cached = resolved.mapNotNull { (manga, score) ->
             val visible = RecommendationCandidateVisibilityPolicy.evaluate(
                 manga = manga,
                 tasteByKey = tasteByKey,
@@ -2719,6 +2792,10 @@ class BrowsePersonalRecommendationsScreenModel(
             ) == CandidateVisibility.VISIBLE
             if (!visible) null else PersonalRecommendation(manga, score, cachedGroups)
         }
+        observationGeneration?.let { generation ->
+            naturalObservation.cacheHit(generation, cacheKey, fingerprint, cached.size, entry)
+        }
+        return cached
     }
 
     private suspend fun saveToCache(
@@ -2728,7 +2805,7 @@ class BrowsePersonalRecommendationsScreenModel(
         result: List<Manga>,
         scores: List<Double>,
         reason: String?,
-    ) {
+    ): RecommendationCacheEntry {
         val now = clock()
         val entry = RecommendationCacheEntry(
             cacheKey = cacheKey(sourceId, queryKey),
@@ -2741,7 +2818,9 @@ class BrowsePersonalRecommendationsScreenModel(
             createdAt = now,
             expiresAt = now + CACHE_TTL_MS,
         )
+        naturalObservation.forgetCache(entry.cacheKey)
         upsertRecommendationCache.await(entry)
+        return entry
     }
 
     private fun cacheKey(sourceId: Long, queryKey: String): String =
@@ -2898,6 +2977,68 @@ class BrowsePersonalRecommendationsScreenModel(
      * visibleCount/progressStatus/returned recommendations/candidate memory are all derived from
      * the fully filtered result — a known-only page is never recorded as successful/visible.
      */
+    private data class AdditionalPageResult(
+        val recommendations: List<PersonalRecommendation>,
+        val page: Int,
+        val consumedCandidates: Int,
+        val observation: ForYouNaturalRequestObservation.Contribution? = null,
+    )
+
+    private fun buildNaturalContributions(
+        pageRequest: ForYouNaturalRequestObservation.Request?,
+        pageOne: List<PersonalRecommendation>,
+        additional: List<ForYouNaturalRequestObservation.Contribution>,
+        resolvedRememberedKeys: Set<Pair<Long, String>>,
+        latestKeys: Set<Pair<Long, String>>,
+    ): List<ForYouNaturalRequestObservation.Contribution> {
+        if (pageRequest == null) return emptyList()
+        val pageOneKeys = pageOne.map { it.manga.source to it.manga.url }.toSet()
+        val occupied = (pageOneKeys + resolvedRememberedKeys + latestKeys).toMutableSet()
+        return listOf(ForYouNaturalRequestObservation.Contribution(pageRequest, pageOneKeys)) +
+            additional.map { contribution ->
+                val unique = contribution.candidateKeys - occupied
+                occupied.addAll(contribution.candidateKeys)
+                contribution.copy(candidateKeys = unique)
+            }
+    }
+
+    private suspend fun runObservedPersonalizedSearch(
+        source: Source,
+        searchParams: GenreFilterMapper.SearchParams,
+        page: Int,
+        request: ForYouNaturalRequestObservation.Request?,
+        bypassSuppression: Boolean = false,
+    ): eu.kanade.tachiyomi.source.model.MangasPage {
+        try {
+            val runtimeResult = SourceRuntime.run(
+                source,
+                SourceRuntimeOperation.Search,
+                coroutineDispatcher,
+                bypassSuppression = bypassSuppression,
+            ) {
+                naturalObservation.providerStart(request)
+                getSearchManga(page, searchParams.textQuery, searchParams.filters).also {
+                    naturalObservation.providerReturn(request, it.mangas.size)
+                }
+            }
+            val outcome = when {
+                runtimeResult.isSuccess -> ForYouNaturalRequestObservation.Terminal.RETURNED
+                runtimeResult.exceptionOrNull() is eu.kanade.tachiyomi.source.SourceTemporarilyUnavailableException &&
+                    request?.invoked != true ->
+                    ForYouNaturalRequestObservation.Terminal.SUPPRESSED
+                else -> ForYouNaturalRequestObservation.Terminal.ERROR
+            }
+            naturalObservation.terminal(request, outcome)
+            return runtimeResult.getOrThrowSourceRuntimeException()
+        } catch (e: CancellationException) {
+            naturalObservation.terminal(request, ForYouNaturalRequestObservation.Terminal.CANCELLED)
+            throw e
+        } catch (e: Throwable) {
+            naturalObservation.terminal(request, ForYouNaturalRequestObservation.Terminal.ERROR)
+            throw e
+        }
+    }
+
     private suspend fun discoverAdditionalPage(
         source: Source,
         // KMK --> v0.7.40: full progress records replace Set<Int> so planner can classify failures
@@ -2920,12 +3061,44 @@ class BrowsePersonalRecommendationsScreenModel(
         candidateBudget: Int,
         // KMK <--
     ): Triple<List<PersonalRecommendation>, Int, Int> {
+        val result = discoverAdditionalPageObserved(
+            source, progressRecords, queryKey, topTags, fingerprint, queryStrategy, searchParams,
+            tasteByKey, visibility, seenKeys, profile, aliasMap, minChapterCount, hideKnownManga,
+            candidateBudget, refreshGeneration = 0, observationQuery = "",
+        )
+        return Triple(result.recommendations, result.page, result.consumedCandidates)
+    }
+
+    private suspend fun discoverAdditionalPageObserved(
+        source: Source,
+        // KMK --> v0.7.40: full progress records replace Set<Int> so planner can classify failures
+        progressRecords: List<RecommendationDiscoveryProgress>,
+        // KMK <--
+        queryKey: String,
+        topTags: List<String>,
+        fingerprint: String,
+        queryStrategy: String?,
+        searchParams: GenreFilterMapper.SearchParams,
+        tasteByKey: Map<MangaTasteKey, MangaTaste>,
+        visibility: RatedMangaVisibility,
+        seenKeys: Set<SeenMangaKey>,
+        profile: TasteProfile,
+        aliasMap: Map<String, String>,
+        minChapterCount: Int,
+        // KMK --> v0.7.41 follow-up: hide-known context so extra-page candidates use the same
+        // shared visibility policy as live page-one, cache, memory, and group recommendations
+        hideKnownManga: Boolean,
+        candidateBudget: Int,
+        refreshGeneration: Long,
+        observationQuery: String,
+        // KMK <--
+    ): AdditionalPageResult {
         // KMK --> v0.7.40: planner now classifies retryable vs permanent failures
         val nowMs = clock()
         val nextPage = RecommendationDiscoveryPlanner.nextPageToProbe(progressRecords, nowMs)
-            ?: return Triple(emptyList(), 0, 0)
+            ?: return AdditionalPageResult(emptyList(), 0, 0)
         // KMK <--
-        if (!currentCoroutineContext().isActive) return Triple(emptyList(), nextPage, 0)
+        if (!currentCoroutineContext().isActive) return AdditionalPageResult(emptyList(), nextPage, 0)
 
         // KMK --> v0.7.40: carry forward attempt_count for the page being probed (for retry tracking)
         val existingRecord = progressRecords.find { it.page == nextPage }
@@ -2950,6 +3123,13 @@ class BrowsePersonalRecommendationsScreenModel(
         // but the two NESTED runCatching calls below (chapterCounts/knownIds) swallowed
         // CancellationException internally before it could ever reach this outer rethrow. Every
         // suspend boundary in this block now rethrows cancellation explicitly.
+        val request = naturalObservation.requestStart(
+            refreshGeneration,
+            source.id,
+            observationQuery,
+            fingerprint,
+            nextPage,
+        )
         val result = try {
             run innerRun@{
                 // KMK v0.8.10-fix7: routed through SourceRuntime instead of a raw call inside
@@ -2959,15 +3139,13 @@ class BrowsePersonalRecommendationsScreenModel(
                 // Exception) rather than rethrowing a raw Error. A genuinely fatal error or
                 // CancellationException still propagates directly out of SourceRuntime.run() itself.
                 val pageResult = withTimeoutOrNull(ADDITIONAL_PAGE_TIMEOUT_MS) {
-                    SourceRuntime.run(source, SourceRuntimeOperation.Search, coroutineDispatcher) {
-                        getSearchManga(nextPage, searchParams.textQuery, searchParams.filters)
-                    }.getOrThrowSourceRuntimeException()
+                    runObservedPersonalizedSearch(source, searchParams, nextPage, request)
                 } ?: run {
                     // Explicit local probe timeout — a transient, retryable failure.
                     progressStatus = RecommendationDiscoveryProgress.STATUS_ERROR
                     failureKind = RecommendationDiscoveryProgress.FAILURE_KIND_RETRYABLE
                     errorMessage = "Additional-page search timed out after ${ADDITIONAL_PAGE_TIMEOUT_MS}ms"
-                    return@innerRun Triple(emptyList(), nextPage, 0)
+                    return@innerRun AdditionalPageResult(emptyList(), nextPage, 0)
                 }
                 // KMK <--
                 val rawSMangas = RecommendationRawCandidatePolicy.distinctWithinLimit(
@@ -2978,7 +3156,7 @@ class BrowsePersonalRecommendationsScreenModel(
                 rawCount = rawSMangas.size
                 if (rawSMangas.isEmpty()) {
                     progressStatus = RecommendationDiscoveryProgress.STATUS_EMPTY
-                    return@innerRun Triple(emptyList(), nextPage, 0)
+                    return@innerRun AdditionalPageResult(emptyList(), nextPage, 0)
                 }
 
                 val raw = rawSMangas.map { it.toDomainManga(source.id) }
@@ -3040,7 +3218,7 @@ class BrowsePersonalRecommendationsScreenModel(
                     rawCount > 0 -> RecommendationDiscoveryProgress.STATUS_FILTERED
                     else -> RecommendationDiscoveryProgress.STATUS_EMPTY
                 }
-                Triple(results, nextPage, rawSMangas.size)
+                AdditionalPageResult(results, nextPage, rawSMangas.size)
             }
         } catch (e: CancellationException) {
             // Cancellation is never recorded as a failed retry — rethrow before any progress write.
@@ -3051,7 +3229,7 @@ class BrowsePersonalRecommendationsScreenModel(
             errorMessage = RecommendationErrorClassifier.classifyToStorageKey(e)
             failureKind = RecommendationRetryClassifier.classify(e)
             // KMK <--
-            Triple(emptyList(), nextPage, 0)
+            AdditionalPageResult(emptyList(), nextPage, 0)
         }
 
         // KMK --> v0.7.41: compute the terminal retry state after the probe resolves.
@@ -3101,7 +3279,14 @@ class BrowsePersonalRecommendationsScreenModel(
         }
         // KMK <--
 
-        return result
+        return result.copy(
+            observation = request?.let {
+                ForYouNaturalRequestObservation.Contribution(
+                    it,
+                    result.recommendations.map { recommendation -> recommendation.manga.source to recommendation.manga.url }.toSet(),
+                )
+            },
+        )
     }
 
     // KMK <--
@@ -3240,12 +3425,71 @@ class BrowsePersonalRecommendationsScreenModel(
         status: RecommendationSourceRunStatus? = null,
         completedSourceResults: MutableMap<Long, Pair<Source, List<PersonalRecommendation>>>,
         sourcePriority: Map<Long, Int>,
+        observation: List<ForYouNaturalRequestObservation.Contribution> = emptyList(),
     ) {
+        if (naturalObservationEnabled() && observation.isNotEmpty()) {
+            synchronized(loadLaunchLock) {
+                if (refreshGeneration != activeRefreshGeneration.get() ||
+                    refreshGeneration != mutableState.value.resultGeneration
+                ) {
+                    ForYouRefreshTelemetry.staleResultRejected(refreshGeneration, activeRefreshGeneration.get(), source.id)
+                    naturalObservation.dropped(observation)
+                    return
+                }
+                // Lock order: loadLaunchLock -> accumulatorLock -> pure event publication.
+                val (rowResult, detailResult) = synchronized(accumulatorLock) {
+                    if (result is PersonalRecommendationResult.Success && result.result.isNotEmpty()) {
+                        completedSourceResults[source.id] = source to result.result
+                    } else {
+                        completedSourceResults.remove(source.id)
+                    }
+                    combinedAccumulator.clear()
+                    completedSourceResults.entries.withIndex()
+                        .sortedWith(compareBy({ sourcePriority[it.value.key] ?: Int.MAX_VALUE }, { it.index }))
+                        .forEach { (_, entry) -> combinedAccumulator.add(entry.value.second, entry.key) }
+                    val detailRanked = combinedAccumulator.rank(currentBoostedSourceIds, TOP_PICKS_DETAIL_CAP)
+                    val rowRanked = detailRanked.take(TOP_PICKS_ROW_CAP)
+                    Pair(
+                        if (rowRanked.isEmpty()) null else PersonalRecommendationResult.Success(rowRanked),
+                        if (detailRanked.isEmpty()) null else PersonalRecommendationResult.Success(detailRanked),
+                    )
+                }
+                while (true) {
+                    val state = mutableState.value
+                    if (refreshGeneration != activeRefreshGeneration.get() || state.resultGeneration != refreshGeneration) {
+                        ForYouRefreshTelemetry.staleResultRejected(refreshGeneration, activeRefreshGeneration.get(), source.id)
+                        naturalObservation.dropped(observation)
+                        return
+                    }
+                    val next = state.copy(
+                        items = state.items.mutate { it[source] = result },
+                        combinedResult = rowResult,
+                        combinedDetailResult = detailResult,
+                        sourceStatuses = if (status != null) {
+                            state.sourceStatuses.mutate { it[source.id] = status }
+                        } else {
+                            state.sourceStatuses
+                        },
+                    )
+                    if (mutableState.compareAndSet(state, next)) {
+                        val retained = (result as? PersonalRecommendationResult.Success)?.result.orEmpty()
+                            .map { it.manga.source to it.manga.url }.toSet()
+                        naturalObservation.committed(observation, retained)
+                        ForYouRefreshTelemetry.resultPublished(refreshGeneration, source.id, retained.size)
+                        if (result is PersonalRecommendationResult.Success && result.result.isNotEmpty()) {
+                            ForYouRefreshTelemetry.firstResult(refreshGeneration, result.result.size)
+                        }
+                        return
+                    }
+                }
+            }
+        }
         if (!RecommendationRefreshGenerationPolicy.shouldAccept(
                 candidateGeneration = refreshGeneration,
                 activeGeneration = activeRefreshGeneration.get(),
             )
         ) {
+            ForYouRefreshTelemetry.staleResultRejected(refreshGeneration, activeRefreshGeneration.get(), source.id)
             return
         }
 
@@ -3255,6 +3499,7 @@ class BrowsePersonalRecommendationsScreenModel(
                     activeGeneration = activeRefreshGeneration.get(),
                 )
             ) {
+                ForYouRefreshTelemetry.staleResultRejected(refreshGeneration, activeRefreshGeneration.get(), source.id)
                 return
             }
             if (result is PersonalRecommendationResult.Success && result.result.isNotEmpty()) {
@@ -3279,14 +3524,17 @@ class BrowsePersonalRecommendationsScreenModel(
         if (result is PersonalRecommendationResult.Success && result.result.isNotEmpty()) {
             ForYouRefreshTelemetry.firstResult(refreshGeneration, result.result.size)
         }
+        var committed = false
         mutableState.update { state ->
             if (!RecommendationRefreshGenerationPolicy.shouldAccept(
                     candidateGeneration = refreshGeneration,
                     activeGeneration = activeRefreshGeneration.get(),
                 )
             ) {
+                committed = false
                 return@update state
             }
+            committed = true
             state.copy(
                 items = state.items.mutate { it[source] = result },
                 combinedResult = rowResult,
@@ -3297,6 +3545,15 @@ class BrowsePersonalRecommendationsScreenModel(
                     state.sourceStatuses
                 },
             )
+        }
+        if (committed) {
+            ForYouRefreshTelemetry.resultPublished(
+                refreshGeneration,
+                source.id,
+                (result as? PersonalRecommendationResult.Success)?.result?.size ?: 0,
+            )
+        } else {
+            ForYouRefreshTelemetry.staleResultRejected(refreshGeneration, activeRefreshGeneration.get(), source.id)
         }
     }
 

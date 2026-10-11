@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kmk-screenshot-manifest version="1" release="0.8.23" inventory="candidate-illustration-inventory" hash-algorithm="SHA-256">
+  <candidate-binding>
+    <package>app.komikku.kmk</package>
+    <variant>kmkPublicTest</variant>
+    <version name="1.14.1" code="96" min-sdk="26" target-sdk="36"/>
+    <artifact abi="x86_64" sha256="9A830037E916C3ACC9F6C8571E86D64F69B4423DDCCB4AE2A1629A6723E0C156"/>
+    <current-candidate-build abi="x86_64" sha256="83476571F141EB0DD17A1F028844C3DEEF39CD3C2D2E636FAFD788339C46718D" relation="differs-from-the-capture-artifact-only-in-the-in-app-whats-new-wording-for-for-you-refresh; no-image-here-shows-that-line"/>
+    <signer sha256="AF5EC546F3F640B71E3E19E69B9C1913AF27803E255C80ABE65BB96C022D417A" kind="android-debug"/>
+    <capture-environment>Android emulator, API 30, 1080x1920, installed from the artifact above; synthetic test sources and generated pages only; no real titles, accounts, device identifiers or local paths</capture-environment>
+    <limits>Public-test build signed with the Android debug certificate; not the production-signed release artifact. These images illustrate behavior and do not assert that every state is shown.</limits>
+  </candidate-binding>
+  <artifact id="whats-new-v0.8.23" type="screenshot" path="../visual-guide/v0.8.23/whats-new.png" sha256="55F8416A06B3A55A45195CB62CEB676D40F599BD73F48998E6465B6E93596724" width="1080" height="1920">
+    <route>more/about/whats-new</route>
+    <state>current-version-and-beginning-of-scrollable-release-notes</state>
+    <visible-content>Komikku FC v0.8.23; product release notes; status-bar time and icons</visible-content>
+  </artifact>
+  <artifact id="local-tracking-decimal-progress-v0.8.23" type="screenshot" path="../visual-guide/v0.8.23/local-tracking-decimal-progress.png" sha256="7D59B11C991708B04500A8A9BE5058B72726045C944B826CF89000B238900516" width="1080" height="1920">
+    <route>library/manga/tracking/local-tracking</route>
+    <state>reading-status-with-decimal-chapter-progress-2.5-and-start-date</state>
+    <visible-content>Tracking sheet with Local Tracking status, decimal chapter progress, score, start and finish date controls; synthetic title; status-bar time and icons</visible-content>
+    <sanitization>synthetic-fixture-title-and-source; no-real-manga-title; no-source-name-of-a-real-source; no-account; no-device-identifier; no-local-path; library-grid-not-captured</sanitization>
+  </artifact>
+  <artifact id="local-tracking-refresh-read-markers-v0.8.23" type="screenshot" path="../visual-guide/v0.8.23/local-tracking-refresh-read-markers.png" sha256="B49EB54301A1B66C7145799ECE627672183448C72A7558F72B7B66BB6EDD0797" width="1080" height="1920">
+    <route>library/manga/chapter-list-after-reopening-tracking-sheet</route>
+    <state>chapters-through-saved-progress-marked-read-next-chapter-unread-resume-available</state>
+    <visible-content>Chapter list where chapters 1 and 2 are marked read after saved Local Tracking progress 2.5 and chapter 3 is unread; synthetic title; status-bar time and icons</visible-content>
+    <sanitization>synthetic-fixture-content; no-real-manga-title; no-real-source-name; no-account; no-device-identifier; no-local-path; library-grid-not-captured</sanitization>
+  </artifact>
+  <artifact id="source-switching-chooser-v0.8.23" type="screenshot" path="../visual-guide/v0.8.23/source-switching-chooser.png" sha256="3A515BE746911FC3CE8CE41FFCC917A6132F37650F4467C5FDF6D2C0854DA498" width="1080" height="1920">
+    <route>reader/toolbar/choose-an-alternate-source</route>
+    <state>installed-source-search-completed-one-synthetic-candidate-listed</state>
+    <visible-content>Choose an alternate source dialog with a synthetic matching candidate and the search and confirmation actions; status-bar time and icons</visible-content>
+    <sanitization>synthetic-fixture-sources-only; no-real-source-installed-on-capture-profile; no-real-manga-title; no-account; no-device-identifier; no-local-path; dialog-cancelled-no-selection</sanitization>
+  </artifact>
+</kmk-screenshot-manifest>

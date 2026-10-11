@@ -5,14 +5,16 @@ import eu.kanade.domain.manga.model.toSManga
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceRuntime
+import eu.kanade.tachiyomi.source.SourceRuntimeFailureRegistry
 import eu.kanade.tachiyomi.source.SourceRuntimeOperation
-import exh.recs.matching.CrossExtensionMatchQueryPlanner
 import exh.recs.matching.SameMangaCandidateEvidenceAttacher
-import exh.recs.matching.SameMangaCandidateResult
 import exh.recs.matching.SameMangaCandidateSearcher
 import exh.recs.matching.SameMangaMatchSettings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import tachiyomi.domain.chapter.interactor.GetChapter
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.manga.interactor.GetManga
@@ -90,7 +92,11 @@ internal interface AlternateSourceReaderCandidateReads {
     suspend fun isConfirmed(origin: CrossSourceRecordKey, candidate: CrossSourceRecordKey): Boolean
     fun sourceLabel(sourceId: Long): String?
     suspend fun liveSearch(origin: Manga): List<AlternateSourceReaderLiveCandidateRead>
+    suspend fun retryLiveSearch(origin: Manga): List<AlternateSourceReaderLiveCandidateRead> = liveSearch(origin)
+    fun cancelLiveSearch() {}
     suspend fun chapters(manga: Manga): AlternateSourceReaderChapterDiscovery
+    suspend fun retryChapters(manga: Manga): AlternateSourceReaderChapterDiscovery = chapters(manga)
+    suspend fun prepareManualRetry(sourceId: Long) {}
 }
 
 internal sealed interface AlternateSourceReaderLiveCandidateRead {
@@ -131,6 +137,7 @@ class AlternateSourceReaderCandidateGateway internal constructor(
     suspend fun discover(
         request: AlternateSourceReaderCandidateRequest,
         includeLiveSearch: Boolean,
+        explicitRetry: Boolean = false,
     ): AlternateSourceReaderCandidateDiscovery {
         val context = reads.resolveContext(request)
             ?: return AlternateSourceReaderCandidateDiscovery(emptyList(), 0)
@@ -205,7 +212,8 @@ class AlternateSourceReaderCandidateGateway internal constructor(
 
         var failedSources = 0
         if (includeLiveSearch) {
-            reads.liveSearch(context.origin).forEach { result ->
+            val liveResults = if (explicitRetry) reads.retryLiveSearch(context.origin) else reads.liveSearch(context.origin)
+            liveResults.forEach { result ->
                 when (result) {
                     is AlternateSourceReaderLiveCandidateRead.Candidate -> {
                         val manga = result.manga
@@ -239,8 +247,15 @@ class AlternateSourceReaderCandidateGateway internal constructor(
         )
     }
 
-    suspend fun chapters(candidate: AlternateSourceReaderMangaCandidate): AlternateSourceReaderChapterDiscovery =
-        reads.chapters(candidate.manga)
+    suspend fun chapters(
+        candidate: AlternateSourceReaderMangaCandidate,
+        explicitRetry: Boolean = false,
+    ): AlternateSourceReaderChapterDiscovery =
+        if (explicitRetry) reads.retryChapters(candidate.manga) else reads.chapters(candidate.manga)
+
+    suspend fun prepareManualRetry(sourceId: Long) = reads.prepareManualRetry(sourceId)
+
+    fun cancelLiveSearch() = reads.cancelLiveSearch()
 
     private suspend fun addCandidate(
         candidates: LinkedHashMap<CrossSourceRecordKey, AlternateSourceReaderMangaCandidate>,
@@ -275,6 +290,7 @@ internal class DefaultAlternateSourceReaderCandidateReads(
     networkToLocalManga: NetworkToLocalManga,
     private val syncChaptersWithSource: SyncChaptersWithSource,
     private val dispatcher: CoroutineDispatcher,
+    scope: CoroutineScope,
 ) : AlternateSourceReaderCandidateReads {
     private val searcher = SameMangaCandidateSearcher(
         sourcePreferences = sourcePreferences,
@@ -288,6 +304,13 @@ internal class DefaultAlternateSourceReaderCandidateReads(
         preselectResults = false,
         previewSampleSize = SameMangaMatchSettings.DEFAULT_SAMPLE_SIZE,
         avoidFirstPages = true,
+    )
+    private val liveSearch = AlternateSourceReaderLiveSearch(
+        scope = scope,
+        searcher = searcher,
+        settings = settings,
+        sourceProvider = { searcher.getMatchingSources() },
+        maxSources = MAX_LIVE_SOURCES,
     )
 
     override suspend fun resolveContext(
@@ -345,31 +368,37 @@ internal class DefaultAlternateSourceReaderCandidateReads(
 
     override fun sourceLabel(sourceId: Long): String? = sourceManager.get(sourceId)?.name
 
-    override suspend fun liveSearch(origin: Manga): List<AlternateSourceReaderLiveCandidateRead> {
-        val results = AlternateSourceReaderLiveCandidateResults()
-        val sources = searcher.getMatchingSources().take(MAX_LIVE_SOURCES)
-        searcher.search(
-            queries = CrossExtensionMatchQueryPlanner.buildQueries(origin),
-            settings = settings,
-            originManga = origin,
-            sources = sources,
-        ) { sourceResult ->
-            when (val result = sourceResult.result) {
-                SameMangaCandidateResult.Loading -> Unit
-                is SameMangaCandidateResult.Error -> results.add(AlternateSourceReaderLiveCandidateRead.SourceFailure)
-                is SameMangaCandidateResult.Success -> {
-                    result.results.forEach { candidate ->
-                        results.add(AlternateSourceReaderLiveCandidateRead.Candidate(candidate))
-                    }
-                }
-            }
-        }
-        return results.snapshot()
-    }
+    override suspend fun liveSearch(origin: Manga): List<AlternateSourceReaderLiveCandidateRead> = liveSearch.search(origin)
+
+    override suspend fun retryLiveSearch(origin: Manga): List<AlternateSourceReaderLiveCandidateRead> =
+        liveSearch.search(origin, explicitRetry = true)
+
+    override fun cancelLiveSearch() = liveSearch.cancel()
 
     override suspend fun chapters(manga: Manga): AlternateSourceReaderChapterDiscovery {
         val source: Source = sourceManager.get(manga.source)
             ?: return AlternateSourceReaderChapterDiscovery.SourceUnavailable
+        return discoverChapters(source, manga)
+    }
+
+    override suspend fun retryChapters(manga: Manga): AlternateSourceReaderChapterDiscovery {
+        val source: Source = sourceManager.get(manga.source)
+            ?: return AlternateSourceReaderChapterDiscovery.SourceUnavailable
+        currentCoroutineContext().ensureActive()
+        SourceRuntimeFailureRegistry.clear(source.id)
+        return discoverChapters(source, manga)
+    }
+
+    override suspend fun prepareManualRetry(sourceId: Long) {
+        val source = sourceManager.get(sourceId) ?: return
+        currentCoroutineContext().ensureActive()
+        SourceRuntimeFailureRegistry.clear(source.id)
+    }
+
+    private suspend fun discoverChapters(
+        source: Source,
+        manga: Manga,
+    ): AlternateSourceReaderChapterDiscovery {
         return SourceRuntime.run(source, SourceRuntimeOperation.MangaUpdate, dispatcher) {
             getMangaUpdate(
                 manga = manga.toSManga(),

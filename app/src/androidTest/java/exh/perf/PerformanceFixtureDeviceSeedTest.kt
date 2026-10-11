@@ -1,5 +1,7 @@
 package exh.perf
 
+import android.app.Instrumentation
+import android.os.Bundle
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -68,17 +70,19 @@ class PerformanceFixtureDeviceSeedTest {
         )
         val elapsedMs = System.currentTimeMillis() - startedAt
 
-        Log.i(
-            TAG,
-            "Seed complete in ${elapsedMs}ms: manga=${result.mangaIds.size} categories=${result.categoryIds.size} " +
-                "chapters=${result.chapterCount} history=${result.historyCount} rated=${result.ratedCount} " +
-                "crossSourceLinks=${result.crossSourceLinkCount} localTracking=${result.localTrackingCount}",
-        )
+        val summary = "Seed complete in ${elapsedMs}ms: manga=${result.mangaIds.size} categories=${result.categoryIds.size} " +
+            "chapters=${result.chapterCount} history=${result.historyCount} rated=${result.ratedCount} " +
+            "crossSourceLinks=${result.crossSourceLinkCount} localTracking=${result.localTrackingCount}"
+        Log.i(TAG, summary)
 
         // A basic sanity assertion -- the real coverage (distribution/edge-case correctness) is
         // already proven on the host by PerformanceFixtureGeneratorTest/PerformanceFixtureSeederTest;
         // this only confirms the on-device Injekt wiring itself actually reached the real database.
         assertEquals(spec.totalManga, result.mangaIds.size)
+        InstrumentationRegistry.getInstrumentation().sendStatus(
+            0,
+            Bundle().apply { putString(Instrumentation.REPORT_KEY_STREAMRESULT, "$summary\n") },
+        )
     }
 
     companion object {

@@ -2,6 +2,7 @@ package exh.perf
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import exh.recs.TestInjektSupport
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -239,6 +240,80 @@ class PerformanceFixtureSeederTest {
         // target C4's own measurement matrix will profile) -- just a sanity ceiling proving the
         // reusable script itself does not have a pathological (e.g. O(n^2)) blowup at target scale.
         assertTrue(took < 60_000, "seeding the REALISTIC preset took ${took}ms, unexpectedly slow even for an in-memory host DB")
+    }
+
+    @Test
+    fun `repeated seeding in the same database rejects before changing persisted rows`() = runTest {
+        val repos = freshRepositories()
+        val (_, first) = seedSmall(repos)
+        val mangaBefore = repos.manga.getAll()
+        val categoriesBefore = repos.category.getAll()
+        val chaptersBefore = first.mangaIds.associateWith { repos.chapter.getChapterByMangaId(it, applyFilter = false) }
+        val historyBefore = first.mangaIds.associateWith { repos.history.getHistoryByMangaId(it) }
+        val tastesBefore = repos.taste.getAllMangaTastes()
+        val linksBefore = repos.taste.getAllCrossSourceMangaLinks()
+        val primariesBefore = repos.taste.getAllCrossSourceGroupPrimaries()
+        val tagsBefore = repos.taste.getAllTagTastes()
+        val aliasesBefore = repos.taste.getAllTagAliases()
+        val trackingBefore = repos.localTracker.getAllWorksAsFlow().first()
+        val assignmentsBefore = first.mangaIds.associateWith { repos.category.getCategoriesByMangaId(it) }
+        val durationBefore = repos.history.getTotalReadDuration()
+
+        var rejection: IllegalStateException? = null
+        try {
+            seedSmall(repos)
+        } catch (error: IllegalStateException) {
+            rejection = error
+        }
+        assertEquals(
+            "Performance fixture identities already exist; refusing to append duplicate fixture data",
+            rejection?.message,
+        )
+        assertEquals(mangaBefore, repos.manga.getAll())
+        assertEquals(categoriesBefore, repos.category.getAll())
+        assertEquals(chaptersBefore, first.mangaIds.associateWith { repos.chapter.getChapterByMangaId(it, applyFilter = false) })
+        assertEquals(historyBefore, first.mangaIds.associateWith { repos.history.getHistoryByMangaId(it) })
+        assertEquals(tastesBefore, repos.taste.getAllMangaTastes())
+        assertEquals(linksBefore, repos.taste.getAllCrossSourceMangaLinks())
+        assertEquals(primariesBefore, repos.taste.getAllCrossSourceGroupPrimaries())
+        assertEquals(tagsBefore, repos.taste.getAllTagTastes())
+        assertEquals(aliasesBefore, repos.taste.getAllTagAliases())
+        assertEquals(trackingBefore, repos.localTracker.getAllWorksAsFlow().first())
+        assertEquals(assignmentsBefore, first.mangaIds.associateWith { repos.category.getCategoriesByMangaId(it) })
+        assertEquals(durationBefore, repos.history.getTotalReadDuration())
+    }
+
+    @Test
+    fun `partial identity overlap rejects the whole seed before categories or new manga are written`() = runTest {
+        val repos = freshRepositories()
+        val dataset = PerformanceFixtureGenerator.generate(PerformanceFixtureSpec.SMALL)
+        val collision = dataset.manga.last()
+        val preexisting = repos.manga.insertNetworkManga(
+            listOf(tachiyomi.domain.manga.model.Manga.create().copy(source = collision.source, url = collision.url, ogTitle = "Existing row")),
+            updateInfo = false,
+        )
+        val categoriesBefore = repos.category.getAll()
+        var rejection: IllegalStateException? = null
+        try {
+            seedSmall(repos)
+        } catch (error: IllegalStateException) {
+            rejection = error
+        }
+        assertEquals(
+            "Performance fixture identities already exist; refusing to append duplicate fixture data",
+            rejection?.message,
+        )
+        assertEquals(preexisting, repos.manga.getAll())
+        assertEquals(categoriesBefore, repos.category.getAll())
+        assertTrue(repos.chapter.getChapterByMangaId(preexisting.single().id, applyFilter = false).isEmpty())
+        assertTrue(repos.history.getHistoryByMangaId(preexisting.single().id).isEmpty())
+        assertTrue(repos.taste.getAllMangaTastes().isEmpty())
+        assertTrue(repos.taste.getAllCrossSourceMangaLinks().isEmpty())
+        assertTrue(repos.taste.getAllCrossSourceGroupPrimaries().isEmpty())
+        assertTrue(repos.taste.getAllTagTastes().isEmpty())
+        assertTrue(repos.taste.getAllTagAliases().isEmpty())
+        assertTrue(repos.localTracker.getAllWorksAsFlow().first().isEmpty())
+        assertTrue(repos.category.getCategoriesByMangaId(preexisting.single().id).isEmpty())
     }
 
     @Test

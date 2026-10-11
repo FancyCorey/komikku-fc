@@ -157,11 +157,14 @@ internal suspend fun LazyListState.positionLastReadChapter(
     // The displayed list can be resorted, filtered, or refreshed while a direct jump is waiting
     // for its measured frame. Re-resolve the stable chapter ID and verify the LazyColumn key before
     // centering, with one bounded retry for a list/layout update.
+    // Let pending list changes reach layout before deriving the chapter section's absolute index.
+    withFrameNanos { }
     for (attempt in 0..1) {
         val chapterIndex = currentIndexOfChapter(chapterId) ?: return false
         val currentChapterCount = chapterCount()
+        val initialLayoutInfo = layoutInfo
         val absoluteIndex = LastReadChapterTargetPolicy.toLazyListIndex(
-            totalItemsCount = layoutInfo.totalItemsCount,
+            totalItemsCount = initialLayoutInfo.totalItemsCount,
             chapterCount = currentChapterCount,
             indexInList = chapterIndex,
         )
@@ -173,9 +176,22 @@ internal suspend fun LazyListState.positionLastReadChapter(
             return false
         }
 
-        // Jump directly to the target instead of animating through the list.
-        scrollToItem(absoluteIndex)
+        // Jump directly near the final position instead of briefly presenting the target at the
+        // top of the list before the measured centering correction.
+        val viewportCenter = (initialLayoutInfo.viewportStartOffset + initialLayoutInfo.viewportEndOffset) / 2f
+        val initialScrollOffset = if (
+            LastReadChapterTargetPolicy.shouldCenter(chapterIndex, currentChapterCount) &&
+            initialLayoutInfo.viewportEndOffset > initialLayoutInfo.viewportStartOffset
+        ) {
+            -viewportCenter.roundToInt()
+        } else {
+            0
+        }
+        scrollToItem(absoluteIndex, initialScrollOffset)
         afterDirectScroll()
+        // Give a concurrent displayed-list update one layout pass to land before validating the
+        // stable chapter ID and LazyColumn key. The target is already within half a row of center.
+        withFrameNanos { }
 
         val refreshedIndex = currentIndexOfChapter(chapterId) ?: return false
         val refreshedChapterCount = chapterCount()

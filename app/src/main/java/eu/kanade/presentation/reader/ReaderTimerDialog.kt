@@ -19,6 +19,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -112,7 +113,8 @@ private fun ReaderTimerSetupContent(
     onDraftChange: (String, Set<Int>, Boolean, Boolean) -> Unit,
     onStart: (durationMs: Long, warningPolicy: ReaderTimerWarningPolicy, gracePolicy: ReaderTimerGracePolicy) -> Unit,
 ) {
-    fun start(minutes: Int) {
+    val latestCustomMinutes = rememberUpdatedState(customMinutes)
+    val latestStart = rememberUpdatedState<(Int) -> Unit> { minutes ->
         val bounded = minutes.coerceIn(1, MAX_CUSTOM_MINUTES)
         onStart(
             bounded * 60_000L,
@@ -131,7 +133,7 @@ private fun ReaderTimerSetupContent(
 
         Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
             listOf(15, 30, 60).forEach { minutes ->
-                OutlinedButton(onClick = { start(minutes) }) {
+                OutlinedButton(onClick = { latestStart.value(minutes) }) {
                     Text(stringResource(KMR.strings.reading_timer_preset_minutes, minutes))
                 }
             }
@@ -154,7 +156,7 @@ private fun ReaderTimerSetupContent(
                 modifier = Modifier.weight(1f),
             )
             OutlinedButton(
-                onClick = { customMinutes.toIntOrNull()?.let(::start) },
+                onClick = { latestCustomMinutes.value.toIntOrNull()?.let(latestStart.value) },
                 enabled = customMinutes.toIntOrNull()?.let { it in 1..MAX_CUSTOM_MINUTES } == true,
             ) {
                 Text(stringResource(KMR.strings.reading_timer_start))

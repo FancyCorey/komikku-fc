@@ -35,6 +35,9 @@ class PrivateExtensionRecoveryAnchorTest {
     fun `identical bytes in a user replacement do not match the old anchor`() {
         val target = File(directory, "reader.ext").apply { writeText("same bytes") }
         val ownership = PrivateExtensionRecovery.begin(target, target)
+        // The JVM fallback identity pairs the file key with a millisecond ownership timestamp set
+        // just ahead of the clock; a replacement written in that same millisecond would collide.
+        Thread.sleep(10)
         val replacement = File(directory, "update.tmp").apply { writeText("same bytes") }
         Files.move(replacement.toPath(), target.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
 

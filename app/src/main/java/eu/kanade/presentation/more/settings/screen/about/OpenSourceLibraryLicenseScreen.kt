@@ -1,11 +1,15 @@
 package eu.kanade.presentation.more.settings.screen.about
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
@@ -23,10 +27,11 @@ import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 
-class OpenSourceLibraryLicenseScreen(
+internal class OpenSourceLibraryLicenseScreen(
     private val name: String,
     private val website: String?,
-    private val license: String,
+    internal val licenses: List<OpenSourceLicenseEntry>,
+    internal val notice: OpenSourceLicenseNotice?,
 ) : Screen() {
 
     @Composable
@@ -61,8 +66,29 @@ class OpenSourceLibraryLicenseScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(contentPadding)
                     .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                HtmlLicenseText(html = license)
+                licenses.forEach { license ->
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (license.name.isNotBlank()) {
+                            Text(license.name, style = MaterialTheme.typography.titleMedium)
+                        }
+                        if (license.content.isNotBlank()) {
+                            HtmlLicenseText(html = license.content)
+                        }
+                        license.url?.let { url ->
+                            TextButton(onClick = { uriHandler.openUri(url) }) {
+                                Text(stringResource(MR.strings.action_open_in_browser))
+                            }
+                        }
+                    }
+                }
+                notice?.takeIf { it.content.isNotBlank() }?.let {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(it.title, style = MaterialTheme.typography.titleMedium)
+                        HtmlLicenseText(html = android.text.TextUtils.htmlEncode(it.content).replace("\n", "<br>"))
+                    }
+                }
             }
         }
     }

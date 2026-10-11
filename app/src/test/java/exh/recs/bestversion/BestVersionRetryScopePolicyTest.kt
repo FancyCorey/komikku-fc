@@ -41,14 +41,15 @@ class BestVersionRetryScopePolicyTest {
     }
 
     @Test
-    fun `fullscreen retry scope includes only failed pages`() {
+    fun `fullscreen retry scope includes typed and image byte failures but excludes success and loading`() {
         assertEquals(
-            listOf(1, 4),
+            listOf(1, 3, 4),
             BestVersionRetryScopePolicy.fullscreenPageIndexes(
                 mapOf(
                     0 to PreviewPageImageState.Resolved(testSampledPage()),
                     1 to PreviewPageImageState.Failed(BestVersionErrorReason.SourceUnavailable),
                     2 to PreviewPageImageState.Loading,
+                    3 to PreviewPageImageState.ImageLoadFailed(testSampledPage()),
                     4 to PreviewPageImageState.Failed(BestVersionErrorReason.Recommendation(RecommendationErrorKind.Network)),
                 ),
             ),

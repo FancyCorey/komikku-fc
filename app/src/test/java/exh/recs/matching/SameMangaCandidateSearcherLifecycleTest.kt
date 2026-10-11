@@ -162,6 +162,126 @@ class SameMangaCandidateSearcherLifecycleTest {
     }
 
     @Test
+    fun `same searcher recovers after two successive blocked worker waves`() = runTest {
+        val workerCount = 5
+        val sourceDispatcher = Executors.newFixedThreadPool(workerCount).asCoroutineDispatcher()
+        val searcher = searcher(
+            dispatcher = sourceDispatcher,
+            networkToLocalManga = identityNetworkToLocalManga(),
+            timeoutDispatcher = UnconfinedTestDispatcher(testScheduler),
+        )
+
+        try {
+            repeat(2) { cycle ->
+                val entered = CountDownLatch(workerCount)
+                val release = CountDownLatch(1)
+                val activeWorkers = java.util.concurrent.atomic.AtomicInteger()
+                val peakWorkers = java.util.concurrent.atomic.AtomicInteger()
+                val enteredSourceIds = java.util.concurrent.ConcurrentHashMap.newKeySet<Long>()
+                val blockedSources = (0 until workerCount * 2).map { index ->
+                    val sourceId = 9_911_100L + cycle * 100L + index
+                    FakeSource(sourceId) {
+                        enteredSourceIds.add(sourceId)
+                        val active = activeWorkers.incrementAndGet()
+                        peakWorkers.updateAndGet { previous -> maxOf(previous, active) }
+                        try {
+                            entered.countDown()
+                            check(release.await(5, TimeUnit.SECONDS))
+                            page(manga("/blocked-$cycle-$index", "Blocked"))
+                        } finally {
+                            activeWorkers.decrementAndGet()
+                        }
+                    }
+                }
+                val results = mutableListOf<SameMangaSourceResult>()
+                val job = launch(UnconfinedTestDispatcher(testScheduler)) {
+                    searcher.search(
+                        queries = listOf("query"),
+                        settings = settings(),
+                        originManga = origin(),
+                        sources = blockedSources,
+                        onResult = results::add,
+                    )
+                }
+
+                try {
+                    assertTrue(entered.await(5, TimeUnit.SECONDS), "Cycle $cycle did not occupy every worker")
+                    assertEquals(workerCount, activeWorkers.get())
+                    advanceTimeBy(20_000L)
+                    runCurrent()
+
+                    assertEquals(20_000L * (cycle + 1), testScheduler.currentTime)
+                    assertTrue(!job.isCompleted, "Cycle $cycle must wait for blocked source calls to return")
+                    assertEquals(blockedSources.size, results.size, "Cycle $cycle timeouts must publish before release")
+                    assertTrue(
+                        results.all {
+                            val error = it.result as? SameMangaCandidateResult.Error
+                            error?.throwable is java.util.concurrent.TimeoutException
+                        },
+                        "Cycle $cycle must publish timeout results for every source",
+                    )
+                    assertEquals(workerCount, enteredSourceIds.size, "Cycle $cycle exceeded the fixed worker pool")
+                    assertEquals(workerCount, peakWorkers.get())
+
+                    release.countDown()
+                    job.join()
+                    assertTrue(job.isCompleted, "Cycle $cycle should finish after the blocked calls are released")
+                    assertEquals(blockedSources.size, results.size, "Late returns in cycle $cycle must not duplicate results")
+                    assertEquals(blockedSources.map { it.id }.toSet(), results.map { it.source.id }.toSet())
+                    assertTrue(results.groupingBy { it.source.id }.eachCount().values.all { it == 1 })
+                    assertEquals(
+                        workerCount,
+                        enteredSourceIds.size,
+                        "Cycle $cycle queued timed-out sources must remain unentered",
+                    )
+                    assertEquals(0, activeWorkers.get())
+
+                    val recoveryCalls = java.util.concurrent.atomic.AtomicInteger()
+                    val recoverySource = FakeSource(9_911_300L + cycle) {
+                        recoveryCalls.incrementAndGet()
+                        page(manga("/recovered-$cycle", "Recovered"))
+                    }
+                    val recoveryResults = mutableListOf<SameMangaSourceResult>()
+                    val recoveryPublished = CountDownLatch(1)
+                    val recoveryJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+                        searcher.search(
+                            queries = listOf("query"),
+                            settings = settings(),
+                            originManga = origin(),
+                            sources = listOf(recoverySource),
+                            onResult = {
+                                recoveryResults += it
+                                recoveryPublished.countDown()
+                            },
+                        )
+                    }
+
+                    try {
+                        assertTrue(
+                            recoveryPublished.await(5, TimeUnit.SECONDS),
+                            "Cycle $cycle healthy result was not published; results=$recoveryResults",
+                        )
+                        recoveryJob.join()
+                        assertEquals(1, recoveryCalls.get(), "Cycle $cycle should accept healthy work on the same searcher")
+                        assertEquals(1, recoveryResults.size)
+                        assertTrue(
+                            recoveryResults.single().result is SameMangaCandidateResult.Success,
+                            "Cycle $cycle healthy recovery returned ${recoveryResults.single().result}",
+                        )
+                    } finally {
+                        recoveryJob.cancelAndJoin()
+                    }
+                } finally {
+                    release.countDown()
+                    job.cancelAndJoin()
+                }
+            }
+        } finally {
+            sourceDispatcher.close()
+        }
+    }
+
+    @Test
     fun `ordinary failure is isolated per source`() = runTest {
         val networkToLocalManga = identityNetworkToLocalManga()
         val first = FakeSource(9_910_008) { page(manga("/success", "Shared")) }

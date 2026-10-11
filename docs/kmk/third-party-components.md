@@ -1,6 +1,15 @@
 # Additional third-party components
 
-Komikku FC retains Komikku's existing dependency and open-source license screen. Komikku FC adds the following direct dependencies to support its feature set and tests.
+Komikku FC includes an open-source license screen. This page also identifies inherited runtime components and direct dependencies used by its features and tests.
+
+## Inherited runtime components
+
+- `com.github.chrisbanes:PhotoView:2.3.0` supports reader image zooming. Its [published library metadata](https://github.com/Baseflow/PhotoView/blob/master/photoview/build.gradle) identifies the Apache License 2.0.
+- `com.github.komikku-app:UniFile:084a54140a` supports file and storage access. The [fork's license](https://github.com/komikku-app/UniFile/blob/084a54140a48231ecd7f2336fe83b79bb7bb6558/LICENSE) is Apache License 2.0; its repository also includes a [notice](https://github.com/komikku-app/UniFile/blob/084a54140a48231ecd7f2336fe83b79bb7bb6558/NOTICE).
+- `com.github.tachiyomiorg:DirectionalViewPager:1.0.0` supports reader paging. Its [license](https://github.com/tachiyomiorg/DirectionalViewPager/blob/main/LICENSE) is Apache License 2.0.
+- `net.zetetic:sqlcipher-android:4.13.0` supplies encrypted database support. Its [license](https://github.com/sqlcipher/sqlcipher-android/blob/master/LICENSE) contains the Zetetic copyright notice and BSD-style redistribution conditions.
+
+The `core:image-decoder` module has its own [Mozilla Public License 2.0](../../core/image-decoder/LICENSE) terms; the repository's top-level Apache License does not replace them.
 
 ## ML Kit text recognition
 

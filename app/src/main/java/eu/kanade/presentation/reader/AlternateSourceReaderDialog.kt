@@ -69,9 +69,11 @@ fun AlternateSourceReaderDialog(
             onConfirm = onConfirmSource,
             extraAction = onSearchMore,
             inAppAction = onSearchInApp,
+            retryAction = onRetry,
         )
         is AlternateSourceReaderPresentation.ChoosingChapter -> SelectionDialog(
             title = stringResource(KMR.strings.alternate_source_reader_choose_chapter_title),
+            subtitle = stringResource(KMR.strings.alternate_source_reader_confirm_provisional_message),
             content = presentation.content,
             onDismiss = onDismiss,
             onSelect = onSelectChapter,
@@ -197,7 +199,10 @@ private fun SelectionDialog(
                         Text(stringResource(KMR.strings.alternate_source_reader_search_more))
                     }
                 }
-                if (content is AlternateSourceReaderLoadState.Failed) {
+                if (
+                    content is AlternateSourceReaderLoadState.Failed ||
+                    (content as? AlternateSourceReaderLoadState.Content)?.hasPartialFailure == true
+                ) {
                     retryAction?.let {
                         TextButton(onClick = it, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
                             Text(stringResource(MR.strings.action_retry))

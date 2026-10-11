@@ -27,6 +27,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -154,6 +157,12 @@ class LinkGroupManagementScreen(private val focusedGroupId: String? = null) : Sc
     @Composable
     private fun GroupCard(group: LinkGroup, groups: List<LinkGroup>, onAdd: () -> Unit, onMerge: () -> Unit, onUngroup: () -> Unit, onMove: (LinkGroupMember) -> Unit, onRemove: (LinkGroupMember) -> Unit) {
         var expanded by rememberSaveable(group.groupId) { mutableStateOf(false) }
+        val toggleAction = stringResource(
+            if (expanded) KMR.strings.accessibility_collapse_link_group else KMR.strings.accessibility_expand_link_group,
+        )
+        val expandedState = stringResource(
+            if (expanded) KMR.strings.accessibility_state_expanded else KMR.strings.accessibility_state_collapsed,
+        )
         Card(Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.extraSmall)) {
             Column(Modifier.padding(MaterialTheme.padding.small)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -162,7 +171,15 @@ class LinkGroupManagementScreen(private val focusedGroupId: String? = null) : Sc
                         Text(group.primaryTitle, style = MaterialTheme.typography.titleSmall)
                         Text(pluralStringResource(KMR.plurals.link_group_management_source_count, group.links.size, group.links.size), style = MaterialTheme.typography.bodySmall)
                     }
-                    TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "−" else "+") }
+                    TextButton(onClick = { expanded = !expanded }) {
+                        Text(
+                            if (expanded) "−" else "+",
+                            modifier = Modifier.clearAndSetSemantics {
+                                contentDescription = toggleAction
+                                stateDescription = expandedState
+                            },
+                        )
+                    }
                 }
                 if (expanded) {
                     TextButton(onClick = onAdd) { Text(stringResource(KMR.strings.link_group_management_add_to_group)) }

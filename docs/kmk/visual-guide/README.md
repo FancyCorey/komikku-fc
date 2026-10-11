@@ -148,11 +148,31 @@ The Data and storage page keeps manual backup, restore, automatic frequency, las
 
 Komikku FC's saved ratings, recommendation settings, linked-version groups, primary-version choices, and source-quality information can travel through Komikku's normal backup flow when selected. Source Evaluation results and run history are not included in exported backups and are not rebuilt by restore. OCR text, temporary review state, and unsupported external account data remain outside the backup. Restore reports partial or failed records instead of presenting an incomplete restore as successful. See [Preserving Komikku FC data in Komikku backups](../feature-guides/backups.md).
 
+## Local Tracking progress and refresh
+
+![Tracking sheet showing Local Tracking with the Reading status and decimal chapter progress 2.5](v0.8.23/local-tracking-decimal-progress.png)
+
+The Tracking sheet keeps Local Tracking beside any external tracker rows. Choose a status, set the chapter progress, and add a score or dates. The progress dialog accepts a decimal chapter number as well as a whole chapter, so a fractional chapter such as 2.5 can be saved.
+
+![Chapter list where chapters 1 and 2 are marked read and chapter 3 is unread after saved progress of 2.5](v0.8.23/local-tracking-refresh-read-markers.png)
+
+Opening the Tracking sheet refreshes the local read markers so the saved chapter and the chapter list agree. After progress 2.5 was saved and the sheet was opened again, chapters 1 and 2 are marked read, chapter 3 stays unread, and Resume is offered. Both images use synthetic test content on a test source, not a real series. Local Tracking is not available for titles from the built-in Local source; use a source-backed title or an external tracker for those.
+
+## Switch to another source while reading
+
+![Choose an alternate source dialog listing a matching candidate from an installed source](v0.8.23/source-switching-chooser.png)
+
+In the Reader, **Choose an alternate source** opens the source chooser. When no usable alternative is known yet, use **Search installed sources** to look for the same title in the sources you have installed, then select a candidate and confirm. This image shows a synthetic test source; Cancel closes the chooser without changing anything.
+
 ## Review Komikku FC changes in the app
 
 ![Historical What's New screen showing v0.8.20-fix5 and earlier notes](kmk-whats-new.png)
 
 Komikku FC What's New groups the current and earlier fork releases, summarizes each release, and separates new behavior from fixes. The installed version is shown at the top. This image shows the older v0.8.20-fix5 screen, not the v0.8.23 candidate notes; open What's New in your installed app for the version-specific notes.
+
+![What's New showing Komikku FC v0.8.23 and the beginning of its release notes](v0.8.23/whats-new.png)
+
+The v0.8.23 view shows the installed version and the beginning of its release notes. Scroll in the app to read the remaining changes.
 
 ## When sources or links fail
 
@@ -215,7 +235,9 @@ Use this table to find a screen or the written steps for each feature area.
 | Exact-file cleanup | [Export guide](../feature-guides/sharing.md) | The export family is represented visually by its consent screen; the guide explains the exact-document cleanup result and its limits. |
 | OCR Search Downloads | [Screenshot](ocr-search-downloads.png) and [feature guide](../feature-guides/ocr.md) | Indexed-page totals, storage use, indexing options, and cleanup controls. |
 | Backup and restore | [Screenshot](backup-and-restore.png) | Backup and restore controls, scheduling, status, warnings, and progress settings. |
-| Komikku FC What's New | [Historical screenshot](kmk-whats-new.png) | The v0.8.20-fix5 screen illustrates grouped history, summaries, and new/fix sections; it does not show v0.8.23 candidate notes. |
+| Local Tracking progress and refresh | [Decimal progress](v0.8.23/local-tracking-decimal-progress.png) and [refreshed chapter list](v0.8.23/local-tracking-refresh-read-markers.png) | A saved decimal chapter, then read markers that agree with it after the sheet is reopened; synthetic test content. |
+| Switch source in the Reader | [Screenshot](v0.8.23/source-switching-chooser.png) | The alternate-source chooser with a candidate from an installed source; synthetic test source. |
+| Komikku FC What's New | [v0.8.23 screenshot](v0.8.23/whats-new.png) and [historical screenshot](kmk-whats-new.png) | The v0.8.23 view shows the beginning of the current notes; the v0.8.20-fix5 screen illustrates earlier grouped history, summaries, and new/fix sections. |
 | Extension operations | [Export confirmation](extension-export-confirmation.png) | The package boundary and the app data excluded from an export. |
 | When sources or links fail | [Feature explanation](../feature-guides/safety.md) | Written explanations of checking, rejection, cancellation, and cleanup behavior. |
 

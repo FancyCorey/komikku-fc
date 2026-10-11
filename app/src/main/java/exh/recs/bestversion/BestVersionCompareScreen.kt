@@ -470,6 +470,9 @@ class BestVersionCompareScreen(
                     previewState = fullscreenState,
                     onRequestPage = screenModel::requestFullscreenPageImage,
                     onRetryPage = screenModel::retryFullscreenPageImage,
+                    onReportImageLoadFailure = screenModel::reportFullscreenPageImageLoadFailed,
+                    fullscreenOpenGeneration = state.fullscreenOpenGeneration,
+                    pageGenerations = state.fullscreenPageGenerations,
                     onRetryCandidate = screenModel::retryFullscreenCandidate,
                     onDismiss = {
                         fullscreenCandidateSource = null
@@ -1391,6 +1394,9 @@ private fun FullscreenCandidatePreviewDialog(
     previewState: FullscreenPreviewState,
     onRequestPage: (Int) -> Unit,
     onRetryPage: (Int) -> Unit,
+    onReportImageLoadFailure: (MangaIdentityKey, Int, Int, Int) -> Unit,
+    fullscreenOpenGeneration: Int,
+    pageGenerations: Map<Int, Int>,
     onRetryCandidate: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -1480,6 +1486,16 @@ private fun FullscreenCandidatePreviewDialog(
                                     mangaTitle = mangaTitle,
                                     imageState = previewState.pageImages[index],
                                     onRetry = { onRetryPage(index) },
+                                    onImageLoadFailed = {
+                                        pageGenerations[index]?.let { generation ->
+                                            onReportImageLoadFailure(
+                                                previewState.key,
+                                                index,
+                                                fullscreenOpenGeneration,
+                                                generation,
+                                            )
+                                        }
+                                    },
                                     // Fullscreen inspection must keep the same pinch/pan affordance
                                     // in continuous/webtoon mode as in the paged reader-shaped mode.
                                     zoomable = true,
@@ -1515,6 +1531,16 @@ private fun FullscreenCandidatePreviewDialog(
                                 mangaTitle = mangaTitle,
                                 imageState = previewState.pageImages[pageIndex],
                                 onRetry = { onRetryPage(pageIndex) },
+                                onImageLoadFailed = {
+                                    pageGenerations[pageIndex]?.let { generation ->
+                                        onReportImageLoadFailure(
+                                            previewState.key,
+                                            pageIndex,
+                                            fullscreenOpenGeneration,
+                                            generation,
+                                        )
+                                    }
+                                },
                                 zoomable = true,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Fit,
@@ -1586,6 +1612,7 @@ private fun PreviewPageContent(
     mangaTitle: String,
     imageState: PreviewPageImageState?,
     onRetry: () -> Unit,
+    onImageLoadFailed: (() -> Unit)? = null,
     zoomable: Boolean,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Fit,
@@ -1627,6 +1654,20 @@ private fun PreviewPageContent(
                 }
             }
         }
+        is PreviewPageImageState.ImageLoadFailed -> {
+            Box(modifier.then(zoomModifier), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = stringResource(KMR.strings.best_version_preview_page_failed),
+                        color = Color.White,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = onRetry) {
+                        Text(stringResource(KMR.strings.best_version_retry))
+                    }
+                }
+            }
+        }
         is PreviewPageImageState.Resolved -> {
             SubcomposeAsyncImage(
                 model = imageState.preview.preview,
@@ -1642,6 +1683,9 @@ private fun PreviewPageContent(
                     }
                 },
                 error = {
+                    LaunchedEffect(imageState) {
+                        onImageLoadFailed?.invoke()
+                    }
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
@@ -1649,7 +1693,12 @@ private fun PreviewPageContent(
                                 color = Color.White,
                             )
                             Spacer(Modifier.height(8.dp))
-                            TextButton(onClick = onRetry) {
+                            TextButton(onClick = {
+                                // The error effect will usually have recorded this already; record
+                                // synchronously too so an immediate tap cannot race past retry scope.
+                                onImageLoadFailed?.invoke()
+                                onRetry()
+                            }) {
                                 Text(stringResource(KMR.strings.best_version_retry))
                             }
                         }

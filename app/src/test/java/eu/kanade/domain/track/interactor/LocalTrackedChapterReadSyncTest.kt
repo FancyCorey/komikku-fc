@@ -399,6 +399,9 @@ class LocalTrackedChapterReadSyncTest {
     )
 
     private fun realRepositories(): RealRepositories {
+        // DriverManager's service-loaded registry can be initialised by an earlier test in the shared
+        // test JVM without the sqlite driver; loading the class registers it deterministically.
+        Class.forName("org.sqlite.JDBC")
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         Database.Schema.create(driver)
         val database = Database(

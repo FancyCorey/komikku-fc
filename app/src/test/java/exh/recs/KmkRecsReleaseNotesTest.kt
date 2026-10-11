@@ -86,6 +86,40 @@ class KmkRecsReleaseNotesTest {
     }
 
     @Test
+    fun `the v0_8_23 entry documents linked group accessibility`() {
+        val currentSection = sectionBodies().first { it.first == "v0.8.23" }.second
+
+        assertTrue(currentSection.contains("**Linked-version accessibility:**"))
+        assertTrue(currentSection.contains("screen-reader labels and expanded or collapsed state"))
+    }
+
+    @Test
+    fun `the v0_8_23 entry documents observable screen state fixes`() {
+        val currentSection = sectionBodies().first { it.first == "v0.8.23" }.second
+
+        assertTrue(currentSection.contains("**Live screen state:**"))
+        assertTrue(currentSection.contains("source-feed sorting availability in sync with saved searches"))
+        assertTrue(currentSection.contains("debug-menu label formatting when the app language changes"))
+    }
+
+    @Test
+    fun `the v0_8_23 entry documents URL-only open-source license access`() {
+        val currentSection = sectionBodies().first { it.first == "v0.8.23" }.second
+
+        assertTrue(currentSection.contains("**Open-source licenses:**"))
+        assertTrue(currentSection.contains("browser link when a library lists its license by URL"))
+    }
+
+    @Test
+    fun `the v0_8_23 entry documents retry for fullscreen image load failures`() {
+        val currentSection = sectionBodies().first { it.first == "v0.8.23" }.second
+
+        assertTrue(currentSection.contains("**Best Version fullscreen previews:**"))
+        assertTrue(currentSection.contains("retry a page when its image download or decoding fails"))
+        assertTrue(currentSection.contains("keeping already loaded pages intact"))
+    }
+
+    @Test
     fun `every version section contains a What's Changed heading`() {
         val missing = sectionBodies().filterNot { (_, body) -> body.contains("#### What's Changed") }.map { it.first }
         assertTrue(missing.isEmpty(), "sections missing '#### What's Changed': $missing")
@@ -133,14 +167,15 @@ class KmkRecsReleaseNotesTest {
     }
 
     @Test
-    fun `v0 8 23 describes progressive For You source results`() {
+    fun `v0 8 23 describes batched For You source results without a speed claim`() {
         val current = KmkRecsReleaseNotes.MARKDOWN
             .substringAfter("## KMK-Recs v0.8.23")
             .substringBefore("## KMK-Recs v0.8.22")
 
         assertTrue(current.contains("For You refresh"))
-        assertTrue(current.contains("show successful source results as they arrive"))
-        assertTrue(current.contains("instead of waiting for the slowest source"))
+        assertTrue(current.contains("successful source results are applied in batches as source requests finish"))
+        assertTrue(current.contains("Refresh time still depends on how quickly your sources respond"))
+        assertFalse(current.contains("waiting for the slowest source"))
     }
     // KMK <--
 
@@ -256,6 +291,16 @@ class KmkRecsReleaseNotesTest {
     }
 
     @Test
+    fun `the v0_8_23 entry maps 16 KB Android memory page compatibility`() {
+        val currentSection = KmkRecsReleaseNotes.MARKDOWN
+            .substringAfter("## KMK-Recs v0.8.23")
+            .substringBefore("## KMK-Recs v0.8.22")
+
+        assertTrue(currentSection.contains("16 KB memory pages"))
+        assertTrue(currentSection.contains("improve compatibility"))
+    }
+
+    @Test
     fun `the v0_8_23 entry documents continuing with partial Best Version results`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
             .substringAfter("## KMK-Recs v0.8.23")
@@ -274,6 +319,15 @@ class KmkRecsReleaseNotesTest {
         assertTrue(currentSection.contains("version matching, and alternate-source reading"))
         assertTrue(publicReleaseNotes.contains("Same-manga source search"))
         assertTrue(publicReleaseNotes.contains("version matching, and alternate-source reading"))
+    }
+
+    @Test
+    fun `the v0_8_23 entry documents retrying alternate-source failures`() {
+        val currentSection = KmkRecsReleaseNotes.MARKDOWN
+            .substringAfter("## KMK-Recs v0.8.23")
+            .substringBefore("## KMK-Recs v0.8.22")
+        assertTrue(currentSection.contains("retry failed source searches or chapter lookups from the reader"))
+        assertTrue(publicReleaseNotes.contains("retry a failed alternate-source search or chapter lookup from the reader"))
     }
 
     @Test

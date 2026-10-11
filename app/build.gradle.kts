@@ -1,3 +1,4 @@
+import com.mikepenz.aboutlibraries.plugin.AboutLibrariesTask
 import mihon.buildlogic.Config
 import mihon.buildlogic.getBuildTime
 import mihon.buildlogic.getCommitCount
@@ -27,6 +28,40 @@ if (Config.includeTelemetry) {
 
 shortcutHelper.setFilePath("./shortcuts.xml")
 
+aboutLibraries {
+    collect {
+        configPath = file("aboutlibraries")
+    }
+    license {
+        additionalLicenses.add("mpl_2_0")
+    }
+}
+
+// Dependency resolution feeds the generated catalog, but the plugin marks that data internal.
+// Track the selected variant's compile/runtime coordinates so dependency updates invalidate it.
+tasks.withType<AboutLibrariesTask>()
+    .matching { it.name.startsWith("prepareLibraryDefinitions") }
+    .configureEach {
+        inputs.property(
+            "resolvedVariantDependencyCoordinates",
+            project.providers.provider {
+                val selectedVariant = variant.get()
+                project.configurations
+                    .filter { configuration ->
+                        configuration.name == "${selectedVariant}CompileClasspath" ||
+                            configuration.name == "${selectedVariant}RuntimeClasspath"
+                    }
+                    .flatMap { configuration ->
+                        configuration.incoming.resolutionResult.allComponents.map { component ->
+                            "${configuration.name}:${component.id.displayName}"
+                        }
+                    }
+                    .distinct()
+                    .sorted()
+            },
+        )
+    }
+
 fun buildConfigString(value: String): String =
     "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
@@ -37,6 +72,20 @@ val supportedAbis = listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
 val validationAbi = providers.gradleProperty("kmk.validation.abi").orNull
 require(validationAbi == null || validationAbi in supportedAbis) {
     "kmk.validation.abi must be one of ${supportedAbis.joinToString()}"
+}
+
+// Instrumentation owns its expected-data implementation: the measured APK intentionally
+// excludes fixture classes. Reuse these exact sources, never the mutating seeder.
+val continuityFixtureTestSourceDir = layout.buildDirectory.dir("generated/continuityFixtureTestSources")
+val continuityFixtureTestSources = tasks.register<Sync>("prepareContinuityFixtureTestSources") {
+    from("src/debug/java") {
+        include(
+            "exh/perf/PerformanceFixtureGenerator.kt",
+            "exh/perf/PerformanceFixtureSpec.kt",
+            "exh/perf/PerformanceFixtureDataset.kt",
+        )
+    }
+    into(continuityFixtureTestSourceDir)
 }
 
 android {
@@ -73,12 +122,17 @@ android {
         buildConfigField("boolean", "KMK_BENCHMARK_FIXTURE", "false")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        // KMK FC DOD-02: opt in only when provisioning the profileable benchmark target. The
-        // default remains the existing debug androidTest variant for ordinary development.
-        testBuildType = if (providers.gradleProperty("kmk.benchmark.fixture").isPresent) {
-            "benchmark"
-        } else {
-            "debug"
+        // KMK FC DOD-02: fixture instrumentation targets the separate seed build, never the
+        // release-like measured benchmark APK. Ordinary development keeps debug androidTest.
+        val updaterInstrumentation = providers.gradleProperty("kmk.updater.instrumentation").orNull == "true"
+        val benchmarkFixture = providers.gradleProperty("kmk.benchmark.fixture").isPresent
+        check(!(updaterInstrumentation && benchmarkFixture)) {
+            "-Pkmk.updater.instrumentation=true cannot be combined with -Pkmk.benchmark.fixture."
+        }
+        testBuildType = when {
+            benchmarkFixture -> "benchmarkSeed"
+            updaterInstrumentation -> "kmkPublicTest"
+            else -> "debug"
         }
     }
 
@@ -166,12 +220,13 @@ android {
         create("benchmark") {
             initWith(release)
 
+            // Separate instrumentation callers are invisible to the target APK's R8 graph.
+            proguardFile("proguard-benchmark-verifier.pro")
+
             isDebuggable = false
             isProfileable = true
-            // The instrumentation harness is test tooling, and must not inherit the
-            // benchmark app's release shrinker. The benchmark target remains profileable.
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // Retain release code/resource shrinking for measured-target parity. Fixture
+            // implementation belongs only to benchmarkSeed, installed before this target.
             versionNameSuffix = "${debug.versionNameSuffix}-benchmark"
             applicationIdSuffix = ".benchmark"
             buildConfigField("boolean", "KMK_BENCHMARK_FIXTURE", "true")
@@ -179,6 +234,17 @@ android {
             signingConfig = debug.signingConfig
 
             matchingFallbacks.addAll(commonMatchingFallbacks)
+        }
+        create("benchmarkSeed") {
+            initWith(debug)
+
+            // Same package, version code and signer permit a data-preserving in-place update
+            // from this fixture carrier to the profileable benchmark target.
+            applicationIdSuffix = ".benchmark"
+            versionNameSuffix = "${debug.versionNameSuffix}-benchmark-seed"
+            buildConfigField("boolean", "KMK_BENCHMARK_FIXTURE", "true")
+
+            matchingFallbacks.addAll(listOf(debug.name, release.name))
         }
         // KMK --> public test build line: separate applicationId (app.komikku.kmk) for community sharing
         create("kmkPublicTest") {
@@ -209,9 +275,31 @@ android {
     sourceSets {
         getByName("preview").res.srcDirs("src/beta/res")
         getByName("benchmark").res.srcDirs("src/debug/res")
-        // KFC DOD-02: the reusable fixture is debug-only tooling, but the opt-in benchmark
-        // target must expose the same implementation to its instrumented seeder.
-        getByName("benchmark").java.srcDirs("src/debug/java")
+        // The fixture implementation is compiled into the seed carrier, not the measured APK.
+        getByName("benchmarkSeed").res.srcDirs("src/debug/res")
+        getByName("benchmarkSeed").java.srcDirs("src/debug/java")
+        getByName("test").java.srcDir("src/testSupport/java")
+        getByName("androidTest").java.srcDir("src/testSupport/java")
+        if (providers.gradleProperty("kmk.benchmark.fixture").isPresent) {
+            getByName("androidTest").java.srcDir(continuityFixtureTestSourceDir.get().asFile)
+        }
+        // These integration tests require owners compiled only into debug/benchmarkSeed.
+        // Keep them in ordinary debug and benchmark-fixture runs; omit only from the
+        // release-derived public-test updater instrumentation compile.
+        if (providers.gradleProperty("kmk.updater.instrumentation").orNull == "true") {
+            tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+                if (name == "compileKmkPublicTestAndroidTestKotlin") {
+                    exclude(
+                        listOf(
+                            "eu/kanade/tachiyomi/extension/util/PrivateExtensionRecoveryDeviceTest.kt",
+                            "exh/perf/PerformanceFixtureContinuityVerifierTest.kt",
+                            "exh/perf/PerformanceFixtureDeviceSeedTest.kt",
+                            "exh/perf/RatingPropagationDeviceFixtureSeedTest.kt",
+                        ),
+                    )
+                }
+            }
+        }
         // KMK --> R-026: expose migration .sqm files as test classpath resources
         getByName("test").resources.srcDirs("../data/src/main/sqldelight/tachiyomi/migrations")
         // KMK <--
@@ -492,6 +580,7 @@ dependencies {
     androidTestImplementation(androidx.test.ext)
     androidTestImplementation(androidx.test.runner)
     androidTestImplementation(androidx.test.uiautomator)
+    androidTestImplementation(androidx.workmanager.testing)
     // KMK v0.8.21-fix5: R5 correction -- genuine Compose semantics coverage for TrackInfoDialogHome's
     // Local/External row coexistence and accessible naming, per the exit gate's explicit "source
     // analogy alone is insufficient." Debug-only, instrumented; never packaged in production APKs.
@@ -535,6 +624,12 @@ val verifyAndroidCompiler = tasks.register("verifyAndroidCompiler") {
             "Expected Kotlin 2.4-compatible R8 9.1.31, found $version"
         }
         logger.lifecycle("Android bytecode compiler: R8 $version")
+    }
+}
+
+if (providers.gradleProperty("kmk.benchmark.fixture").isPresent) {
+    tasks.matching { it.name == "preBenchmarkSeedAndroidTestBuild" }.configureEach {
+        dependsOn(continuityFixtureTestSources)
     }
 }
 

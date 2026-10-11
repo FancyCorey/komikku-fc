@@ -58,6 +58,12 @@ internal object PerformanceFixtureSeeder {
         localTrackerRepository: LocalTrackerRepository,
         progress: ((String) -> Unit)? = null,
     ): SeedResult {
+        // Seeding is a fresh-profile operation, not an upsert. Manga upserts reuse IDs while
+        // chapter/category insertion appends rows, so reject overlap before the first write.
+        val existingIdentities = mangaRepository.getAll().map { it.source to it.url }.toHashSet()
+        check(dataset.manga.none { (it.source to it.url) in existingIdentities }) {
+            "Performance fixture identities already exist; refusing to append duplicate fixture data"
+        }
         val now = System.currentTimeMillis()
 
         val categoryIds = dataset.categoryNames.map { name ->

@@ -136,6 +136,9 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         getKnownManga: GetKnownRecommendationMangaIds = mockk(relaxed = true),
         getChapterCounts: GetChapterCountsByMangaIds = mockk(relaxed = true),
         upsertDiscovery: UpsertRecommendationDiscoveryProgress = mockk(relaxed = true),
+        preferences: SourcePreferences = SourcePreferences(FakePreferenceStore()),
+        naturalObservationSink: ((String) -> Unit)? = null,
+        debugBuild: Boolean = eu.kanade.tachiyomi.BuildConfig.DEBUG,
     ): Harness {
         val model = BrowsePersonalRecommendationsScreenModel(
             context = mockk<Context>(relaxed = true),
@@ -144,6 +147,8 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
             searchDispatcher = searchDispatcher,
             isLowRamDevice = false,
             autoLoad = false,
+            naturalObservationSink = naturalObservationSink,
+            isDebugBuild = debugBuild,
             getTasteProfile = getTasteProfile,
             getTagAliases = getTagAliases,
             getDisabledSources = getDisabledSources,
@@ -151,7 +156,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
             networkToLocalManga = networkToLocalManga,
             getMangaInteractor = getManga,
             getMangaTaste = getMangaTaste,
-            sourcePreferences = SourcePreferences(FakePreferenceStore()),
+            sourcePreferences = preferences,
             getRecommendationCache = getCache,
             upsertRecommendationCache = mockk<UpsertRecommendationCache>(relaxed = true),
             clearRecommendationCache = mockk<ClearRecommendationCache>(relaxed = true),
@@ -1048,5 +1053,273 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
 
         coVerify(exactly = 0) { recordExposure.await(any(), any(), any()) }
         assertFalse(harness.model.state.value.isLoading)
+    }
+    private fun naturalObserver(model: BrowsePersonalRecommendationsScreenModel): ForYouNaturalRequestObservation =
+        BrowsePersonalRecommendationsScreenModel::class.java.getDeclaredField("naturalObservation")
+            .apply { isAccessible = true }.get(model) as ForYouNaturalRequestObservation
+
+    private fun setActiveGeneration(model: BrowsePersonalRecommendationsScreenModel, generation: Long) {
+        val active = BrowsePersonalRecommendationsScreenModel::class.java.getDeclaredField("activeRefreshGeneration")
+            .apply { isAccessible = true }.get(model) as java.util.concurrent.atomic.AtomicLong
+        active.set(generation)
+    }
+
+    @Test
+    fun `real model natural observation respects explicit developer and evaluation gates`() {
+        for ((developer, evaluation) in listOf(false to false, false to true, true to true, true to false)) {
+            val preferences = SourcePreferences(FakePreferenceStore())
+            preferences.developerOptionsEnabled().set(developer)
+            preferences.evaluationMode().set(evaluation)
+            val events = mutableListOf<String>()
+            val model = buildHarness(preferences = preferences, naturalObservationSink = { events.add(it) }).model
+            naturalObserver(model).generationStart(1)
+            assertEquals(developer && !evaluation, events.isNotEmpty())
+            model.onDispose()
+        }
+    }
+
+    @Test
+    fun `real provider wrapper records inside invocation and preserves cancellation identity`() = runTest {
+        val preferences = SourcePreferences(FakePreferenceStore())
+        preferences.developerOptionsEnabled().set(true)
+        val events = mutableListOf<String>()
+        val model = buildHarness(preferences = preferences, naturalObservationSink = { events.add(it) }).model
+        val observer = naturalObserver(model)
+        observer.generationStart(1)
+        val request = observer.requestStart(1, 3991, "private actual query", "profile", 1)!!
+        val cancellation = CancellationException("private provider cancellation")
+        val source = mockk<Source>(relaxed = true)
+        every { source.id } returns 3991L
+        coEvery { source.getSearchManga(1, any(), any()) } coAnswers {
+            assertTrue(events.last().contains("provider_start"))
+            throw cancellation
+        }
+        val call = BrowsePersonalRecommendationsScreenModel::class.declaredFunctions
+            .single { it.name == "runObservedPersonalizedSearch" }.apply { isAccessible = true }
+        var caught: Throwable? = null
+        try {
+            call.callSuspend(model, source, GenreFilterMapper.SearchParams(FilterList(), "private actual query"), 1, request, false)
+        } catch (error: InvocationTargetException) {
+            caught = error.cause
+        } catch (error: CancellationException) {
+            caught = error
+        }
+        assertTrue(caught === cancellation)
+        assertTrue(events.last().contains("\"outcome\":\"cancelled\""))
+        assertFalse(events.any { it.contains("provider_return") || it.contains("source_applied") || it.contains("private") })
+        coVerify(exactly = 1) { source.getSearchManga(1, any(), any()) }
+        model.onDispose()
+    }
+
+    @Test
+    fun `real commit retries do not publish abandoned state or accept a reserved newer generation`() {
+        val preferences = SourcePreferences(FakePreferenceStore())
+        preferences.developerOptionsEnabled().set(true)
+        val events = mutableListOf<String>()
+        val model = buildHarness(preferences = preferences, naturalObservationSink = { events.add(it) }).model
+        val observer = naturalObserver(model)
+        observer.generationStart(1)
+        val request = observer.requestStart(1, 3992, "query", "profile", 2)!!
+        observer.providerStart(request)
+        observer.providerReturn(request, 2)
+        observer.terminal(request, ForYouNaturalRequestObservation.Terminal.RETURNED)
+        val source = mockk<Source>(relaxed = true)
+        every { source.id } returns 3992L
+        val recommendation = candidate(3992, 1, "/kept")
+        val contribution = ForYouNaturalRequestObservation.Contribution(request, setOf(3992L to "/kept"))
+        val initial = BrowsePersonalRecommendationsScreenModel.State(resultGeneration = 1)
+        val delegate = kotlinx.coroutines.flow.MutableStateFlow(initial)
+        var casAttempts = 0
+        val failingCommit = object : kotlinx.coroutines.flow.MutableStateFlow<BrowsePersonalRecommendationsScreenModel.State> by delegate {
+            override fun compareAndSet(
+                expect: BrowsePersonalRecommendationsScreenModel.State,
+                update: BrowsePersonalRecommendationsScreenModel.State,
+            ): Boolean {
+                casAttempts++
+                delegate.value = expect.copy(resultGeneration = 2)
+                return false
+            }
+        }
+        StateScreenModel::class.java.getDeclaredField("mutableState").apply { isAccessible = true }.set(model, failingCommit)
+        setActiveGeneration(model, 1)
+        val update = BrowsePersonalRecommendationsScreenModel::class.declaredFunctions
+            .single { it.name == "updateItem" }.apply { isAccessible = true }
+        update.call(
+            model,
+            1L,
+            source,
+            PersonalRecommendationResult.Success(listOf(recommendation)),
+            null,
+            mutableMapOf<Long, Pair<Source, List<PersonalRecommendation>>>(),
+            mapOf(3992L to 0),
+            listOf(contribution),
+        )
+        assertEquals(1, casAttempts)
+        assertTrue(delegate.value.items.isEmpty())
+        assertTrue(events.last().contains("source_dropped"))
+        assertFalse(events.any { it.contains("source_applied") || it.contains("refill_applied") })
+        model.onDispose()
+    }
+
+    @Test
+    fun `real model fixture input cannot export natural provider observations`() {
+        val preferences = SourcePreferences(FakePreferenceStore())
+        preferences.developerOptionsEnabled().set(true)
+        preferences.forYouFixtureMode().set(ForYouDebugFixtureMode.entries.first { it != ForYouDebugFixtureMode.OFF }.prefValue)
+        val events = mutableListOf<String>()
+        val model = buildHarness(preferences = preferences, naturalObservationSink = { events.add(it) }, debugBuild = true).model
+        naturalObserver(model).generationStart(1)
+        assertTrue(events.isEmpty())
+        model.onDispose()
+    }
+
+    @Test
+    fun `real state commit publishes exact retained refill after committing and only once`() {
+        val preferences = SourcePreferences(FakePreferenceStore())
+        preferences.developerOptionsEnabled().set(true)
+        val events = mutableListOf<String>()
+        val model = buildHarness(preferences = preferences, naturalObservationSink = { event ->
+            events.add(event)
+        }).model
+        val observer = naturalObserver(model)
+        observer.generationStart(1)
+        val request = observer.requestStart(1, 3993, "query", "profile", 2)!!
+        observer.providerStart(request)
+        observer.providerReturn(request, 8)
+        observer.terminal(request, ForYouNaturalRequestObservation.Terminal.RETURNED)
+        val source = mockk<Source>(relaxed = true)
+        every { source.id } returns 3993L
+        val kept = candidate(3993, 1, "/kept")
+        val contribution = ForYouNaturalRequestObservation.Contribution(request, setOf(3993L to "/kept", 3993L to "/filtered"))
+        forceState(model, BrowsePersonalRecommendationsScreenModel.State(resultGeneration = 1))
+        setActiveGeneration(model, 1)
+        val update = BrowsePersonalRecommendationsScreenModel::class.declaredFunctions
+            .single { it.name == "updateItem" }.apply { isAccessible = true }
+        val completed = mutableMapOf<Long, Pair<Source, List<PersonalRecommendation>>>()
+        repeat(2) {
+            update.call(
+                model,
+                1L,
+                source,
+                PersonalRecommendationResult.Success(listOf(kept)),
+                null,
+                completed,
+                mapOf(3993L to 0),
+                listOf(contribution),
+            )
+        }
+        assertEquals(listOf(kept), (model.state.value.items[source] as PersonalRecommendationResult.Success).result)
+        assertEquals(1, events.count { it.contains("source_applied") })
+        assertTrue(events.single { it.contains("refill_applied") }.contains("\"candidates\":1"))
+        assertTrue(events.last().contains("source_applied"))
+        model.onDispose()
+    }
+
+    @Test
+    fun `actual runtime wrapper distinguishes recoverable suppression and preserves fatal error`() = runTest {
+        val preferences = SourcePreferences(FakePreferenceStore())
+        preferences.developerOptionsEnabled().set(true)
+        val events = mutableListOf<String>()
+        val model = buildHarness(preferences = preferences, naturalObservationSink = { events.add(it) }).model
+        val observer = naturalObserver(model)
+        observer.generationStart(1)
+        val call = BrowsePersonalRecommendationsScreenModel::class.declaredFunctions
+            .single { it.name == "runObservedPersonalizedSearch" }.apply { isAccessible = true }
+        val source = mockk<Source>(relaxed = true)
+        every { source.id } returns 3994L
+        val linkage = NoClassDefFoundError("private missing class")
+        coEvery { source.getSearchManga(1, any(), any()) } throws linkage
+        try {
+            val first = observer.requestStart(1, 3994, "query", "profile", 1)!!
+            var failure: Throwable? = null
+            try {
+                call.callSuspend(model, source, GenreFilterMapper.SearchParams(FilterList(), "query"), 1, first, false)
+            } catch (error: Throwable) {
+                failure = if (error is InvocationTargetException) error.cause else error
+            }
+            assertTrue(failure is eu.kanade.tachiyomi.source.RecoverableSourceRuntimeException)
+            assertTrue(events.last().contains("\"outcome\":\"error\""))
+            val second = observer.requestStart(1, 3994, "query", "profile", 1)!!
+            try {
+                call.callSuspend(model, source, GenreFilterMapper.SearchParams(FilterList(), "query"), 1, second, false)
+            } catch (error: Throwable) {
+                val cause = if (error is InvocationTargetException) error.cause else error
+                assertTrue(cause is Exception)
+                // The real SourceRuntime suppression result is deliberately propagated.
+            }
+            assertTrue(events.last().contains("\"outcome\":\"suppressed\""))
+            assertEquals(1, events.count { it.contains("provider_start") })
+            coVerify(exactly = 1) { source.getSearchManga(1, any(), any()) }
+            eu.kanade.tachiyomi.source.SourceRuntimeFailureRegistry.clear(3994)
+            val fatal = OutOfMemoryError("synthetic fatal boundary")
+            coEvery { source.getSearchManga(1, any(), any()) } throws fatal
+            val third = observer.requestStart(1, 3994, "query", "profile", 1)!!
+            var fatalResult: Throwable? = null
+            try {
+                call.callSuspend(model, source, GenreFilterMapper.SearchParams(FilterList(), "query"), 1, third, false)
+            } catch (error: Throwable) {
+                fatalResult = if (error is InvocationTargetException) error.cause else error
+            }
+            assertTrue(fatalResult === fatal)
+            assertTrue(events.last().contains("\"outcome\":\"error\""))
+            assertFalse(events.any { it.contains("source_applied") || it.contains("private") })
+        } finally {
+            eu.kanade.tachiyomi.source.SourceRuntimeFailureRegistry.clear(3994)
+            model.onDispose()
+        }
+    }
+
+    @Test
+    fun `observed exact cache entry is recognized by a fresh model cache read`() = runTest {
+        val preferences = SourcePreferences(FakePreferenceStore())
+        preferences.developerOptionsEnabled().set(true)
+        val first = buildHarness(preferences = preferences, naturalObservationSink = {}).model
+        val observer = naturalObserver(first)
+        observer.generationStart(1)
+        val request = observer.requestStart(1, 3998, "actual query and filter identity", "profile", 1)!!
+        val source = mockk<Source>(relaxed = true)
+        every { source.id } returns 3998L
+        val networkManga = SManga.create().apply {
+            url = "/cached"
+            title = "Observed cache"
+            initialized = true
+        }
+        coEvery { source.getSearchManga(1, any(), any()) } returns MangasPage(listOf(networkManga), false)
+        val invoke = BrowsePersonalRecommendationsScreenModel::class.declaredFunctions
+            .single { it.name == "runObservedPersonalizedSearch" }.apply { isAccessible = true }
+        invoke.callSuspend(first, source, GenreFilterMapper.SearchParams(FilterList(), "query"), 1, request, false)
+        val manga = candidate(3998, 1, "/cached").manga
+        val save = BrowsePersonalRecommendationsScreenModel::class.declaredFunctions
+            .single { it.name == "saveToCache" }.apply { isAccessible = true }
+        val entry = save.callSuspend(first, 3998L, "query", "profile", listOf(manga), listOf(1.0), null) as RecommendationCacheEntry
+        observer.rememberCache(entry.cacheKey, "profile", request, entry, entry.expiresAt)
+        first.onDispose()
+        val repository = mockk<tachiyomi.domain.manga.repository.MangaRepository>()
+        coEvery { repository.getMangaByIds(listOf(1L)) } returns listOf(manga)
+        val cache = mockk<GetRecommendationCache>()
+        coEvery { cache.await(any()) } returns entry
+        val events = mutableListOf<String>()
+        val current = buildHarness(
+            preferences = preferences,
+            getCache = cache,
+            getManga = GetManga(repository),
+            naturalObservationSink = { events.add(it) },
+        ).model
+        naturalObserver(current).generationStart(1)
+        val read = BrowsePersonalRecommendationsScreenModel::class.declaredFunctions
+            .single { it.name == "loadFromCacheObserved" }.apply { isAccessible = true }
+        read.callSuspend(
+            current, 3998L, "query", "profile", emptyMap<MangaTasteKey, MangaTaste>(),
+            RatedMangaVisibility.SHOW_ALL_RATED, false, emptySet<SeenMangaKey>(), 0, 1L,
+        )
+        assertTrue(events.single { it.contains("cache_hit") }.contains("\"candidates\":1"))
+        assertFalse(events.joinToString().contains("actual query"))
+        coEvery { cache.await(any()) } returns entry.copy(createdAt = entry.createdAt + 1)
+        read.callSuspend(
+            current, 3998L, "query", "profile", emptyMap<MangaTasteKey, MangaTaste>(),
+            RatedMangaVisibility.SHOW_ALL_RATED, false, emptySet<SeenMangaKey>(), 0, 1L,
+        )
+        assertEquals(1, events.count { it.contains("cache_hit") })
+        current.onDispose()
     }
 }

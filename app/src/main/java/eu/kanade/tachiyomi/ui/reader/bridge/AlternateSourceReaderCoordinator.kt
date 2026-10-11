@@ -8,6 +8,8 @@ import exh.recs.matching.CrossSourceIdentityDecisionController
 import exh.recs.matching.CrossSourceIdentityMutation
 import exh.recs.matching.CrossSourceIdentityMutationResult
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -147,6 +149,19 @@ class AlternateSourceReaderCoordinator(
     suspend fun select(
         request: AlternateSourceReaderEntryRequest,
         alternateChapterUrl: String,
+        onAdmittedRoute: (suspend (AlternateSourceReaderRoute) -> Unit)? = null,
+    ): AlternateSourceReaderCommandResult = select(
+        request = request,
+        alternateChapterUrl = alternateChapterUrl,
+        confirmProvisional = false,
+        onAdmittedRoute = onAdmittedRoute,
+    )
+
+    suspend fun select(
+        request: AlternateSourceReaderEntryRequest,
+        alternateChapterUrl: String,
+        confirmProvisional: Boolean,
+        onAdmittedRoute: (suspend (AlternateSourceReaderRoute) -> Unit)? = null,
     ): AlternateSourceReaderCommandResult = guarded {
         if (!validRequest(request)) return@guarded AlternateSourceReaderCommandResult.Invalid
         if (!isPairConfirmed(request.bridgeKey)) {
@@ -162,7 +177,7 @@ class AlternateSourceReaderCoordinator(
         when (existing) {
             is AlternateSourceReaderBridgePolicy.EntryDecision.Confirmed -> {
                 if (existing.alternateChapterUrl == alternateChapterUrl) {
-                    return@guarded enterLocked(request, confirmProvisional = false)
+                    return@guarded enterLocked(request, confirmProvisional, onAdmittedRoute)
                 }
             }
             else -> Unit
@@ -189,7 +204,8 @@ class AlternateSourceReaderCoordinator(
             AlternateSourceBridgeMutation.CORRECT_MAPPING
         }
         when (bridgeController.apply(replacement.value, mutation)) {
-            AlternateSourceBridgeMutationResult.APPLIED -> enterLocked(request, confirmProvisional = false)
+            AlternateSourceBridgeMutationResult.APPLIED ->
+                enterLocked(request, confirmProvisional, onAdmittedRoute)
             AlternateSourceBridgeMutationResult.UNCHANGED -> AlternateSourceReaderCommandResult.Stale
             AlternateSourceBridgeMutationResult.CONFLICT -> AlternateSourceReaderCommandResult.Conflict
             AlternateSourceBridgeMutationResult.FAILED -> AlternateSourceReaderCommandResult.Failed
@@ -315,6 +331,7 @@ class AlternateSourceReaderCoordinator(
         expectedSessionId: String,
         expectedChapterUrl: String,
         chapterUrl: String,
+        onAdmittedRoute: (suspend (AlternateSourceReaderRoute) -> Unit)? = null,
     ): AlternateSourceReaderCommandResult = guarded {
         val session = activeSession() ?: return@guarded AlternateSourceReaderCommandResult.NoSession
         if (session.bridgeKey != bridgeKey || session.sessionId != expectedSessionId ||
@@ -333,7 +350,7 @@ class AlternateSourceReaderCoordinator(
             ?: return@guarded AlternateSourceReaderCommandResult.Stale
         val destination = resolve(session.bridgeKey, destinationRole, chapterUrl, 0)
             ?: return@guarded cancel(generation, AlternateSourceReaderCommandResult.Unavailable)
-        returnLocked(session, destination, generation, explicitManualReturn = true)
+        returnLocked(session, destination, generation, explicitManualReturn = true, onAdmittedRoute = onAdmittedRoute)
     }
 
     suspend fun automaticReturn(completedAlternateChapterUrl: String): AlternateSourceReaderCommandResult = guarded {
@@ -413,6 +430,7 @@ class AlternateSourceReaderCoordinator(
     private suspend fun enterLocked(
         request: AlternateSourceReaderEntryRequest,
         confirmProvisional: Boolean,
+        onAdmittedRoute: (suspend (AlternateSourceReaderRoute) -> Unit)? = null,
     ): AlternateSourceReaderCommandResult {
         if (!validRequest(request)) return AlternateSourceReaderCommandResult.Invalid
         if (!isPairConfirmed(request.bridgeKey)) {
@@ -441,6 +459,19 @@ class AlternateSourceReaderCoordinator(
             AlternateSourceReaderBridgePolicy.EntryDecision.Unavailable ->
                 return AlternateSourceReaderCommandResult.Unavailable
         }
+        val failedEntryRetry = if (
+            mutableState.value.phase == AlternateSourceReaderPhase.DEGRADED &&
+            mutableState.value.session != null
+        ) {
+            if (onAdmittedRoute == null) return AlternateSourceReaderCommandResult.Stale
+            currentCoroutineContext().ensureActive()
+            val retry = failedEntryRetrySession(request, requireNotNull(bridge), target.targetId)
+                ?: return AlternateSourceReaderCommandResult.Stale
+            mutableState.value = mutableState.value.copy(phase = AlternateSourceReaderPhase.PRIMARY)
+            retry
+        } else {
+            null
+        }
         val generation = begin(AlternateSourceReaderEvent.BeginEntry)
             ?: return AlternateSourceReaderCommandResult.Stale
         val alternate = resolve(
@@ -449,7 +480,7 @@ class AlternateSourceReaderCoordinator(
             target.alternateChapterUrl,
             0,
         ) ?: run {
-            fail(generation, AlternateSourceReaderFailureReason.ROUTE_UNAVAILABLE, null)
+            fail(generation, AlternateSourceReaderFailureReason.ROUTE_UNAVAILABLE, failedEntryRetry)
             return AlternateSourceReaderCommandResult.Unavailable
         }
         val current = requireNotNull(bridge)
@@ -459,7 +490,7 @@ class AlternateSourceReaderCoordinator(
                 it.deletedAt == null &&
                 it.state != AlternateSourceBridgeMappingState.CONFLICT
         } ?: return cancel(generation, AlternateSourceReaderCommandResult.Conflict)
-        val pending = AlternateSourceReaderSession.createPendingEntry(
+        val pendingEntry = AlternateSourceReaderSession.createPendingEntry(
             bridgeKey = request.bridgeKey,
             primaryResumeRoute = request.primaryRoute,
             alternateRoute = alternate,
@@ -467,8 +498,23 @@ class AlternateSourceReaderCoordinator(
             bridgeUpdatedAt = current.bridge.updatedAt,
             mappingUpdatedAt = mapping.updatedAt,
         )
+        val pending = failedEntryRetry?.let {
+            pendingEntry.copy(sessionId = it.sessionId, failedResolutionCount = it.failedResolutionCount)
+        } ?: pendingEntry
         sessionStore.write(pending)
         mutableState.value = mutableState.value.copy(session = pending)
+        if (
+            onAdmittedRoute != null && !applyAdmittedRouteEffect(
+                pending,
+                alternate,
+                generation,
+                AlternateSourceReaderTransitionReason.GAP_ENTRY,
+                onAdmittedRoute,
+            )
+        ) {
+            cancelResolvingCommand()
+            return AlternateSourceReaderCommandResult.Stale
+        }
         if (!routeSwitcher.switchTo(alternate)) {
             fail(generation, AlternateSourceReaderFailureReason.ROUTE_UNAVAILABLE, pending)
             return AlternateSourceReaderCommandResult.Failed
@@ -483,6 +529,37 @@ class AlternateSourceReaderCoordinator(
         reduce(AlternateSourceReaderEvent.EntryResolved(generation, committed.session))
         return AlternateSourceReaderCommandResult.Entered(target.targetId)
     }
+
+    private fun failedEntryRetrySession(
+        request: AlternateSourceReaderEntryRequest,
+        bridge: AlternateSourceBridgeState,
+        targetId: String,
+    ): AlternateSourceReaderSession? {
+        val current = mutableState.value
+        val session = current.session ?: return null
+        if (
+            dismissed.get() || current.generation == Long.MAX_VALUE || current.phase != AlternateSourceReaderPhase.DEGRADED ||
+            current.failureReason != AlternateSourceReaderFailureReason.ROUTE_UNAVAILABLE ||
+            !isFailedInitialEntry(session) || session.pendingRouteFingerprint != null ||
+            session.failedResolutionCount >= AlternateSourceReaderSession.MAX_FAILED_RESOLUTIONS ||
+            session.bridgeKey != request.bridgeKey || session.currentRoute != request.primaryRoute ||
+            session.activeTargetId != targetId || !isCurrentSessionState(bridge, session)
+        ) {
+            return null
+        }
+        val mapping = AlternateSourceBridgePolicy.projectConflicts(bridge.mappings).singleOrNull {
+            it.key.bridge == request.bridgeKey && it.key.targetId == targetId && it.deletedAt == null
+        } ?: return null
+        return session.takeIf { mapping.updatedAt == it.mappingUpdatedAt }
+    }
+
+    private fun isFailedInitialEntry(session: AlternateSourceReaderSession): Boolean =
+        AlternateSourceReaderSession.isValid(session) &&
+            session.currentRoute.role == AlternateSourceReaderRouteRole.PRIMARY &&
+            session.currentRoute == session.primaryResumeRoute &&
+            session.activeTargetId != null && session.previousRouteFingerprint == null &&
+            session.transitionCount == 0 && session.failedResolutionCount > 0 &&
+            session.lastTransitionReason == AlternateSourceReaderTransitionReason.GAP_ENTRY
 
     private suspend fun applyMutation(
         generation: Long,
@@ -536,6 +613,7 @@ class AlternateSourceReaderCoordinator(
         destination: AlternateSourceReaderRoute,
         generation: Long,
         explicitManualReturn: Boolean,
+        onAdmittedRoute: (suspend (AlternateSourceReaderRoute) -> Unit)? = null,
     ): AlternateSourceReaderCommandResult {
         val prepared = when (
             val result = AlternateSourceReaderRoutePolicy.prepare(session, destination, explicitManualReturn)
@@ -558,6 +636,18 @@ class AlternateSourceReaderCoordinator(
         }
         sessionStore.write(prepared)
         mutableState.value = mutableState.value.copy(session = prepared)
+        if (
+            onAdmittedRoute != null && !applyAdmittedRouteEffect(
+                prepared,
+                destination,
+                generation,
+                AlternateSourceReaderTransitionReason.MANUAL_RETURN,
+                onAdmittedRoute,
+            )
+        ) {
+            cancelResolvingCommand()
+            return AlternateSourceReaderCommandResult.Stale
+        }
         if (!routeSwitcher.switchTo(destination)) {
             fail(generation, AlternateSourceReaderFailureReason.ROUTE_UNAVAILABLE, prepared)
             return AlternateSourceReaderCommandResult.Failed
@@ -574,6 +664,26 @@ class AlternateSourceReaderCoordinator(
         sessionStore.write(committed.session)
         reduce(AlternateSourceReaderEvent.ReturnResolved(generation, committed.session))
         return AlternateSourceReaderCommandResult.Returned
+    }
+
+    private suspend fun applyAdmittedRouteEffect(
+        pending: AlternateSourceReaderSession,
+        destination: AlternateSourceReaderRoute,
+        generation: Long,
+        reason: AlternateSourceReaderTransitionReason,
+        effect: suspend (AlternateSourceReaderRoute) -> Unit,
+    ): Boolean {
+        currentCoroutineContext().ensureActive()
+        val committed = AlternateSourceReaderRoutePolicy.commit(pending, destination, reason)
+        if (
+            dismissed.get() || mutableState.value.generation != generation || mutableState.value.session != pending ||
+            committed !is AlternateSourceReaderRoutePolicy.CommitResult.Applied
+        ) {
+            return false
+        }
+        effect(destination)
+        currentCoroutineContext().ensureActive()
+        return !dismissed.get() && mutableState.value.generation == generation && mutableState.value.session == pending
     }
 
     private suspend fun resolve(
@@ -668,7 +778,6 @@ class AlternateSourceReaderCoordinator(
                 AlternateSourceReaderRoutePolicy.FailureResult.InvalidSession -> null
             }
         }
-        failed?.let(sessionStore::write)
         if (failed != null) mutableState.value = mutableState.value.copy(session = failed)
         reduce(
             AlternateSourceReaderEvent.Failed(
@@ -680,6 +789,7 @@ class AlternateSourceReaderCoordinator(
                 },
             ),
         )
+        if (failed != null) persistRecovery { sessionStore.write(failed) }
     }
 
     private fun cancel(
@@ -717,10 +827,10 @@ class AlternateSourceReaderCoordinator(
                 result
             }
         } catch (e: CancellationException) {
-            if (dismissed.get()) finalizeDismissal() else cancelResolvingCommand()
+            if (dismissed.get()) finalizeDismissal(e) else cancelResolvingCommand(e)
             throw e
         } catch (e: Error) {
-            if (dismissed.get()) finalizeDismissal() else cancelResolvingCommand()
+            if (dismissed.get()) finalizeDismissal(e) else cancelResolvingCommand(e)
             throw e
         } catch (_: Exception) {
             if (dismissed.get()) {
@@ -741,7 +851,7 @@ class AlternateSourceReaderCoordinator(
         }
     }
 
-    private fun cancelResolvingCommand() {
+    private fun cancelResolvingCommand(interruption: Throwable? = null) {
         val current = mutableState.value
         if (current.phase !in setOf(
                 AlternateSourceReaderPhase.RESOLVING_ENTRY,
@@ -752,25 +862,55 @@ class AlternateSourceReaderCoordinator(
             return
         }
         val session = current.session
+        if (
+            current.phase == AlternateSourceReaderPhase.RESOLVING_ENTRY && session != null &&
+            isFailedInitialEntry(session) && session.failedResolutionCount < AlternateSourceReaderSession.MAX_FAILED_RESOLUTIONS
+        ) {
+            val restored = session.copy(pendingRouteFingerprint = null)
+            mutableState.value = current.copy(
+                phase = AlternateSourceReaderPhase.DEGRADED,
+                session = restored,
+                failureReason = AlternateSourceReaderFailureReason.ROUTE_UNAVAILABLE,
+            )
+            persistRecovery(interruption) { sessionStore.write(restored) }
+            return
+        }
+        var persist: (() -> Unit)? = null
         if (session?.pendingRouteFingerprint != null) {
             if (session.currentRoute.role == AlternateSourceReaderRouteRole.PRIMARY) {
-                sessionStore.clear()
                 mutableState.value = current.copy(session = null)
+                persist = sessionStore::clear
             } else {
                 val restored = session.copy(pendingRouteFingerprint = null)
-                sessionStore.write(restored)
                 mutableState.value = current.copy(session = restored)
+                persist = { sessionStore.write(restored) }
             }
         }
         reduce(AlternateSourceReaderEvent.Cancelled(current.generation))
+        persist?.let { persistRecovery(interruption, it) }
     }
 
-    private fun finalizeDismissal() {
-        sessionStore.clear()
+    private fun finalizeDismissal(interruption: Throwable? = null) {
         val current = mutableState.value
         mutableState.value = AlternateSourceReaderMachineState(
             phase = AlternateSourceReaderPhase.ENDED,
             generation = current.generation,
         )
+        persistRecovery(interruption, sessionStore::clear)
+    }
+
+    private fun persistRecovery(interruption: Throwable? = null, persist: () -> Unit) {
+        try {
+            persist()
+        } catch (e: CancellationException) {
+            if (interruption == null) throw e
+            if (e !== interruption) interruption.addSuppressed(e)
+        } catch (e: Error) {
+            if (interruption == null) throw e
+            if (e !== interruption) interruption.addSuppressed(e)
+        } catch (e: Exception) {
+            // A failed recovery write cannot undo the safe state already installed in memory.
+            if (interruption != null && e !== interruption) interruption.addSuppressed(e)
+        }
     }
 }

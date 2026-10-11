@@ -33,8 +33,11 @@ import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.service.SourceManager
+import tachiyomi.domain.taste.interactor.GetCrossSourceGroupPrimary
 import tachiyomi.domain.taste.interactor.GetCrossSourceIdentityDecisions
+import tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks
 import tachiyomi.domain.taste.interactor.ReplaceCrossSourceIdentityDecisions
+import tachiyomi.domain.taste.interactor.RestoreCrossSourceGroupState
 import tachiyomi.domain.taste.interactor.UpsertMangaSourceQualitySignal
 
 /**
@@ -146,6 +149,9 @@ class BestVersionIsolatedFixtureRollbackTest {
             isLowRamDevice = false,
             dispatcherHandle = DispatcherHandle(StandardTestDispatcher()),
             candidateSearchGateway = mockk(relaxed = true),
+            getCrossSourceMangaLinks = GetCrossSourceMangaLinks(identityRepository),
+            getCrossSourceGroupPrimary = GetCrossSourceGroupPrimary(identityRepository),
+            restoreCrossSourceGroupState = RestoreCrossSourceGroupState(identityRepository),
             identityController = CrossSourceIdentityDecisionController(
                 GetCrossSourceIdentityDecisions(identityRepository),
                 ReplaceCrossSourceIdentityDecisions(identityRepository),

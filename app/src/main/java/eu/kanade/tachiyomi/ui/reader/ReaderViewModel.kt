@@ -45,6 +45,7 @@ import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderCommandResult
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderContextActions
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderCoordinator
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderEntryRequest
+import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderFailureReason
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderLoadState
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderMangaCandidate
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderNotice
@@ -118,8 +119,9 @@ import exh.util.mangaType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -282,6 +284,7 @@ class ReaderViewModel @JvmOverloads constructor(
             networkToLocalManga = Injekt.get<NetworkToLocalManga>(),
             syncChaptersWithSource = Injekt.get<SyncChaptersWithSource>(),
             dispatcher = Dispatchers.IO,
+            scope = viewModelScope,
         ),
     )
     private val mutableAlternateSourcePresentation = MutableStateFlow<AlternateSourceReaderPresentation>(
@@ -317,6 +320,7 @@ class ReaderViewModel @JvmOverloads constructor(
         val chapterUrl: String,
         val returnBridgeKey: AlternateSourceBridgeKey? = null,
         val returnSessionId: String? = null,
+        val confirmProvisional: Boolean = false,
     )
 
     /**
@@ -950,7 +954,13 @@ class ReaderViewModel @JvmOverloads constructor(
             .onEach { machineState ->
                 mutableAlternateSourceContextActions.value =
                     AlternateSourceReaderPresentationPolicy.contextActions(machineState)
-                if (machineState.session == null && machineState.phase != eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderPhase.RESOLVING_ENTRY) {
+                val retainFailedEntryChoice = machineState.phase == AlternateSourceReaderPhase.DEGRADED &&
+                    machineState.failureReason == AlternateSourceReaderFailureReason.ROUTE_UNAVAILABLE &&
+                    retainedAlternateSourceSelection != null
+                if (
+                    machineState.session == null && machineState.phase != AlternateSourceReaderPhase.RESOLVING_ENTRY &&
+                    !retainFailedEntryChoice
+                ) {
                     clearAlternateSourceSelectionTokens()
                 }
             }
@@ -1010,6 +1020,7 @@ class ReaderViewModel @JvmOverloads constructor(
         alternateSourceCandidateGeneration++
         alternateSourceCommandGeneration++
         alternateSourceCandidateJob?.cancel()
+        alternateSourceReaderCandidateGateway.cancelLiveSearch()
         alternateSourceCommandJob?.cancel()
         clearAlternateSourceSelectionTokens()
         alternateSourceReaderCoordinator.dismiss()
@@ -1300,6 +1311,7 @@ class ReaderViewModel @JvmOverloads constructor(
         precedingChapterId: Long,
         followingChapterId: Long?,
         includeLiveSearch: Boolean = false,
+        explicitRetry: Boolean = false,
     ) {
         if (isChapterNavigationBlockedBySchedule()) return
         val request = currentAlternateSourceCandidateRequest(precedingChapterId, followingChapterId)
@@ -1318,7 +1330,8 @@ class ReaderViewModel @JvmOverloads constructor(
             mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.ChoosingSource(
                 AlternateSourceReaderLoadState.Loading,
             )
-            val discovery = alternateSourceReaderCandidateGateway.discover(request, includeLiveSearch)
+            val discovery = alternateSourceReaderCandidateGateway.discover(request, includeLiveSearch, explicitRetry)
+            currentCoroutineContext().ensureActive()
             val rows = discovery.candidates.map { candidate ->
                 val token = newAlternateSourceToken()
                 alternateSourceMangaTokens[token] = AlternateSourceMangaSelection(request, candidate)
@@ -1335,6 +1348,7 @@ class ReaderViewModel @JvmOverloads constructor(
                 else -> AlternateSourceReaderLoadState.Empty
             }
             val originManga = getManga.await(request.primaryRoute.mangaId)
+            currentCoroutineContext().ensureActive()
             val preselectionMode = SameMangaPreselectionMode.resolve(
                 sourcePreferencesForRatingPrompt.sameMangaMatchPreselectionMode().get(),
                 sourcePreferencesForRatingPrompt.sameMangaMatchPreselectResults().get(),
@@ -1457,17 +1471,40 @@ class ReaderViewModel @JvmOverloads constructor(
         selectAlternateSourceCandidate(token)
     }
 
-    private fun selectAlternateSourceCandidate(token: AlternateSourceReaderOpaqueToken) {
+    private fun selectAlternateSourceCandidate(
+        token: AlternateSourceReaderOpaqueToken,
+        explicitUserRetry: Boolean = false,
+    ) {
+        if (explicitUserRetry && alternateSourceCandidateJob?.isCompleted == false) return
         val selection = alternateSourceMangaTokens[token] ?: return
         retainedAlternateSourceMangaSelection = selection
         launchAlternateSourceCandidateWork {
+            if (explicitUserRetry) {
+                val request = selection.request
+                val current = currentAlternateSourceCandidateRequest(
+                    request.precedingPrimaryChapterId,
+                    request.followingPrimaryChapterId,
+                )
+                if (current?.primaryRoute?.copy(pageIndex = 0) != request.primaryRoute.copy(pageIndex = 0)) {
+                    mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.RecoverableFailure(
+                        AlternateSourceReaderRecoveryReason.ROUTE_CHANGED,
+                        canRetry = false,
+                        invalidateTokens = true,
+                    )
+                    clearAlternateSourceSelectionTokens()
+                    return@launchAlternateSourceCandidateWork
+                }
+            }
             alternateSourceChapterTokens.clear()
             retainedAlternateSourceSelection = null
             mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.ChoosingChapter(
                 sourceToken = token,
                 content = AlternateSourceReaderLoadState.Loading,
             )
-            val discovery = alternateSourceReaderCandidateGateway.chapters(selection.candidate)
+            val discovery = alternateSourceReaderCandidateGateway.chapters(
+                selection.candidate,
+                explicitRetry = explicitUserRetry,
+            )
             var recommendedToken: AlternateSourceReaderOpaqueToken? = null
             val content = when (discovery) {
                 is AlternateSourceReaderChapterDiscovery.Available -> {
@@ -1537,7 +1574,10 @@ class ReaderViewModel @JvmOverloads constructor(
     }
 
     fun confirmAlternateSourceChapterSelection() {
-        retainedAlternateSourceSelection?.let(::runAlternateSourceSelection)
+        val selection = retainedAlternateSourceSelection ?: return
+        val confirmedSelection = selection.copy(confirmProvisional = true)
+        retainedAlternateSourceSelection = confirmedSelection
+        runAlternateSourceSelection(confirmedSelection)
     }
 
     fun confirmAlternateSourcePairSelection() {
@@ -1632,13 +1672,14 @@ class ReaderViewModel @JvmOverloads constructor(
         alternateSourceCandidateGeneration++
         alternateSourceCandidateJob?.cancel()
         alternateSourceCandidateJob = null
+        alternateSourceReaderCandidateGateway.cancelLiveSearch()
         mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.Hidden
         clearAlternateSourceSelectionTokens()
     }
 
     fun retryAlternateSourcePresentation() {
         retainedAlternateSourceSelection?.let {
-            runAlternateSourceSelection(it)
+            runAlternateSourceSelection(it, explicitUserRetry = true)
             return
         }
         retainedAlternateSourceMangaSelection?.let { selection ->
@@ -1646,7 +1687,7 @@ class ReaderViewModel @JvmOverloads constructor(
                 .firstOrNull { it.value == selection }
                 ?.key
                 ?.let {
-                    selectAlternateSourceCandidate(it)
+                    selectAlternateSourceCandidate(it, explicitUserRetry = true)
                     return
                 }
         }
@@ -1655,6 +1696,7 @@ class ReaderViewModel @JvmOverloads constructor(
             request.precedingPrimaryChapterId,
             request.followingPrimaryChapterId,
             includeLiveSearch = true,
+            explicitRetry = true,
         )
     }
 
@@ -1664,41 +1706,59 @@ class ReaderViewModel @JvmOverloads constructor(
         }
     }
 
-    private fun runAlternateSourceSelection(selection: AlternateSourceChapterSelection) {
+    private fun runAlternateSourceSelection(
+        selection: AlternateSourceChapterSelection,
+        explicitUserRetry: Boolean = false,
+    ) {
         launchAlternateSourceCommand(AlternateSourceReaderResolvingPurpose.ENTRY, explicitUserCommand = true) {
-            selectAlternateSourceChapter(selection)
+            selectAlternateSourceChapter(selection, explicitUserRetry)
         }
     }
 
     private suspend fun selectAlternateSourceChapter(
         selection: AlternateSourceChapterSelection,
-    ): AlternateSourceReaderCommandResult = if (selection.returnBridgeKey != null) {
-        val request = selection.request
-        val current = currentAlternateSourceCandidateRequest(request.precedingPrimaryChapterId, null)
-        if (current?.primaryRoute?.copy(pageIndex = 0) != request.primaryRoute.copy(pageIndex = 0)) {
-            AlternateSourceReaderCommandResult.Stale
+        explicitUserRetry: Boolean = false,
+    ): AlternateSourceReaderCommandResult {
+        val onAdmittedRoute: (suspend (AlternateSourceReaderRoute) -> Unit)? = if (explicitUserRetry) {
+            { route -> alternateSourceReaderCandidateGateway.prepareManualRetry(route.record.source) }
         } else {
-            alternateSourceReaderCoordinator.manualReturnToChapter(
-                selection.returnBridgeKey,
-                requireNotNull(selection.returnSessionId),
-                request.primaryRoute.chapterUrl,
+            null
+        }
+        return if (selection.returnBridgeKey != null) {
+            val request = selection.request
+            val current = currentAlternateSourceCandidateRequest(request.precedingPrimaryChapterId, null)
+            if (current?.primaryRoute?.copy(pageIndex = 0) != request.primaryRoute.copy(pageIndex = 0)) {
+                AlternateSourceReaderCommandResult.Stale
+            } else {
+                val sessionId = selection.returnSessionId ?: return AlternateSourceReaderCommandResult.Invalid
+                alternateSourceReaderCoordinator.manualReturnToChapter(
+                    selection.returnBridgeKey,
+                    sessionId,
+                    request.primaryRoute.chapterUrl,
+                    selection.chapterUrl,
+                    onAdmittedRoute = onAdmittedRoute,
+                )
+            }
+        } else {
+            val request = alternateSourceEntryRequest(
+                selection.bridgeKey(),
+                selection.request.precedingPrimaryChapterId,
+                selection.request.followingPrimaryChapterId,
+            ) ?: return AlternateSourceReaderCommandResult.Invalid
+            alternateSourceReaderCoordinator.select(
+                request,
                 selection.chapterUrl,
+                confirmProvisional = selection.confirmProvisional,
+                onAdmittedRoute = onAdmittedRoute,
             )
         }
-    } else {
-        selectAlternateSourceChapter(
-            bridgeKey = selection.bridgeKey(),
-            precedingChapterId = selection.request.precedingPrimaryChapterId,
-            followingChapterId = selection.request.followingPrimaryChapterId,
-            alternateChapterUrl = selection.chapterUrl,
-        )
     }
 
     private fun launchAlternateSourceCandidateWork(block: suspend () -> Unit) {
         val generation = ++alternateSourceCandidateGeneration
         val previous = alternateSourceCandidateJob
+        previous?.cancel()
         alternateSourceCandidateJob = viewModelScope.launch {
-            previous?.cancelAndJoin()
             if (generation != alternateSourceCandidateGeneration) return@launch
             try {
                 block()
@@ -1855,6 +1915,7 @@ class ReaderViewModel @JvmOverloads constructor(
         alternateSourceCandidateGeneration++
         alternateSourceCandidateJob?.cancel()
         alternateSourceCandidateJob = null
+        alternateSourceReaderCandidateGateway.cancelLiveSearch()
         clearAlternateSourceSelectionTokens()
         if (mutableAlternateSourcePresentation.value !is AlternateSourceReaderPresentation.Resolving) {
             mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.Hidden

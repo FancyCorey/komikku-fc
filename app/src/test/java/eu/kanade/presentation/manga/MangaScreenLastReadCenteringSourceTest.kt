@@ -15,15 +15,22 @@ class MangaScreenLastReadCenteringSourceTest {
     fun `shared helper jumps before centering`() {
         val helper = source.substringAfter("internal suspend fun LazyListState.positionLastReadChapter(")
             .substringBefore("\n/** Owns the in-flight jump")
-        val directToRevalidation = helper.substringAfter("scrollToItem(absoluteIndex)")
+        val directToRevalidation = helper.substringAfter("scrollToItem(absoluteIndex, initialScrollOffset)")
             .substringBefore("val refreshedIndex")
 
-        assertTrue(helper.contains("scrollToItem(absoluteIndex)"))
-        assertTrue(helper.indexOf("scrollToItem(absoluteIndex)") < helper.indexOf("afterDirectScroll()"))
-        assertTrue(helper.indexOf("afterDirectScroll()") < helper.indexOf("scrollBy(delta)"))
+        assertTrue(helper.contains("scrollToItem(absoluteIndex, initialScrollOffset)"))
         assertTrue(
-            !directToRevalidation.contains("withFrameNanos"),
-            "the direct jump must revalidate its target before yielding a frame",
+            helper.indexOf("scrollToItem(absoluteIndex, initialScrollOffset)") < helper.indexOf("afterDirectScroll()"),
+        )
+        assertTrue(helper.indexOf("afterDirectScroll()") < helper.indexOf("scrollBy(delta)"))
+        // The direct jump lands near the centered position so the top-aligned intermediate frame is
+        // never presented; one layout pass then lets a concurrent list update land before the
+        // stable chapter ID and key are revalidated.
+        assertTrue(helper.contains("-viewportCenter.roundToInt()"))
+        assertTrue(helper.contains("LastReadChapterTargetPolicy.shouldCenter(chapterIndex, currentChapterCount)"))
+        assertTrue(
+            directToRevalidation.contains("withFrameNanos"),
+            "the direct jump must let a concurrent list update land before revalidating its target",
         )
         assertTrue(!helper.contains("animateScrollToItem"))
         assertTrue(!helper.contains("animateScrollBy("))

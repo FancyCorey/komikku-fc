@@ -18,8 +18,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.text.TextStyle
@@ -53,9 +51,13 @@ class MangaScreenLastReadPositionComposeTest {
     fun middleChapterJumpHasNoAnimatedReversalAndEndsCentered() {
         val targetId = 50L
         val chapterIds = mutableStateOf((0L until 100L).toList())
+        val headerCount = mutableStateOf(0)
         val capturePresentedFrames = mutableStateOf(false)
-        val targetLayoutOffsets = mutableListOf<Float>()
-        val presentedTargetOffsets = CopyOnWriteArrayList<Float>()
+        val jumpHasSettled = mutableStateOf(false)
+        val postSettleFrameCount = mutableStateOf(0)
+        val directTargetCenterError = mutableStateOf<Float?>(null)
+        val directTargetSize = mutableStateOf(0)
+        val presentedTargetCenterErrors = CopyOnWriteArrayList<Pair<Float, Int>?>()
         lateinit var controller: LastReadChapterJumpController
         lateinit var listState: androidx.compose.foundation.lazy.LazyListState
         var unavailable = false
@@ -67,62 +69,82 @@ class MangaScreenLastReadPositionComposeTest {
                 modifier = Modifier.fillMaxSize(),
                 state = listState,
             ) {
+                items(headerCount.value, key = { "header-$it" }) {
+                    Box(Modifier.fillMaxWidth().height(48.dp))
+                }
                 items(chapterIds.value, key = { "chapter-$it" }) { id ->
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(if (id % 3L == 0L) 88.dp else 56.dp)
-                            .onGloballyPositioned { coordinates ->
-                                if (id == targetId) {
-                                    targetLayoutOffsets += coordinates.localToRoot(Offset.Zero).y
-                                }
-                            },
+                            .height(if (id % 3L == 0L) 88.dp else 56.dp),
                     )
                 }
             }
             LaunchedEffect(listState) {
                 snapshotFlow { capturePresentedFrames.value }.first { it }
-                repeat(3) {
-                    if (!capturePresentedFrames.value) return@repeat
+                while (postSettleFrameCount.value < 3) {
                     withFrameNanos { }
-                    listState.layoutInfo.visibleItemsInfo
-                        .firstOrNull { it.key == "chapter-$targetId" }
-                        ?.let { presentedTargetOffsets += it.offset.toFloat() }
+                    val layoutInfo = listState.layoutInfo
+                    val target = layoutInfo.visibleItemsInfo.firstOrNull { it.key == "chapter-$targetId" }
+                    if (target == null) {
+                        presentedTargetCenterErrors += null
+                    } else {
+                        val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
+                        val targetCenter = target.offset + target.size / 2f
+                        presentedTargetCenterErrors += kotlin.math.abs(targetCenter - viewportCenter) to target.size
+                    }
+                    if (jumpHasSettled.value) postSettleFrameCount.value++
                 }
             }
         }
 
         lateinit var job: Job
         composeTestRule.runOnIdle {
-            capturePresentedFrames.value = true
+            // Model headers being inserted immediately before the jump while LazyListState still
+            // exposes the previous frame's item count.
+            headerCount.value = 10
             job = controller.jump(
                 chapterId = targetId,
                 state = listState,
                 currentIndexOfChapter = { id -> chapterIds.value.indexOf(id).takeIf { it >= 0 } },
                 chapterCount = { chapterIds.value.size },
                 onUnavailable = { unavailable = true },
+                afterDirectScroll = {
+                    capturePresentedFrames.value = true
+                    val layoutInfo = listState.layoutInfo
+                    val target = layoutInfo.visibleItemsInfo.firstOrNull { it.key == "chapter-$targetId" }
+                    if (target != null) {
+                        val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
+                        val targetCenter = target.offset + target.size / 2f
+                        directTargetCenterError.value = kotlin.math.abs(targetCenter - viewportCenter)
+                        directTargetSize.value = target.size
+                    }
+                },
             )
         }
-        composeTestRule.waitUntil(5_000) { job.isCompleted && presentedTargetOffsets.isNotEmpty() }
-        composeTestRule.runOnIdle { capturePresentedFrames.value = false }
+        job.invokeOnCompletion { jumpHasSettled.value = true }
+        composeTestRule.waitUntil(5_000) { job.isCompleted && presentedTargetCenterErrors.isNotEmpty() }
+        composeTestRule.waitUntil(5_000) { postSettleFrameCount.value == 3 }
         composeTestRule.waitForIdle()
 
         assertFalse(unavailable)
         assertTargetCentered(listState, targetId)
-        assertEquals(
-            "the target should not be presented at its top-aligned intermediate position",
-            1,
-            presentedTargetOffsets.distinctBy { it.toInt() }.size,
-        )
-        assertTrue("target layout should be observed during the jump", targetLayoutOffsets.isNotEmpty())
-        val distinctOffsets = targetLayoutOffsets.distinctBy { it.toInt() }
-        assertTrue("direct jump should not animate through a long detour: $distinctOffsets", distinctOffsets.size <= 2)
-        if (distinctOffsets.size == 2) {
-            assertTrue(
-                "target should move directly toward its final position: $distinctOffsets",
-                distinctOffsets[1] >= distinctOffsets[0],
-            )
+        val initialCenterError = requireNotNull(directTargetCenterError.value) {
+            "the intended target should be visible immediately after the direct jump"
         }
+        assertTrue(
+            "the direct jump should place the target within half a row of center before correction",
+            initialCenterError <= directTargetSize.value / 2f + 1f,
+        )
+        assertTrue(
+            "the intended target should remain visible in every sampled presented frame",
+            presentedTargetCenterErrors.none { it == null },
+        )
+        assertTrue("the sampler should observe the post-settle frames", postSettleFrameCount.value >= 3)
+        assertTrue(
+            "every sampled presentation should keep the target near center: $presentedTargetCenterErrors",
+            presentedTargetCenterErrors.filterNotNull().all { (error, size) -> error <= size / 2f + 1f },
+        )
     }
 
     @Test
@@ -241,7 +263,9 @@ class MangaScreenLastReadPositionComposeTest {
             controller = rememberLastReadChapterJumpController()
             listState = rememberLazyListState()
             LaunchedEffect(listState) {
-                snapshotFlow { listState.firstVisibleItemIndex }.first { it == 50 }
+                snapshotFlow {
+                    listState.layoutInfo.visibleItemsInfo.any { it.key == "chapter-$targetId" }
+                }.first { it }
                 val reordered = chapterIds.value.toMutableList().also { ids ->
                     ids.remove(targetId)
                     ids.add(75, targetId)
@@ -320,6 +344,7 @@ class MangaScreenLastReadPositionComposeTest {
         val screenGeneration = mutableStateOf(0)
         val directScrollReached = CompletableDeferred<Unit>()
         val cancellationObserved = CompletableDeferred<Unit>()
+        var firstVisibleAtDirectScroll = -1
         lateinit var currentController: LastReadChapterJumpController
         lateinit var currentListState: androidx.compose.foundation.lazy.LazyListState
 
@@ -350,6 +375,7 @@ class MangaScreenLastReadPositionComposeTest {
                 chapterCount = { chapterIds.size },
                 onUnavailable = { error("Expected target chapter to be available") },
                 afterDirectScroll = {
+                    firstVisibleAtDirectScroll = oldListState.firstVisibleItemIndex
                     directScrollReached.complete(Unit)
                     try {
                         awaitCancellation()
@@ -360,7 +386,8 @@ class MangaScreenLastReadPositionComposeTest {
             )
         }
         composeTestRule.waitUntil(5_000) { directScrollReached.isCompleted }
-        assertEquals(50, oldListState.firstVisibleItemIndex)
+        assertTrue(oldListState.layoutInfo.visibleItemsInfo.any { it.key == "chapter-50" })
+        assertEquals(firstVisibleAtDirectScroll, oldListState.firstVisibleItemIndex)
 
         composeTestRule.runOnIdle { showScreen.value = false }
         composeTestRule.waitForIdle()
@@ -375,7 +402,11 @@ class MangaScreenLastReadPositionComposeTest {
 
         assertTrue("disposal should cancel the job between direct scroll and layout centering", job.isCancelled)
         assertEquals("a new screen should keep its own initial list position", 0, currentListState.firstVisibleItemIndex)
-        assertEquals("the cancelled old list should not continue scrolling", 50, oldListState.firstVisibleItemIndex)
+        assertEquals(
+            "the cancelled old list should not continue scrolling",
+            firstVisibleAtDirectScroll,
+            oldListState.firstVisibleItemIndex,
+        )
     }
 
     private fun assertTargetCentered(

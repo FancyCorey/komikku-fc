@@ -28,6 +28,10 @@ class KmkAccessibilityOwnershipSourceTest {
         assertTrue(settings.contains("KMR.strings.accessibility_delete_tag"))
         assertTrue(linkGroups.contains("KMR.strings.accessibility_expand_link_group"))
         assertTrue(linkGroups.contains("KMR.strings.accessibility_collapse_link_group"))
+        assertTrue(linkGroups.contains("KMR.strings.accessibility_state_expanded"))
+        assertTrue(linkGroups.contains("KMR.strings.accessibility_state_collapsed"))
+        assertTrue(linkGroups.contains("contentDescription = toggleAction"))
+        assertTrue(linkGroups.contains("stateDescription = expandedState"))
     }
 
     @Test

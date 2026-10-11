@@ -5,10 +5,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.FormatListNumbered
-import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -80,7 +80,7 @@ fun ReaderBottomBar(
         onClickAlternateSource?.let { onClick ->
             IconButton(onClick = onClick) {
                 Icon(
-                    imageVector = Icons.Outlined.MenuBook,
+                    imageVector = Icons.Outlined.SwapHoriz,
                     contentDescription = stringResource(tachiyomi.i18n.kmk.KMR.strings.alternate_source_reader_choose_source_title),
                     tint = iconColor,
                 )

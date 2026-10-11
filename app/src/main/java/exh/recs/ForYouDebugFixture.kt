@@ -10,6 +10,7 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.SMangaUpdate
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
@@ -199,9 +200,32 @@ object ForYouDebugFixture {
             logcat(LogPriority.INFO, tag = "ForYouFixture") {
                 "slow_source_wait_started source_id=${delegate.id} delay_ms=$SLOW_SOURCE_DELAY_MILLIS"
             }
-            delay(SLOW_SOURCE_DELAY_MILLIS)
-            return delegate.getSearchManga(page, query, filters)
+            try {
+                delay(SLOW_SOURCE_DELAY_MILLIS)
+            } catch (e: CancellationException) {
+                logcat(LogPriority.INFO, tag = "ForYouFixture") {
+                    "slow_source_request_cancelled source_id=${delegate.id} phase=wait delegated=false"
+                }
+                throw e
+            }
+            logcat(LogPriority.INFO, tag = "ForYouFixture") {
+                "slow_source_request_delegated source_id=${delegate.id}"
+            }
+            val result = delegate.getSearchManga(page, query, filters)
+            logcat(LogPriority.INFO, tag = "ForYouFixture") {
+                "slow_source_request_completed source_id=${delegate.id} candidates=${result.mangas.size} " +
+                    "fixture_payload_bytes=${fixturePayloadBytes(result)}"
+            }
+            return result
         }
+    }
+
+    /**
+     * UTF-8 size of the url, title and thumbnail strings in a fixture response. The corpus sources answer
+     * in memory, so this is a payload-size figure for the fixture, not network traffic.
+     */
+    internal fun fixturePayloadBytes(page: MangasPage): Int = page.mangas.sumOf {
+        it.url.toByteArray().size + it.title.toByteArray().size + (it.thumbnail_url?.toByteArray()?.size ?: 0)
     }
 
     private class FixtureGenre(name: String) : Filter.TriState(name)

@@ -191,6 +191,9 @@ class BestVersionFullscreenPreviewTest {
             isLowRamDevice = false,
             dispatcherHandle = DispatcherHandle(dispatcher),
             candidateSearchGateway = mockk(relaxed = true),
+            getCrossSourceMangaLinks = mockk(relaxed = true),
+            getCrossSourceGroupPrimary = mockk(relaxed = true),
+            restoreCrossSourceGroupState = mockk(relaxed = true),
             identityController = identityController(),
         )
     }
@@ -508,6 +511,125 @@ class BestVersionFullscreenPreviewTest {
         val resolved = loaded.pageImages[0] as? PreviewPageImageState.Resolved
         assertTrue(resolved != null, "retry must genuinely recover once the underlying call succeeds")
         assertEquals("https://example.com/recovered.jpg", resolved!!.preview.preview.imageUrl)
+    }
+
+    @Test
+    fun `Coil byte failure and typed failure retry together while success and loading stay untouched`() = runTest {
+        val origin = manga(1L, "/origin")
+        val target = manga(2L, "/candidate")
+        val key = MangaIdentityKey(2L, "/candidate")
+        val pages = listOf(
+            Page(0, "", "https://example.com/success.jpg"),
+            Page(1, "", "https://example.com/byte-fails.jpg"),
+            Page(2, "", null),
+            Page(3, "", "https://example.com/still-loading.jpg"),
+        )
+        val source = httpSource(2L)
+        coEvery { source.getPageList(any()) } returns pages
+        var imageUrlCalls = 0
+        coEvery { source.getImageUrl(any()) } answers {
+            imageUrlCalls++
+            if (imageUrlCalls == 1) throw RuntimeException("typed URL failure")
+            "https://example.com/recovered.jpg"
+        }
+        val sourceManager = mockk<SourceManager>(relaxed = true)
+        every { sourceManager.get(2L) } returns source
+        val model = buildModel(sourceManager)
+        model.seedPreviewable(origin, target, sourceChapter())
+        SourceRuntimeFailureRegistry.clear(2L)
+
+        model.openFullscreenCandidate(key)
+        advanceUntilIdle()
+        model.requestFullscreenPageImage(0)
+        model.requestFullscreenPageImage(1)
+        model.requestFullscreenPageImage(2)
+        advanceUntilIdle()
+
+        val beforeRetry = model.state.value
+        val loaded = beforeRetry.fullscreenPreview as FullscreenPreviewState.Loaded
+        val successfulPage = loaded.pageImages[0] as PreviewPageImageState.Resolved
+        assertTrue(loaded.pageImages[2] is PreviewPageImageState.Failed)
+        model.forceState(
+            beforeRetry.copy(
+                fullscreenPreview = loaded.copy(
+                    pageImages = loaded.pageImages.put(3, PreviewPageImageState.Loading),
+                ),
+            ),
+        )
+        val generation = model.state.value.fullscreenPageGenerations[1]!!
+        model.reportFullscreenPageImageLoadFailed(
+            candidateKey = key,
+            pageIndex = 1,
+            expectedOpenGeneration = model.state.value.fullscreenOpenGeneration,
+            expectedPageGeneration = generation,
+        )
+        assertTrue(
+            (model.state.value.fullscreenPreview as FullscreenPreviewState.Loaded)
+                .pageImages[1] is PreviewPageImageState.ImageLoadFailed,
+        )
+
+        model.retryFullscreenPageImage(1)
+        advanceUntilIdle()
+
+        val afterRetry = model.state.value.fullscreenPreview as FullscreenPreviewState.Loaded
+        assertEquals(successfulPage, afterRetry.pageImages[0], "a successfully loaded page must remain unchanged")
+        assertTrue(afterRetry.pageImages[1] is PreviewPageImageState.Resolved, "the Coil byte-failed page must be resolved again")
+        assertTrue(afterRetry.pageImages[2] is PreviewPageImageState.Resolved, "the other typed failure must recover in the same retry")
+        assertEquals(PreviewPageImageState.Loading, afterRetry.pageImages[3], "an in-flight page must not join the retry scope")
+        assertEquals(2, imageUrlCalls, "the typed failure is resolved once initially and once on retry")
+        coVerify(exactly = 3) { source.getPageList(any()) }
+    }
+
+    @Test
+    fun `Coil failure callback ignores stale candidate page and fullscreen generations`() = runTest {
+        val origin = manga(1L, "/origin")
+        val target = manga(2L, "/candidate")
+        val key = MangaIdentityKey(2L, "/candidate")
+        val source = httpSource(2L)
+        coEvery { source.getPageList(any()) } returns listOf(Page(0, "", "https://example.com/page.jpg"))
+        val sourceManager = mockk<SourceManager>(relaxed = true)
+        every { sourceManager.get(2L) } returns source
+        val model = buildModel(sourceManager)
+        model.seedPreviewable(origin, target, sourceChapter())
+        SourceRuntimeFailureRegistry.clear(2L)
+
+        model.openFullscreenCandidate(key)
+        advanceUntilIdle()
+        model.requestFullscreenPageImage(0)
+        advanceUntilIdle()
+
+        val opened = model.state.value
+        val pageGeneration = opened.fullscreenPageGenerations[0]!!
+        fun report(candidate: MangaIdentityKey = key, openGeneration: Int = opened.fullscreenOpenGeneration, generation: Int = pageGeneration) {
+            model.reportFullscreenPageImageLoadFailed(candidate, 0, openGeneration, generation)
+        }
+        report(openGeneration = opened.fullscreenOpenGeneration - 1)
+        report(candidate = MangaIdentityKey(99L, "/other"))
+        report(generation = pageGeneration - 1)
+        assertTrue(
+            (model.state.value.fullscreenPreview as FullscreenPreviewState.Loaded)
+                .pageImages[0] is PreviewPageImageState.Resolved,
+        )
+
+        report()
+        assertTrue(
+            (model.state.value.fullscreenPreview as FullscreenPreviewState.Loaded)
+                .pageImages[0] is PreviewPageImageState.ImageLoadFailed,
+        )
+        model.retryFullscreenPageImage(0)
+        advanceUntilIdle()
+        report() // The retry has superseded the callback's page generation.
+        assertTrue(
+            (model.state.value.fullscreenPreview as FullscreenPreviewState.Loaded)
+                .pageImages[0] is PreviewPageImageState.Resolved,
+        )
+
+        model.closeFullscreenCandidate()
+        report() // A delayed callback after dismissal cannot reopen or mutate the preview.
+        assertNull(model.state.value.fullscreenPreview)
+        model.onDispose()
+        report() // Disposal also makes a delayed callback inert.
+        assertNull(model.state.value.fullscreenPreview)
     }
 
     @Test

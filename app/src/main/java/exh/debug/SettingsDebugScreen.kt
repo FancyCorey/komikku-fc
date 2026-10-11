@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
@@ -70,7 +71,6 @@ import tachiyomi.presentation.core.util.collectAsState
 import tachiyomi.presentation.core.util.plus
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.util.Locale
 import kotlin.reflect.KFunction
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.declaredFunctions
@@ -98,20 +98,21 @@ class SettingsDebugScreen : Screen() {
         }
 
         val scope = rememberCoroutineScope()
+        val locale = LocalConfiguration.current.locales[0]
         // KMK -->
         // val navigator = LocalNavigator.currentOrThrow
         // DisposableEffect(Unit) {
         //     onDispose { navigator.pop() }
         // }
         // KMK <--
-        val functions by produceState<ImmutableList<Pair<KFunction<*>, String>>?>(initialValue = null) {
+        val functions by produceState<ImmutableList<Pair<KFunction<*>, String>>?>(initialValue = null, key1 = locale) {
             value = withContext(Dispatchers.Default) {
                 DebugFunctions::class.declaredFunctions.filter {
                     it.visibility == KVisibility.PUBLIC
                 }.map {
                     it to it.name.replace("(.)(\\p{Upper})".toRegex(), "$1 $2")
-                        .lowercase(Locale.getDefault())
-                        .capitalize(Locale.getDefault())
+                        .lowercase(locale)
+                        .capitalize(locale)
                 }.toImmutableList()
             }
         }
@@ -144,6 +145,7 @@ class SettingsDebugScreen : Screen() {
         toggles: ImmutableList<DebugToggle>,
         scope: CoroutineScope,
     ) {
+        val locale = LocalConfiguration.current.locales[0]
         Box(Modifier.fillMaxSize()) {
             var running by remember { mutableStateOf(false) }
             var result by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -196,8 +198,8 @@ class SettingsDebugScreen : Screen() {
                     var state by pref
                     TextPreferenceWidget(
                         title = name.replace('_', ' ')
-                            .lowercase(Locale.getDefault())
-                            .capitalize(Locale.getDefault()),
+                            .lowercase(locale)
+                            .capitalize(locale),
                         subtitle = if (pref.value != default) {
                             AnnotatedString("MODIFIED", SpanStyle(color = Color.Red))
                         } else {

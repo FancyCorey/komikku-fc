@@ -19,7 +19,9 @@ object BestVersionRetryScopePolicy {
         .sortedWith(compareBy<MangaIdentityKey> { it.source }.thenBy { it.url })
 
     fun fullscreenPageIndexes(images: Map<Int, PreviewPageImageState>): List<Int> = images
-        .filterValues { it is PreviewPageImageState.Failed }
+        .filterValues {
+            it is PreviewPageImageState.Failed || it is PreviewPageImageState.ImageLoadFailed
+        }
         .keys
         .sorted()
 

@@ -22,7 +22,8 @@ Komikku FC helps you find manga, compare sources, keep track of reading, and man
 - [Release notes](release-notes.md) summarizes the current public feature set and compatibility boundary.
 - [Technical reference](technical-reference/README.md) explains the XML files used to map features and screenshots.
 - [Feature reference (XML)](technical-reference/feature-reference.xml) lists routes, states, privacy rules, and implementation owners in a machine-readable form.
-- [Screenshot manifest (XML)](technical-reference/screenshot-manifest.xml) lists each screenshot's route, illustrated state, visible-content limits, and SHA-256 hash.
+- [v0.8.23 screenshot manifest (XML)](technical-reference/screenshot-manifest-v0.8.23.xml) lists the current What's New illustration and its SHA-256 hash. This partial collection does not illustrate every v0.8.23 workflow.
+- [Historical screenshot manifest (XML)](technical-reference/screenshot-manifest.xml) lists the earlier illustrations' routes, states, visible-content limits, and SHA-256 hashes.
 - [Security policy](../../SECURITY.md) explains how to report a vulnerability without publishing sensitive information.
 
 ## How the documentation is organized

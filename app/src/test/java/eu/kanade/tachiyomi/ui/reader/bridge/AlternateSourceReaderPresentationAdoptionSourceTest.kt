@@ -90,7 +90,7 @@ class AlternateSourceReaderPresentationAdoptionSourceTest {
 
         assertTrue(candidateSelection.contains("retainedAlternateSourceMangaSelection = selection"))
         assertTrue(retry.contains("retainedAlternateSourceMangaSelection?.let"))
-        assertTrue(retry.contains("selectAlternateSourceCandidate(it)"))
+        assertTrue(retry.contains("selectAlternateSourceCandidate(it, explicitUserRetry = true)"))
     }
 
     @Test

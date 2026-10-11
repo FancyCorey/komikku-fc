@@ -1,0 +1,6 @@
+{
+  "uniqueId": "core:image-decoder",
+  "name": "Image decoder",
+  "description": "Komikku FC image decoding module",
+  "licenses": ["MPL-2.0"]
+}

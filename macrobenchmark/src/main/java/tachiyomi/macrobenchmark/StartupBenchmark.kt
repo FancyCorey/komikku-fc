@@ -16,6 +16,9 @@
 
 package tachiyomi.macrobenchmark
 
+import android.os.Build
+import android.os.SystemClock
+import android.os.Trace
 import android.util.Log
 import androidx.benchmark.macro.BaselineProfileMode
 import androidx.benchmark.macro.CompilationMode
@@ -214,6 +217,18 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
             dismissFirstRunUiIfPresent()
         },
     ) {
+        // API 30's bundled Perfetto waits only for kernel tracing_on. The retained r2
+        // trace missed launch-start events while userspace tracing was still starting.
+        // Wait outside the startup interval (which starts at the intent marker), and
+        // Fail before a measured launch if the benchmark process's app trace tag is not enabled.
+        if (Build.VERSION.SDK_INT == 30) {
+            awaitStartupTraceReadyForIteration(
+                iteration = iteration,
+                isTraceEnabled = Trace::isEnabled,
+                uptimeMillis = { SystemClock.uptimeMillis() },
+                sleepMillis = Thread::sleep,
+            )
+        }
         startActivityAndWait()
     }
 }

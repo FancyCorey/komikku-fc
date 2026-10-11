@@ -158,6 +158,7 @@ sealed interface FullscreenPreviewState {
 sealed interface PreviewPageImageState {
     data object Loading : PreviewPageImageState
     data class Resolved(val preview: SampledPage) : PreviewPageImageState
+    data class ImageLoadFailed(val preview: SampledPage) : PreviewPageImageState
     data class Failed(val reason: BestVersionErrorReason) : PreviewPageImageState
 }
 // KMK <--
@@ -850,7 +851,41 @@ class BestVersionCompareScreenModel(
 
     // A fullscreen Retry affordance is visible on an individual failed page, but its action is a
     // same-screen recovery action: retry every page currently exposing Retry, while preserving
-    // already-resolved pages. The clicked index is retained in the callback shape for UI stability.
+    // Coil can fail after source URL resolution succeeds; preserve that failure in fullscreen
+    // state so the existing retry scope can include the page.
+    fun reportFullscreenPageImageLoadFailed(
+        candidateKey: MangaIdentityKey,
+        pageIndex: Int,
+        expectedOpenGeneration: Int,
+        expectedPageGeneration: Int,
+    ) {
+        if (disposed) return
+        mutableState.update { current ->
+            if (disposed || current.fullscreenOpenGeneration != expectedOpenGeneration) return@update current
+            val loaded = current.fullscreenPreview as? FullscreenPreviewState.Loaded ?: return@update current
+            if (loaded.key != candidateKey) return@update current
+            if (!BestVersionPreviewRetryPolicy.isCurrent(
+                    current.fullscreenPageGenerations,
+                    pageIndex,
+                    expectedPageGeneration,
+                )
+            ) {
+                return@update current
+            }
+            val resolved = loaded.pageImages[pageIndex] as? PreviewPageImageState.Resolved ?: return@update current
+            current.copy(
+                fullscreenPreview = loaded.copy(
+                    pageImages = loaded.pageImages.put(
+                        pageIndex,
+                        PreviewPageImageState.ImageLoadFailed(resolved.preview),
+                    ),
+                ),
+            )
+        }
+    }
+
+    // Retry all currently failed fullscreen pages (typed source failures and Coil byte failures),
+    // while preserving resolved pages and requests that are still loading.
     fun retryFullscreenPageImage(pageIndex: Int) {
         var retryIndexes = emptyList<Int>()
         var retryKey: MangaIdentityKey? = null

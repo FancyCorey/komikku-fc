@@ -21,6 +21,7 @@ import tachiyomi.data.MemoColumnAdapter
 import tachiyomi.data.StringListColumnAdapter
 import tachiyomi.data.UpdateStrategyColumnAdapter
 import tachiyomi.data.manga.MangaRepositoryImpl
+import tachiyomi.data.taste.AlternateSourceBridgeRepositoryImpl
 import tachiyomi.data.taste.TasteRepositoryImpl
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.model.Manga
@@ -28,6 +29,9 @@ import tachiyomi.domain.manga.repository.MangaRepository
 import tachiyomi.domain.taste.interactor.GetCrossSourceGroupPrimary
 import tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks
 import tachiyomi.domain.taste.interactor.GetMangaTaste
+import tachiyomi.domain.taste.model.AlternateSourceBridgePolicy
+import tachiyomi.domain.taste.model.AlternateSourceBridgeState
+import tachiyomi.domain.taste.model.AlternateSourceBridgeTargetResolution
 import tachiyomi.domain.taste.model.CrossSourceGroupPrimary
 import tachiyomi.domain.taste.model.CrossSourceIdentityDecision
 import tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy
@@ -38,12 +42,16 @@ import tachiyomi.domain.taste.model.CrossSourceMangaLink
 import tachiyomi.domain.taste.model.CrossSourceRecordKey
 import tachiyomi.domain.taste.model.MangaRating
 import tachiyomi.domain.taste.model.MangaTaste
+import tachiyomi.domain.taste.model.bridge
+import tachiyomi.domain.taste.model.bridgeMapping
+import tachiyomi.domain.taste.repository.AlternateSourceBridgeRepository
 import tachiyomi.domain.taste.repository.TasteRepository
 
 /**
- * Genuine end-to-end round trip through the REAL BackupCreator-model construction ->
- * kotlinx.serialization ProtoBuf wire encode/decode -> BackupRestorer orchestration boundary, for
- * ratings, cross-source links, group primaries, and identity decisions.
+ * Host round trips through real repository-backed backup-model creation, ProtoBuf wire
+ * encode/decode, and the restore bundle used by BackupRestorer. These cover ratings, cross-source
+ * links, group primaries, identity decisions, and alternate-source bridge routes/mappings. Android
+ * archive file I/O and BackupDecoder are separate device-level boundaries.
  *
  * This closes the exact gap [F2-02] reopened: [TasteRestorerIntegratedGroupRestoreTest] (still
  * valid, kept) constructs `Backup*` model instances directly in Kotlin and calls [TasteRestorer]
@@ -67,7 +75,11 @@ import tachiyomi.domain.taste.repository.TasteRepository
  */
 class TasteBackupEndToEndRoundTripTest {
 
-    private class Repositories(val taste: TasteRepositoryImpl, val manga: MangaRepositoryImpl)
+    private class Repositories(
+        val taste: TasteRepositoryImpl,
+        val manga: MangaRepositoryImpl,
+        val bridge: AlternateSourceBridgeRepositoryImpl,
+    )
 
     private fun freshRepositories(): Repositories {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
@@ -83,14 +95,21 @@ class TasteBackupEndToEndRoundTripTest {
             chaptersAdapter = Chapters.Adapter(memoAdapter = MemoColumnAdapter),
         )
         val handler = AndroidDatabaseHandler(database, driver)
-        return Repositories(taste = TasteRepositoryImpl(handler), manga = MangaRepositoryImpl(handler))
+        return Repositories(
+            taste = TasteRepositoryImpl(handler),
+            manga = MangaRepositoryImpl(handler),
+            bridge = AlternateSourceBridgeRepositoryImpl(handler),
+        )
     }
 
     private fun freshTasteRepository(): TasteRepositoryImpl = freshRepositories().taste
 
-    private fun creator(tasteRepository: TasteRepository) = TasteBackupCreator(
+    private fun creator(
+        tasteRepository: TasteRepository,
+        bridgeRepository: AlternateSourceBridgeRepository = mockk(relaxed = true),
+    ) = TasteBackupCreator(
         tasteRepository = tasteRepository,
-        alternateSourceBridgeRepository = mockk(relaxed = true),
+        alternateSourceBridgeRepository = bridgeRepository,
         getMangaTaste = GetMangaTaste(tasteRepository),
         getTagTaste = mockk(relaxed = true),
         getTagAliases = mockk(relaxed = true),
@@ -101,9 +120,13 @@ class TasteBackupEndToEndRoundTripTest {
         sourcePreferences = mockk<SourcePreferences>(relaxed = true),
     )
 
-    private fun restorer(tasteRepository: TasteRepository, mangaRepository: MangaRepository = mockk(relaxed = true)) = TasteRestorer(
+    private fun restorer(
+        tasteRepository: TasteRepository,
+        mangaRepository: MangaRepository = mockk(relaxed = true),
+        bridgeRepository: AlternateSourceBridgeRepository = mockk(relaxed = true),
+    ) = TasteRestorer(
         tasteRepository = tasteRepository,
-        alternateSourceBridgeRepository = mockk(relaxed = true),
+        alternateSourceBridgeRepository = bridgeRepository,
         mangaRepository = mangaRepository,
         getManga = GetManga(mangaRepository),
         getMangaTaste = GetMangaTaste(tasteRepository),
@@ -266,6 +289,62 @@ class TasteBackupEndToEndRoundTripTest {
         assertEquals(2, target.taste.getAllCrossSourceMangaLinks().size)
         assertEquals(1, target.taste.getAllCrossSourceGroupPrimaries().size)
         assertEquals(1, target.taste.getAllCrossSourceIdentityDecisions().size)
+    }
+
+    @Test
+    fun `populated alternate source route and chapter mapping survive creation wire and restore`() = runTest {
+        val source = freshRepositories()
+        val route = bridge(
+            continuationUrl = "/chapter/next",
+            returnAfterUrl = "/chapter/alternate",
+            automaticReturn = true,
+        )
+        val mapping = bridgeMapping()
+        source.bridge.upsert(AlternateSourceBridgeState(route, listOf(mapping)))
+
+        val creator = creator(source.taste, source.bridge)
+        val backup = Backup(
+            backupManga = emptyList(),
+            backupAlternateSourceBridges = creator.backupAlternateSourceBridges(),
+            backupAlternateSourceBridgeMappings = creator.backupAlternateSourceBridgeMappings(),
+        )
+        assertEquals(1, backup.backupAlternateSourceBridges.size)
+        assertEquals(1, backup.backupAlternateSourceBridgeMappings.size)
+        val decoded = roundTripThroughWire(backup)
+
+        val target = freshRepositories()
+        val errors = restorer(target.taste, target.manga, target.bridge).restoreTasteProfileBundle(
+            backupMangaTastes = emptyList(),
+            backupTagTastes = emptyList(),
+            backupTagAliases = emptyList(),
+            backupDisabledSources = emptyList(),
+            backupCrossSourceMangaLinks = emptyList(),
+            backupCrossSourceGroupPrimaries = emptyList(),
+            backupCrossSourceIdentityDecisions = emptyList(),
+            backupAlternateSourceBridges = decoded.backupAlternateSourceBridges,
+            backupAlternateSourceBridgeMappings = decoded.backupAlternateSourceBridgeMappings,
+            backupMangaSourceQualitySignals = emptyList(),
+            backupSeenMangaKeys = emptyList(),
+            backupSavedFocusModes = emptyList(),
+        )
+
+        assertTrue(errors.isEmpty(), "expected a clean bridge restore, got: $errors")
+        val restored = requireNotNull(target.bridge.get(route.key))
+        assertEquals(route, restored.bridge)
+        assertEquals(listOf(mapping), restored.mappings)
+        assertEquals(
+            AlternateSourceBridgeTargetResolution.Target(
+                "/chapter/alternate",
+                mapping.state,
+                mapping.relation,
+            ),
+            AlternateSourceBridgePolicy.resolveAnchoredGapTarget(
+                restored.bridge,
+                restored.mappings,
+                "/chapter/before",
+                "/chapter/after",
+            ),
+        )
     }
 
     @Test
