@@ -99,10 +99,10 @@ class PrivateExtensionRecoveryTest {
             ).redirectErrorStream(true).start()
             try {
                 val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
-                while (!ready.exists() && process.isAlive && System.nanoTime() < deadline) {
+                while ((!ready.exists() || ready.readText() != stage) && process.isAlive && System.nanoTime() < deadline) {
                     process.waitFor(20, TimeUnit.MILLISECONDS)
                 }
-                assertTrue(ready.exists() && process.isAlive, "Transaction process missed the $stage boundary")
+                assertTrue(ready.exists() && ready.readText() == stage && process.isAlive, "Transaction process missed the $stage boundary")
                 assertEquals(stage, ready.readText())
                 process.destroyForcibly()
                 assertTrue(process.waitFor(10, TimeUnit.SECONDS), "Transaction process remained alive after $stage")
