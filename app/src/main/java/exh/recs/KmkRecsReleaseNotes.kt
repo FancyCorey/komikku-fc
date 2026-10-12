@@ -3,8 +3,8 @@
 // KMK -->
 object KmkRecsReleaseNotes {
     const val VERSION_CODE = 787
-    const val VERSION_NAME = "KMK-Recs v0.8.23-fix1"
-    const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.23-fix1"
+    const val VERSION_NAME = "KMK-Recs v0.8.23.1"
+    const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.23.1"
 
     /** Projects the retained historical notes into the current public product name. */
     fun displayMarkdown(): String = MARKDOWN.replace("KMK-Recs", "Komikku FC")
@@ -21,9 +21,9 @@ object KmkRecsReleaseNotes {
     // ...") that is now expressed by its category heading instead. See the v0.8.10-fix9
     // implementation report for the exact conversion approach and verification.
     val MARKDOWN = """
-        ## KMK-Recs v0.8.23-fix1
+        ## KMK-Recs v0.8.23.1
 
-        Updates to search, linked-version groups, tracking, reading, and recovery.
+        The v0.8.23 feature set, with follow-up fixes for updates, reading, and extension recovery.
 
         #### What's Changed
 
@@ -37,7 +37,7 @@ object KmkRecsReleaseNotes {
         - **Direct Tracking settings:** the tracker's Local Tracking row has a shortcut to Tracking settings before local tracking exists; settings use the available width without an unrelated settings category pane beside them.
         - **Recommendation Settings access:** open Recommendation Settings directly from the main Settings screen, as well as from For You.
         - **Shorter linked sources:** keep the shared Local Tracking chapter at the higher saved progress while marking chapters only through the highest available chapter at or below it. A saved URL match wins when available; missing URL rows fall back by number, with duplicate scanlation rows resolved consistently.
-        - **Alternate-source reading:** keep reader navigation and source switching aligned with the selected chapter instead of reopening an already-resolved chooser, and retry failed source searches or chapter lookups from the reader.
+        - **Alternate-source reading:** keep reader navigation and source switching aligned with the selected chapter instead of reopening an already-resolved chooser.
         - **Recommendation stability:** invalidate hidden-title and source-genre caches when their inputs change, and keep source evaluation work cancellable and recoverable.
         - **For You refresh:** successful source results are applied in batches as source requests finish. Refresh time still depends on how quickly your sources respond.
         - **Extension lifecycle:** make private extension downloads, installation, recovery, and cleanup explicit so interrupted work can be retried safely.
@@ -46,14 +46,16 @@ object KmkRecsReleaseNotes {
         - **App identity:** use the Komikku FC logo in the launcher, splash screen, app header, and notifications, with a monochrome version for supported themed launchers.
 
         ##### Fix
-        - **Extension recovery:** prevent a second retry from interrupting an install already in progress.
+        - **Fix one — app-update retry:** retry interrupted app-update work; retrying does not guarantee that a partial download resumes from its previous byte.
+        - **Fix one — alternate-source retry:** retry a failed source search or chapter lookup from the Reader.
+        - **Fix one — reading timer:** use your selected warning and chapter-end choices when starting the timer.
+        - **Fix one — extension recovery:** a second recovery attempt no longer interrupts an installation already in progress.
         - **Android page sizes:** improve compatibility on devices using 16 KB memory pages.
         - **External tracking:** prevent repeated add requests while linking is in progress, and keep a saved link when follow-up synchronization fails. If the tracker accepts a title but Komikku cannot save the link locally, the app warns you to check the tracker before trying again.
         - **Linked-version accessibility:** restore screen-reader labels and expanded or collapsed state for the group expand button.
         - **Open-source licenses:** keep available license text in the app and provide a browser link when a library lists its license by URL.
         - **Live screen state:** keep source-feed sorting availability in sync with saved searches, and refresh debug-menu label formatting when the app language changes.
         - **Reader errors:** show reader-specific messages for network, file, and extension failures, with a page-load message for other reader errors.
-        - **Reader timer:** use the current warning and chapter-end choices when starting from a preset or custom duration.
         - **For You source filters:** keep your profile restrictions active when a source-filter context cannot be restored, and explain how to reopen the source.
         - **Reader state:** reuse the existing reader route and state when OCR or alternate-source actions hand a chapter back to reading.
         - **Jump to last read:** recheck the saved chapter if the displayed list changes during the jump, and cancel positioning when you leave the manga screen.

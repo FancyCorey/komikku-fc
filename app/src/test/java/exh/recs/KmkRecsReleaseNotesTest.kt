@@ -34,7 +34,7 @@ class KmkRecsReleaseNotesTest {
 
     @Test
     fun `the display version uses the approved forward-facing product name`() {
-        assertEquals("Komikku FC v0.8.23-fix1", KmkRecsReleaseNotes.DISPLAY_VERSION_NAME)
+        assertEquals("Komikku FC v0.8.23.1", KmkRecsReleaseNotes.DISPLAY_VERSION_NAME)
         assertTrue(KmkRecsReleaseNotes.VERSION_NAME.startsWith("KMK-Recs "))
     }
 
@@ -42,9 +42,9 @@ class KmkRecsReleaseNotesTest {
     fun `rendered release notes use the forward-facing product name`() {
         val displayMarkdown = KmkRecsReleaseNotes.displayMarkdown()
 
-        assertTrue(displayMarkdown.contains("## Komikku FC v0.8.23-fix1"))
+        assertTrue(displayMarkdown.contains("## Komikku FC v0.8.23.1"))
         assertFalse(displayMarkdown.contains("KMK-Recs"))
-        assertTrue(KmkRecsReleaseNotes.MARKDOWN.contains("## KMK-Recs v0.8.23-fix1"))
+        assertTrue(KmkRecsReleaseNotes.MARKDOWN.contains("## KMK-Recs v0.8.23.1"))
     }
 
     @Test
@@ -87,7 +87,7 @@ class KmkRecsReleaseNotesTest {
 
     @Test
     fun `the v0_8_23 entry documents linked group accessibility`() {
-        val currentSection = sectionBodies().first { it.first == "v0.8.23-fix1" }.second
+        val currentSection = sectionBodies().first { it.first == "v0.8.23.1" }.second
 
         assertTrue(currentSection.contains("**Linked-version accessibility:**"))
         assertTrue(currentSection.contains("screen-reader labels and expanded or collapsed state"))
@@ -95,7 +95,7 @@ class KmkRecsReleaseNotesTest {
 
     @Test
     fun `the v0_8_23 entry documents observable screen state fixes`() {
-        val currentSection = sectionBodies().first { it.first == "v0.8.23-fix1" }.second
+        val currentSection = sectionBodies().first { it.first == "v0.8.23.1" }.second
 
         assertTrue(currentSection.contains("**Live screen state:**"))
         assertTrue(currentSection.contains("source-feed sorting availability in sync with saved searches"))
@@ -104,7 +104,7 @@ class KmkRecsReleaseNotesTest {
 
     @Test
     fun `the v0_8_23 entry documents URL-only open-source license access`() {
-        val currentSection = sectionBodies().first { it.first == "v0.8.23-fix1" }.second
+        val currentSection = sectionBodies().first { it.first == "v0.8.23.1" }.second
 
         assertTrue(currentSection.contains("**Open-source licenses:**"))
         assertTrue(currentSection.contains("browser link when a library lists its license by URL"))
@@ -112,7 +112,7 @@ class KmkRecsReleaseNotesTest {
 
     @Test
     fun `the v0_8_23 entry documents retry for fullscreen image load failures`() {
-        val currentSection = sectionBodies().first { it.first == "v0.8.23-fix1" }.second
+        val currentSection = sectionBodies().first { it.first == "v0.8.23.1" }.second
 
         assertTrue(currentSection.contains("**Best Version fullscreen previews:**"))
         assertTrue(currentSection.contains("retry a page when its image download or decoding fails"))
@@ -159,7 +159,7 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `v0 8 23 describes fail-closed For You source filters`() {
         val current = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
 
         assertTrue(current.contains("For You source filters"))
@@ -169,7 +169,7 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `v0 8 23 describes batched For You source results without a speed claim`() {
         val current = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
 
         assertTrue(current.contains("For You refresh"))
@@ -192,9 +192,9 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `headings are in strictly descending chronological order as written (newest-first)`() {
         // The renderer relies on source order for "newest first" -- verify the file wasn't
-        // accidentally reordered. v0.8.23-fix1 is expected to be exactly first.
+        // accidentally reordered. v0.8.23.1 is expected to be exactly first.
         val all = headings()
-        assertEquals("v0.8.23-fix1", all[0])
+        assertEquals("v0.8.23.1", all[0])
         assertEquals("v0.8.22", all[1])
         assertEquals("v0.8.21-fix2", all[2])
         assertEquals("v0.8.21", all[3])
@@ -284,16 +284,16 @@ class KmkRecsReleaseNotesTest {
         assertTrue(currentSection.contains("View in Reader"))
     }
 
-    // KMK v0.8.23-fix1 -->
+    // KMK v0.8.23.1 -->
     @Test
     fun `the v0_8_23 entry is the current newest entry`() {
-        assertEquals("v0.8.23-fix1", sectionBodies().first().first)
+        assertEquals("v0.8.23.1", sectionBodies().first().first)
     }
 
     @Test
     fun `the v0_8_23 entry maps 16 KB Android memory page compatibility`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
 
         assertTrue(currentSection.contains("16 KB memory pages"))
@@ -303,7 +303,7 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `the v0_8_23 entry documents continuing with partial Best Version results`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
         assertTrue(currentSection.contains("Best Version partial results"))
         assertTrue(currentSection.contains("later results cannot change the comparison"))
@@ -313,7 +313,7 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `the v0_8_23 entry describes shared same-manga source search scope`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
         assertTrue(currentSection.contains("Same-manga source search"))
         assertTrue(currentSection.contains("version matching, and alternate-source reading"))
@@ -324,16 +324,17 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `the v0_8_23 entry documents retrying alternate-source failures`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
-        assertTrue(currentSection.contains("retry failed source searches or chapter lookups from the reader"))
-        assertTrue(publicReleaseNotes.contains("retry a failed alternate-source search or chapter lookup from the reader"))
+        assertTrue(currentSection.contains("Fix one — alternate-source retry"))
+        assertTrue(currentSection.contains("retry a failed source search or chapter lookup from the Reader"))
+        assertTrue(publicReleaseNotes.contains("Retry a failed alternate-source search or chapter lookup from the Reader"))
     }
 
     @Test
     fun `the v0_8_23 entry maps Jump to last read list updates and screen cancellation`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
         assertTrue(currentSection.contains("Jump to last read"))
         assertTrue(currentSection.contains("recheck the saved chapter if the displayed list changes during the jump"))
@@ -343,7 +344,7 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `the v0_8_23 Best Version search entry preserves configured settings`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
         assertTrue(currentSection.contains("configured results-per-source limit"))
         assertTrue(currentSection.contains("title-selection and preview settings"))
@@ -353,7 +354,7 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `the v0_8_23 entry maps shorter-source progress and link-group changes`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
         assertTrue(currentSection.contains("Shorter linked sources"))
         assertTrue(currentSection.contains("higher saved progress"))
@@ -370,7 +371,7 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `the v0_8_23 entry covers link-group cancellation and count-aware history summaries`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
 
         assertTrue(currentSection.contains("Cancelling an ungroup keeps the existing group intact"))
@@ -383,7 +384,7 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `the v0_8_23 entry maps direct Recommendation Settings access`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
 
         assertTrue(currentSection.contains("Recommendation Settings access"))
@@ -393,20 +394,20 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `the v0_8_23 entry describes product behavior and keeps pre-release status accurate`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
 
-        assertTrue(currentSection.contains("Updates to search, linked-version groups, tracking, reading, and recovery"))
+        assertTrue(currentSection.contains("The v0.8.23 feature set, with follow-up fixes for updates, reading, and extension recovery"))
         assertFalse(currentSection.contains("release-readiness"))
         assertFalse(currentSection.contains("Release workflow"))
-        assertTrue(publicReleaseNotes.contains("The next Komikku FC feature version is **v0.8.23-fix1**"))
+        assertTrue(publicReleaseNotes.contains("The next Komikku FC feature version is **v0.8.23.1**"))
         assertTrue(publicReleaseNotes.contains("The latest published snapshot remains **v0.8.22**"))
     }
 
     @Test
     fun `the v0_8_23 entry describes OCR and updater behavior in reader-facing language`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
 
         assertTrue(currentSection.contains("search text in downloaded pages"))
@@ -421,11 +422,12 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `the v0_8_23 in-app extension recovery note uses reader-facing language`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
 
         assertTrue(currentSection.contains("the app restores the previous version before retrying"))
-        assertTrue(currentSection.contains("prevent a second retry from interrupting an install already in progress"))
+        assertTrue(currentSection.contains("Fix one — extension recovery"))
+        assertTrue(currentSection.contains("a second recovery attempt no longer interrupts an installation already in progress"))
         assertTrue(currentSection.contains("Cleanup problems with one extension do not block others"))
         assertTrue(currentSection.contains("files the app cannot identify are left untouched"))
         assertFalse(currentSection.contains("owned rollback files"))
@@ -436,7 +438,7 @@ class KmkRecsReleaseNotesTest {
     fun `the public release notes describe OCR and extension recovery in user terms`() {
         assertTrue(publicReleaseNotes.contains("indexed pages can be removed by manga or chapter"))
         assertTrue(publicReleaseNotes.contains("the app restores the previous version before retrying"))
-        assertTrue(publicReleaseNotes.contains("prevents a second extension-recovery attempt from interrupting an install already in progress"))
+        assertTrue(publicReleaseNotes.contains("Prevent a second extension-recovery attempt from interrupting an install already in progress"))
         assertTrue(publicReleaseNotes.contains("files the app cannot identify are left untouched"))
         assertFalse(publicReleaseNotes.contains("scoped cleanup"))
         assertFalse(publicReleaseNotes.contains("owned rollback files"))
@@ -444,9 +446,26 @@ class KmkRecsReleaseNotesTest {
     }
 
     @Test
+    fun `the current release separates v0_8_23 additions from fix-one corrections`() {
+        val currentSection = sectionBodies().first { it.first == "v0.8.23.1" }.second
+        val addedSection = currentSection.substringAfter("##### New").substringBefore("##### Improve")
+        val fixSection = currentSection.substringAfter("##### Fix").substringBefore("## KMK-Recs v0.8.22")
+
+        assertTrue(addedSection.contains("OCR search"))
+        assertTrue(addedSection.contains("Updater recovery"))
+        assertTrue(fixSection.contains("Fix one — app-update retry"))
+        assertTrue(fixSection.contains("Fix one — alternate-source retry"))
+        assertTrue(fixSection.contains("Fix one — reading timer"))
+        assertTrue(fixSection.contains("Fix one — extension recovery"))
+        assertFalse(currentSection.contains("v0.8.23-fix1"))
+        assertTrue(publicReleaseNotes.contains("### Added in v0.8.23"))
+        assertTrue(publicReleaseNotes.contains("### Fix one updates in v0.8.23.1"))
+    }
+
+    @Test
     fun `the v0_8_23 entry documents safe external tracker registration`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
 
         assertTrue(currentSection.contains("External tracking"))
@@ -461,7 +480,7 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `the v0_8_23 entry documents reader-specific error messages`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
 
         assertTrue(currentSection.contains("Reader errors"))
@@ -474,7 +493,7 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `the v0_8_23 entry documents the Local Tracking settings shortcut before tracking exists`() {
         val currentInAppSection = KmkRecsReleaseNotes.MARKDOWN
-            .substringAfter("## KMK-Recs v0.8.23-fix1")
+            .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
         val currentPublicSection = publicReleaseNotes
             .substringAfter("## Included feature families")

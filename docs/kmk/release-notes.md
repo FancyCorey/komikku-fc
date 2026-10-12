@@ -1,22 +1,28 @@
 # Komikku FC public release notes
 
-This page separates the latest published release from the next candidate. **v0.8.22** is the latest published version; **v0.8.23-fix1** remains an unreleased candidate. The in-app **Komikku FC What's new** screen keeps the detailed history of changes.
+This page separates the latest published release from the next candidate. **v0.8.22** is the latest published version; **v0.8.23.1** remains an unreleased candidate. The in-app **Komikku FC What's new** screen keeps the detailed history of changes.
 
 ## Release status
 
-The next Komikku FC feature version is **v0.8.23-fix1**. The latest published snapshot remains **v0.8.22** until the candidate is released.
+The next Komikku FC feature version is **v0.8.23.1**. The latest published snapshot remains **v0.8.22** until the candidate is released.
 
 ## App Updates
 
-When published, download [Komikku FC v0.8.23-fix1](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.23-fix1) from this fork's Releases page. Until then, use the latest published [v0.8.22](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.22) release. Choose the APK for your device and read its installation notes. Future updates are distributed through the same Releases page.
+When published, download [Komikku FC v0.8.23.1](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.23.1) from this fork's Releases page. Until then, use the latest published [v0.8.22](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.22) release. Choose the APK for your device and read its installation notes. Future updates are distributed through the same Releases page.
 
-The v0.8.23-fix1 candidate adds retry and recovery handling for interrupted app-update work. This behavior is not part of published v0.8.22, and a retry does not guarantee that a partial download resumes from its previous byte.
+### Added in v0.8.23
 
-The v0.8.23-fix1 candidate also lets you retry a failed alternate-source search or chapter lookup from the reader.
+- **OCR search:** search text in downloaded pages, follow indexing progress, recover interrupted indexing, and open results in the Reader.
+- **Updater recovery:** resume interrupted app updates and extension operations, and clean up incomplete downloads or installs.
 
-The v0.8.23-fix1 candidate also applies the currently selected warning and chapter-end choices when you start the reading timer.
+The v0.8.23 feature set also improves Best Version search, linked-version tracking, reader source switching, For You recommendations, extension recovery, accessibility, restore behavior, and app identity. See the in-app **What's new** screen and the complete release notes for all included changes.
 
-The v0.8.23-fix1 candidate also prevents a second extension-recovery attempt from interrupting an install already in progress.
+### Fix one updates in v0.8.23.1
+
+- Retry interrupted app-update work. A retry does not guarantee that a partial download resumes from its previous byte.
+- Retry a failed alternate-source search or chapter lookup from the Reader.
+- Apply the selected warning and chapter-end choices when starting the reading timer.
+- Prevent a second extension-recovery attempt from interrupting an install already in progress.
 
 Use **More > About > Check for updates** to check manually. Automatic discovery depends on the installed version's update checker, the published release, network access, and your update settings; notifications also require Android notification permission. Installing over an existing app requires a compatible package and signing certificate. Do not assume a development APK can replace your public installation.
 
@@ -24,7 +30,7 @@ Some older releases compare Komikku's version rather than the Komikku FC feature
 
 ## Komikku FC feature overview
 
-The overview below covers capabilities across releases; it is not a list of features shipped in v0.8.22. Changes for v0.8.23-fix1 remain unavailable until that candidate is published.
+The overview below covers capabilities across releases; it is not a list of features shipped in v0.8.22. The v0.8.23.1 candidate includes the v0.8.23 feature set and the separately listed fix-one updates; they remain unavailable from this fork's published v0.8.22 until v0.8.23.1 is published.
 
 - Personalized For You and Top Picks views with your manga filters, results from sources that remain available, optional recent-catalogue discoveries, repeat-display reordering, bulk rating actions, and status explanations for each source.
 - Recommendations based on rated or linked manga groups, with results appearing source by source, a configurable initial result count, and separate explanations for slow or failed sources.

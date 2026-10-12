@@ -33,8 +33,8 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           set -euo pipefail
-          [[ "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-fix[0-9]+|-fc-bridge)?$ ]] || {
-            echo "Release tags must use vMAJOR.MINOR.PATCH, -fixNUMBER, or -fc-bridge." >&2
+          [[ "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+|-fix[0-9]+|-fc-bridge)?$ ]] || {
+            echo "Release tags must use vMAJOR.MINOR.PATCH, a numeric fourth component, -fixNUMBER, or -fc-bridge." >&2
             exit 1
           }
           printf 'tag=%s\n' "${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
@@ -320,9 +320,25 @@ jobs:
           body: |
             Komikku FC is an independently maintained manga reader based on Komikku.
 
-            Choose the universal APK, or an architecture-specific APK for a smaller download. Back up your library before updating. Install over your existing public Komikku FC app to keep its data; development builds are separate installations.
+            ### Added in v0.8.23
 
-            See [What's changed](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/release-notes.md) and the [user guide](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/user-guide.md).
+            - **OCR search:** search text in downloaded pages, follow indexing progress, recover interrupted indexing, and open results in the Reader.
+            - **Updater recovery:** resume interrupted app updates and extension operations, and clean up incomplete downloads or installs.
+
+            ### Fix one updates in v0.8.23.1
+
+            - Retry interrupted app-update work; retrying does not guarantee that a partial download resumes from its previous byte.
+            - Retry a failed alternate-source search or chapter lookup from the Reader.
+            - Apply the selected warning and chapter-end choices when starting the reading timer.
+            - Prevent a second extension-recovery attempt from interrupting an install already in progress.
+
+            The v0.8.23.1 release includes the complete v0.8.23 search, tracking, recommendation, reader, recovery, accessibility, and app-identity feature set. See [What's changed](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/release-notes.md) for the complete list.
+
+            Requires Android 8.0 (API 26) or newer. GitHub shows each APK's download size. Choose the universal APK for broad compatibility, or match your device ABI: arm64-v8a (64-bit ARM), armeabi-v7a (32-bit ARM), x86, or x86_64. If you are unsure, choose universal.
+
+            Verify a downloaded APK against SHA256SUMS.txt. The APKs are signed with the same public release certificate as the previous release; check its fingerprint in CERTIFICATE_SHA256.txt and RELEASE_MANIFEST.json. Back up your library before updating. Install over your existing public Komikku FC app to keep its data; development builds are separate installations.
+
+            See the [user guide](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/user-guide.md).
           generate_release_notes: true
           files: |
             Komikku-KMK-*.apk
