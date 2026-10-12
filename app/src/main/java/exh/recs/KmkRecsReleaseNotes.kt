@@ -3,8 +3,8 @@
 // KMK -->
 object KmkRecsReleaseNotes {
     const val VERSION_CODE = 787
-    const val VERSION_NAME = "KMK-Recs v0.8.23"
-    const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.23"
+    const val VERSION_NAME = "KMK-Recs v0.8.23-fix1"
+    const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.23-fix1"
 
     /** Projects the retained historical notes into the current public product name. */
     fun displayMarkdown(): String = MARKDOWN.replace("KMK-Recs", "Komikku FC")
@@ -21,7 +21,7 @@ object KmkRecsReleaseNotes {
     // ...") that is now expressed by its category heading instead. See the v0.8.10-fix9
     // implementation report for the exact conversion approach and verification.
     val MARKDOWN = """
-        ## KMK-Recs v0.8.23
+        ## KMK-Recs v0.8.23-fix1
 
         Updates to search, linked-version groups, tracking, reading, and recovery.
 
@@ -46,6 +46,7 @@ object KmkRecsReleaseNotes {
         - **App identity:** use the Komikku FC logo in the launcher, splash screen, app header, and notifications, with a monochrome version for supported themed launchers.
 
         ##### Fix
+        - **Extension recovery:** prevent a second retry from interrupting an install already in progress.
         - **Android page sizes:** improve compatibility on devices using 16 KB memory pages.
         - **External tracking:** prevent repeated add requests while linking is in progress, and keep a saved link when follow-up synchronization fails. If the tracker accepts a title but Komikku cannot save the link locally, the app warns you to check the tracker before trying again.
         - **Linked-version accessibility:** restore screen-reader labels and expanded or collapsed state for the group expand button.
