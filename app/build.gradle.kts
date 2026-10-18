@@ -459,7 +459,8 @@ dependencies {
     implementation(androidx.paging.runtime)
     implementation(androidx.paging.compose)
 
-    implementation(libs.bundles.sqlite)
+    implementation(androidx.sqlite.bundled)
+
     // SY -->
     implementation(sylibs.sqlcipher)
     // SY <--
@@ -520,6 +521,8 @@ dependencies {
 
     // UI libraries
     implementation(libs.material)
+    // KMK: keep the pinned JitPack build. Upstream's Maven Central 5.1.0 is compiled for Java 21 (class file 65), while this
+    // fork's builds and release workflow run on Java 17.
     implementation(files("libs/flexible-adapter-c8013533.aar"))
     implementation(libs.photoview)
     implementation(libs.directionalviewpager) {

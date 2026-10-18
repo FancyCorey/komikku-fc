@@ -21,7 +21,7 @@ class KmkReleaseNativeToolchainSourceTest {
         assertTrue(appBuild.contains("com.android.tools.r8.Version.getVersionString()"))
         assertTrue(appBuild.contains("dependsOn(verifyAndroidCompiler)"))
         val kotlinCatalog = File("../gradle/kotlinx.versions.toml").readText()
-        assertTrue(kotlinCatalog.contains("kotlin_version = \"2.4.0\""))
+        assertTrue(kotlinCatalog.contains("kotlin_version = \"2.4.20\""))
     }
 
     @Test

@@ -42,19 +42,19 @@ class SettingsScreen(
                     Destination.Tracking.id -> SettingsTrackingScreen
                     else -> SettingsMainScreen
                 },
-                content = {
-                    val pop: () -> Unit = {
-                        if (it.canPop) {
-                            it.pop()
-                        } else {
-                            parentNavigator.pop()
-                        }
+                onBackPressed = null,
+            ) {
+                val pop: () -> Unit = {
+                    if (it.canPop) {
+                        it.pop()
+                    } else {
+                        parentNavigator.pop()
                     }
-                    CompositionLocalProvider(LocalBackPress provides pop) {
-                        DefaultNavigatorScreenTransition(navigator = it)
-                    }
-                },
-            )
+                }
+                CompositionLocalProvider(LocalBackPress provides pop) {
+                    DefaultNavigatorScreenTransition(navigator = it)
+                }
+            }
         } else {
             Navigator(
                 screen = when (destination) {
@@ -63,6 +63,7 @@ class SettingsScreen(
                     Destination.Tracking.id -> SettingsTrackingScreen
                     else -> SettingsAppearanceScreen
                 },
+                onBackPressed = null,
             ) {
                 val insets = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)
                 TwoPanelBox(

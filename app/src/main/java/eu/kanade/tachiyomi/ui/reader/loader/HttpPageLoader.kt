@@ -43,7 +43,7 @@ internal class HttpPageLoader(
     private val chapterCache: ChapterCache = Injekt.get(),
     // SY -->
     private val readerPreferences: ReaderPreferences = Injekt.get(),
-    private val sourcePreferences: SourcePreferences = Injekt.get(),
+    sourcePreferences: SourcePreferences = Injekt.get(),
     // SY <--
 ) : PageLoader() {
 

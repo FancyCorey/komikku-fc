@@ -51,6 +51,7 @@ val migrations: List<Migration>
         // KMK <--
         TrustExtensionRepositoryMigration(),
         CategoryPreferencesCleanupMigration(),
+        // SY -->
         RemoveDuplicateReaderPreferenceMigration(),
         SyncPrefKeyMigration(),
         // KMK v0.8.17 (Komikku v1.14.1 reconciliation) -->
@@ -62,4 +63,6 @@ val migrations: List<Migration>
         // real MangaRating.NOT_INTERESTED rows.
         NotInterestedRatingMigration(),
         // KMK <--
+        // Upstream: installation id for feature flags (local only)
+        InstallationIdMigration(),
     )
