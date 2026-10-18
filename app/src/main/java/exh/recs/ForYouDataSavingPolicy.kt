@@ -42,11 +42,29 @@ internal object ForYouDataSavingPolicy {
      */
     const val SAVING_MAX_PLANS_PER_SOURCE = 2
 
+    // KMK --> v0.8.24 network review: the same setting also trims a manga's Recommendations screen and the library
+    // recommendation search, which otherwise search up to 20 installed sources per manga, each with up to three
+    // tag queries, two title fallbacks and ten detail requests (about 15 requests per source).
+
+    /** Provisional: with saving on, search at most this many installed sources for one manga's recommendations. */
+    const val SAVING_MAX_CROSS_EXTENSION_SOURCES = 6
+
+    /** Provisional: with saving on, fetch details (for tags) of at most this many results per source. */
+    const val SAVING_MAX_ENRICH_PER_SOURCE = 3
+
+    /** Provisional: with saving on, try at most this many title searches after the tag searches found nothing. */
+    const val SAVING_MAX_TITLE_FALLBACKS = 1
+    // KMK <--
+
     fun isActive(mode: ForYouDataSaving, networkConstrained: Boolean): Boolean = when (mode) {
         ForYouDataSaving.ALWAYS -> true
         ForYouDataSaving.NEVER -> false
         ForYouDataSaving.AUTO -> networkConstrained
     }
+
+    /** The stored setting applied to the current connection; read once per load. */
+    fun isActiveNow(context: Context, storedValue: String): Boolean =
+        isActive(ForYouDataSaving.resolve(storedValue), isConstrained(context))
 
     /** Metered, or a known (non-zero) downstream estimate below [SLOW_DOWNSTREAM_KBPS]. */
     fun isConstrained(metered: Boolean, downstreamKbps: Int): Boolean =

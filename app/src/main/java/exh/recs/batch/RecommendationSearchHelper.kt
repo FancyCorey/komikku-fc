@@ -75,6 +75,13 @@ class RecommendationSearchHelper(val context: Context) {
 
     private suspend fun beginSearch(mangaList: List<Manga>) {
         val flags = preferences.recommendationSearchFlags().get()
+        // KMK --> v0.8.24 network review: decided once for the whole search
+        val dataSaving = try {
+            exh.recs.ForYouDataSavingPolicy.isActiveNow(context, preferences.recommendationDataSaving().get())
+        } catch (_: Exception) {
+            false
+        }
+        // KMK <--
         val libraryManga = getLibraryManga.await()
         val tracks = getTracks.await()
 
@@ -108,6 +115,8 @@ class RecommendationSearchHelper(val context: Context) {
                     sourceManga,
                     // KMK -->
                     RecommendationSource(sourceManga.source),
+                    // v0.8.24 network review: one search can cover many manga, so the setting matters most here
+                    dataSaving = dataSaving,
                     // KMK <--
                 ).mapNotNull { source ->
                     // Apply source filters

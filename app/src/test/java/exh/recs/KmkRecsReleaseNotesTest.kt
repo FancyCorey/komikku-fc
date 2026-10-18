@@ -305,8 +305,10 @@ class KmkRecsReleaseNotesTest {
             "**Group rating for linked versions:**", "or Not rated", "without overwriting a rating you set yourself",
             "**Rating linked versions:**", "**Best Version:**",
             // data saving
-            "**Use less data on For You:**", "Automatic, Always and Never", "tries fewer search variations per source",
-            "Every source is still searched and your filters are unchanged",
+            "**Use less data on recommendations:**", "Automatic, Always and Never", "tries fewer search variations per source",
+            "every source is still searched", "at most 6 of your sources instead of 20", "Your filters are unchanged",
+            "**MangaBaka tracker:**", "builds that include a MangaBaka sign-in",
+            "**Trackers when opening a manga:**", "at most once every 15 minutes", "Pull down to refresh to ask right away",
             // tracker updates
             "**Tracker refresh:**", "even with \"Sync reading progress from connected trackers\" off", "**Tracker retries:**",
             // For You scheduling and the Hide-known fix

@@ -73,6 +73,7 @@ import eu.kanade.tachiyomi.util.chapter.LastReadChapterTargetPolicy
 import eu.kanade.tachiyomi.util.chapter.getNextUnread
 import eu.kanade.tachiyomi.util.removeCovers
 import eu.kanade.tachiyomi.util.system.getBitmapOrNull
+import eu.kanade.tachiyomi.util.system.isOnline
 import eu.kanade.tachiyomi.util.system.toast
 import exh.debug.DebugToggles
 import exh.eh.EHentaiUpdateHelper
@@ -657,7 +658,10 @@ class MangaScreenModel(
     }
 
     private suspend fun syncTrackers(manualRefresh: Boolean = false) {
-        if (trackPreferences.autoSyncProgressFromTrackers().get()) {
+        // KMK v0.8.24 network review: an automatic refresh on open is skipped offline and for a manga refreshed in the
+        // last few minutes (TrackerOpenRefreshPolicy); a manual pull always refreshes.
+        val autoSync = trackPreferences.autoSyncProgressFromTrackers().get()
+        if (autoSync && TrackerOpenRefreshPolicy.claim(mangaId, manualRefresh, online = isOnlineSafely())) {
             refreshTrackers(enhancedTrackersOnly = false)
         } else if (manualRefresh) {
             // A manual pull always uploads newer local progress; the setting only controls marking local chapters
@@ -682,6 +686,14 @@ class MangaScreenModel(
         } catch (e: Exception) {
             logcat(LogPriority.WARN, e) { "Local tracking progress reconciliation failed" }
         }
+    }
+    // KMK <--
+
+    // KMK --> v0.8.24: a failed connectivity read never blocks a refresh
+    private fun isOnlineSafely(): Boolean = try {
+        context.isOnline()
+    } catch (_: Exception) {
+        true
     }
     // KMK <--
 

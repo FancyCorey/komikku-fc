@@ -14,6 +14,7 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.SMangaUpdate
 import exh.md.similar.MangaDexSimilarPagingSource
+import exh.recs.ForYouDataSavingPolicy
 import exh.source.COMICK_IDS
 import exh.source.MANGADEX_IDS
 import kotlinx.serialization.json.Json
@@ -82,6 +83,9 @@ abstract class RecommendationPagingSource(
             // concurrently active GROUP_PREVIEW sources, not per-source. Null (single-manga path)
             // keeps each source's enrichment unbounded-within-itself, same as before.
             sharedEnrichmentSemaphore: kotlinx.coroutines.sync.Semaphore? = null,
+            // KMK v0.8.24 network review: "Use less data on recommendations" is active for this load; searches fewer
+            // installed sources and trims each one's query variations and detail requests (ForYouDataSavingPolicy).
+            dataSaving: Boolean = false,
         ): List<RecommendationPagingSource> {
             return buildList {
                 add(AniListPagingSource(manga))
@@ -131,7 +135,13 @@ abstract class RecommendationPagingSource(
                         val sourceManager: SourceManager = Injekt.get()
                         sourceManager.getVisibleSources().take(MAX_CROSS_EXTENSION_SOURCES)
                     }
-                    crossExtensionSources.forEach { catalogueSource ->
+                    // KMK v0.8.24: the caller's order is the priority order, so saving keeps the first sources
+                    val searchedSources = if (dataSaving) {
+                        crossExtensionSources.take(ForYouDataSavingPolicy.SAVING_MAX_CROSS_EXTENSION_SOURCES)
+                    } else {
+                        crossExtensionSources
+                    }
+                    searchedSources.forEach { catalogueSource ->
                         add(
                             CrossExtensionGenreSearchSource(
                                 manga,
@@ -139,6 +149,7 @@ abstract class RecommendationPagingSource(
                                 groupGenreOverride,
                                 groupTitlesOverride,
                                 sharedEnrichmentSemaphore,
+                                dataSaving = dataSaving,
                             ),
                         )
                     }

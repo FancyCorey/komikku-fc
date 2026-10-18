@@ -8,6 +8,7 @@ import eu.kanade.tachiyomi.source.SourceRuntimeOperation
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.SManga
+import exh.recs.ForYouDataSavingPolicy
 import exh.recs.RecommendationQueryAttemptPolicy
 import exh.recs.RecommendationQueryFailureKind
 import exh.recs.RecommendationQueryPlan
@@ -60,6 +61,9 @@ internal class CrossExtensionGenreSearchSource(
     // candidates at the same time. Null (single-manga path, no group seed) keeps the original
     // unbounded-within-this-source-only enrichment behavior.
     private val sharedEnrichmentSemaphore: Semaphore? = null,
+    // KMK --> v0.8.24 network review: "Use less data on recommendations" is active for this load
+    private val dataSaving: Boolean = false,
+    // KMK <--
 ) : RecommendationPagingSource(
     manga,
     RecommendationSource(catalogueSource.id),
@@ -109,6 +113,8 @@ internal class CrossExtensionGenreSearchSource(
         // RecommendationQueryAttemptPolicy), then a bounded title fallback only if every tag
         // attempt failed to return any raw result.
         val chain = RecommendationQueryAttemptPolicy.buildTagAttemptChain(desiredGenres)
+            // KMK v0.8.24: fewer, broader-first query variations when saving data (same cap as For You)
+            .let { if (dataSaving) it.take(ForYouDataSavingPolicy.SAVING_MAX_PLANS_PER_SOURCE) else it }
         for (plan in chain) {
             val page = tryAttempt(plan)
             if (page != null) return page
@@ -188,7 +194,7 @@ internal class CrossExtensionGenreSearchSource(
     private suspend fun runTitleFallback(): MangasPage {
         val titles = (titlesOverride?.takeIf { it.isNotEmpty() } ?: listOf(manga.ogTitle))
             .distinct()
-            .take(MAX_TITLE_FALLBACKS)
+            .take(if (dataSaving) ForYouDataSavingPolicy.SAVING_MAX_TITLE_FALLBACKS else MAX_TITLE_FALLBACKS)
         for (title in titles) {
             cachedTextQuery = title
             cachedFiltersJson = null
@@ -219,7 +225,7 @@ internal class CrossExtensionGenreSearchSource(
     private suspend fun enrichTopResults(mangas: List<SManga>) {
         coroutineScope {
             mangas
-                .take(MAX_ENRICH_PER_SOURCE)
+                .take(if (dataSaving) ForYouDataSavingPolicy.SAVING_MAX_ENRICH_PER_SOURCE else MAX_ENRICH_PER_SOURCE)
                 .filter { it.genre.isNullOrEmpty() }
                 .map { smanga ->
                     async {

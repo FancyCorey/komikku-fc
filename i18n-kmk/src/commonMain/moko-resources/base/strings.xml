@@ -1241,12 +1241,12 @@
     <!-- KMK --> <string name="rec_min_chapter_count">Minimum chapter count</string>
     <!-- KMK --> <string name="rec_min_chapter_count_summary">Only show manga with at least this many chapters in For You.</string>
     <!-- KMK --> <string name="rec_min_chapter_count_off">Off</string>
-    <!-- KMK --> <string name="rec_data_saving_title">Use less data on For You</string>
-    <!-- KMK --> <string name="rec_data_saving_summary">Skips optional extra searches, tries fewer search variations per source, and stops earlier once enough rows are ready. Every source is still searched and your filters are unchanged.</string>
+    <!-- KMK --> <string name="rec_data_saving_title">Use less data on recommendations</string>
+    <!-- KMK --> <string name="rec_data_saving_summary">For You skips optional extra searches, tries fewer search variations per source, and stops earlier once enough rows are ready. A manga\'s Recommendations and the library recommendation search look in fewer sources and fetch fewer details. Your filters are unchanged.</string>
     <!-- KMK --> <string name="rec_data_saving_auto">Automatic</string>
     <!-- KMK --> <string name="rec_data_saving_auto_description">Save data only on a metered or slow connection.</string>
     <!-- KMK --> <string name="rec_data_saving_always">Always</string>
-    <!-- KMK --> <string name="rec_data_saving_always_description">Always skip the extra discovery page and Latest exploration, try fewer search variations per source, and stop once about half the usual number of rows are ready.</string>
+    <!-- KMK --> <string name="rec_data_saving_always_description">Always use less data: no extra discovery page or Latest exploration on For You, fewer search variations per source, earlier stopping, and fewer sources and details for a manga\'s Recommendations.</string>
     <!-- KMK --> <string name="rec_data_saving_never">Never</string>
     <!-- KMK --> <string name="rec_data_saving_never_description">Never trim; use the discovery effort setting as chosen.</string>
     <!-- KMK --> <string name="rec_recent_reading">Use recent reading</string>

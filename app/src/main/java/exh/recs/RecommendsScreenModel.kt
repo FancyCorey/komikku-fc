@@ -84,6 +84,22 @@ open class RecommendsScreenModel(
 
     private val isLowRamDevice = DeviceUtil.isLowRamDevice(Injekt.get<android.app.Application>())
 
+    // KMK --> v0.8.24 network review: "Use less data on recommendations", decided once when the screen loads
+    private val dataSavingDecision by lazy {
+        try {
+            ForYouDataSavingPolicy.isActiveNow(
+                Injekt.get<android.app.Application>(),
+                sourcePreferences.recommendationDataSaving().get(),
+            )
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN, e) { "Data saving decision failed; loading normally" }
+            false
+        }
+    }
+
+    private fun dataSavingActive(): Boolean = dataSavingDecision
+    // KMK <--
+
     private val coroutineDispatcher = Dispatchers.IO.limitedParallelism(
         RecommendationEffectiveResourcePolicy.sourceConcurrency(isLowRamDevice),
     )
@@ -141,6 +157,8 @@ open class RecommendsScreenModel(
                     RecommendationPagingSource.createSources(
                         manga,
                         RecommendationSource(args.sourceId),
+                        // KMK v0.8.24 network review
+                        dataSaving = dataSavingActive(),
                     )
                 }
                 is RecommendsScreen.Args.MergedSourceMangas -> {
@@ -197,6 +215,8 @@ open class RecommendsScreenModel(
                         // source created for this group load, so nested detail requests are bounded
                         // by one total budget, not per source. See GroupPreviewLoadCoordinator.
                         sharedEnrichmentSemaphore = groupPreviewCoordinator.sharedEnrichmentSemaphore,
+                        // KMK v0.8.24 network review
+                        dataSaving = dataSavingActive(),
                     )
                 }
                 // KMK <--
