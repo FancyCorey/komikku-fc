@@ -125,7 +125,8 @@ class AlternateSourceReaderPresentationAdoptionSourceTest {
             "alternate_source_reader_skip",
         ).forEach { resource -> assertTrue(topBar.contains(resource)) }
         assertTrue(topBar.contains("onReturnToPrimarySource?.let"))
-        assertTrue(topBar.contains("Icons.Outlined.SwapHoriz"))
+        // KMK v0.8.24: the return action reads as "go back" (undo arrow), not "swap to another source"
+        assertTrue(topBar.contains("Icons.AutoMirrored.Outlined.Undo"))
         assertTrue(topBar.contains("onCorrectAlternateSourceMapping?.let"))
         assertTrue(topBar.contains("onSkipAlternateSourceChapter?.let"))
     }

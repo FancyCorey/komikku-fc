@@ -78,11 +78,15 @@ class AlternateSourceReaderDialogComposeTest {
             }
         }
 
-        composeTestRule.onNodeWithText("The chapter alignment may be uncertain. You can correct it or return to the primary source at any time.")
-            .assertIsDisplayed()
-        composeTestRule.onNodeWithText("OK").assertIsNotEnabled()
+        // KMK v0.8.24: plainer wording that still states the possible misalignment, and buttons that say what they do
+        composeTestRule.onNodeWithText(
+            "Pick the chapter on this source that continues where you stopped. " +
+                "The match may be approximate; you can correct it later from the reader menu.",
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Stay on this source").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Read this chapter").assertIsNotEnabled()
         composeTestRule.onNodeWithText("Chapter 15").performClick()
-        composeTestRule.onNodeWithText("OK").assertIsEnabled().performClick()
+        composeTestRule.onNodeWithText("Read this chapter").assertIsEnabled().performClick()
         assertEquals(1, confirmCalls)
     }
 

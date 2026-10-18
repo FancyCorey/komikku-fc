@@ -664,6 +664,16 @@ class MangaScreenModel(
             // from the remote record.
             refreshTrackers(enhancedTrackersOnly = false, uploadOnly = true)
         }
+        // KMK --> v0.8.24: versions that were linked before local tracking started (or whose records split) join the
+        // group's single local-tracking record when the manga is opened or refreshed, not only when it is rated.
+        try {
+            successState?.manga?.let { propagateConfirmedLocalTracking(it) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN, e) { "Local tracking group consolidation failed" }
+        }
+        // KMK <--
         // Local replay also runs on load and when external tracker syncing is disabled.
         try {
             recordLocalTrackedChapterProgress.synchronize()

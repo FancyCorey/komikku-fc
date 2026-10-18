@@ -1,9 +1,9 @@
 package eu.kanade.presentation.reader.appbars
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -85,7 +85,7 @@ fun ReaderTopBar(
                             add(
                                 AppBar.Action(
                                     title = stringResource(KMR.strings.alternate_source_reader_return),
-                                    icon = Icons.Outlined.SwapHoriz,
+                                    icon = Icons.AutoMirrored.Outlined.Undo,
                                     onClick = it,
                                 ),
                             )

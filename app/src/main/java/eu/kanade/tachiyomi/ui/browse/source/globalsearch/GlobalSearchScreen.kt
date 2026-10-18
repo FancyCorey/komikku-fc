@@ -64,6 +64,11 @@ class GlobalSearchScreen(
         BackHandler(enabled = bulkFavoriteState.selectionMode) {
             bulkFavoriteScreenModel.backHandler()
         }
+        // KMK v0.8.24: opened from the reader to pick an alternate source, system Back must return to the reader like the
+        // top-bar arrow does. Without this it popped to the library behind the search screen.
+        BackHandler(enabled = returnSelection && !bulkFavoriteState.selectionMode) {
+            (context as? android.app.Activity)?.finish()
+        }
         // KMK <--
 
         if (showSingleLoadingScreen) {

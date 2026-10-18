@@ -65,6 +65,33 @@ class CrossSourceIdentityAuthorizationResolverTest {
         assertFalse("4|/d" in result)
     }
 
+    // KMK v0.8.24: confirmations chain. The user's real library confirmed every version against one hub version only
+    // (Atsumaru = Asura, Manga Demon = Asura, ...); opening a non-hub version must still reach every confirmed version.
+    @Test
+    fun `confirmed versions are reached through a chain of confirmations`() = runTest {
+        val repository = FakeTasteRepository()
+        val get = GetCrossSourceIdentityDecisions(repository)
+        val resolver = CrossSourceIdentityAuthorizationResolver(get)
+        val controller = CrossSourceIdentityDecisionController(get, ReplaceCrossSourceIdentityDecisions(repository)) { 10_000 }
+        val hub = link(1, "/hub")
+        val a = link(2, "/a")
+        val b = link(3, "/b")
+        val c = link(4, "/c")
+        val unconfirmed = link(5, "/e")
+        listOf(a, b, c).forEach { member ->
+            controller.mutate(pair(hub.source, hub.url, member.source, member.url), CrossSourceIdentityMutation.CONFIRM)
+        }
+        val members = listOf(hub, a, b, c, unconfirmed)
+
+        assertEquals(listOf(hub, a, b, c), resolver.confirmedGroupMembers(a.source, a.url, members))
+        assertEquals(listOf(hub, a, b, c), resolver.confirmedGroupMembers(c.source, c.url, members))
+
+        // An explicit "not the same" between two versions wins over the chain.
+        controller.mutate(pair(a.source, a.url, c.source, c.url), CrossSourceIdentityMutation.REJECT)
+        assertEquals(listOf(hub, a, b), resolver.confirmedGroupMembers(a.source, a.url, members))
+        CrossSourceIdentityUndoJournal.clear()
+    }
+
     private fun link(source: Long, url: String) = CrossSourceMangaLink(source, url, "legacy", "Title", 1, 1)
 
     private fun pair(firstSource: Long, firstUrl: String, secondSource: Long, secondUrl: String) =

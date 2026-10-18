@@ -375,21 +375,9 @@ class RecordLocalTrackedChapterProgress(
         } ?: resolveRecognizedChapter(manga = targetManga, originChapterNumber = originChapterNumber)
         if (targetChapter == null) return
         val targetChapterUrl = targetChapter.url
-        val targetWork = existingTargetWork ?: run {
-            val sourceWork = originWork ?: return
-            val newWork = sourceWork.copy(
-                id = UUID.randomUUID().toString(),
-                title = targetManga.title,
-                normalizedTitle = targetManga.title.trim().lowercase(),
-                lastChapterSource = null,
-                lastChapterNumber = null,
-                lastChapterUrl = null,
-                lastChapterLabel = null,
-                lastProgressAt = null,
-                updatedAt = progressAt,
-            )
-            newWork
-        }
+        // KMK v0.8.24: a linked version without its own record joins the origin's record. Creating a separate record here
+        // split one manga's local tracking into several records that only caught up through the hub version.
+        val targetWork = existingTargetWork ?: originWork ?: return
         val update = tachiyomi.domain.tracker.model.MappedLocalTrackedProgress(
             targetSource = targetSource,
             targetUrl = targetUrl,

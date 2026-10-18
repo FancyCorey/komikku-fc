@@ -58,7 +58,12 @@ class AlternateSourceReaderRecoverySourceTest {
             .substringBefore("fun confirmAlternateSourcePairSelection()")
 
         assertTrue(dialog.contains("selectedToken = presentation.selectedToken"))
-        assertTrue(chooser.contains("subtitle = stringResource(KMR.strings.alternate_source_reader_confirm_provisional_message)"))
+        // KMK v0.8.24: the chooser still states the possible misalignment that confirming accepts, in plainer words
+        assertTrue(chooser.contains("subtitle = stringResource(KMR.strings.alternate_source_reader_choose_chapter_hint)"))
+        assertTrue(
+            java.io.File("../i18n-kmk/src/commonMain/moko-resources/base/strings.xml").readText()
+                .contains("The match may be approximate; you can correct it later from the reader menu."),
+        )
         assertTrue(chooser.contains("onConfirm = onConfirmChapter"))
         assertTrue(activity.contains("onConfirmChapter = viewModel::confirmAlternateSourceChapterSelection"))
         assertTrue(confirm.contains("selection.copy(confirmProvisional = true)"))

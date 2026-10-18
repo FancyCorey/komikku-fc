@@ -41,12 +41,17 @@ object KmkRecsReleaseNotes {
         - **For You source scheduling:** The next source starts as soon as a search slot is free, instead of waiting for a whole group of five sources to finish, and sources still running are cancelled once enough rows are ready.
         - **Best Version:** Confirming a Best Version also applies the confirmed group's rating to the chosen version.
         - **Recommendation Settings:** Rebuilt around six pages that follow what you want to do: Your taste, For You feed, Find new sources, Speed and data, Linked versions and ratings, and Troubleshooting. Each row shows its current value, the tab row that repeated on every page is gone, and Languages now sits with Your taste. Check my sources shows its results right after the Start button, says why Start is unavailable when it is, and source loading problems are listed under Troubleshooting instead of a permanent warning. Every setting is still there.
+        - **Komikku updates:** Includes the latest Komikku changes, among them a new database engine with fixes for "database is locked" errors, cleanup of leftover rows in your database, screen transition and back gesture fixes, and newer libraries. Your library carries over when you update.
+        - **Reading timer:** The timer screen is easier to read, with larger text and three clear sections: how long, when to warn you, and what happens when time is up.
 
         ##### Fix
 
         - **Hide manga you already know:** Titles remembered from earlier For You refreshes are now checked against what you have since rated, added or read, so a title you liked no longer reappears after Refresh.
         - **Rating linked versions:** Group ratings now save for linked versions you have not opened yet.
         - **Tracker progress on other versions:** When two versions of a manga are tracked on the same tracker entry, reading one, changing it in the tracking sheet, or refreshing it now updates the other's tracker progress straight away. Only the tracker record is shared: no extra tracker requests are made and no chapters are marked on other sources until you open them. With "Track linked versions together" on, linking a tracker entry to one version also links it to the other confirmed versions that do not have one yet.
+        - **Local tracking across linked versions:** Versions you confirmed as the same manga through another version (for example A = B and B = C) now share one local-tracking record. Starting local tracking begins at the furthest chapter you marked read on any linked version, and opening or refreshing a manga gathers its already-linked versions, so progress no longer waits for you to open one particular version.
+        - **Reading from an alternate source:** Pressing Back in the search opened from the reader returns to the reader instead of your library. The search buttons are now "Search more sources" and "Search another title", the top-bar button says "Return to primary source", and the chapter choice uses "Read this chapter" and "Stay on this source".
+        - **Linked versions list:** Opening a version from the local-tracking versions list shows its full page instead of a cramped view inside the sheet.
 
         ## KMK-Recs v0.8.23.1
 

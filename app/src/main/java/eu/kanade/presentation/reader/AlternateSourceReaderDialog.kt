@@ -73,7 +73,11 @@ fun AlternateSourceReaderDialog(
         )
         is AlternateSourceReaderPresentation.ChoosingChapter -> SelectionDialog(
             title = stringResource(KMR.strings.alternate_source_reader_choose_chapter_title),
-            subtitle = stringResource(KMR.strings.alternate_source_reader_confirm_provisional_message),
+            // KMK v0.8.24: say what to pick and what each button does; the old note about returning to the primary
+            // source made users unsure which button went back.
+            subtitle = stringResource(KMR.strings.alternate_source_reader_choose_chapter_hint),
+            confirmLabel = stringResource(KMR.strings.alternate_source_reader_read_this_chapter),
+            dismissLabel = stringResource(KMR.strings.alternate_source_reader_stay_here),
             content = presentation.content,
             onDismiss = onDismiss,
             onSelect = onSelectChapter,
@@ -153,6 +157,8 @@ private fun SelectionDialog(
     inAppAction: (() -> Unit)? = null,
     retryAction: (() -> Unit)? = null,
     bringSelectedIntoView: Boolean = false,
+    confirmLabel: String? = null,
+    dismissLabel: String? = null,
 ) {
     val selectedListState = rememberLazyListState()
     LaunchedEffect(bringSelectedIntoView, selectedToken, content) {
@@ -215,14 +221,14 @@ private fun SelectionDialog(
                         enabled = selectedToken != null,
                         modifier = Modifier.defaultMinSize(minHeight = 48.dp),
                     ) {
-                        Text(stringResource(MR.strings.action_ok))
+                        Text(confirmLabel ?: stringResource(MR.strings.action_ok))
                     }
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
-                Text(stringResource(MR.strings.action_cancel))
+                Text(dismissLabel ?: stringResource(MR.strings.action_cancel))
             }
         },
         text = {

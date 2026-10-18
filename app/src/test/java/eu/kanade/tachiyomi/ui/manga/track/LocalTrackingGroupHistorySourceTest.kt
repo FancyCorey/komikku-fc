@@ -14,7 +14,8 @@ class LocalTrackingGroupHistorySourceTest {
 
         assertTrue(text.contains("val sharedHistoryProgress = targets"))
         assertTrue(text.contains(".maxByOrNull { it.second.progressAt }"))
-        assertTrue(text.contains("val latestRead = sharedLatestRead"))
+        // KMK v0.8.24: the seed now prefers history and falls back to read chapters
+        assertTrue(text.contains("val seedChapter = sharedLatestRead?.third ?: sharedReadMark?.second"))
     }
 
     private fun source(relativePath: String): String {

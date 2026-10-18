@@ -1721,8 +1721,8 @@
     <!-- KMK --> <string name="alternate_source_reader_loading">Checking available alternatives…</string>
     <!-- KMK --> <string name="alternate_source_reader_empty">No usable alternatives were found.</string>
     <!-- KMK --> <string name="alternate_source_reader_partial">Some sources could not be checked. Available results are shown.</string>
-    <!-- KMK --> <string name="alternate_source_reader_search_more">Search installed sources</string>
-    <!-- KMK --> <string name="alternate_source_reader_search_in_app">Global search</string>
+    <!-- KMK --> <string name="alternate_source_reader_search_more">Search more sources</string>
+    <!-- KMK --> <string name="alternate_source_reader_search_in_app">Search another title</string>
     <!-- KMK --> <string name="alternate_source_reader_generic_source">Alternate source %1$d</string>
     <!-- KMK --> <string name="alternate_source_reader_generic_chapter">Alternate chapter %1$d</string>
     <!-- KMK --> <string name="alternate_source_reader_confirm_pair_title">Confirm the same manga?</string>
@@ -1734,7 +1734,7 @@
     <!-- KMK --> <string name="alternate_source_reader_resolving_entry">Opening the alternate chapter…</string>
     <!-- KMK --> <string name="alternate_source_reader_resolving_correction">Updating the chapter mapping…</string>
     <!-- KMK --> <string name="alternate_source_reader_resolving_return">Switching source…</string>
-    <!-- KMK --> <string name="alternate_source_reader_return">Switch source</string>
+    <!-- KMK --> <string name="alternate_source_reader_return">Return to primary source</string>
     <!-- KMK --> <string name="alternate_source_reader_correct">Correct chapter mapping</string>
     <!-- KMK --> <string name="alternate_source_reader_skip">This chapter is not the match</string>
     <!-- KMK --> <string name="alternate_source_reader_uncertain_notice">Chapter alignment is uncertain. Return or correct the mapping from the reader menu if needed.</string>
@@ -1869,4 +1869,9 @@
     <!-- KMK v0.8.24: generic source failure outside For You (global search, browse, other lists) -->
     <string name="error_source_internal">This source could not load. Try again or open it in WebView.</string>
     <string name="error_load_internal">Could not load this. Try again.</string>
+    <string name="reading_timer_section_length">How long</string>
+    <string name="reading_timer_section_end">When time is up</string>
+    <string name="alternate_source_reader_choose_chapter_hint">Pick the chapter on this source that continues where you stopped. The match may be approximate; you can correct it later from the reader menu.</string>
+    <string name="alternate_source_reader_read_this_chapter">Read this chapter</string>
+    <string name="alternate_source_reader_stay_here">Stay on this source</string>
 </resources>

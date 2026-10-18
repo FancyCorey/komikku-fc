@@ -63,7 +63,8 @@ fun ReaderTimerDialog(
         text = {
             Column(
                 modifier = Modifier
-                    .heightIn(max = 420.dp)
+                    // KMK v0.8.24: more room so sections are not squeezed on tablets
+                    .heightIn(max = 560.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
                 if (session.phase == ReaderTimerPhase.IDLE || session.phase == ReaderTimerPhase.EXPIRED) {
@@ -126,11 +127,12 @@ private fun ReaderTimerSetupContent(
     Column {
         Text(
             text = stringResource(KMR.strings.reading_timer_pause_hint),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = MaterialTheme.padding.small),
         )
 
+        ReaderTimerSectionHeader(stringResource(KMR.strings.reading_timer_section_length))
         Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
             listOf(15, 30, 60).forEach { minutes ->
                 OutlinedButton(onClick = { latestStart.value(minutes) }) {
@@ -163,17 +165,14 @@ private fun ReaderTimerSetupContent(
             }
         }
 
-        Text(
-            text = stringResource(KMR.strings.reading_timer_warnings_header),
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(top = MaterialTheme.padding.medium),
-        )
+        ReaderTimerSectionHeader(stringResource(KMR.strings.reading_timer_warnings_header))
         ReaderTimerWarningPolicy.SUPPORTED_MINUTES.sortedDescending().forEach { minute ->
             val checked = minute in warnMinutesSelected
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 48.dp)
                     .toggleable(
                         value = checked,
                         role = Role.Checkbox,
@@ -194,11 +193,12 @@ private fun ReaderTimerSetupContent(
             }
         }
 
+        ReaderTimerSectionHeader(stringResource(KMR.strings.reading_timer_section_end))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = MaterialTheme.padding.small)
+                .heightIn(min = 48.dp)
                 .toggleable(
                     value = finishCurrentChapter,
                     role = Role.Checkbox,
@@ -212,6 +212,7 @@ private fun ReaderTimerSetupContent(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 48.dp)
                 .toggleable(
                     value = allowExtraChapter,
                     role = Role.Checkbox,
@@ -269,6 +270,17 @@ private fun ReaderTimerRunningContent(
             OutlinedButton(onClick = onReset) { Text(stringResource(KMR.strings.reading_timer_reset)) }
         }
     }
+}
+
+// KMK v0.8.24: clear section labels so the setup reads as three steps instead of one block
+@Composable
+private fun ReaderTimerSectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = MaterialTheme.padding.large, bottom = MaterialTheme.padding.small),
+    )
 }
 
 private const val MAX_CUSTOM_MINUTES = 300

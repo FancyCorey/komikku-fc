@@ -324,7 +324,9 @@ data class TrackInfoDialogHomeScreen(
                 versions = state.localVersions,
                 onVersionClick = { versionId ->
                     screenModel.dismissLocalVersionsDialog()
-                    navigator.push(MangaScreen(versionId, true))
+                    // KMK v0.8.24: open the version as a normal page in the app's navigator. Pushed into this sheet's own
+                    // navigator it rendered inside the 460 dp sheet dialog with cramped, hard-to-read text.
+                    (navigator.parent ?: navigator).push(MangaScreen(versionId, true))
                 },
                 onProgressSharingChange = screenModel::setLocalVersionProgressSharing,
                 onDismissRequest = screenModel::dismissLocalVersionsDialog,
@@ -864,6 +866,22 @@ data class TrackInfoDialogHomeScreen(
                 val sharedLatestRead = sharedHistoryProgress?.let { (target, progress) ->
                     getChapter.await(progress.chapterId)?.let { chapter -> Triple(target, progress, chapter) }
                 }
+                // KMK --> v0.8.24: chapters can be marked read without reading history (marked by hand, restored, or
+                // synced from a tracker). Without history, start from the furthest read chapter of any linked version
+                // instead of chapter 0.
+                val sharedReadMark = if (sharedLatestRead == null) {
+                    targets
+                        .mapNotNull { target ->
+                            getChaptersByMangaId.await(target.id)
+                                .filter { it.read && it.isRecognizedNumber }
+                                .maxByOrNull { it.chapterNumber }
+                                ?.let { chapter -> target to chapter }
+                        }
+                        .maxByOrNull { it.second.chapterNumber }
+                } else {
+                    null
+                }
+                // KMK <--
                 var sharedWorkId = localTrackerRepository.getWorkIdBySourceUrl(manga.source, manga.url)
                 var sharedWorkInitialized = false
                 for (target in targets) {
@@ -884,20 +902,24 @@ data class TrackInfoDialogHomeScreen(
                         )
                     } else if (!sharedWorkInitialized) {
                         val historyProgress = sharedHistoryProgress?.second
-                        val latestRead = sharedLatestRead?.let { (_, progress, chapter) -> progress to chapter }
+                        // KMK v0.8.24: the source is the version the chapter was read on (it was the loop target before)
+                        val seedSource = sharedLatestRead?.first?.source ?: sharedReadMark?.first?.source
+                        val seedChapter = sharedLatestRead?.third ?: sharedReadMark?.second
+                        val seedProgressAt = sharedLatestRead?.second?.progressAt
+                            ?: sharedReadMark?.second?.let { chapter -> (chapter.lastModifiedAt * 1000).takeIf { it > 0L } ?: now }
                         localTrackerRepository.upsertWork(
                             LocalTrackedWork(
                                 id = workId,
                                 title = target.title,
                                 normalizedTitle = target.title.trim().lowercase(),
                                 status = status,
-                                lastChapterSource = latestRead?.second?.let { target.source },
-                                lastChapterNumber = latestRead?.second
+                                lastChapterSource = seedChapter?.let { seedSource },
+                                lastChapterNumber = seedChapter
                                     ?.takeIf { it.isRecognizedNumber }
                                     ?.chapterNumber,
-                                lastChapterUrl = latestRead?.second?.url,
-                                lastChapterLabel = latestRead?.second?.name,
-                                lastProgressAt = latestRead?.first?.progressAt,
+                                lastChapterUrl = seedChapter?.url,
+                                lastChapterLabel = seedChapter?.name,
+                                lastProgressAt = seedChapter?.let { seedProgressAt },
                                 startDate = historyProgress?.firstReadAt
                                     ?: now.takeIf { status != LocalTrackedWorkStatus.PLANNED },
                                 finishDate = LocalTrackingActionPolicy.finishDateForStatus(status, now),

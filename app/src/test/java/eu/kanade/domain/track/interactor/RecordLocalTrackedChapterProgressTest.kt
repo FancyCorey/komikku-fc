@@ -639,8 +639,9 @@ class RecordLocalTrackedChapterProgressTest {
         }
     }
 
+    // KMK v0.8.24: a linked version without its own record joins the origin's record instead of getting a separate one
     @Test
-    fun `enabled confirmed mapped target creates missing local work`() = runTest {
+    fun `enabled confirmed mapped target joins the origin local work`() = runTest {
         val repository = mockk<LocalTrackerRepository>(relaxed = true)
         val origin = manga(1L, "/origin")
         val target = manga(2L, "/target")
@@ -686,21 +687,18 @@ class RecordLocalTrackedChapterProgressTest {
         coVerify {
             repository.upsertSource(
                 match {
-                    it.source == 2L && it.url == "/target" &&
+                    it.workId == "origin-work" && it.source == 2L && it.url == "/target" &&
                         it.confirmation == LocalTrackedWorkSourceConfirmation.USER_CONFIRMED
                 },
             )
         }
-        coVerify(exactly = 1) {
+        coVerify(exactly = 0) {
             repository.upsertWork(match { it.title == target.title })
-        }
-        coVerify(exactly = 1) {
-            repository.upsertInheritedWork(match { it.title == target.title })
         }
         coVerify {
             repository.recordSourceProgress(
                 match {
-                    it.source == 2L && it.url == "/target" &&
+                    it.workId == "origin-work" && it.source == 2L && it.url == "/target" &&
                         it.chapterNumber == 13.0 && it.inheritedFromSource == 1L
                 },
             )

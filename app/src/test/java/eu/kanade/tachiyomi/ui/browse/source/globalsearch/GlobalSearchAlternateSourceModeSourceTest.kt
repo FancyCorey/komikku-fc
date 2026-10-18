@@ -63,4 +63,10 @@ class GlobalSearchAlternateSourceModeSourceTest {
             ?: error("Unable to resolve source file: $relativePath")
         return String(Files.readAllBytes(path), Charsets.UTF_8)
     }
+
+    @Test
+    fun `system back returns to the reader when opened to pick an alternate source`() {
+        val screen = java.io.File("src/main/java/eu/kanade/tachiyomi/ui/browse/source/globalsearch/GlobalSearchScreen.kt").readText()
+        assertTrue(screen.contains("BackHandler(enabled = returnSelection && !bulkFavoriteState.selectionMode)"))
+    }
 }

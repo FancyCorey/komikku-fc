@@ -43,5 +43,13 @@ class MangaScreenModelManualTrackerRefreshSourceTest {
             source.contains("refreshTracks.await(mangaId, enhancedTrackersOnly = enhancedTrackersOnly, uploadOnly = uploadOnly)"),
         )
     }
+
+    @Test
+    fun `opening or refreshing a manga gathers its linked versions into one local tracking record before replay`() {
+        val sync = source.substringAfter("private suspend fun syncTrackers(").substringBefore("fun fetchAllFromSource(")
+        val gather = sync.indexOf("propagateConfirmedLocalTracking(it)")
+        val replay = sync.indexOf("recordLocalTrackedChapterProgress.synchronize()")
+        assertTrue(gather in 0 until replay, "linked versions must be gathered before local progress is replayed")
+    }
 }
 // KMK <--
