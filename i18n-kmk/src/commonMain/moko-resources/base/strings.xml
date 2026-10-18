@@ -1824,7 +1824,7 @@
     <string name="rec_hub_data_saving_auto">Automatic</string>
     <string name="rec_hub_data_saving_always">Always</string>
     <string name="rec_hub_data_saving_never">Never</string>
-    <string name="rec_hub_linked_versions_summary">Rating prompts, tracking and Best Version</string>
+    <string name="rec_hub_linked_versions_summary">Rating prompts and tracking linked versions together</string>
     <string name="rec_hub_troubleshooting_summary">Issues, diagnostics and history</string>
     <string name="rec_hub_focus_modes_link_summary">Saved focus modes for the For You page</string>
     <string name="rec_hub_linked_versions_link">Rating prompts and linked versions</string>
@@ -1888,4 +1888,7 @@
 You can choose when this is offered in Settings, Reader, Alternate sources.</string>
     <string name="alternate_source_intro_continue">Continue</string>
     <string name="alternate_source_intro_not_now">Not now</string>
+    <string name="rec_hub_best_version_summary">How Best Version compares versions, and its history</string>
+    <string name="rec_hub_focus_modes">Focus modes</string>
+    <string name="rec_hub_best_version">Best Version</string>
 </resources>

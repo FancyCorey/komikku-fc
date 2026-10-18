@@ -42,6 +42,7 @@ enum class RecommendationDiagnosticsSection(
             "data_saving_content",
             "discovery_candidate_budget",
             "clear_discovery_history",
+            "group_preview_budget",
         ),
     ),
 
@@ -59,15 +60,23 @@ enum class RecommendationDiagnosticsSection(
             "automatic_local_tracking_status_inference",
             "automatic_rated_group_primary",
             "identity_review",
+        ),
+    ),
+
+    // KMK v0.8.24: Best Version is a major feature of its own, not a corner of linked versions
+    BEST_VERSION(
+        KMR.strings.rec_hub_best_version,
+        setOf(
             "best_version_header",
             "best_version_sample_size",
             "best_version_avoid_first_pages",
-            "group_preview_budget",
+            "management_header",
+            "quality_signal_history_entry",
         ),
     ),
 
     FOCUS_MODES(
-        KMR.strings.rec_settings_focus_header,
+        KMR.strings.rec_hub_focus_modes,
         setOf("focus_header", "focus_explanation", "focus_saved_modes"),
     ),
 
@@ -76,8 +85,6 @@ enum class RecommendationDiagnosticsSection(
         setOf(
             "runtime_health_issues",
             "auto_check_skipped_sources",
-            "management_header",
-            "quality_signal_history_entry",
             "taste_diagnostics_header",
             "taste_diagnostics_content",
             "source_metadata_tag_diagnostics_header",

@@ -48,7 +48,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Search
@@ -63,7 +65,9 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.DragHandle
+import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
@@ -80,7 +84,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -153,6 +156,7 @@ import tachiyomi.i18n.kmk.KMR
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
+import tachiyomi.presentation.core.util.secondaryItemAlpha
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -165,15 +169,18 @@ import kotlin.math.roundToInt
 // summary keeps the same horizontal padding as settings widget subtitles.
 @Composable
 internal fun SectionHeader(title: String, summary: String? = null) {
+    // KMK v0.8.24: same section header as Komikku's own Settings (no divider line, regular-size summary), so
+    // Recommendation Settings reads like the rest of Settings.
     Column {
-        HorizontalDivider(modifier = Modifier.padding(top = MaterialTheme.padding.small))
         PreferenceGroupHeader(title = title)
         if (summary != null) {
             Text(
                 text = summary,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = PrefsHorizontalPadding),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .padding(horizontal = PrefsHorizontalPadding)
+                    .padding(bottom = MaterialTheme.padding.small)
+                    .secondaryItemAlpha(),
             )
         }
     }
@@ -1579,18 +1586,22 @@ enum class RecommendationSettingsQuickAccessDestination {
     // KMK v0.8.24: the six task pages of the redesigned Recommendation Settings.
     YourTaste,
     ForYouFeed,
+    FocusModes,
     FindNewSources,
     SpeedAndData,
     LinkedVersions,
+    BestVersion,
     Troubleshooting,
 }
 
 internal fun RecommendationSettingsQuickAccessDestination.hubTitleRes(): StringResource = when (this) {
     RecommendationSettingsQuickAccessDestination.YourTaste -> KMR.strings.rec_hub_your_taste
     RecommendationSettingsQuickAccessDestination.ForYouFeed -> KMR.strings.rec_hub_for_you_feed
+    RecommendationSettingsQuickAccessDestination.FocusModes -> KMR.strings.rec_hub_focus_modes
     RecommendationSettingsQuickAccessDestination.FindNewSources -> KMR.strings.rec_hub_find_sources
     RecommendationSettingsQuickAccessDestination.SpeedAndData -> KMR.strings.rec_hub_speed_data
     RecommendationSettingsQuickAccessDestination.LinkedVersions -> KMR.strings.rec_hub_linked_versions
+    RecommendationSettingsQuickAccessDestination.BestVersion -> KMR.strings.rec_hub_best_version
     RecommendationSettingsQuickAccessDestination.Troubleshooting -> KMR.strings.rec_hub_troubleshooting
 }
 
@@ -1602,11 +1613,15 @@ internal fun RecommendationSettingsQuickAccessDestination.hubTitleRes(): StringR
 fun RecommendationSettingsQuickAccessDestination.toScreen(): eu.kanade.presentation.util.Screen = when (this) {
     RecommendationSettingsQuickAccessDestination.YourTaste -> RecommendationTasteTagsSettingsScreen()
     RecommendationSettingsQuickAccessDestination.ForYouFeed -> RecommendationSourcePrioritySettingsScreen()
+    RecommendationSettingsQuickAccessDestination.FocusModes ->
+        RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.FOCUS_MODES)
     RecommendationSettingsQuickAccessDestination.FindNewSources -> FindNewSourcesScreen()
     RecommendationSettingsQuickAccessDestination.SpeedAndData ->
         RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.SPEED_AND_DATA)
     RecommendationSettingsQuickAccessDestination.LinkedVersions ->
         RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.LINKED_VERSIONS)
+    RecommendationSettingsQuickAccessDestination.BestVersion ->
+        RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.BEST_VERSION)
     RecommendationSettingsQuickAccessDestination.Troubleshooting ->
         RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.TROUBLESHOOTING)
 }
@@ -1616,12 +1631,16 @@ internal fun RecommendationSettingsQuickAccessDestination.icon(filled: Boolean =
         if (filled) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
     RecommendationSettingsQuickAccessDestination.ForYouFeed ->
         if (filled) Icons.Filled.Star else Icons.Outlined.StarBorder
+    RecommendationSettingsQuickAccessDestination.FocusModes ->
+        if (filled) Icons.Filled.FilterAlt else Icons.Outlined.FilterAlt
     RecommendationSettingsQuickAccessDestination.FindNewSources ->
         if (filled) Icons.Filled.Search else Icons.Outlined.Search
     RecommendationSettingsQuickAccessDestination.SpeedAndData ->
         if (filled) Icons.Filled.Bolt else Icons.Outlined.Bolt
     RecommendationSettingsQuickAccessDestination.LinkedVersions ->
         if (filled) Icons.Filled.Link else Icons.Outlined.Link
+    RecommendationSettingsQuickAccessDestination.BestVersion ->
+        if (filled) Icons.Filled.EmojiEvents else Icons.Outlined.EmojiEvents
     RecommendationSettingsQuickAccessDestination.Troubleshooting ->
         if (filled) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle
 }

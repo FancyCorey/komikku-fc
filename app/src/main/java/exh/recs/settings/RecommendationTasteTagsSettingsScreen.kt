@@ -66,8 +66,6 @@ class RecommendationTasteTagsSettingsScreen(
                 "suggestions_content",
                 "recommendation_languages_header",
                 "recommendation_languages_content",
-                "focus_modes_link",
-                "linked_versions_link",
             )
         }
         ScrollToAnchorEffect(lazyListState, itemKeysInOrder, anchor)
@@ -221,24 +219,6 @@ class RecommendationTasteTagsSettingsScreen(
                             selectedLanguages = state.recommendationLanguages,
                             availableLanguages = state.availableLanguages,
                             onToggle = screenModel::toggleRecommendationLanguage,
-                        )
-                    }
-                    item(key = "focus_modes_link") {
-                        eu.kanade.presentation.more.settings.widget.TextPreferenceWidget(
-                            title = stringResource(KMR.strings.rec_settings_focus_header),
-                            subtitle = stringResource(KMR.strings.rec_hub_focus_modes_link_summary),
-                            onPreferenceClick = {
-                                navigator.push(RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.FOCUS_MODES))
-                            },
-                        )
-                    }
-                    item(key = "linked_versions_link") {
-                        eu.kanade.presentation.more.settings.widget.TextPreferenceWidget(
-                            title = stringResource(KMR.strings.rec_hub_linked_versions_link),
-                            subtitle = stringResource(KMR.strings.rec_hub_linked_versions_link_summary),
-                            onPreferenceClick = {
-                                navigator.push(RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.LINKED_VERSIONS))
-                            },
                         )
                     }
                 }

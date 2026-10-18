@@ -79,6 +79,8 @@ object RecommendationSettingsIndexScreen : KomikkuScreen() {
             ),
             RecommendationSettingsQuickAccessDestination.ForYouFeed to
                 pluralStringResource(KMR.plurals.rec_hub_sources_count, count = enabledSources, enabledSources),
+            RecommendationSettingsQuickAccessDestination.FocusModes to
+                stringResource(KMR.strings.rec_hub_focus_modes_link_summary),
             RecommendationSettingsQuickAccessDestination.FindNewSources to
                 if (state.nonInstalledSuggestions.isEmpty()) {
                     stringResource(KMR.strings.rec_hub_find_sources_summary)
@@ -89,6 +91,8 @@ object RecommendationSettingsIndexScreen : KomikkuScreen() {
                 stringResource(KMR.strings.rec_hub_speed_summary, dataSaving),
             RecommendationSettingsQuickAccessDestination.LinkedVersions to
                 stringResource(KMR.strings.rec_hub_linked_versions_summary),
+            RecommendationSettingsQuickAccessDestination.BestVersion to
+                stringResource(KMR.strings.rec_hub_best_version_summary),
             RecommendationSettingsQuickAccessDestination.Troubleshooting to troubleshootingSummary,
         )
 
