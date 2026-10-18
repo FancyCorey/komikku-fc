@@ -71,6 +71,22 @@ class AddTracks(
                             .lastOrNull()
                             ?.chapterNumber ?: -1.0
 
+                        // KMK --> v0.8.24: the start date is worked out first so that, when progress also needs
+                        // uploading, both go to the tracker in one request instead of two in a row (the track sheet
+                        // waits for these before it closes).
+                        val startDate = if (track.startDate <= 0) {
+                            Injekt.get<GetHistory>().await(mangaId)
+                                .sortedBy { it.readAt }
+                                .firstOrNull()
+                                ?.readAt
+                                ?.time
+                                ?.convertEpochMillisZone(ZoneOffset.systemDefault(), ZoneOffset.UTC)
+                        } else {
+                            null
+                        }
+                        val withStartDate = startDate?.let { track.copy(startDate = it) } ?: track
+                        // KMK <--
+
                         if (latestLocalReadChapterNumber > track.lastChapterRead) {
                             /* KMK -->
                             // This code causes issue NOT settings remote-track's status
@@ -78,29 +94,14 @@ class AddTracks(
                                 lastChapterRead = latestLocalReadChapterNumber,
                             )
                             KMK <-- */
-                            tracker.setRemoteLastChapterRead(track.toDbTrack(), latestLocalReadChapterNumber.toInt())
+                            tracker.setRemoteLastChapterRead(withStartDate.toDbTrack(), latestLocalReadChapterNumber.toInt())
                                 // KMK -->
                                 .toDomainTrack(idRequired = false)
-                                ?.let { track = it }
+                                .let { track = it ?: withStartDate }
                             // KMK <--
-                        }
-
-                        if (track.startDate <= 0) {
-                            val firstReadChapterDate = Injekt.get<GetHistory>().await(mangaId)
-                                .sortedBy { it.readAt }
-                                .firstOrNull()
-                                ?.readAt
-
-                            firstReadChapterDate?.let {
-                                val startDate = firstReadChapterDate.time.convertEpochMillisZone(
-                                    ZoneOffset.systemDefault(),
-                                    ZoneOffset.UTC,
-                                )
-                                track = track.copy(
-                                    startDate = startDate,
-                                )
-                                tracker.setRemoteStartDate(track.toDbTrack(), startDate)
-                            }
+                        } else if (startDate != null) {
+                            track = withStartDate
+                            tracker.setRemoteStartDate(track.toDbTrack(), startDate)
                         }
                     }
 

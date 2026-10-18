@@ -32,4 +32,22 @@ class AddTracksBindingFollowUpsSourceTest {
         assertTrue(bindSource.contains("RemoteAcceptedLocalSaveFailed"))
         assertTrue(bindSource.contains("KMR.strings.tracking_added_sync_failed"))
     }
+
+    // KMK --> v0.8.24: adding a tracker waits for these uploads; progress and start date share one request
+    @Test
+    fun `start date is resolved first and sent with the progress upload, separately only when no progress is due`() {
+        val startDate = bindSource.indexOf("val startDate = if (track.startDate <= 0) {")
+        val withStartDate = bindSource.indexOf("val withStartDate = startDate?.let { track.copy(startDate = it) } ?: track")
+        val progress = bindSource.indexOf(
+            "tracker.setRemoteLastChapterRead(withStartDate.toDbTrack(), latestLocalReadChapterNumber.toInt())",
+        )
+        val onlyDate = bindSource.indexOf("} else if (startDate != null) {")
+        val dateUpload = bindSource.indexOf("tracker.setRemoteStartDate(track.toDbTrack(), startDate)")
+
+        assertTrue(startDate in 0 until withStartDate && withStartDate < progress)
+        assertTrue(progress < onlyDate && onlyDate < dateUpload)
+        assertTrue(Regex.fromLiteral("tracker.setRemoteStartDate(").findAll(bindSource).count() == 1)
+        assertTrue(Regex.fromLiteral("tracker.setRemoteLastChapterRead(").findAll(bindSource).count() == 1)
+    }
+    // KMK <--
 }
