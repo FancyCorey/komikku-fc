@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -24,6 +25,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,6 +43,7 @@ import eu.kanade.presentation.theme.TachiyomiPreviewTheme
 import eu.kanade.tachiyomi.data.database.models.toDomainChapter
 import eu.kanade.tachiyomi.ui.reader.model.ChapterTransition
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import kotlinx.collections.immutable.persistentMapOf
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.service.calculateChapterGap
@@ -46,6 +52,8 @@ import tachiyomi.i18n.kmk.KMR
 import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.secondaryItemAlpha
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 @Composable
 fun ChapterTransition(
@@ -53,6 +61,10 @@ fun ChapterTransition(
     currChapterDownloaded: Boolean,
     goingToChapterDownloaded: Boolean,
     onAlternateSourceGap: (() -> Unit)? = null,
+    // KMK --> v0.8.24: Settings > Reader > Alternate sources
+    offerAtGaps: Boolean = true,
+    offerAtEnd: Boolean = true,
+    // KMK <--
 ) {
     val currChapter = transition.from.chapter.toDomainChapter()
     val goingToChapter = transition.to?.chapter?.toDomainChapter()
@@ -83,6 +95,8 @@ fun ChapterTransition(
                     fallbackLabel = stringResource(MR.strings.transition_no_next),
                     chapterGap = calculateChapterGap(goingToChapter, currChapter),
                     onChapterGapAction = onAlternateSourceGap,
+                    offerAtGaps = offerAtGaps,
+                    offerAtEnd = offerAtEnd,
                 )
             }
         }
@@ -100,6 +114,8 @@ private fun TransitionText(
     fallbackLabel: String,
     chapterGap: Int,
     onChapterGapAction: (() -> Unit)?,
+    offerAtGaps: Boolean = true,
+    offerAtEnd: Boolean = true,
 ) {
     Column(
         modifier = Modifier
@@ -126,7 +142,7 @@ private fun TransitionText(
             if (chapterGap > 0) {
                 ChapterGapWarning(
                     gapCount = chapterGap,
-                    onAlternateSourceGap = onChapterGapAction,
+                    onAlternateSourceGap = onChapterGapAction.takeIf { offerAtGaps },
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
             }
@@ -150,7 +166,7 @@ private fun TransitionText(
             // continuity action must still be offered here when the caller supplied one.
             NoChapterNotification(
                 text = fallbackLabel,
-                onAlternateSourceGap = onChapterGapAction,
+                onAlternateSourceGap = onChapterGapAction.takeIf { offerAtEnd },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
             // KMK <--
@@ -188,14 +204,7 @@ private fun NoChapterNotification(
                 )
             }
             onAlternateSourceGap?.let { action ->
-                TextButton(
-                    onClick = action,
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .height(48.dp),
-                ) {
-                    Text(stringResource(KMR.strings.alternate_source_reader_gap_action))
-                }
+                AlternateSourceGapAction(action, Modifier.align(Alignment.End))
             }
         }
         // KMK <--
@@ -229,14 +238,7 @@ private fun ChapterGapWarning(
                 )
             }
             onAlternateSourceGap?.let { action ->
-                TextButton(
-                    onClick = action,
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .height(48.dp),
-                ) {
-                    Text(stringResource(KMR.strings.alternate_source_reader_gap_action))
-                }
+                AlternateSourceGapAction(action, Modifier.align(Alignment.End))
             }
         }
     }
@@ -416,3 +418,49 @@ private fun TransitionTextNoPreviousPreview() {
         }
     }
 }
+
+// KMK --> v0.8.24
+/**
+ * The alternate-source offer at the end of a chapter: a one-line explanation, the button, and a one-time explanation the
+ * first time it is used, so the reader knows what will happen and how to come back before anything switches.
+ */
+@Composable
+private fun AlternateSourceGapAction(action: () -> Unit, modifier: Modifier = Modifier) {
+    val introSeenPreference = remember {
+        Injekt.get<ReaderPreferences>().alternateSourceIntroSeen()
+    }
+    var showIntro by remember { mutableStateOf(false) }
+    Column(modifier = modifier.padding(top = 8.dp), horizontalAlignment = Alignment.End) {
+        Text(
+            text = stringResource(KMR.strings.alternate_source_gap_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(
+            onClick = { if (introSeenPreference.get()) action() else showIntro = true },
+            modifier = Modifier.height(48.dp),
+        ) {
+            Text(stringResource(KMR.strings.alternate_source_reader_gap_action))
+        }
+    }
+    if (showIntro) {
+        AlertDialog(
+            onDismissRequest = { showIntro = false },
+            title = { Text(stringResource(KMR.strings.alternate_source_intro_title)) },
+            text = { Text(stringResource(KMR.strings.alternate_source_intro_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    introSeenPreference.set(true)
+                    showIntro = false
+                    action()
+                }) { Text(stringResource(KMR.strings.alternate_source_intro_continue)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showIntro = false }) {
+                    Text(stringResource(KMR.strings.alternate_source_intro_not_now))
+                }
+            },
+        )
+    }
+}
+// KMK <--

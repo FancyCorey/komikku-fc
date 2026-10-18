@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.BlendMode
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.PagerConfig
+import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.core.common.preference.getEnum
 import tachiyomi.i18n.MR
@@ -265,6 +266,14 @@ class ReaderPreferences(
     // separate from the active-reading timer's own SavedState-backed session. See
     // eu.kanade.tachiyomi.ui.reader.schedule.ReaderScheduleResolver/ReaderScheduleStore.
     /** Master enable toggle. Default off — the schedule never restricts reading unless explicitly turned on. */
+    // KMK --> v0.8.24 alternate sources: when the reader offers to continue from another source
+    fun alternateSourceOfferAtGaps() = preferenceStore.getBoolean("alternate_source_offer_at_gaps", true)
+
+    fun alternateSourceOfferAtEnd() = preferenceStore.getBoolean("alternate_source_offer_at_end", true)
+
+    fun alternateSourceIntroSeen() = preferenceStore.getBoolean(Preference.appStateKey("alternate_source_intro_seen"), false)
+    // KMK <--
+
     fun readingScheduleEnabled() = preferenceStore.getBoolean("reading_schedule_enabled", false)
 
     /** ReaderScheduleMode name (ALLOWED or RESTRICTED). Invalid/corrupt values fall back to RESTRICTED at read time. */

@@ -92,11 +92,15 @@ class ReaderTransitionView @JvmOverloads constructor(
                     LocalTextStyle provides MaterialTheme.typography.bodySmall,
                     LocalContentColor provides MaterialTheme.colorScheme.onBackground,
                 ) {
+                    // KMK v0.8.24: Settings > Reader > Alternate sources decides where the offer appears
+                    val readerPreferences = Injekt.get<eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences>()
                     ChapterTransition(
                         transition = it.transition,
                         currChapterDownloaded = it.currChapterDownloaded,
                         goingToChapterDownloaded = it.goingToChapterDownloaded,
                         onAlternateSourceGap = it.onAlternateSourceGap,
+                        offerAtGaps = readerPreferences.alternateSourceOfferAtGaps().get(),
+                        offerAtEnd = readerPreferences.alternateSourceOfferAtEnd().get(),
                     )
                 }
             }

@@ -38,23 +38,24 @@ class AlternateSourceContinuityPresentationEndOfSourceTest {
             chapterTransitionSource.contains(
                 "NoChapterNotification(\n" +
                     "                text = fallbackLabel,\n" +
-                    "                onAlternateSourceGap = onChapterGapAction,",
+                    "                onAlternateSourceGap = onChapterGapAction.takeIf { offerAtEnd },",
             ),
         )
     }
 
     @Test
     fun `NoChapterNotification renders the same gap action button as the mid-list warning`() {
-        // Both call sites must resolve to the SAME button copy (alternate_source_reader_gap_action)
-        // so a user sees consistent wording whether the gap is a numbered mid-list gap or a genuine
-        // end-of-source PRIMARY_MISSING mapping.
-        val occurrences = Regex("stringResource\\(KMR\\.strings\\.alternate_source_reader_gap_action\\)")
+        // Both call sites must resolve to the SAME shared action (one button copy, one hint, one first-use explanation)
+        // so a user sees consistent wording whether the gap is a numbered mid-list gap or a genuine end-of-source
+        // PRIMARY_MISSING mapping. KMK v0.8.24: the button moved into AlternateSourceGapAction.
+        val callSites = Regex.fromLiteral("AlternateSourceGapAction(action, Modifier.align(Alignment.End))")
             .findAll(chapterTransitionSource)
             .count()
-        assertTrue(
-            occurrences == 2,
-            "expected exactly 2 usages (ChapterGapWarning + NoChapterNotification), found $occurrences",
-        )
+        assertTrue(callSites == 2, "expected exactly 2 call sites (ChapterGapWarning + NoChapterNotification), found $callSites")
+        val buttonCopies = Regex.fromLiteral("stringResource(KMR.strings.alternate_source_reader_gap_action)")
+            .findAll(chapterTransitionSource)
+            .count()
+        assertTrue(buttonCopies == 1, "expected the button copy only in AlternateSourceGapAction, found $buttonCopies")
     }
 
     @Test

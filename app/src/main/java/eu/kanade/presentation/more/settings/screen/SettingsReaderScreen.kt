@@ -122,6 +122,8 @@ object SettingsReaderScreen : SearchableSettings {
             // SY <--
             // KMK v0.8.5
             getReadingScheduleGroup(readerPreferences = readerPref),
+            // KMK v0.8.24
+            getAlternateSourceGroup(readerPreferences = readerPref),
         )
     }
 
@@ -541,6 +543,28 @@ object SettingsReaderScreen : SearchableSettings {
             ),
         )
     }
+
+    // KMK --> v0.8.24: explains the alternate-source offer and lets the reader choose where it appears
+    @Composable
+    private fun getAlternateSourceGroup(readerPreferences: ReaderPreferences): Preference.PreferenceGroup {
+        return Preference.PreferenceGroup(
+            title = stringResource(KMR.strings.alternate_source_settings_header),
+            preferenceItems = persistentListOf(
+                Preference.PreferenceItem.InfoPreference(stringResource(KMR.strings.alternate_source_settings_info)),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = readerPreferences.alternateSourceOfferAtGaps(),
+                    title = stringResource(KMR.strings.alternate_source_offer_gaps),
+                    subtitle = stringResource(KMR.strings.alternate_source_offer_gaps_summary),
+                ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = readerPreferences.alternateSourceOfferAtEnd(),
+                    title = stringResource(KMR.strings.alternate_source_offer_end),
+                    subtitle = stringResource(KMR.strings.alternate_source_offer_end_summary),
+                ),
+            ),
+        )
+    }
+    // KMK <--
 
     @Composable
     private fun getActionsGroup(readerPreferences: ReaderPreferences): Preference.PreferenceGroup {

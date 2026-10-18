@@ -1714,7 +1714,7 @@
      <string name="rec_source_metadata_tag_diagnostics_sort_issues">Issues</string>
 
     <!-- KMK: Alternate Source Reading Bridge reader controls. -->
-    <!-- KMK --> <string name="alternate_source_reader_gap_action">Read the missing section from another source</string>
+    <!-- KMK --> <string name="alternate_source_reader_gap_action">Continue from another source</string>
     <!-- KMK --> <string name="alternate_source_reader_choose_source_title">Choose an alternate source</string>
     <!-- KMK --> <string name="alternate_source_reader_current_source">Currently reading from: %1$s</string>
     <!-- KMK --> <string name="alternate_source_reader_choose_chapter_title">Choose the matching chapter</string>
@@ -1874,4 +1874,18 @@
     <string name="alternate_source_reader_choose_chapter_hint">Pick the chapter on this source that continues where you stopped. The match may be approximate; you can correct it later from the reader menu.</string>
     <string name="alternate_source_reader_read_this_chapter">Read this chapter</string>
     <string name="alternate_source_reader_stay_here">Stay on this source</string>
+    <!-- KMK v0.8.24 alternate sources: settings and first-use explanation -->
+    <string name="alternate_source_settings_header">Alternate sources</string>
+    <string name="alternate_source_settings_info">When chapters are missing here, or this source has no next chapter, you can keep reading from another version of the same manga. A Continue from another source button appears at the end of the chapter. While you read elsewhere, Return to primary source in the top bar brings you back.</string>
+    <string name="alternate_source_offer_gaps">Offer when chapters are missing</string>
+    <string name="alternate_source_offer_gaps_summary">Show the button when chapters are skipped between this chapter and the next</string>
+    <string name="alternate_source_offer_end">Offer when this source has no next chapter</string>
+    <string name="alternate_source_offer_end_summary">Show the button at the last chapter this source has</string>
+    <string name="alternate_source_gap_hint">Reads the missing part from another version of this manga. You can come back any time from the top bar.</string>
+    <string name="alternate_source_intro_title">Read from another source?</string>
+    <string name="alternate_source_intro_message">Komikku FC will look for other versions of this manga that have the missing part. You pick the source and the chapter. Return to primary source in the top bar brings you back here at any time.
+
+You can choose when this is offered in Settings, Reader, Alternate sources.</string>
+    <string name="alternate_source_intro_continue">Continue</string>
+    <string name="alternate_source_intro_not_now">Not now</string>
 </resources>

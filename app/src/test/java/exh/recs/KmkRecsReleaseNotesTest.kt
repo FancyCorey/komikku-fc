@@ -314,6 +314,7 @@ class KmkRecsReleaseNotesTest {
             "**Hide manga you already know:**", "no longer reappears after Refresh",
             "**Komikku updates:**", "**Reading timer:**", "**Local tracking across linked versions:**", "A = B and B = C",
             "**Reading from an alternate source:**", "returns to the reader instead of your library", "**Linked versions list:**",
+            "**Alternate sources in Reader settings:**", "Continue from another source",
             "**Tracker progress on other versions:**", "same tracker entry",
             // settings redesign and the optional automatic source check
             "**Automatic source check:**", "off until you turn it on", "never installs or removes a source or changes your source order", "Use results on For You",
