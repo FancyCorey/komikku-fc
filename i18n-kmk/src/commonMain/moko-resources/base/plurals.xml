@@ -384,6 +384,10 @@
             <item quantity="one">%1$d source</item>
             <item quantity="other">%1$d sources</item>
         </plurals>
+    <plurals name="rec_recent_reading_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
     <plurals name="rec_settings_preferred_tag_fragment">
             <item quantity="one">%1$d preferred tag</item>
             <item quantity="other">%1$d preferred tags</item>
@@ -492,4 +496,21 @@
             <item quantity="one">%1$d version</item>
             <item quantity="other">%1$d versions</item>
         </plurals>
+    <!-- KMK v0.8.24 recommendation settings hub -->
+    <plurals name="rec_hub_sources_count">
+        <item quantity="one">%1$d source</item>
+        <item quantity="other">%1$d sources</item>
+    </plurals>
+    <plurals name="rec_hub_suggestions_count">
+        <item quantity="one">%1$d suggestion</item>
+        <item quantity="other">%1$d suggestions</item>
+    </plurals>
+    <plurals name="rec_auto_recheck_every_days">
+        <item quantity="one">Every day</item>
+        <item quantity="other">Every %1$d days</item>
+    </plurals>
+    <plurals name="rec_hub_issues_count">
+        <item quantity="one">%1$d source had trouble loading</item>
+        <item quantity="other">%1$d sources had trouble loading</item>
+    </plurals>
 </resources>

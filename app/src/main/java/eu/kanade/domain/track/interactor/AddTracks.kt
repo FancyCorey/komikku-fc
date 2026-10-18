@@ -53,7 +53,12 @@ class AddTracks(
             var track = checkNotNull(convertedTrack)
 
             runTrackerBindingFollowUps(
-                persistLocalTrack = { insertTrack.await(track) },
+                persistLocalTrack = {
+                    insertTrack.await(track)
+                    // KMK --> v0.8.24: with "Track linked versions together" on, the entry is linked to every confirmed version
+                    ShareTrackerBindingWithLinkedVersions().await(track)
+                    // KMK <--
+                },
                 synchronize = {
                     syncLocalTrackingFromExternal?.sync(track, tracker)
 

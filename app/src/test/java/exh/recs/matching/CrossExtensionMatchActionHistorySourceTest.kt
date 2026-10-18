@@ -83,8 +83,8 @@ class CrossExtensionMatchActionHistorySourceTest {
     @Test
     fun `local tracking refreshes source context for an already existing target work`() {
         val source = File("src/main/java/exh/recs/matching/CrossExtensionMatchScreenModel.kt").readText()
-        val localBlock = source.substringAfter("is CrossExtensionMatchMode.LocalTracking")
-            .substringBefore("is CrossExtensionMatchMode.Rating")
+        val localBlock = source.substringAfter("is CrossExtensionMatchMode.LocalTracking ->")
+            .substringBefore("is CrossExtensionMatchMode.Rating ->")
         val existingBranch = localBlock.substringAfter("if (existingId != null)")
             .substringBefore("} else {")
         assertTrue(existingBranch.contains("localTrackerRepository.upsertSource"))

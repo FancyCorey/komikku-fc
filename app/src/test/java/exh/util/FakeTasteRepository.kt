@@ -57,6 +57,16 @@ class FakeTasteRepository : TasteRepository {
         tastesFlow.value = byMangaId.values.toList()
     }
 
+    override suspend fun insertMangaTasteIfAbsent(taste: MangaTaste): Boolean = synchronized(byMangaId) {
+        tasteWriteFailure?.let { throw it }
+        if (byMangaId.containsKey(taste.mangaId) || byMangaId.values.any { it.source == taste.source && it.url == taste.url }) {
+            return@synchronized false
+        }
+        byMangaId[taste.mangaId] = taste
+        tastesFlow.value = byMangaId.values.toList()
+        true
+    }
+
     override suspend fun deleteMangaTaste(mangaId: Long) {
         tasteWriteFailure?.let { throw it }
         byMangaId.remove(mangaId)

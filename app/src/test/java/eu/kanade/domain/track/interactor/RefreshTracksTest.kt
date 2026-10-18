@@ -59,6 +59,38 @@ class RefreshTracksTest {
         coVerify(exactly = 1) { localSync.synchronize() }
     }
 
+    // KMK --> v0.8.24: manual pull with the sync-from-trackers setting off.
+    @Test
+    fun `upload-only refresh refreshes the remote record and uploads without remote-to-local steps`() = runTest {
+        val tracker = mockk<BaseTracker>()
+        val trackerManager = mockk<TrackerManager>()
+        val getTracks = mockk<GetTracks>()
+        val insertTrack = mockk<InsertTrack>(relaxed = true)
+        val syncProgress = mockk<SyncChapterProgressWithTrack>(relaxed = true)
+        val localSync = mockk<SyncLocalTrackingFromExternal>(relaxed = true)
+        val track = domainTrack(trackerId = 10L)
+        every { tracker.id } returns 10L
+        every { tracker.isLoggedIn } returns true
+        every { trackerManager.get(10L) } returns tracker
+        coEvery { getTracks.await(42L) } returns listOf(track)
+        coEvery { tracker.refresh(any()) } returns track.toDbTrack()
+        coEvery { syncProgress.sync(42L, track, tracker, true, false) } returns null
+
+        val failures = RefreshTracks(getTracks, trackerManager, insertTrack, syncProgress, localSync).await(
+            mangaId = 42L,
+            enhancedTrackersOnly = false,
+            uploadOnly = true,
+        )
+
+        assertEquals(emptyList<Long>(), failures.map { it.first?.id })
+        coVerify(exactly = 1) { insertTrack.await(track) }
+        coVerify(exactly = 1) { syncProgress.sync(42L, track, tracker, true, false) }
+        coVerify(exactly = 0) { syncProgress.sync(42L, track, tracker, true, true) }
+        coVerify(exactly = 0) { syncProgress.await(any(), any(), any()) }
+        coVerify(exactly = 0) { localSync.sync(any(), any()) }
+    }
+    // KMK <--
+
     private fun domainTrack(trackerId: Long) = Track(
         id = trackerId,
         mangaId = 42L,

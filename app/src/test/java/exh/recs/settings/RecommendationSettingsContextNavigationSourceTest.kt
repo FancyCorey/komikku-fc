@@ -1,5 +1,6 @@
 package exh.recs.settings
 
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -33,14 +34,17 @@ class RecommendationSettingsContextNavigationSourceTest {
     }
 
     @Test
-    fun `quick access routes are closed and replace the current detail screen`() {
+    fun `quick access routes are closed and the hub is the single navigation surface`() {
         val shared = source("src/main/java/exh/recs/settings/RecommendationSettingsSharedComponents.kt")
+        val hub = source("src/main/java/exh/recs/settings/RecommendationSettingsIndexScreen.kt")
         val detail = source("src/main/java/exh/recs/settings/RecommendationSourcePrioritySettingsScreen.kt")
 
         assertTrue(shared.contains("enum class RecommendationSettingsQuickAccessDestination"))
-        assertTrue(shared.contains("items(\n            items = RecommendationSettingsQuickAccessDestination.entries"))
-        assertTrue(shared.contains("if (!selected) onNavigate(destination)"))
-        assertTrue(detail.contains("onNavigate = { destination -> navigator.replace(destination.toScreen()) }"))
+        assertTrue(shared.contains("fun RecommendationSettingsQuickAccessDestination.toScreen()"))
+        // KMK v0.8.24: one navigation system. The hub lists every destination and detail screens have no tab row.
+        assertTrue(hub.contains("items(RecommendationSettingsQuickAccessDestination.entries"))
+        assertTrue(hub.contains("navigator.push(destination.toScreen())"))
+        assertFalse(detail.contains("RecommendationSettingsQuickAccessRow"))
     }
 
     private fun source(path: String): String = File(path).also {

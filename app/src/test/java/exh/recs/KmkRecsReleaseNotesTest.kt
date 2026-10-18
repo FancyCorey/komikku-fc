@@ -34,7 +34,7 @@ class KmkRecsReleaseNotesTest {
 
     @Test
     fun `the display version uses the approved forward-facing product name`() {
-        assertEquals("Komikku FC v0.8.23.1", KmkRecsReleaseNotes.DISPLAY_VERSION_NAME)
+        assertEquals("Komikku FC v0.8.24", KmkRecsReleaseNotes.DISPLAY_VERSION_NAME)
         assertTrue(KmkRecsReleaseNotes.VERSION_NAME.startsWith("KMK-Recs "))
     }
 
@@ -42,6 +42,7 @@ class KmkRecsReleaseNotesTest {
     fun `rendered release notes use the forward-facing product name`() {
         val displayMarkdown = KmkRecsReleaseNotes.displayMarkdown()
 
+        assertTrue(displayMarkdown.contains("## Komikku FC v0.8.24"))
         assertTrue(displayMarkdown.contains("## Komikku FC v0.8.23.1"))
         assertFalse(displayMarkdown.contains("KMK-Recs"))
         assertTrue(KmkRecsReleaseNotes.MARKDOWN.contains("## KMK-Recs v0.8.23.1"))
@@ -192,20 +193,21 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `headings are in strictly descending chronological order as written (newest-first)`() {
         // The renderer relies on source order for "newest first" -- verify the file wasn't
-        // accidentally reordered. v0.8.23.1 is expected to be exactly first.
+        // accidentally reordered. v0.8.24 is expected to be exactly first.
         val all = headings()
-        assertEquals("v0.8.23.1", all[0])
-        assertEquals("v0.8.22", all[1])
-        assertEquals("v0.8.21-fix2", all[2])
-        assertEquals("v0.8.21", all[3])
-        assertEquals("v0.8.20-fix5", all[4])
-        assertEquals("v0.8.20-fix4", all[5])
-        assertEquals("v0.8.20-fix3", all[6])
-        assertEquals("v0.8.20-fix2", all[7])
-        assertEquals("v0.8.20-fix1", all[8])
-        assertEquals("v0.8.20", all[9])
-        assertEquals("v0.8.19", all[10])
-        assertEquals("v0.8.18-fix1", all[11])
+        assertEquals("v0.8.24", all[0])
+        assertEquals("v0.8.23.1", all[1])
+        assertEquals("v0.8.22", all[2])
+        assertEquals("v0.8.21-fix2", all[3])
+        assertEquals("v0.8.21", all[4])
+        assertEquals("v0.8.20-fix5", all[5])
+        assertEquals("v0.8.20-fix4", all[6])
+        assertEquals("v0.8.20-fix3", all[7])
+        assertEquals("v0.8.20-fix2", all[8])
+        assertEquals("v0.8.20-fix1", all[9])
+        assertEquals("v0.8.20", all[10])
+        assertEquals("v0.8.19", all[11])
+        assertEquals("v0.8.18-fix1", all[12])
     }
 
     @Test
@@ -286,9 +288,47 @@ class KmkRecsReleaseNotesTest {
 
     // KMK v0.8.23.1 -->
     @Test
-    fun `the v0_8_23 entry is the current newest entry`() {
-        assertEquals("v0.8.23.1", sectionBodies().first().first)
+    fun `the v0_8_24 entry is the current newest entry`() {
+        assertEquals("v0.8.24", sectionBodies().first().first)
     }
+
+    // KMK --> v0.8.24: every accepted user-visible change maps to a line in the current entry, in reader language and
+    // without a speed claim (no refresh-speed improvement was measured).
+    @Test
+    fun `the v0_8_24 entry maps each accepted change`() {
+        val section = sectionBodies().first { it.first == "v0.8.24" }.second
+        listOf(
+            // recent-reading recommendations and its settings
+            "**Recent-reading recommendations:**", "window of 1 to 30 days", "minimum chapters counted",
+            "Blocked and disliked tags are never boosted",
+            // linked-version ratings
+            "**Group rating for linked versions:**", "or Not rated", "without overwriting a rating you set yourself",
+            "**Rating linked versions:**", "**Best Version:**",
+            // data saving
+            "**Use less data on For You:**", "Automatic, Always and Never", "tries fewer search variations per source",
+            "Every source is still searched and your filters are unchanged",
+            // tracker updates
+            "**Tracker refresh:**", "even with \"Sync reading progress from connected trackers\" off", "**Tracker retries:**",
+            // For You scheduling and the Hide-known fix
+            "**For You source scheduling:**", "instead of waiting for a whole group of five sources",
+            "**Hide manga you already know:**", "no longer reappears after Refresh",
+            "**Tracker progress on other versions:**", "same tracker entry",
+            // settings redesign and the optional automatic source check
+            "**Automatic source check:**", "off until you turn it on", "never installs or removes a source or changes your source order", "Use results on For You",
+            "**Recommendation Settings:**", "six pages", "Every setting is still there",
+        ).forEach { phrase -> assertTrue(section.contains(phrase), "v0.8.24 What's New is missing: $phrase") }
+    }
+
+    @Test
+    fun `the v0_8_24 entry makes no speed claim and uses the official structure`() {
+        val section = sectionBodies().first { it.first == "v0.8.24" }.second
+        listOf("faster", "speed up", "sped up", "quicker", "improves loading", "instantly").forEach { word ->
+            assertFalse(section.lowercase().contains(word), "unsupported speed wording in v0.8.24: $word")
+        }
+        assertTrue(section.contains("#### What's Changed"))
+        assertTrue(section.contains("##### New") && section.contains("##### Improve") && section.contains("##### Fix"))
+    }
+    // KMK <--
 
     @Test
     fun `the v0_8_23 entry maps 16 KB Android memory page compatibility`() {

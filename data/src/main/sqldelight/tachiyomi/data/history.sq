@@ -78,3 +78,23 @@ WHERE chapter_id = :chapterId;
 getReadDuration:
 SELECT coalesce(sum(time_read), 0)
 FROM history;
+
+-- KMK --> v0.8.24 recent-reading profile (read-only; no schema change)
+-- One row per manga with at least one chapter whose last read is inside the window. A chapter counts as read when
+-- it is marked read or has reading time. `history` keeps one row per chapter, so active_days counts distinct local
+-- days of those last reads, not opens.
+getRecentReadingActivity:
+SELECT
+C.manga_id AS manga_id,
+COUNT(DISTINCT C._id) AS chapters_read,
+COUNT(DISTINCT strftime('%Y-%m-%d', CAST(H.last_read AS INTEGER) / 1000, 'unixepoch', 'localtime')) AS active_days,
+CAST(MAX(H.last_read) AS INTEGER) AS last_read_at,
+(SELECT COUNT(*) FROM chapters X WHERE X.manga_id = C.manga_id) AS total_chapters
+FROM history H
+JOIN chapters C
+ON C._id = H.chapter_id
+WHERE H.last_read > 0
+AND CAST(H.last_read AS INTEGER) >= :sinceMillis
+AND (H.time_read > 0 OR C.read = 1)
+GROUP BY C.manga_id;
+-- KMK <--

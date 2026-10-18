@@ -45,7 +45,33 @@ class ConfirmedTrackedMangaTasteTargetsTest {
         assertEquals(listOf(origin, confirmedTracked), target.await(origin))
     }
 
+    @Test
+    fun `tracked confirmed source without a library manga row remains a taste target`() = runTest {
+        val origin = manga(1, "/origin")
+        val link = link(1, "/origin")
+        val trackedLink = link(2, "/tracked-without-row")
+        val members = listOf(link, trackedLink)
+        coEvery { links.awaitBySourceUrl(1, "/origin") } returns link
+        coEvery { links.awaitByGroupId("group") } returns members
+        coEvery { resolver.confirmedGroupMembers(1, "/origin", members) } returns members
+        coEvery { manga.await("/origin", 1) } returns origin
+        coEvery { manga.await("/tracked-without-row", 2) } returns null
+        coEvery { localTracker.getWorkIdBySourceUrl(2, "/tracked-without-row") } returns "work-2"
+
+        val result = target.await(origin)
+
+        assertEquals(listOf(1L to "/origin", 2L to "/tracked-without-row"), result.map { it.source to it.url })
+        assertEquals("Tracked", result.last().title)
+    }
+
     private fun manga(source: Long, url: String) = Manga.create().copy(source = source, url = url, ogTitle = url)
 
-    private fun link(source: Long, url: String) = CrossSourceMangaLink(source, url, "group", url, 1, 1)
+    private fun link(source: Long, url: String) = CrossSourceMangaLink(
+        source,
+        url,
+        "group",
+        if (url == "/tracked-without-row") "Tracked" else url,
+        1,
+        1,
+    )
 }

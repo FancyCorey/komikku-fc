@@ -44,6 +44,11 @@ enum class PreferenceJournalActionType {
     // KMK EC-04 2026-09-01
     DISCOVERY_EFFORT_LEVEL,
     DISCOVERY_CANDIDATE_BUDGET,
+
+    // KMK v0.8.24
+    RECENT_READING,
+    DATA_SAVING,
+    AUTO_RECHECK,
 }
 
 /**

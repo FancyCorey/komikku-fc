@@ -773,6 +773,9 @@ private fun preferenceJournalEntrySummary(context: Context, entry: PreferenceUnd
         PreferenceJournalActionType.SOURCE_PREFERENCE,
         PreferenceJournalActionType.DISCOVERY_EFFORT_LEVEL,
         PreferenceJournalActionType.DISCOVERY_CANDIDATE_BUDGET,
+        PreferenceJournalActionType.RECENT_READING,
+        PreferenceJournalActionType.DATA_SAVING,
+        PreferenceJournalActionType.AUTO_RECHECK,
         -> context.stringResource(KMR.strings.eval_undo_summary_preference_setting)
         PreferenceJournalActionType.TAG_PREFERENCE -> context.stringResource(KMR.strings.eval_undo_summary_preference_tag)
         PreferenceJournalActionType.SUGGESTION_DISMISSAL,

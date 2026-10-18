@@ -245,11 +245,11 @@ internal fun rememberRecommendationSettingsSearchEntries(): List<RecommendationS
     // KMK v0.8.14-fix1: renamed from sourcesLanguages/"Sources and languages" -- this screen no
     // longer owns language selection, only source order/enable/like/dislike/preview. See
     // RecommendationSourcePrioritySettingsScreen's class doc.
-    val forYouSources = stringResource(KMR.strings.rec_settings_index_for_you_sources)
-    val tasteFilters = stringResource(KMR.strings.rec_settings_index_taste_filters)
-    val evaluation = stringResource(KMR.strings.rec_settings_index_evaluation)
-    val discovery = stringResource(KMR.strings.rec_settings_index_discovery)
-    val diagnostics = stringResource(KMR.strings.rec_settings_index_diagnostics)
+    val forYouSources = stringResource(KMR.strings.rec_hub_for_you_feed)
+    val tasteFilters = stringResource(KMR.strings.rec_hub_your_taste)
+    val evaluation = stringResource(KMR.strings.rec_hub_find_sources)
+    val discovery = stringResource(KMR.strings.rec_hub_find_sources)
+    val diagnostics = stringResource(KMR.strings.rec_settings_search_category_more)
 
     return listOf(
         // KMK v0.8.9: category-level fallback entries -- unchanged.
@@ -409,6 +409,43 @@ internal fun rememberRecommendationSettingsSearchEntries(): List<RecommendationS
             anchor = "min_chapter_count",
         ),
 
+        // KMK v0.8.24: entries for the settings added in this release
+        RecommendationSettingsSearchIndex.Entry(
+            key = "taste_filters_recent_reading",
+            title = stringResource(KMR.strings.rec_recent_reading),
+            summary = stringResource(KMR.strings.rec_recent_reading_summary),
+            category = tasteFilters,
+            synonyms = listOf("recent reading", "what i read lately", "reading history", "recent window"),
+            destination = RecommendationTasteTagsSettingsScreen(anchor = "recent_reading"),
+            anchor = "recent_reading",
+        ),
+        RecommendationSettingsSearchIndex.Entry(
+            key = "for_you_show_tab",
+            title = stringResource(KMR.strings.rec_show_for_you_tab),
+            summary = stringResource(KMR.strings.rec_show_for_you_tab_on),
+            category = forYouSources,
+            synonyms = listOf("hide for you", "for you tab", "show for you"),
+            destination = RecommendationSourcePrioritySettingsScreen(anchor = "show_for_you_tab"),
+            anchor = "show_for_you_tab",
+        ),
+        RecommendationSettingsSearchIndex.Entry(
+            key = "diagnostics_data_saving",
+            title = stringResource(KMR.strings.rec_data_saving_title),
+            summary = stringResource(KMR.strings.rec_data_saving_summary),
+            category = diagnostics,
+            synonyms = listOf("use less data", "data saving", "metered", "slow connection", "mobile data"),
+            destination = RecommendationDiagnosticsSettingsScreen(anchor = "data_saving_content"),
+            anchor = "data_saving_content",
+        ),
+        RecommendationSettingsSearchIndex.Entry(
+            key = "find_sources_automatic_check",
+            title = stringResource(KMR.strings.rec_auto_recheck),
+            summary = stringResource(KMR.strings.rec_auto_recheck_summary),
+            category = evaluation,
+            synonyms = listOf("automatic check", "schedule", "re-check sources", "reassess sources", "how often", "use results on for you"),
+            destination = FindNewSourcesScreen(),
+        ),
+
         // -- For You sources --
         // KMK v0.8.14-fix1: "source_priority_languages" control entry removed here -- language
         // selection moved to Management and diagnostics, see "diagnostics_languages" below.
@@ -474,9 +511,9 @@ internal fun rememberRecommendationSettingsSearchEntries(): List<RecommendationS
             key = "diagnostics_languages",
             title = stringResource(KMR.strings.rec_settings_management_languages_header),
             summary = stringResource(KMR.strings.rec_settings_management_languages_summary),
-            category = diagnostics,
+            category = tasteFilters,
             synonyms = listOf("languages", "language filter", "recommendation languages"),
-            destination = RecommendationDiagnosticsSettingsScreen(anchor = "recommendation_languages_content"),
+            destination = RecommendationTasteTagsSettingsScreen(anchor = "recommendation_languages_content"),
             anchor = "recommendation_languages_content",
         ),
 

@@ -61,6 +61,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -101,6 +103,7 @@ import xyz.nulldev.ts.api.http.serializer.FilterSerializer
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 
 data class PersonalRecommendation(
     val manga: Manga,
@@ -254,6 +257,15 @@ class BrowsePersonalRecommendationsScreenModel(
     private val naturalObservationSink: ((String) -> Unit)? = null,
     // KMK <--
     private val getTasteProfile: GetTasteProfile = Injekt.get(),
+    // KMK --> v0.8.24 recent-reading profile: explicit and nullable (the production tab passes it) so a
+    // construction without it keeps the long-term profile only.
+    private val getRecentReadingTagWeights: GetRecentReadingTagWeights? = null,
+    // v0.8.24 data saving: whether the active connection is metered or slow. Defaults to false so a construction
+    // without it behaves as before; the production tab passes the real reading.
+    private val isNetworkConstrained: () -> Boolean = { false },
+    // v0.8.24 automatic check results acting on For You: explicit and nullable (the production tab passes it).
+    private val getSourceRecommendationFit: tachiyomi.domain.taste.interactor.GetSourceRecommendationFit? = null,
+    // KMK <--
     private val getTagAliases: GetTagAliases = Injekt.get(),
     private val getDisabledSources: GetDisabledRecommendationSources = Injekt.get(),
     private val sourceManager: SourceManager = Injekt.get(),
@@ -627,6 +639,29 @@ class BrowsePersonalRecommendationsScreenModel(
     }
     // KMK <--
 
+    // KMK --> v0.8.24
+    // Fail-open: any problem reading results means nothing is skipped.
+    private suspend fun loadCheckSkippedSourceIds(): Set<Long> {
+        val reader = getSourceRecommendationFit ?: return emptySet()
+        if (!sourcePreferences.recommendationAutoRecheckEnabled().get() ||
+            !sourcePreferences.recommendationAutoRecheckApplyToForYou().get()
+        ) {
+            return emptySet()
+        }
+        return try {
+            exh.recs.evaluation.SourceAutoRecheckPolicy.skippedSourceIds(
+                reader.awaitAll(),
+                SourceFitStatsStore.parse(sourcePreferences.recommendationSourceFitStats().get()),
+                System.currentTimeMillis(),
+            )
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptySet()
+        }
+    }
+    // KMK <--
+
     private suspend fun load(
         forceRefresh: Boolean,
         retrySourceIds: Set<Long>? = null,
@@ -675,8 +710,21 @@ class BrowsePersonalRecommendationsScreenModel(
         } catch (e: Exception) {
         }
 
-        val profile = ForYouDebugFixture.profile(fixtureMode) { getTasteProfile.await() }
+        val baseProfile = ForYouDebugFixture.profile(fixtureMode) { getTasteProfile.await() }
         currentCoroutineContext().ensureActive()
+        // KMK --> v0.8.24: aliases load before the empty check so recent reading can count as taste evidence on
+        // its own; the recent weights are skipped for debug fixtures and fail open inside the interactor.
+        val tagAliases = getTagAliases.awaitAll()
+        currentCoroutineContext().ensureActive()
+        val aliasMap = tagAliases.associate { it.normalizedAlias to it.groupKey }
+        val recentReading = getRecentReadingTagWeights
+        val profile = if (recentReading != null && fixtureMode == ForYouDebugFixtureMode.OFF) {
+            baseProfile.copy(recentTagWeights = recentReading.await(baseProfile, aliasMap))
+        } else {
+            baseProfile
+        }
+        currentCoroutineContext().ensureActive()
+        // KMK <--
         if (profile.isEmpty()) {
             if (retryOnly == null) {
                 mutableState.update {
@@ -694,9 +742,6 @@ class BrowsePersonalRecommendationsScreenModel(
             return
         }
 
-        val tagAliases = getTagAliases.awaitAll()
-        currentCoroutineContext().ensureActive()
-        val aliasMap = tagAliases.associate { it.normalizedAlias to it.groupKey }
         val groupToAliases = tagAliases.groupBy({ it.groupKey }) { it.normalizedAlias }
         val disabledSourceIds = getDisabledSources.await().toSet()
         currentCoroutineContext().ensureActive()
@@ -952,6 +997,12 @@ class BrowsePersonalRecommendationsScreenModel(
         }
 
         currentCoroutineContext().ensureActive()
+        // KMK --> v0.8.24: data saving is decided once per refresh (see ForYouDataSaving)
+        val dataSaving = ForYouDataSavingPolicy.isActive(
+            ForYouDataSaving.resolve(sourcePreferences.recommendationDataSaving().get()),
+            isNetworkConstrained(),
+        )
+        // KMK <--
         val loadContext = currentCoroutineContext()
         synchronized(loadLaunchLock) {
             if (!loadContext.isActive || activeRefreshGeneration.get() != refreshGeneration) return
@@ -961,8 +1012,11 @@ class BrowsePersonalRecommendationsScreenModel(
                 var usefulCount = 0
                 val refreshFocus = activeFocusCriteria.value
 
+                // KMK --> v0.8.24: with the automatic check on, sources its latest results marked unusable are skipped
+                val checkSkippedIds = loadCheckSkippedSourceIds()
+                // KMK <--
                 val candidateSources = selectRecommendationCandidates(
-                    sources = orderedEnabledSources,
+                    sources = exh.recs.evaluation.SourceAutoRecheckPolicy.withoutSkipped(orderedEnabledSources, checkSkippedIds, Source::id),
                     retrySourceIds = retryOnly,
                     maxAttempts = MAX_SOURCE_ATTEMPTS,
                     sourceId = Source::id,
@@ -973,34 +1027,48 @@ class BrowsePersonalRecommendationsScreenModel(
                 // search instead of living on the ScreenModel, so a cancelled older refresh cannot
                 // reset or consume the newer refresh's counter.
                 val latestBudgetState = LatestExplorationBudgetState(
-                    limit = RecommendationLatestBudgetPolicy.resolveAttempts(
-                        enabled = sourcePreferences.recommendationLatestExplorationEnabled().get(),
-                        configuredPercent = sourcePreferences.recommendationLatestExplorationPercent().get(),
-                        attemptedSourceCount = candidateSources.size,
-                    ),
+                    // KMK v0.8.24: no Latest exploration (extra requests) while saving data
+                    limit = if (dataSaving) {
+                        0
+                    } else {
+                        RecommendationLatestBudgetPolicy.resolveAttempts(
+                            enabled = sourcePreferences.recommendationLatestExplorationEnabled().get(),
+                            configuredPercent = sourcePreferences.recommendationLatestExplorationPercent().get(),
+                            attemptedSourceCount = candidateSources.size,
+                        )
+                    },
                 )
                 currentRefreshTimestamp = clock()
 
-                for (batch in candidateSources.chunked(SOURCE_BATCH_SIZE)) {
-                    if (!isActive) break
+                // KMK --> v0.8.24: a work queue instead of fixed batches. A source starts the moment a slot frees, so one
+                // slow source no longer holds back every source behind it (the 2026-10-11 log showed sources 6-10
+                // starting only after the slowest of 1-5). Concurrency is the same SOURCE_BATCH_SIZE; results are applied
+                // as they arrive; once enough rows are useful the sources that have not finished are cancelled.
+                val slots = Semaphore(SOURCE_BATCH_SIZE)
+                val outcomeChannel = Channel<SourceSearchOutcome>(capacity = candidateSources.size.coerceAtLeast(1))
+                val enoughRows = AtomicBoolean(false)
+                val visibleRowCap = if (dataSaving) {
+                    ForYouDataSavingPolicy.SAVING_MAX_VISIBLE_SOURCE_ROWS
+                } else {
+                    MAX_VISIBLE_SOURCE_ROWS
+                }
+                val workers = candidateSources.map { source ->
+                    launch {
+                        slots.withPermit {
+                            if (enoughRows.get()) return@withPermit
 
-                    // Register batch in UI as Loading before searching
-                    val initialContexts = batch.associate { it.id to RecommendationSearchContext(fallbackQuery, topTags) }
-                    mutableState.update { state ->
-                        val batchIds = batch.map { it.id }.toSet()
-                        state.copy(
-                            items = state.items.mutate { map ->
-                                map.keys.filter { it.id in batchIds }.forEach { map.remove(it) }
-                                batch.forEach { src -> map[src] = PersonalRecommendationResult.Loading }
-                            },
-                            sourceOrder = reconcileSourceOrder(state.sourceOrder, batch),
-                            searchContexts = state.searchContexts.mutate { map -> initialContexts.forEach { (id, ctx) -> map[id] = ctx } },
-                        )
-                    }
-
-                    val outcomeChannel = Channel<SourceSearchOutcome>(capacity = batch.size)
-                    batch.forEach { source ->
-                        launch {
+                            // Register this source in the UI as Loading when its search actually starts
+                            val initialContext = RecommendationSearchContext(fallbackQuery, topTags)
+                            mutableState.update { state ->
+                                state.copy(
+                                    items = state.items.mutate { map ->
+                                        map.keys.filter { it.id == source.id }.forEach { map.remove(it) }
+                                        map[source] = PersonalRecommendationResult.Loading
+                                    },
+                                    sourceOrder = reconcileSourceOrder(state.sourceOrder, listOf(source)),
+                                    searchContexts = state.searchContexts.mutate { map -> map[source.id] = initialContext },
+                                )
+                            }
                             outcomeChannel.send(
                                 searchSource(
                                     source, queryKey, fingerprint, topTags, scoringProfile, aliasMap, aliasCandidates,
@@ -1020,40 +1088,47 @@ class BrowsePersonalRecommendationsScreenModel(
                                     // An inline Retry is an explicit user-requested attempt and must bypass
                                     // automatic suppression for the selected failed sources only.
                                     bypassSourceFailureSuppression = retryOnly != null,
+                                    dataSaving = dataSaving,
                                 ),
                             )
                         }
                     }
-
-                    repeat(batch.size) {
-                        val outcome = outcomeChannel.receive()
-                        if (outcome.successfulStrategy != null) {
-                            synchronized(strategyMap) { strategyMap[outcome.source.id] = outcome.successfulStrategy }
-                        } else if (RecommendationStrategyRecoveryPolicy.shouldForgetAfterRun(outcome.status)) {
-                            // KMK v0.8.13: a failed/no-result run disproves the persisted strategy hint
-                            // for this source -- remove only this source's entry, never the whole map.
-                            synchronized(strategyMap) { strategyMap.remove(outcome.source.id) }
-                        }
-                        allStatuses[outcome.source.id] = outcome.status
-                        if (outcome.isUseful) {
-                            val result = outcome.result as? PersonalRecommendationResult.Success
-                            val focused = result?.let { RecommendationFocusPolicy.apply(it.result, refreshFocus, focusAliasMap) }
-                            if (focused !is RecommendationFocusPolicy.Outcome.Filtered || focused.matched.isNotEmpty()) usefulCount++
-                        }
-                        updateItem(
-                            refreshGeneration,
-                            outcome.source,
-                            outcome.result,
-                            outcome.status,
-                            completedSourceResults,
-                            sourcePriority,
-                            observation = outcome.observation,
-                        )
-                    }
-                    outcomeChannel.close()
-
-                    if (usefulCount >= MAX_VISIBLE_SOURCE_ROWS) break
                 }
+
+                var received = 0
+                while (received < candidateSources.size) {
+                    val outcome = outcomeChannel.receive()
+                    received++
+                    if (outcome.successfulStrategy != null) {
+                        synchronized(strategyMap) { strategyMap[outcome.source.id] = outcome.successfulStrategy }
+                    } else if (RecommendationStrategyRecoveryPolicy.shouldForgetAfterRun(outcome.status)) {
+                        // KMK v0.8.13: a failed/no-result run disproves the persisted strategy hint
+                        // for this source -- remove only this source's entry, never the whole map.
+                        synchronized(strategyMap) { strategyMap.remove(outcome.source.id) }
+                    }
+                    allStatuses[outcome.source.id] = outcome.status
+                    if (outcome.isUseful) {
+                        val result = outcome.result as? PersonalRecommendationResult.Success
+                        val focused = result?.let { RecommendationFocusPolicy.apply(it.result, refreshFocus, focusAliasMap) }
+                        if (focused !is RecommendationFocusPolicy.Outcome.Filtered || focused.matched.isNotEmpty()) usefulCount++
+                    }
+                    updateItem(
+                        refreshGeneration,
+                        outcome.source,
+                        outcome.result,
+                        outcome.status,
+                        completedSourceResults,
+                        sourcePriority,
+                        observation = outcome.observation,
+                    )
+                    if (usefulCount >= visibleRowCap) {
+                        enoughRows.set(true)
+                        workers.forEach { it.cancel() }
+                        break
+                    }
+                }
+                outcomeChannel.close()
+                // KMK <--
 
                 // Adjust statuses to reflect post-dedupe visibility (Shown → HiddenByDuplicateHandling
                 // when all of a source's cards were hidden by cross-source display dedupe).
@@ -1180,6 +1255,9 @@ class BrowsePersonalRecommendationsScreenModel(
         // result -- see that call site's own comment and SourceGenreCatalogCache.record's doc.
         refreshGeneration: Long = 0,
         bypassSourceFailureSuppression: Boolean = false,
+        // KMK --> v0.8.24: skip the optional extra discovery page while saving data
+        dataSaving: Boolean = false,
+        // KMK <--
     ): SourceSearchOutcome {
         // KMK --> v0.7.38: load remembered candidates before cache check so they are available for merge
         val remembered = try {
@@ -1307,6 +1385,7 @@ class BrowsePersonalRecommendationsScreenModel(
             latestBudgetState = latestBudgetState,
             refreshGeneration = refreshGeneration,
             bypassSourceFailureSuppression = bypassSourceFailureSuppression,
+            dataSaving = dataSaving,
             remembered = remembered,
             progressRecords = progressRecords,
             displayLimit = displayLimit,
@@ -1393,6 +1472,7 @@ class BrowsePersonalRecommendationsScreenModel(
         latestBudgetState: LatestExplorationBudgetState,
         refreshGeneration: Long,
         bypassSourceFailureSuppression: Boolean,
+        dataSaving: Boolean,
         remembered: List<RecommendationCandidateMemoryEntry>,
         progressRecords: List<RecommendationDiscoveryProgress>,
         displayLimit: Int,
@@ -1404,7 +1484,11 @@ class BrowsePersonalRecommendationsScreenModel(
         var lastError: Throwable? = null
         var hadRawResults = false
 
-        for ((index, plan) in plans.withIndex()) {
+        // KMK --> v0.8.24: while saving data a source gets at most a couple of query strategies (the best-known
+        // one first), instead of retrying with every remaining strategy
+        val effectivePlans = if (dataSaving) plans.take(ForYouDataSavingPolicy.SAVING_MAX_PLANS_PER_SOURCE) else plans
+        // KMK <--
+        for ((index, plan) in effectivePlans.withIndex()) {
             if (!currentCoroutineContext().isActive) {
                 return PersonalizedPlanSearchOutcome(
                     outcome = SourceSearchOutcome(
@@ -1439,6 +1523,7 @@ class BrowsePersonalRecommendationsScreenModel(
                 latestBudgetState = latestBudgetState,
                 refreshGeneration = refreshGeneration,
                 bypassSourceFailureSuppression = bypassSourceFailureSuppression,
+                dataSaving = dataSaving,
                 remembered = remembered,
                 progressRecords = progressRecords,
                 displayLimit = displayLimit,
@@ -1446,7 +1531,7 @@ class BrowsePersonalRecommendationsScreenModel(
                 rawCap = rawCap,
                 minUseful = minUseful,
                 plan = plan,
-                isLastPlan = index == plans.lastIndex,
+                isLastPlan = index == effectivePlans.lastIndex,
             )
             hadRawResults = hadRawResults || attempt.hadRawResults
             lastError = attempt.lastError
@@ -1488,6 +1573,7 @@ class BrowsePersonalRecommendationsScreenModel(
         latestBudgetState: LatestExplorationBudgetState,
         refreshGeneration: Long,
         bypassSourceFailureSuppression: Boolean,
+        dataSaving: Boolean,
         remembered: List<RecommendationCandidateMemoryEntry>,
         progressRecords: List<RecommendationDiscoveryProgress>,
         displayLimit: Int,
@@ -1718,9 +1804,13 @@ class BrowsePersonalRecommendationsScreenModel(
             // early-stop check is needed here: a page with nothing left to probe simply returns
             // (emptyList(), 0), which this loop treats as "stop early." discoverAdditionalPage
             // itself is completely unchanged.
-            val discoveryEffortLevel = exh.recs.memory.DiscoveryEffortLevel.resolve(
-                sourcePreferences.recommendationDiscoveryEffortLevel().get(),
-            )
+            val discoveryEffortLevel = if (dataSaving) {
+                exh.recs.memory.DiscoveryEffortLevel.OFF
+            } else {
+                exh.recs.memory.DiscoveryEffortLevel.resolve(
+                    sourcePreferences.recommendationDiscoveryEffortLevel().get(),
+                )
+            }
             var remainingCandidateBudget = exh.recs.memory.RecommendationDiscoveryCandidateBudgetPolicy.resolve(
                 sourcePreferences.recommendationDiscoveryCandidateBudget().get(),
             )
@@ -1851,7 +1941,7 @@ class BrowsePersonalRecommendationsScreenModel(
             val exposureContext = buildExposureRerankContext(source.id, candidatePool, tasteByKey)
             val mergedRecommendations = mergeFreshAndRememberedCandidates(
                 remembered, candidatePool, profile, aliasMap, tasteByKey, visibility, seenKeys,
-                knownIds, displayLimit, minChapterCount, exposureContext,
+                knownIds, displayLimit, minChapterCount, hideKnownManga, exposureContext,
             )
 
             val status = RecommendationSourceRunStatus(
@@ -2014,7 +2104,7 @@ class BrowsePersonalRecommendationsScreenModel(
 
             val mergedRecommendations = mergeFreshAndRememberedCandidates(
                 remembered, processed.recommendations, profile, aliasMap, tasteByKey,
-                visibility, seenKeys, processed.knownIds, displayLimit, minChapterCount,
+                visibility, seenKeys, processed.knownIds, displayLimit, minChapterCount, hideKnownManga,
             )
             if (mergedRecommendations.isEmpty()) return CatalogueFallbackOutcome(null, rawFound)
 
@@ -2340,11 +2430,29 @@ class BrowsePersonalRecommendationsScreenModel(
         knownIds: Set<Long>,
         displayLimit: Int,
         minChapterCount: Int,
+        hideKnownManga: Boolean,
         // Optional exposure-aware
         // reordering, forwarded to RecommendationCandidateMemoryRanker.merge. Defaults to a no-op.
         exposureContext: ExposureRerankContext = ExposureRerankContext.NONE,
     ): List<PersonalRecommendation> {
         val resolvedMemory = resolveMemoryEntries(remembered)
+        // KMK --> v0.8.24 B4: [knownIds] only covers this refresh's fresh page-one candidates, but the merge also
+        // re-admits remembered candidates from earlier refreshes. A title the user has liked/rated or read since
+        // it was remembered must be re-checked against the CURRENT known set, exactly as the cached path does.
+        val mergeKnownIds = if (hideKnownManga && (newResults.isNotEmpty() || resolvedMemory.isNotEmpty())) {
+            val allMangaIds = (newResults.map { it.manga.id } + resolvedMemory.map { it.first.id }).distinct()
+            try {
+                knownIds + getKnownMangaIds.await(allMangaIds)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logcat(LogPriority.WARN) { "Live-merge known-manga lookup failed, keeping page-one known ids only" }
+                knownIds
+            }
+        } else {
+            knownIds
+        }
+        // KMK <--
         val chapterCountsForMerge = if (minChapterCount > 0 && (newResults.isNotEmpty() || resolvedMemory.isNotEmpty())) {
             val allMangaIds = (newResults.map { it.manga.id } + resolvedMemory.map { it.first.id }).distinct()
             try {
@@ -2361,7 +2469,7 @@ class BrowsePersonalRecommendationsScreenModel(
         // Always merge so extra-page/fallback candidates compete for display even when memory is empty.
         return RecommendationCandidateMemoryRanker.merge(
             resolvedMemory, newResults, profile, aliasMap,
-            tasteByKey, visibility, seenKeys, knownIds, displayLimit,
+            tasteByKey, visibility, seenKeys, mergeKnownIds, displayLimit,
             minChapterCount, chapterCountsForMerge,
             if (exposureContext.enabled) exposureContext.exposureByKey else emptyMap(),
             exposureContext.interactions,
@@ -2577,7 +2685,7 @@ class BrowsePersonalRecommendationsScreenModel(
 
             val mergedRecommendations = mergeFreshAndRememberedCandidates(
                 remembered, processed.recommendations, profile, aliasMap, tasteByKey,
-                visibility, seenKeys, processed.knownIds, displayLimit, minChapterCount,
+                visibility, seenKeys, processed.knownIds, displayLimit, minChapterCount, hideKnownManga,
             )
             if (mergedRecommendations.isEmpty()) return CatalogueFallbackOutcome(null, rawFound)
 
@@ -2854,6 +2962,9 @@ class BrowsePersonalRecommendationsScreenModel(
         topTags.sorted().forEach { update(it) }
         profile.explicitTagPreferences.entries.sortedBy { it.key }.forEach { update("${it.key}=${it.value}") }
         profile.learnedTagWeights.entries.sortedBy { it.key }.forEach { update("${it.key}=${it.value}") }
+        // KMK --> v0.8.24: recent-reading weights are rounded and day-based, so this only changes when reading does
+        profile.recentTagWeights.entries.sortedBy { it.key }.forEach { update("recent:${it.key}=${it.value}") }
+        // KMK <--
         profile.blockedGroups.sorted().forEach { update(it) }
         profile.sourceAffinity.entries.sortedBy { it.key }.forEach { update("${it.key}=${it.value}") }
         aliasMap.entries.sortedBy { it.key }.forEach { update("${it.key}=${it.value}") }
@@ -2883,6 +2994,11 @@ class BrowsePersonalRecommendationsScreenModel(
             .forEach { (tag, _) -> scores.merge(tag, 3.0, Double::plus) }
         profile.learnedTagWeights.filterValues { it > 0 }
             .forEach { (tag, w) -> scores.merge(tag, w, Double::plus) }
+        // KMK --> v0.8.24: what was read recently also decides which tags the sources are searched with; without
+        // this the recent-reading profile could only re-rank titles fetched through the long-term tags.
+        profile.recentTagWeights.filterValues { it > 0 }
+            .forEach { (tag, w) -> scores.merge(tag, w, Double::plus) }
+        // KMK <--
         return scores.entries.sortedByDescending { it.value }
             .take(MAX_SEARCH_TAGS)
             .map { it.key }

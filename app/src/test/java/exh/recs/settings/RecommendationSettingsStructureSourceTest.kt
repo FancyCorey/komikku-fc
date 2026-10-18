@@ -14,26 +14,15 @@ class RecommendationSettingsStructureSourceTest {
     }
 
     @Test
-    fun `shared settings structure keeps visible dividers and a labeled quick-access group`() {
+    fun `the repeating quick-access tab row is retired and the edge panel keeps the six destinations`() {
         val source = readSource("src/main/java/exh/recs/settings/RecommendationSettingsSharedComponents.kt")
 
-        assertTrue(source.contains("HorizontalDivider(modifier = Modifier.padding(top = MaterialTheme.padding.small))"))
-        assertTrue(source.contains("KMR.strings.rec_settings_quick_access_group"))
-        assertTrue(source.contains("contentDescription = quickAccessDescription"))
-        assertTrue(source.contains("LazyRow("), "quick-access destinations must stay in one compact horizontal row")
-        assertTrue(source.contains("rememberLazyListState()"))
+        assertTrue(!source.contains("fun RecommendationSettingsQuickAccessRow("), "the tab row must not return")
         assertTrue(source.contains("RecommendationSettingsQuickAccessDestination.entries"))
-        assertTrue(source.contains("items("), "quick-access destinations must be horizontally scrollable")
-        assertTrue(source.contains("contentPadding = PaddingValues(horizontal = MaterialTheme.padding.small)"))
-        assertTrue(source.contains("horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)"))
-        assertTrue(
-            source.contains("padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small)"),
-            "destination chips must retain compact edge padding",
-        )
     }
 
     @Test
-    fun `detail destinations use the shared row and source evaluation keeps host actions`() {
+    fun `detail destinations expose the shared app-bar actions and source evaluation keeps host actions`() {
         val screens = listOf(
             "RecommendationSourcePrioritySettingsScreen.kt",
             "RecommendationTasteTagsSettingsScreen.kt",
@@ -44,8 +33,8 @@ class RecommendationSettingsStructureSourceTest {
         screens.forEach { name ->
             val source = readSource("src/main/java/exh/recs/settings/$name")
             assertTrue(
-                source.contains("RecommendationSettingsQuickAccessRow("),
-                "$name must use the shared detail-settings navigation row",
+                !source.contains("RecommendationSettingsQuickAccessRow("),
+                "$name must not carry a repeating navigation row",
             )
             assertTrue(
                 source.contains("onHome = openForYou"),

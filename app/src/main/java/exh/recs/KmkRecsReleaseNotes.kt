@@ -2,9 +2,9 @@
 
 // KMK -->
 object KmkRecsReleaseNotes {
-    const val VERSION_CODE = 787
-    const val VERSION_NAME = "KMK-Recs v0.8.23.1"
-    const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.23.1"
+    const val VERSION_CODE = 788
+    const val VERSION_NAME = "KMK-Recs v0.8.24"
+    const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.24"
 
     /** Projects the retained historical notes into the current public product name. */
     fun displayMarkdown(): String = MARKDOWN.replace("KMK-Recs", "Komikku FC")
@@ -21,6 +21,33 @@ object KmkRecsReleaseNotes {
     // ...") that is now expressed by its category heading instead. See the v0.8.10-fix9
     // implementation report for the exact conversion approach and verification.
     val MARKDOWN = """
+        ## KMK-Recs v0.8.24
+
+        Recommendations that follow what you read lately, ratings that stay in step across linked versions, and more dependable tracker updates.
+
+        #### What's Changed
+
+        ##### New
+
+        - **Recent-reading recommendations:** For You can learn from what you read recently. The tags of manga you read in the last few days count more than your older ratings, which still contribute. Turn it on or off, choose a window of 1 to 30 days, and set the minimum chapters counted in Recommendation Settings under Taste and Filters. Blocked and disliked tags are never boosted, and titles you rated Dislike or Not interested are ignored.
+        - **Group rating for linked versions:** Track Other Versions shows the current rating of the confirmed group, or Not rated, and lets you change it for every confirmed version at once using the usual rating choices. A newly confirmed version receives the group's rating when automatic rating sync is on, without overwriting a rating you set yourself.
+        - **Use less data on For You:** New Automatic, Always and Never choices in Recommendation Settings under Speed and data. When saving data, For You skips the optional extra discovery page and Latest exploration, tries fewer search variations per source, and stops once about half the usual number of rows are ready. Automatic saves data on a metered or slow connection. Every source is still searched and your filters are unchanged.
+        - **Automatic source check:** Find new sources can re-check your sources on a schedule you choose: every 7, 14 or 30 days, or any number of days from 1 to 90. It is off until you turn it on, can wait for Wi-Fi and a charged battery, only re-checks sources whose result is missing or out of date, and never installs or removes a source or changes your source order. With Use results on For You on, For You skips a source only when its latest check found no usable picks and recent For You refreshes showed nothing from it either; Troubleshooting lists any skipped source.
+
+        ##### Improve
+
+        - **Tracker refresh:** Pulling down to refresh a tracked manga now always uploads your newer reading progress, even with "Sync reading progress from connected trackers" off. That setting still decides whether the tracker's progress marks your chapters as read.
+        - **Tracker retries:** Queued progress uploads that the tracker already has are dropped instead of being sent again.
+        - **For You source scheduling:** The next source starts as soon as a search slot is free, instead of waiting for a whole group of five sources to finish, and sources still running are cancelled once enough rows are ready.
+        - **Best Version:** Confirming a Best Version also applies the confirmed group's rating to the chosen version.
+        - **Recommendation Settings:** Rebuilt around six pages that follow what you want to do: Your taste, For You feed, Find new sources, Speed and data, Linked versions and ratings, and Troubleshooting. Each row shows its current value, the tab row that repeated on every page is gone, and Languages now sits with Your taste. Check my sources shows its results right after the Start button, says why Start is unavailable when it is, and source loading problems are listed under Troubleshooting instead of a permanent warning. Every setting is still there.
+
+        ##### Fix
+
+        - **Hide manga you already know:** Titles remembered from earlier For You refreshes are now checked against what you have since rated, added or read, so a title you liked no longer reappears after Refresh.
+        - **Rating linked versions:** Group ratings now save for linked versions you have not opened yet.
+        - **Tracker progress on other versions:** When two versions of a manga are tracked on the same tracker entry, reading one, changing it in the tracking sheet, or refreshing it now updates the other's tracker progress straight away. Only the tracker record is shared: no extra tracker requests are made and no chapters are marked on other sources until you open them. With "Track linked versions together" on, linking a tracker entry to one version also links it to the other confirmed versions that do not have one yet.
+
         ## KMK-Recs v0.8.23.1
 
         The v0.8.23 feature set, with follow-up fixes for updates, reading, and extension recovery.

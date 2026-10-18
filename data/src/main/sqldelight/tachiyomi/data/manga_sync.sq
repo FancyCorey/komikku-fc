@@ -39,6 +39,12 @@ WHERE _id = :id;
 getTracksByMangaIds:
 SELECT * FROM manga_sync WHERE manga_id IN :mangaIds;
 
+-- KMK v0.8.24: every manga row bound to the same remote tracker entry (other versions of one manga)
+getTracksByRemoteId:
+SELECT *
+FROM manga_sync
+WHERE sync_id = :syncId AND remote_id = :remoteId;
+
 getTracksByMangaId:
 SELECT *
 FROM manga_sync

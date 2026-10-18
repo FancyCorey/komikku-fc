@@ -154,6 +154,10 @@ abstract class BaseTracker(
             update(track)
             track.toDomainTrack(idRequired = false)?.let {
                 insertTrack.await(it)
+                // KMK --> v0.8.24: the tracker entry is universal across versions of a manga
+                eu.kanade.domain.track.interactor.MirrorTrackToLinkedVersions(insertTrack = { insertTrack })
+                    .await(it, authoritative = true)
+                // KMK <--
             }
         } catch (e: CancellationException) {
             throw e

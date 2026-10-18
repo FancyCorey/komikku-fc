@@ -33,23 +33,37 @@ class DelayedTrackingUpdateJob(private val context: Context, workerParams: Worke
         val delayedTrackingStore = Injekt.get<DelayedTrackingStore>()
 
         withIOContext {
-            delayedTrackingStore.getItems()
-                .mapNotNull {
-                    val track = getTracks.awaitOne(it.trackId)
-                    if (track == null) {
-                        delayedTrackingStore.remove(it.trackId)
-                    }
-                    track?.copy(lastChapterRead = it.lastChapterRead.toDouble())
-                }
-                .forEach { track ->
-                    logcat(LogPriority.DEBUG) {
-                        "Updating delayed track item: ${track.mangaId}, last chapter read: ${track.lastChapterRead}"
-                    }
-                    trackChapter.await(context, track.mangaId, track.lastChapterRead, setupJobOnFailure = false)
-                }
+            processQueuedItems(getTracks, trackChapter, delayedTrackingStore)
         }
 
         return if (delayedTrackingStore.getItems().isEmpty()) Result.success() else Result.retry()
+    }
+
+    internal suspend fun processQueuedItems(
+        getTracks: GetTracks,
+        trackChapter: TrackChapter,
+        delayedTrackingStore: DelayedTrackingStore,
+    ) {
+        delayedTrackingStore.getItems().forEach { item ->
+            val track = getTracks.awaitOne(item.trackId)
+            when {
+                track == null -> delayedTrackingStore.remove(item.trackId)
+                track.lastChapterRead >= item.lastChapterRead.toDouble() -> {
+                    delayedTrackingStore.removeIfAtMost(item.trackId, track.lastChapterRead)
+                }
+                else -> {
+                    logcat(LogPriority.DEBUG) {
+                        "Updating delayed track item: ${track.mangaId}, last chapter read: ${item.lastChapterRead}"
+                    }
+                    trackChapter.await(
+                        context,
+                        track.mangaId,
+                        item.lastChapterRead.toDouble(),
+                        setupJobOnFailure = false,
+                    )
+                }
+            }
+        }
     }
 
     companion object {

@@ -61,6 +61,7 @@ class TasteRepositoryImpl(
     }
 
     override suspend fun upsertMangaTaste(taste: MangaTaste) {
+        require(taste.mangaId > 0L) { "A MangaTaste must reference a persisted Manga row" }
         handler.await(inTransaction = true) {
             // Remove any existing row with the same source+url that has a different manga_id.
             // This handles cross-device restore or different-path navigation giving different local IDs.
@@ -75,6 +76,27 @@ class TasteRepositoryImpl(
                 createdAt = taste.createdAt,
                 updatedAt = taste.updatedAt,
             )
+        }
+    }
+
+    override suspend fun insertMangaTasteIfAbsent(taste: MangaTaste): Boolean {
+        require(taste.mangaId > 0L) { "A MangaTaste must reference a persisted Manga row" }
+        return handler.await(inTransaction = true) {
+            val byId = manga_tasteQueries.getByMangaId(taste.mangaId, mangaTasteMapper).executeAsOneOrNull()
+            val bySourceUrl = manga_tasteQueries
+                .getBySourceUrl(taste.source, taste.url, mangaTasteMapper)
+                .executeAsOneOrNull()
+            if (byId != null || bySourceUrl != null) return@await false
+            manga_tasteQueries.upsert(
+                mangaId = taste.mangaId,
+                source = taste.source,
+                url = taste.url,
+                title = taste.title,
+                rating = taste.rating.toLong(),
+                createdAt = taste.createdAt,
+                updatedAt = taste.updatedAt,
+            )
+            true
         }
     }
 

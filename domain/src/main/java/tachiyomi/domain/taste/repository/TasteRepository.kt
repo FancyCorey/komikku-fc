@@ -30,6 +30,9 @@ interface TasteRepository {
 
     suspend fun upsertMangaTaste(taste: MangaTaste)
 
+    /** Atomically inserts [taste] only if neither its local id nor source/url already has a rating. */
+    suspend fun insertMangaTasteIfAbsent(taste: MangaTaste): Boolean
+
     suspend fun deleteMangaTaste(mangaId: Long)
 
     suspend fun deleteMangaTaste(source: Long, url: String)

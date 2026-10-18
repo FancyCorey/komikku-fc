@@ -4,8 +4,10 @@ import cafe.adriel.voyager.core.model.StateScreenModel
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.SChapter
+import exh.recs.matching.ConfirmedGroupTasteRatingActions
 import exh.recs.matching.CrossSourceIdentityDecisionController
 import exh.recs.matching.MangaIdentityKey
+import exh.recs.matching.NoOpConfirmedGroupTasteRatingActions
 import exh.recs.matching.SameMangaCandidateResult
 import exh.util.CrossSourceIdentityUndoJournal
 import exh.util.DispatcherHandle
@@ -138,6 +140,7 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
         getCrossSourceGroupPrimary: GetCrossSourceGroupPrimary = mockk(relaxed = true),
         restoreCrossSourceGroupState: RestoreCrossSourceGroupState = mockk(relaxed = true),
         identityDecisionController: CrossSourceIdentityDecisionController = identityController(),
+        confirmedGroupTasteRatingActions: ConfirmedGroupTasteRatingActions = NoOpConfirmedGroupTasteRatingActions,
         defaultOriginMissing: Boolean = true,
     ): BestVersionCompareScreenModel {
         if (defaultOriginMissing) {
@@ -159,6 +162,7 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
             getCrossSourceGroupPrimary = getCrossSourceGroupPrimary,
             restoreCrossSourceGroupState = restoreCrossSourceGroupState,
             identityController = identityDecisionController,
+            confirmedGroupTasteRatingActions = confirmedGroupTasteRatingActions,
         )
     }
 
@@ -321,6 +325,59 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
     }
 
     @Test
+    fun `successful Best Version migration retries rating propagation after tracking can be created`() = runTest {
+        val origin = manga(source = 1L, url = "/origin")
+        val target = manga(source = 2L, url = "/target", id = 99L)
+        val originLink = CrossSourceMangaLink(1L, "/origin", "origin-group", "Origin", 1L, 1L)
+        val targetLink = CrossSourceMangaLink(2L, "/target", "target-group", "Target", 2L, 2L)
+        val events = mutableListOf<String>()
+        var migrationHasCreatedTargetTracking = false
+        val getLinks = mockk<GetCrossSourceMangaLinks>()
+        val getPrimary = mockk<GetCrossSourceGroupPrimary>(relaxed = true)
+        val restoreGroups = mockk<RestoreCrossSourceGroupState>(relaxed = true)
+        val migrateMangaUseCase = mockk<MigrateMangaUseCase>()
+        coEvery { getLinks.awaitBySourceUrl(1L, "/origin") } returns originLink
+        coEvery { getLinks.awaitBySourceUrl(2L, "/target") } returns targetLink
+        coEvery { getLinks.awaitByGroupId("target-group") } returns listOf(targetLink)
+        coEvery { restoreGroups.await(any(), any(), any(), any()) } coAnswers {
+            events += "group-persisted"
+            Unit
+        }
+        coEvery {
+            migrateMangaUseCase(current = eq(origin), target = eq(target), replace = eq(false), presetFlags = any(), throttleFunc = any())
+        } coAnswers {
+            events += "migration-success"
+            migrationHasCreatedTargetTracking = true
+            MigrationOutcome.Success(requestedFlags = emptySet(), completedFlags = emptySet(), skippedFlags = emptySet())
+        }
+        val ratingActions = object : ConfirmedGroupTasteRatingActions {
+            override suspend fun propagateToConfirmedMember(origin: Manga, member: Manga) {
+                events += if (migrationHasCreatedTargetTracking) "rating-after-tracking" else "rating-before-tracking"
+            }
+
+            override suspend fun currentRating(origin: Manga): tachiyomi.domain.taste.model.MangaRating? = null
+            override suspend fun setGroupRating(origin: Manga, rating: tachiyomi.domain.taste.model.MangaRating?) = Unit
+        }
+        val model = buildModel(
+            migrateMangaUseCase = migrateMangaUseCase,
+            getCrossSourceMangaLinks = getLinks,
+            getCrossSourceGroupPrimary = getPrimary,
+            restoreCrossSourceGroupState = restoreGroups,
+            confirmedGroupTasteRatingActions = ratingActions,
+        )
+        model.seedReadyToMigrate(origin, target)
+
+        model.confirmMigration(replace = false)
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf("group-persisted", "rating-before-tracking", "migration-success", "rating-after-tracking"),
+            events,
+        )
+        assertEquals(BestVersionStep.Done, model.state.value.step)
+    }
+
+    @Test
     fun `a successful migration records exactly one MIGRATION_COMPLETED receipt when Evaluation Mode is on`() = runTest {
         val origin = manga(source = 1L, url = "/origin")
         val target = manga(source = 2L, url = "/target", id = 99L)
@@ -372,6 +429,7 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
         val sourcePreferences = SourcePreferences(FakePreferenceStore())
         sourcePreferences.evaluationMode().set(true)
         val migrateMangaUseCase = mockk<MigrateMangaUseCase>()
+        val ratingActions = mockk<ConfirmedGroupTasteRatingActions>(relaxed = true)
         coEvery { migrateMangaUseCase(current = eq(origin), target = eq(target), replace = eq(false), presetFlags = any(), throttleFunc = any()) } returns
             MigrationOutcome.PartialFailure(
                 requestedFlags = emptySet(),
@@ -381,7 +439,11 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
                 finalUpdateFailed = true,
                 cause = IllegalStateException("boom"),
             )
-        val model = buildModel(migrateMangaUseCase = migrateMangaUseCase, sourcePreferences = sourcePreferences)
+        val model = buildModel(
+            migrateMangaUseCase = migrateMangaUseCase,
+            sourcePreferences = sourcePreferences,
+            confirmedGroupTasteRatingActions = ratingActions,
+        )
         model.seedReadyToMigrate(origin, target)
 
         model.confirmMigration(replace = false)
@@ -391,6 +453,7 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
         assertTrue(!model.state.value.isMigrating)
         assertTrue(!model.state.value.migrationComplete)
         assertTrue(NonUndoableEventJournal.isEmpty(), "a partial failure must never record a success receipt")
+        coVerify(exactly = 1) { ratingActions.propagateToConfirmedMember(origin, target) }
     }
 
     @Test
@@ -424,6 +487,7 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
         val getPrimary = mockk<GetCrossSourceGroupPrimary>()
         val restoreGroups = mockk<RestoreCrossSourceGroupState>(relaxed = true)
         val migrateMangaUseCase = mockk<MigrateMangaUseCase>()
+        val events = mutableListOf<String>()
         coEvery { getLinks.awaitBySourceUrl(1L, "/origin") } returns originLink
         coEvery { getLinks.awaitBySourceUrl(2L, "/target") } returns targetLink
         coEvery { getLinks.awaitByGroupId("target-group") } returns listOf(targetLink, unrelatedLink)
@@ -435,12 +499,28 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
         )
         coEvery {
             migrateMangaUseCase(current = eq(origin), target = eq(target), replace = eq(false), presetFlags = any(), throttleFunc = any())
-        } returns MigrationOutcome.NotStarted(cause = IllegalStateException("copy unavailable"))
+        } coAnswers {
+            events += "migration"
+            MigrationOutcome.NotStarted(cause = IllegalStateException("copy unavailable"))
+        }
+        coEvery { restoreGroups.await(any(), any(), any(), any()) } coAnswers {
+            events += "group"
+            Unit
+        }
+        val ratingActions = object : ConfirmedGroupTasteRatingActions {
+            override suspend fun propagateToConfirmedMember(origin: Manga, member: Manga) {
+                events += "rating-attempt"
+            }
+
+            override suspend fun currentRating(origin: Manga): tachiyomi.domain.taste.model.MangaRating? = null
+            override suspend fun setGroupRating(origin: Manga, rating: tachiyomi.domain.taste.model.MangaRating?) = Unit
+        }
         val model = buildModel(
             migrateMangaUseCase = migrateMangaUseCase,
             getCrossSourceMangaLinks = getLinks,
             getCrossSourceGroupPrimary = getPrimary,
             restoreCrossSourceGroupState = restoreGroups,
+            confirmedGroupTasteRatingActions = ratingActions,
         )
         model.seedReadyToMigrate(origin, target)
 
@@ -460,6 +540,7 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
         assertEquals(setOf(1L to "/origin", 2L to "/target"), linkWrites.captured.map { it.source to it.url }.toSet())
         assertEquals(setOf("origin-group"), linkWrites.captured.map { it.groupId }.toSet())
         assertEquals(listOf(unrelatedLink.source to unrelatedLink.url), primaryWrites.captured.map { it.source to it.url })
+        assertEquals(listOf("group", "rating-attempt", "migration"), events)
         coVerify(exactly = 1) { migrateMangaUseCase(current = eq(origin), target = eq(target), replace = eq(false), presetFlags = any(), throttleFunc = any()) }
         assertTrue(model.state.value.step is BestVersionStep.Error)
     }
@@ -474,11 +555,13 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
         val getLinks = mockk<GetCrossSourceMangaLinks>(relaxed = true)
         val restoreGroups = mockk<RestoreCrossSourceGroupState>(relaxed = true)
         val migrateMangaUseCase = mockk<MigrateMangaUseCase>(relaxed = true)
+        val ratingActions = mockk<ConfirmedGroupTasteRatingActions>(relaxed = true)
         val model = buildModel(
             migrateMangaUseCase = migrateMangaUseCase,
             getCrossSourceMangaLinks = getLinks,
             restoreCrossSourceGroupState = restoreGroups,
             identityDecisionController = identityController,
+            confirmedGroupTasteRatingActions = ratingActions,
         )
         model.seedReadyToMigrate(origin, target)
 
@@ -488,6 +571,7 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
         coVerify(exactly = 0) { getLinks.awaitBySourceUrl(any(), any()) }
         coVerify(exactly = 0) { restoreGroups.await(any(), any(), any(), any()) }
         coVerify(exactly = 0) { migrateMangaUseCase(any(), any(), any()) }
+        coVerify(exactly = 0) { ratingActions.propagateToConfirmedMember(any(), any()) }
     }
 
     @Test
@@ -529,9 +613,14 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
         val sourcePreferences = SourcePreferences(FakePreferenceStore())
         sourcePreferences.evaluationMode().set(true)
         val migrateMangaUseCase = mockk<MigrateMangaUseCase>()
+        val ratingActions = mockk<ConfirmedGroupTasteRatingActions>(relaxed = true)
         coEvery { migrateMangaUseCase(current = eq(origin), target = eq(target), replace = eq(false), presetFlags = any(), throttleFunc = any()) } throws
             CancellationException("migration cancelled")
-        val model = buildModel(migrateMangaUseCase = migrateMangaUseCase, sourcePreferences = sourcePreferences)
+        val model = buildModel(
+            migrateMangaUseCase = migrateMangaUseCase,
+            sourcePreferences = sourcePreferences,
+            confirmedGroupTasteRatingActions = ratingActions,
+        )
         model.seedReadyToMigrate(origin, target)
 
         model.confirmMigration(replace = false)
@@ -545,6 +634,7 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
         assertTrue(model.state.value.step !is BestVersionStep.Error, "a real cancellation must never be turned into a fake Error step")
         assertTrue(!model.state.value.migrationComplete, "a cancelled migration must never be marked complete")
         assertEquals(null, model.state.value.completedTargetMangaId, "a cancelled migration must never resolve a completed target")
+        coVerify(exactly = 1) { ratingActions.propagateToConfirmedMember(origin, target) }
     }
 
     @Test
@@ -568,6 +658,7 @@ class BestVersionCompareScreenModelConfirmMigrationTest {
             getCrossSourceGroupPrimary = mockk(relaxed = true),
             restoreCrossSourceGroupState = mockk(relaxed = true),
             identityController = identityController(),
+            confirmedGroupTasteRatingActions = NoOpConfirmedGroupTasteRatingActions,
         )
         val handle = model.javaClass.getDeclaredField("dispatcherHandle").apply { isAccessible = true }.get(model) as DispatcherHandle
         val executorService = (handle.dispatcher as kotlinx.coroutines.ExecutorCoroutineDispatcher).executor as java.util.concurrent.ExecutorService

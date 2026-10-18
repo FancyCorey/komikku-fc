@@ -45,7 +45,7 @@ val Throwable.formattedMessage: String
             // constructed after an install/upgrade race) -- recoverable per-source, not a bug the
             // user can act on beyond retrying, so it gets the same generic non-fatal message as any
             // other unclassified internal failure rather than its raw class name.
-            is UninitializedPropertyAccessException -> return context.stringResource(KMR.strings.rec_error_internal)
+            is UninitializedPropertyAccessException -> return context.stringResource(KMR.strings.error_source_internal)
         }
-        return context.stringResource(KMR.strings.rec_error_internal)
+        return context.stringResource(KMR.strings.error_source_internal)
     }

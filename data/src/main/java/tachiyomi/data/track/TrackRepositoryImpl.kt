@@ -33,6 +33,14 @@ class TrackRepositoryImpl(
         }
     }
 
+    // KMK --> v0.8.24
+    override suspend fun getTracksByRemoteId(trackerId: Long, remoteId: Long): List<Track> {
+        return handler.awaitList {
+            manga_syncQueries.getTracksByRemoteId(trackerId, remoteId, TrackMapper::mapTrack)
+        }
+    }
+    // KMK <--
+
     override fun getTracksAsFlow(): Flow<List<Track>> {
         return handler.subscribeToList {
             manga_syncQueries.getTracks(TrackMapper::mapTrack)

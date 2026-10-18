@@ -656,9 +656,13 @@ class MangaScreenModel(
         )
     }
 
-    private suspend fun syncTrackers() {
+    private suspend fun syncTrackers(manualRefresh: Boolean = false) {
         if (trackPreferences.autoSyncProgressFromTrackers().get()) {
             refreshTrackers(enhancedTrackersOnly = false)
+        } else if (manualRefresh) {
+            // A manual pull always uploads newer local progress; the setting only controls marking local chapters
+            // from the remote record.
+            refreshTrackers(enhancedTrackersOnly = false, uploadOnly = true)
         }
         // Local replay also runs on load and when external tracker syncing is disabled.
         try {
@@ -682,7 +686,7 @@ class MangaScreenModel(
             // KMK -->
             // Await reconciliation after the source refresh so external progress can be mapped
             // onto the newly loaded chapter rows before the screen exposes the refreshed state.
-            syncTrackers()
+            syncTrackers(manualRefresh = manualFetch)
             // KMK <--
             updateSuccessState { it.copy(isRefreshingData = false) }
         }
@@ -1558,11 +1562,12 @@ class MangaScreenModel(
     private suspend fun refreshTrackers(
         // KMK -->
         enhancedTrackersOnly: Boolean = true,
+        uploadOnly: Boolean = false,
         // KMK <--
         refreshTracks: RefreshTracks = Injekt.get(),
     ) {
         // KMK -->
-        refreshTracks.await(mangaId, enhancedTrackersOnly = enhancedTrackersOnly)
+        refreshTracks.await(mangaId, enhancedTrackersOnly = enhancedTrackersOnly, uploadOnly = uploadOnly)
             // KMK <--
             .filter { it.first != null }
             .forEach { (track, e) ->

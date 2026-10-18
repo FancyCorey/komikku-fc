@@ -12,19 +12,20 @@ import org.junit.jupiter.api.Test
  */
 class EdgeQuickAccessPanelLayoutPolicyTest {
 
-    /** The panel always shows exactly the five Recommendation Settings destinations. */
+    /** The panel always shows exactly the six Recommendation Settings destinations. */
     private val destinationCount = RecommendationSettingsQuickAccessDestination.entries.size
 
     @Test
-    fun `all five destinations are preserved`() {
-        assertEquals(5, destinationCount)
+    fun `all six destinations are preserved`() {
+        assertEquals(6, destinationCount)
         assertEquals(
             listOf(
-                RecommendationSettingsQuickAccessDestination.ForYouSources,
-                RecommendationSettingsQuickAccessDestination.TasteAndFilters,
-                RecommendationSettingsQuickAccessDestination.SourceEvaluation,
-                RecommendationSettingsQuickAccessDestination.SourcesToTry,
-                RecommendationSettingsQuickAccessDestination.ManagementAndDiagnostics,
+                RecommendationSettingsQuickAccessDestination.YourTaste,
+                RecommendationSettingsQuickAccessDestination.ForYouFeed,
+                RecommendationSettingsQuickAccessDestination.FindNewSources,
+                RecommendationSettingsQuickAccessDestination.SpeedAndData,
+                RecommendationSettingsQuickAccessDestination.LinkedVersions,
+                RecommendationSettingsQuickAccessDestination.Troubleshooting,
             ),
             RecommendationSettingsQuickAccessDestination.entries.toList(),
         )

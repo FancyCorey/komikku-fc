@@ -110,6 +110,8 @@ class CrossExtensionMatchScreenModel(
     private val localTrackerRepository: LocalTrackerRepository = Injekt.get(),
     private val confirmedGroupLocalTrackingPropagator: ConfirmedGroupLocalTrackingPropagator =
         ConfirmedGroupLocalTrackingPropagator(localTrackerRepository),
+    private val confirmedGroupTasteRatingActions: ConfirmedGroupTasteRatingActions =
+        ConfirmedGroupTasteRatingManager(),
     private val getHistory: GetHistory = Injekt.get(),
     private val getChapter: GetChapter = Injekt.get(),
     // KMK <--
@@ -141,6 +143,7 @@ class CrossExtensionMatchScreenModel(
             val manga = getMangaInteractor.await(originMangaId) ?: return@launch
             originManga = manga
             mutableState.update { it.copy(searchQuery = manga.title) }
+            if (mode is CrossExtensionMatchMode.LocalTracking) loadGroupRating(manga)
             // KMK --> v0.7.0: Phase 2 – multi-query alternate-title matching
             search(CrossExtensionMatchQueryPlanner.buildQueries(manga))
             // KMK <--
@@ -336,6 +339,58 @@ class CrossExtensionMatchScreenModel(
                     selectedKeys = current.selectedKeys + key,
                     manuallyDeselectedKeys = current.manuallyDeselectedKeys - key,
                 )
+            }
+        }
+    }
+
+    fun setGroupRating(rating: MangaRating?) {
+        if (mode !is CrossExtensionMatchMode.LocalTracking) return
+        val origin = originManga ?: return
+        if (state.value.isGroupRatingUpdating || !state.value.isGroupRatingLoaded) return
+        mutableState.update { it.copy(isGroupRatingUpdating = true, groupRatingUpdateFailed = false) }
+        screenModelScope.launch {
+            try {
+                confirmedGroupTasteRatingActions.setGroupRating(origin, rating)
+                val currentRating = confirmedGroupTasteRatingActions.currentRating(origin)
+                mutableState.update {
+                    it.copy(
+                        groupRating = currentRating,
+                        isGroupRatingUpdating = false,
+                        groupRatingUpdateFailed = false,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                val currentRating = try {
+                    confirmedGroupTasteRatingActions.currentRating(origin)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    state.value.groupRating
+                }
+                mutableState.update {
+                    it.copy(
+                        groupRating = currentRating,
+                        isGroupRatingLoaded = true,
+                        isGroupRatingUpdating = false,
+                        groupRatingUpdateFailed = true,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun loadGroupRating(origin: Manga) {
+        mutableState.update { it.copy(isGroupRatingLoaded = false, groupRatingUpdateFailed = false) }
+        screenModelScope.launch {
+            try {
+                val rating = confirmedGroupTasteRatingActions.currentRating(origin)
+                mutableState.update { it.copy(groupRating = rating, isGroupRatingLoaded = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                mutableState.update { it.copy(isGroupRatingLoaded = true, groupRatingUpdateFailed = true) }
             }
         }
     }
@@ -539,6 +594,11 @@ class CrossExtensionMatchScreenModel(
                         listOfNotNull(origin) + targets,
                     )
                 }
+                if (mode is CrossExtensionMatchMode.LocalTracking && origin != null) {
+                    targets.forEach { target ->
+                        confirmedGroupTasteRatingActions.propagateToConfirmedMember(origin, target)
+                    }
+                }
                 // Persist the confirmed group before attaching local tracking. Otherwise a newly
                 // selected version can be rated successfully but miss the tracked-work fan-out
                 // because it was not yet part of the confirmed group at propagation time.
@@ -585,6 +645,10 @@ class CrossExtensionMatchScreenModel(
         val manuallyDeselectedKeys: Set<MangaIdentityKey> = emptySet(),
         val identityFeedback: CrossSourceIdentityMutationResult? = null,
         val isApplying: Boolean = false,
+        val groupRating: MangaRating? = null,
+        val isGroupRatingLoaded: Boolean = false,
+        val isGroupRatingUpdating: Boolean = false,
+        val groupRatingUpdateFailed: Boolean = false,
     ) {
         val progress: Int = items.count { it.value !is MatchItemResult.Loading }
         val total: Int = items.size

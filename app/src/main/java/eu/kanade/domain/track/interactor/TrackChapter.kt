@@ -46,20 +46,35 @@ class TrackChapter(
                 }
 
                 async<Result<Unit>> {
+                    var remoteUpdateSucceeded = false
                     try {
-                        val updatedTrack = service.refresh(track.toDbTrack())
+                        val refreshedTrack = service.refresh(track.toDbTrack())
                             .toDomainTrack(idRequired = true)!!
-                            .copy(lastChapterRead = chapterNumber)
-                        service.update(updatedTrack.toDbTrack(), true)
+                        val targetChapter = maxOf(chapterNumber, delayedTrackingStore.getTarget(track.id) ?: 0.0)
+                        val updatedTrack = refreshedTrack.copy(
+                            lastChapterRead = maxOf(refreshedTrack.lastChapterRead, targetChapter),
+                        )
+                        if (refreshedTrack.lastChapterRead < targetChapter) {
+                            service.update(updatedTrack.toDbTrack(), true)
+                            remoteUpdateSucceeded = true
+                        }
+                        // Persist refreshed remote progress even when it already satisfies the
+                        // queued target; only then may the queue entry be cleared.
                         insertTrack.await(updatedTrack)
-                        delayedTrackingStore.remove(track.id)
+                        delayedTrackingStore.removeIfAtMost(track.id, updatedTrack.lastChapterRead)
+                        // KMK --> v0.8.24: other versions bound to the same remote entry show the new progress
+                        // right away instead of only after their own manual tracker refresh.
+                        MirrorTrackToLinkedVersions({ getTracks }, { insertTrack }).await(updatedTrack)
+                        // KMK <--
                         Result.success(Unit)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        delayedTrackingStore.add(track.id, chapterNumber)
-                        if (setupJobOnFailure) {
-                            DelayedTrackingUpdateJob.setupTask(context)
+                        if (!remoteUpdateSucceeded) {
+                            delayedTrackingStore.add(track.id, chapterNumber)
+                            if (setupJobOnFailure) {
+                                DelayedTrackingUpdateJob.setupTask(context)
+                            }
                         }
                         Result.failure(e)
                     }

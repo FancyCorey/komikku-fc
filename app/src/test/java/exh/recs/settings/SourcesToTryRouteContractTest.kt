@@ -27,7 +27,6 @@ class SourcesToTryRouteContractTest {
             "screenModel::retrySuggestionInstallFailures",
             "screenModel::dismissSuggestionInstallFeedback",
             "navigateUp = navigator::pop",
-            "navigator.replace(destination.toScreen())",
         ).forEach { contract ->
             assertTrue(route.contains(contract), "Sources To Try route must retain $contract")
         }

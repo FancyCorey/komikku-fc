@@ -72,6 +72,7 @@ import tachiyomi.domain.taste.interactor.GetTasteDiagnostics
 import tachiyomi.domain.taste.interactor.GetTasteProfile
 import tachiyomi.domain.taste.interactor.GetTasteSuggestions
 import tachiyomi.domain.taste.interactor.GetUnsafeExtensionPackages
+import tachiyomi.domain.taste.interactor.InsertMangaTasteIfAbsent
 import tachiyomi.domain.taste.interactor.MarkSourceEvaluationUnsafe
 import tachiyomi.domain.taste.interactor.PruneRecommendationCandidateMemory
 import tachiyomi.domain.taste.interactor.ReplaceAlternateSourceBridge
@@ -136,7 +137,8 @@ class KMKDomainModule : InjektModule {
         addSingletonFactory<ChapterLinePreferenceRepository> { ChapterLinePreferenceRepositoryImpl(get()) }
         addFactory { GetMangaTaste(get()) }
         addFactory { SetMangaTaste(get()) }
-        addFactory { SetMangaTasteBatch(get()) }
+        addFactory { SetMangaTasteBatch(get(), get()) }
+        addFactory { InsertMangaTasteIfAbsent(get(), get()) }
         addFactory { ClearMangaTaste(get()) }
         addFactory {
             exh.recs.matching.ConfirmedTrackedMangaTasteTargets(get(), get(), get(), get())
@@ -146,6 +148,8 @@ class KMKDomainModule : InjektModule {
         }
         addFactory { ConfirmedGroupLocalTrackingPropagator(get()) }
         addFactory { GetTasteProfile(get(), get()) }
+        // KMK v0.8.24: recent-reading tag weights (read-only, computed per For You refresh, nothing persisted)
+        addFactory { exh.recs.GetRecentReadingTagWeights(get(), get(), get(), get(), get()) }
         // KMK v0.8.10: Taste Suggestions -- deliberately a separate read-only interactor from
         // GetTasteProfile above (which feeds live recommendation/source-evaluation scoring and is
         // not touched by this addition).

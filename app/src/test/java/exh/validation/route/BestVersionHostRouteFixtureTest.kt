@@ -15,6 +15,7 @@ import exh.recs.bestversion.fixture.BestVersionPairedFixtureRouteBinding
 import exh.recs.bestversion.fixture.BestVersionPairedFixtureRouteResolverContract
 import exh.recs.matching.CrossSourceIdentityDecisionController
 import exh.recs.matching.MangaIdentityKey
+import exh.recs.matching.NoOpConfirmedGroupTasteRatingActions
 import exh.recs.matching.SameMangaCandidateResult
 import exh.recs.matching.SameMangaMatchSettings
 import exh.recs.matching.SameMangaPreselectionMode
@@ -1183,6 +1184,7 @@ private class BestVersionHostRouteFixture(
                 getCrossSourceMangaLinks = GetCrossSourceMangaLinks(identityRepository),
                 getCrossSourceGroupPrimary = GetCrossSourceGroupPrimary(identityRepository),
                 restoreCrossSourceGroupState = RestoreCrossSourceGroupState(identityRepository),
+                confirmedGroupTasteRatingActions = NoOpConfirmedGroupTasteRatingActions,
             )
         }
     }

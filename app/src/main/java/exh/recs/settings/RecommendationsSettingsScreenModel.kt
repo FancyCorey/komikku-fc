@@ -167,6 +167,11 @@ class RecommendationsSettingsScreenModel(
     // KMK --> v0.7.26
     private val minChapterCountPref = sourcePreferences.recommendationMinChapterCount()
     // KMK <--
+    // KMK --> v0.8.24 recent-reading profile
+    private val recentReadingEnabledPref = sourcePreferences.recommendationRecentReadingEnabled()
+    private val recentReadingWindowDaysPref = sourcePreferences.recommendationRecentReadingWindowDays()
+    private val recentReadingMinChaptersPref = sourcePreferences.recommendationRecentReadingMinChapters()
+    // KMK <--
     // KMK --> v0.7.34: enrichment cap preference
     private val enrichmentCapPref = sourcePreferences.recommendationEnrichmentCap()
     // KMK <--
@@ -190,6 +195,8 @@ class RecommendationsSettingsScreenModel(
     private val forYouPreviewSnapshotPref = sourcePreferences.recommendationForYouPreviewSnapshot()
     // KMK --> EC-04 2026-09-01: configurable discovery-effort policy
     private val discoveryEffortLevelPref = sourcePreferences.recommendationDiscoveryEffortLevel()
+    // KMK v0.8.24
+    private val dataSavingPref = sourcePreferences.recommendationDataSaving()
     private val discoveryCandidateBudgetPref = sourcePreferences.recommendationDiscoveryCandidateBudget()
     // KMK <--
 
@@ -232,6 +239,11 @@ class RecommendationsSettingsScreenModel(
                 // groupPreviewBudget already get below.
                 minChapterCount = exh.recs.RecommendationMinChapterCountPolicy.resolve(minChapterCountPref.get()),
                 // KMK <--
+                // KMK --> v0.8.24: resolved on read, like every bounded value above
+                recentReadingEnabled = recentReadingEnabledPref.get(),
+                recentReadingWindowDays = exh.recs.RecentReadingPolicy.resolveWindowDays(recentReadingWindowDaysPref.get()),
+                recentReadingMinChapters = exh.recs.RecentReadingPolicy.resolveMinChapters(recentReadingMinChaptersPref.get()),
+                // KMK <--
                 // KMK --> v0.7.34
                 enrichmentCap = RecommendationEnrichmentCapPolicy.resolve(enrichmentCapPref.get()),
                 // KMK <--
@@ -239,6 +251,8 @@ class RecommendationsSettingsScreenModel(
                 // an unknown/corrupt/blank stored value renders as the real DEFAULT (STANDARD)
                 // instead of an unlabelled raw string.
                 discoveryEffortLevel = exh.recs.memory.DiscoveryEffortLevel.resolve(discoveryEffortLevelPref.get()),
+                // KMK v0.8.24
+                dataSaving = exh.recs.ForYouDataSaving.resolve(dataSavingPref.get()),
                 discoveryCandidateBudget = exh.recs.memory.RecommendationDiscoveryCandidateBudgetPolicy.resolve(
                     discoveryCandidateBudgetPref.get(),
                 ),
@@ -602,6 +616,41 @@ class RecommendationsSettingsScreenModel(
     }
     // KMK <--
 
+    // KMK --> v0.8.24 recent-reading profile. Journalled in Action History like the other recommendation settings; every value
+    // is resolved through RecentReadingPolicy before it is stored or shown.
+    fun setRecentReadingEnabled(enabled: Boolean) {
+        journalPreferenceChange(
+            exh.util.PreferenceJournalActionType.RECENT_READING,
+            "recentReadingEnabled",
+            recentReadingEnabledPref,
+            enabled,
+        ) { recentReadingEnabledPref.set(enabled) }
+        mutableState.update { it.copy(recentReadingEnabled = enabled) }
+    }
+
+    fun setRecentReadingWindowDays(value: Int) {
+        val resolved = exh.recs.RecentReadingPolicy.resolveWindowDays(value)
+        journalPreferenceChange(
+            exh.util.PreferenceJournalActionType.RECENT_READING,
+            "recentReadingWindowDays",
+            recentReadingWindowDaysPref,
+            resolved,
+        ) { recentReadingWindowDaysPref.set(resolved) }
+        mutableState.update { it.copy(recentReadingWindowDays = resolved) }
+    }
+
+    fun setRecentReadingMinChapters(value: Int) {
+        val resolved = exh.recs.RecentReadingPolicy.resolveMinChapters(value)
+        journalPreferenceChange(
+            exh.util.PreferenceJournalActionType.RECENT_READING,
+            "recentReadingMinChapters",
+            recentReadingMinChaptersPref,
+            resolved,
+        ) { recentReadingMinChaptersPref.set(resolved) }
+        mutableState.update { it.copy(recentReadingMinChapters = resolved) }
+    }
+    // KMK <--
+
     /**
      * Persists the bounded Latest-catalogue exploration share. Validated on the way in (same
      * contract as [setMinChapterCount] and the budget setters), so an unsupported value can never
@@ -707,6 +756,18 @@ class RecommendationsSettingsScreenModel(
     // the next For You refresh reads the resolved level fresh from sourcePreferences at its own
     // discoverAdditionalPage call site; no cache fingerprint dependency is needed since this only
     // changes how many additional pages a refresh probes, not what page-1 or cached content means.
+    // KMK --> v0.8.24 For You data saving. Journalled in Action History.
+    fun setDataSaving(value: exh.recs.ForYouDataSaving) {
+        journalPreferenceChange(
+            exh.util.PreferenceJournalActionType.DATA_SAVING,
+            "dataSaving",
+            dataSavingPref,
+            value.storedValue,
+        ) { dataSavingPref.set(value.storedValue) }
+        mutableState.update { it.copy(dataSaving = value) }
+    }
+    // KMK <--
+
     fun setDiscoveryEffortLevel(value: exh.recs.memory.DiscoveryEffortLevel) {
         journalPreferenceChange(
             exh.util.PreferenceJournalActionType.DISCOVERY_EFFORT_LEVEL,
@@ -1612,11 +1673,18 @@ class RecommendationsSettingsScreenModel(
         // KMK --> v0.7.26
         val minChapterCount: Int = 0,
         // KMK <--
+        // KMK --> v0.8.24 recent-reading profile
+        val recentReadingEnabled: Boolean = exh.recs.RecentReadingPolicy.DEFAULT_ENABLED,
+        val recentReadingWindowDays: Int = exh.recs.RecentReadingPolicy.DEFAULT_WINDOW_DAYS,
+        val recentReadingMinChapters: Int = exh.recs.RecentReadingPolicy.DEFAULT_MIN_CHAPTERS,
+        // KMK <--
         // KMK --> v0.7.34: enrichment cap — number of candidates to enrich per source
         val enrichmentCap: Int = 5,
         // KMK <--
         // KMK --> EC-04 2026-09-01: configurable discovery-effort policy
         val discoveryEffortLevel: exh.recs.memory.DiscoveryEffortLevel = exh.recs.memory.DiscoveryEffortLevel.DEFAULT,
+        // KMK v0.8.24
+        val dataSaving: exh.recs.ForYouDataSaving = exh.recs.ForYouDataSaving.DEFAULT,
         val discoveryCandidateBudget: Int = exh.recs.memory.RecommendationDiscoveryCandidateBudgetPolicy.DEFAULT,
         // KMK <--
         // KMK --> v0.8.2: visible manga cards per ordinary For You source row

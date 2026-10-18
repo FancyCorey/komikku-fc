@@ -39,6 +39,9 @@ class RefreshTracks(
         mangaId: Long,
         // KMK -->
         enhancedTrackersOnly: Boolean = true,
+        // KMK --> v0.8.24: refresh the remote record and upload newer local progress, but do not mark local
+        // chapters or the local tracker from the remote record (that stays behind the sync-from-trackers setting).
+        uploadOnly: Boolean = false,
         // KMK <--
     ): List<Pair<Tracker?, Throwable>> {
         return supervisorScope {
@@ -50,29 +53,40 @@ class RefreshTracks(
                         return@async try {
                             val updatedTrack = service!!.refresh(track.toDbTrack()).toDomainTrack()!!
                             insertTrack.await(updatedTrack)
-                            try {
-                                syncLocalTrackingFromExternal?.sync(updatedTrack, service)
-                            } catch (error: CancellationException) {
-                                throw error
-                            } catch (error: Throwable) {
-                                logcat(LogPriority.ERROR) {
-                                    "Local tracking sync after tracker refresh failed: ${error.message}"
+                            // KMK --> v0.8.24: the tracker entry is universal across versions of a manga
+                            MirrorTrackToLinkedVersions({ getTracks }, { insertTrack }).await(updatedTrack, authoritative = true)
+                            // KMK <--
+                            // KMK -->
+                            if (!uploadOnly) {
+                                // KMK <--
+                                try {
+                                    syncLocalTrackingFromExternal?.sync(updatedTrack, service)
+                                } catch (error: CancellationException) {
+                                    throw error
+                                } catch (error: Throwable) {
+                                    logcat(LogPriority.ERROR) {
+                                        "Local tracking sync after tracker refresh failed: ${error.message}"
+                                    }
                                 }
                             }
                             // KMK -->
-                            if (!enhancedTrackersOnly) {
-                                syncChapterProgressWithTrack.sync(mangaId, updatedTrack, service)
+                            if (uploadOnly) {
+                                syncChapterProgressWithTrack.sync(mangaId, updatedTrack, service, applyRemoteToLocal = false)
                             } else {
-                                // KMK <--
-                                syncChapterProgressWithTrack.await(mangaId, updatedTrack, service)
-                            }
-                                // KMK -->
-                                ?.let {
-                                    val context = Injekt.get<Application>()
-                                    withUIContext {
-                                        context.toast(context.stringResource(KMR.strings.sync_progress_from_trackers_up_to_chapter, it))
-                                    }
+                                if (!enhancedTrackersOnly) {
+                                    syncChapterProgressWithTrack.sync(mangaId, updatedTrack, service)
+                                } else {
+                                    // KMK <--
+                                    syncChapterProgressWithTrack.await(mangaId, updatedTrack, service)
                                 }
+                                    // KMK -->
+                                    ?.let {
+                                        val context = Injekt.get<Application>()
+                                        withUIContext {
+                                            context.toast(context.stringResource(KMR.strings.sync_progress_from_trackers_up_to_chapter, it))
+                                        }
+                                    }
+                            }
                             // KMK <--
                             null
                         } catch (e: CancellationException) {

@@ -16,6 +16,9 @@ import tachiyomi.domain.taste.model.normalizeTag
  * Soft score (summed, all components are additive):
  * - Explicit tag preference: +3 per preferred tag group, -2 per disliked tag group.
  * - Learned tag weight: contribution from [TasteProfile.learnedTagWeights] per matched group.
+ * - Recent reading (v0.8.24): positive contribution from [TasteProfile.recentTagWeights] per matched group. It is
+ *   additive and never negative; a Block still rejects before any scoring and explicit tag Dislike groups never
+ *   carry a recent weight (see GetRecentReadingTagWeights).
  * - Source affinity: [TasteProfile.sourceAffinity] value for the candidate's source (weak signal).
  *
  * The score is not normalized to [0,1]; the Browse Recommendations tab uses it only for
@@ -79,22 +82,35 @@ internal object PersonalRecommendationScorer {
             }
         }
 
+        // KMK --> v0.8.24: recent-reading weights (positive only; each tag group counted once per candidate)
+        var recentScore = 0.0
+        val recentMatches = mutableListOf<String>()
+        for (group in candidateGroups.distinct()) {
+            val weight = profile.recentTagWeights[group] ?: 0.0
+            if (weight > 0.0) {
+                recentScore += weight
+                recentMatches.add(group)
+            }
+        }
+        // KMK <--
+
         // Source affinity (weak)
         val sourceAffinityScore = profile.sourceAffinity[candidate.source] ?: 0.0
 
-        val totalScore = explicitScore + learnedScore + sourceAffinityScore
+        val totalScore = explicitScore + learnedScore + recentScore + sourceAffinityScore
 
         // Build human-readable reason strings
         val reasons = buildList {
             if (explicitMatches.isNotEmpty()) add("Preferred tags: ${explicitMatches.joinToString()}")
             if (learnedMatches.isNotEmpty()) add("Liked tags: ${learnedMatches.joinToString()}")
+            if (recentMatches.isNotEmpty()) add("Recently read tags: ${recentMatches.joinToString()}")
         }
 
         return ScoredCandidate(
             manga = candidate,
             score = totalScore,
             blocked = false,
-            matchedGroups = (explicitMatches + learnedMatches).distinct(),
+            matchedGroups = (explicitMatches + learnedMatches + recentMatches).distinct(),
             reasons = reasons,
             hasNegativeTasteEvidence = candidateGroups.any {
                 profile.explicitTagPreferences[it] == TagPreference.DISLIKE.value ||

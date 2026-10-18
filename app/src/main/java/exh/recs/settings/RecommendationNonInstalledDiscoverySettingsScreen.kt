@@ -155,10 +155,6 @@ class RecommendationNonInstalledDiscoverySettingsScreen(
                 bottom = contentPadding.calculateBottomPadding(),
             )
             Column(modifier = Modifier.fillMaxSize().padding(top = contentPadding.calculateTopPadding())) {
-                RecommendationSettingsQuickAccessRow(
-                    current = RecommendationSettingsQuickAccessDestination.SourcesToTry,
-                    onNavigate = { destination -> navigator.replace(destination.toScreen()) },
-                )
                 LazyColumn(state = lazyListState, contentPadding = listContentPadding, modifier = Modifier.weight(1f)) {
                     item(key = "sources_to_try_header") {
                         SectionHeader(

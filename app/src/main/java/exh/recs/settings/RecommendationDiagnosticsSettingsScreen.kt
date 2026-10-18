@@ -88,7 +88,12 @@ import tachiyomi.core.common.i18n.stringResource as contextStringResource
 class RecommendationDiagnosticsSettingsScreen(
     // KMK v0.8.10: see former RecommendationForYouSettingsScreen.anchor.
     val anchor: String? = null,
+    // KMK v0.8.24: which task page of the split list this instance shows.
+    section: RecommendationDiagnosticsSection = RecommendationDiagnosticsSection.ALL,
 ) : Screen() {
+
+    // KMK v0.8.24: a deep link that only names an anchor (settings search) opens the task page that owns it.
+    val section: RecommendationDiagnosticsSection = RecommendationDiagnosticsSection.resolve(section, anchor)
 
     @Composable
     override fun Content() {
@@ -105,11 +110,12 @@ class RecommendationDiagnosticsSettingsScreen(
         var focusRenameTarget by remember { mutableStateOf<SavedFocusMode?>(null) }
         var focusDeleteTarget by remember { mutableStateOf<SavedFocusMode?>(null) }
         var showPreselectionModeDialog by remember { mutableStateOf(false) }
+        // KMK v0.8.24: source loading problems are listed here (and counted on the hub), not as a permanent banner.
+        val healthIssues by rememberSourceHealthIssues()
+        val skippedSourceNames by rememberAutoCheckSkippedSourceNames()
         val lazyListState = rememberLazyListState()
-        val itemKeysInOrder = remember {
+        val itemKeysInOrder = remember(section) {
             listOf(
-                "recommendation_languages_header",
-                "recommendation_languages_content",
                 "display_performance_header",
                 "result_budget",
                 "refresh_hint",
@@ -128,6 +134,8 @@ class RecommendationDiagnosticsSettingsScreen(
                 "best_version_sample_size",
                 "best_version_avoid_first_pages",
                 "group_preview_budget",
+                "runtime_health_issues",
+                "auto_check_skipped_sources",
                 "management_header",
                 "quality_signal_history_entry",
                 "discovery_cache_header",
@@ -140,7 +148,7 @@ class RecommendationDiagnosticsSettingsScreen(
                 "taste_diagnostics_content",
                 "source_metadata_tag_diagnostics_header",
                 "source_metadata_tag_diagnostics_content",
-            )
+            ).filter { section.includes(it) }
         }
         ScrollToAnchorEffect(lazyListState, itemKeysInOrder, anchor)
 
@@ -150,7 +158,7 @@ class RecommendationDiagnosticsSettingsScreen(
         Scaffold(
             topBar = { scrollBehavior ->
                 AppBar(
-                    title = stringResource(KMR.strings.rec_settings_index_diagnostics),
+                    title = stringResource(section.titleRes),
                     navigateUp = navigator::pop,
                     actions = {
                         RecommendationSettingsDetailActions(
@@ -169,350 +177,447 @@ class RecommendationDiagnosticsSettingsScreen(
                 bottom = contentPadding.calculateBottomPadding(),
             )
             Column(modifier = Modifier.fillMaxSize().padding(top = contentPadding.calculateTopPadding())) {
-                RecommendationSettingsQuickAccessRow(
-                    current = RecommendationSettingsQuickAccessDestination.ManagementAndDiagnostics,
-                    onNavigate = { destination -> navigator.replace(destination.toScreen()) },
-                )
                 LazyColumn(state = lazyListState, contentPadding = listContentPadding, modifier = Modifier.weight(1f)) {
-                    // KMK v0.8.14-fix1: moved in from the former "Sources and languages" screen -- see
-                    // class doc above.
-                    item(key = "recommendation_languages_header") {
-                        SectionHeader(
-                            stringResource(KMR.strings.rec_settings_management_languages_header),
-                            summary = pluralStringResource(KMR.plurals.rec_settings_summary_languages, count = state.recommendationLanguages.size, state.recommendationLanguages.size),
-                        )
-                    }
-                    item(key = "recommendation_languages_content") {
-                        LanguageSelectorContent(
-                            selectedLanguages = state.recommendationLanguages,
-                            availableLanguages = state.availableLanguages,
-                            onToggle = screenModel::toggleRecommendationLanguage,
-                        )
-                    }
+                    // KMK v0.8.24: the language selector moved to the Your taste page.
 
                     // KMK v0.8.14: moved in from the retired For You screen.
-                    item(key = "display_performance_header") {
-                        SectionHeader(stringResource(KMR.strings.rec_settings_display_performance_header))
+                    if (section.includes("display_performance_header")) {
+                        item(key = "display_performance_header") {
+                            SectionHeader(stringResource(KMR.strings.rec_settings_display_performance_header))
+                        }
                     }
-                    item(key = "result_budget") {
-                        BoundedIntPreferenceRow(
-                            title = stringResource(KMR.strings.rec_result_budget_title),
-                            summary = stringResource(KMR.strings.rec_result_budget_summary),
-                            valueTitle = stringResource(KMR.strings.rec_result_budget_title),
-                            current = ForYouResultBudgetPolicy.validate(state.resultBudget),
-                            enabled = true,
-                            min = ForYouResultBudgetPolicy.MIN,
-                            max = ForYouResultBudgetPolicy.MAX,
-                            valueLabel = { it.toString() },
-                            onValueChange = screenModel::setResultBudget,
-                        )
+                    if (section.includes("result_budget")) {
+                        item(key = "result_budget") {
+                            BoundedIntPreferenceRow(
+                                title = stringResource(KMR.strings.rec_result_budget_title),
+                                summary = stringResource(KMR.strings.rec_result_budget_summary),
+                                valueTitle = stringResource(KMR.strings.rec_result_budget_title),
+                                current = ForYouResultBudgetPolicy.validate(state.resultBudget),
+                                enabled = true,
+                                min = ForYouResultBudgetPolicy.MIN,
+                                max = ForYouResultBudgetPolicy.MAX,
+                                valueLabel = { it.toString() },
+                                onValueChange = screenModel::setResultBudget,
+                            )
+                        }
                     }
-                    item(key = "refresh_hint") {
-                        Text(
-                            text = stringResource(KMR.strings.rec_settings_refresh_hint_short),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(
-                                horizontal = MaterialTheme.padding.medium,
-                                vertical = MaterialTheme.padding.extraSmall,
-                            ),
-                        )
+                    if (section.includes("refresh_hint")) {
+                        item(key = "refresh_hint") {
+                            Text(
+                                text = stringResource(KMR.strings.rec_settings_refresh_hint_short),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(
+                                    horizontal = MaterialTheme.padding.medium,
+                                    vertical = MaterialTheme.padding.extraSmall,
+                                ),
+                            )
+                        }
                     }
 
                     // KMK v0.8.14: moved in from the retired Matching and versions screen. The former
                     // section header summary combined the results-per-source count and preselect on/off
                     // state; that detail is still visible on the "Results per source" row itself below,
                     // so this section header now reads as a plain, stable description instead.
-                    item(key = "versions_quality_header") {
-                        SectionHeader(
-                            stringResource(KMR.strings.rec_settings_versions_quality_header),
-                            summary = stringResource(KMR.strings.rec_settings_versions_quality_summary),
-                        )
+                    if (section.includes("versions_quality_header")) {
+                        item(key = "versions_quality_header") {
+                            SectionHeader(
+                                stringResource(KMR.strings.rec_settings_versions_quality_header),
+                                summary = stringResource(KMR.strings.rec_settings_versions_quality_summary),
+                            )
+                        }
                     }
-                    item(key = "same_manga_results_per_source") {
-                        BoundedIntPreferenceRow(
-                            title = stringResource(KMR.strings.same_manga_match_results_per_source_title),
-                            summary = stringResource(KMR.strings.same_manga_match_results_per_source_summary),
-                            valueTitle = stringResource(KMR.strings.same_manga_match_results_per_source_title),
-                            current = SameMangaMatchSettings.clampResultCap(state.sameMangaResultsPerSource),
-                            enabled = true,
-                            min = SameMangaMatchSettings.MIN_RESULT_CAP,
-                            max = SameMangaMatchSettings.MAX_RESULT_CAP,
-                            valueLabel = { it.toString() },
-                            onValueChange = screenModel::setSameMangaResultsPerSource,
-                        )
+                    if (section.includes("same_manga_results_per_source")) {
+                        item(key = "same_manga_results_per_source") {
+                            BoundedIntPreferenceRow(
+                                title = stringResource(KMR.strings.same_manga_match_results_per_source_title),
+                                summary = stringResource(KMR.strings.same_manga_match_results_per_source_summary),
+                                valueTitle = stringResource(KMR.strings.same_manga_match_results_per_source_title),
+                                current = SameMangaMatchSettings.clampResultCap(state.sameMangaResultsPerSource),
+                                enabled = true,
+                                min = SameMangaMatchSettings.MIN_RESULT_CAP,
+                                max = SameMangaMatchSettings.MAX_RESULT_CAP,
+                                valueLabel = { it.toString() },
+                                onValueChange = screenModel::setSameMangaResultsPerSource,
+                            )
+                        }
                     }
-                    item(key = "same_manga_preselect") {
-                        TextPreferenceWidget(
-                            title = stringResource(KMR.strings.same_manga_match_preselect_title),
-                            subtitle = stringResource(KMR.strings.same_manga_match_preselect_summary) + " " + when (state.sameMangaPreselectionMode) {
-                                SameMangaPreselectionMode.ALL -> stringResource(KMR.strings.same_manga_match_preselect_all)
-                                SameMangaPreselectionMode.NONE -> stringResource(KMR.strings.same_manga_match_preselect_none)
-                                SameMangaPreselectionMode.EXACT_NAME -> stringResource(KMR.strings.same_manga_match_preselect_exact_name)
-                            },
-                            onPreferenceClick = { showPreselectionModeDialog = true },
-                        )
+                    if (section.includes("same_manga_preselect")) {
+                        item(key = "same_manga_preselect") {
+                            TextPreferenceWidget(
+                                title = stringResource(KMR.strings.same_manga_match_preselect_title),
+                                subtitle = stringResource(KMR.strings.same_manga_match_preselect_summary) + " " + when (state.sameMangaPreselectionMode) {
+                                    SameMangaPreselectionMode.ALL -> stringResource(KMR.strings.same_manga_match_preselect_all)
+                                    SameMangaPreselectionMode.NONE -> stringResource(KMR.strings.same_manga_match_preselect_none)
+                                    SameMangaPreselectionMode.EXACT_NAME -> stringResource(KMR.strings.same_manga_match_preselect_exact_name)
+                                },
+                                onPreferenceClick = { showPreselectionModeDialog = true },
+                            )
+                        }
                     }
-                    item(key = "chapter_completion_rating_prompt") {
-                        SameMangaSwitchRow(
-                            title = stringResource(KMR.strings.chapter_completion_rating_prompt_title),
-                            summary = stringResource(KMR.strings.chapter_completion_rating_prompt_summary),
-                            enabled = state.chapterCompletionRatingPromptEnabled,
-                            onToggle = { screenModel.setChapterCompletionRatingPromptEnabled(!state.chapterCompletionRatingPromptEnabled) },
-                        )
+                    if (section.includes("chapter_completion_rating_prompt")) {
+                        item(key = "chapter_completion_rating_prompt") {
+                            SameMangaSwitchRow(
+                                title = stringResource(KMR.strings.chapter_completion_rating_prompt_title),
+                                summary = stringResource(KMR.strings.chapter_completion_rating_prompt_summary),
+                                enabled = state.chapterCompletionRatingPromptEnabled,
+                                onToggle = { screenModel.setChapterCompletionRatingPromptEnabled(!state.chapterCompletionRatingPromptEnabled) },
+                            )
+                        }
                     }
-                    item(key = "rated_manga_action_placement") {
-                        SameMangaSwitchRow(
-                            title = stringResource(KMR.strings.rated_manga_action_placement_title),
-                            summary = stringResource(KMR.strings.rated_manga_action_placement_summary),
-                            enabled = state.ratedMangaActionsUseSelection,
-                            onToggle = {
-                                screenModel.setRatedMangaActionsUseSelection(!state.ratedMangaActionsUseSelection)
-                            },
-                        )
+                    if (section.includes("rated_manga_action_placement")) {
+                        item(key = "rated_manga_action_placement") {
+                            SameMangaSwitchRow(
+                                title = stringResource(KMR.strings.rated_manga_action_placement_title),
+                                summary = stringResource(KMR.strings.rated_manga_action_placement_summary),
+                                enabled = state.ratedMangaActionsUseSelection,
+                                onToggle = {
+                                    screenModel.setRatedMangaActionsUseSelection(!state.ratedMangaActionsUseSelection)
+                                },
+                            )
+                        }
                     }
-                    item(key = "chapter_completion_rating_other_versions_prompt") {
-                        SameMangaSwitchRow(
-                            title = stringResource(KMR.strings.chapter_completion_rating_other_versions_prompt_title),
-                            summary = stringResource(KMR.strings.chapter_completion_rating_other_versions_prompt_summary),
-                            enabled = state.chapterCompletionRatingOtherVersionsPromptEnabled,
-                            onToggle = {
-                                screenModel.setChapterCompletionRatingOtherVersionsPromptEnabled(
-                                    !state.chapterCompletionRatingOtherVersionsPromptEnabled,
-                                )
-                            },
-                        )
+                    if (section.includes("chapter_completion_rating_other_versions_prompt")) {
+                        item(key = "chapter_completion_rating_other_versions_prompt") {
+                            SameMangaSwitchRow(
+                                title = stringResource(KMR.strings.chapter_completion_rating_other_versions_prompt_title),
+                                summary = stringResource(KMR.strings.chapter_completion_rating_other_versions_prompt_summary),
+                                enabled = state.chapterCompletionRatingOtherVersionsPromptEnabled,
+                                onToggle = {
+                                    screenModel.setChapterCompletionRatingOtherVersionsPromptEnabled(
+                                        !state.chapterCompletionRatingOtherVersionsPromptEnabled,
+                                    )
+                                },
+                            )
+                        }
                     }
-                    item(key = "confirmed_tracked_version_rating_propagation") {
-                        SameMangaSwitchRow(
-                            title = stringResource(KMR.strings.confirmed_tracked_version_rating_propagation_title),
-                            summary = stringResource(KMR.strings.confirmed_tracked_version_rating_propagation_summary),
-                            enabled = state.confirmedTrackedVersionRatingPropagationEnabled,
-                            onToggle = {
-                                screenModel.setConfirmedTrackedVersionRatingPropagationEnabled(
-                                    !state.confirmedTrackedVersionRatingPropagationEnabled,
-                                )
-                            },
-                        )
+                    if (section.includes("confirmed_tracked_version_rating_propagation")) {
+                        item(key = "confirmed_tracked_version_rating_propagation") {
+                            SameMangaSwitchRow(
+                                title = stringResource(KMR.strings.confirmed_tracked_version_rating_propagation_title),
+                                summary = stringResource(KMR.strings.confirmed_tracked_version_rating_propagation_summary),
+                                enabled = state.confirmedTrackedVersionRatingPropagationEnabled,
+                                onToggle = {
+                                    screenModel.setConfirmedTrackedVersionRatingPropagationEnabled(
+                                        !state.confirmedTrackedVersionRatingPropagationEnabled,
+                                    )
+                                },
+                            )
+                        }
                     }
-                    item(key = "confirmed_tracked_version_local_tracking_propagation") {
-                        SameMangaSwitchRow(
-                            title = stringResource(KMR.strings.confirmed_tracked_version_local_tracking_propagation_title),
-                            summary = stringResource(KMR.strings.confirmed_tracked_version_local_tracking_propagation_summary),
-                            enabled = state.confirmedTrackedVersionLocalTrackingPropagationEnabled,
-                            onToggle = {
-                                screenModel.setConfirmedTrackedVersionLocalTrackingPropagationEnabled(
-                                    !state.confirmedTrackedVersionLocalTrackingPropagationEnabled,
-                                )
-                            },
-                        )
+                    if (section.includes("confirmed_tracked_version_local_tracking_propagation")) {
+                        item(key = "confirmed_tracked_version_local_tracking_propagation") {
+                            SameMangaSwitchRow(
+                                title = stringResource(KMR.strings.confirmed_tracked_version_local_tracking_propagation_title),
+                                summary = stringResource(KMR.strings.confirmed_tracked_version_local_tracking_propagation_summary),
+                                enabled = state.confirmedTrackedVersionLocalTrackingPropagationEnabled,
+                                onToggle = {
+                                    screenModel.setConfirmedTrackedVersionLocalTrackingPropagationEnabled(
+                                        !state.confirmedTrackedVersionLocalTrackingPropagationEnabled,
+                                    )
+                                },
+                            )
+                        }
                     }
-                    item(key = "automatic_local_tracking_status_inference") {
-                        SameMangaSwitchRow(
-                            title = stringResource(KMR.strings.automatic_local_tracking_status_inference_title),
-                            summary = stringResource(KMR.strings.automatic_local_tracking_status_inference_summary),
-                            enabled = state.automaticLocalTrackingStatusInferenceEnabled,
-                            onToggle = {
-                                screenModel.setAutomaticLocalTrackingStatusInferenceEnabled(
-                                    !state.automaticLocalTrackingStatusInferenceEnabled,
-                                )
-                            },
-                        )
+                    if (section.includes("automatic_local_tracking_status_inference")) {
+                        item(key = "automatic_local_tracking_status_inference") {
+                            SameMangaSwitchRow(
+                                title = stringResource(KMR.strings.automatic_local_tracking_status_inference_title),
+                                summary = stringResource(KMR.strings.automatic_local_tracking_status_inference_summary),
+                                enabled = state.automaticLocalTrackingStatusInferenceEnabled,
+                                onToggle = {
+                                    screenModel.setAutomaticLocalTrackingStatusInferenceEnabled(
+                                        !state.automaticLocalTrackingStatusInferenceEnabled,
+                                    )
+                                },
+                            )
+                        }
                     }
-                    item(key = "automatic_rated_group_primary") {
-                        SameMangaSwitchRow(
-                            title = stringResource(KMR.strings.automatic_rated_group_primary_title),
-                            summary = stringResource(KMR.strings.automatic_rated_group_primary_summary),
-                            enabled = state.automaticRatedGroupPrimaryEnabled,
-                            onToggle = {
-                                screenModel.setAutomaticRatedGroupPrimaryEnabled(
-                                    !state.automaticRatedGroupPrimaryEnabled,
-                                )
-                            },
-                        )
+                    if (section.includes("automatic_rated_group_primary")) {
+                        item(key = "automatic_rated_group_primary") {
+                            SameMangaSwitchRow(
+                                title = stringResource(KMR.strings.automatic_rated_group_primary_title),
+                                summary = stringResource(KMR.strings.automatic_rated_group_primary_summary),
+                                enabled = state.automaticRatedGroupPrimaryEnabled,
+                                onToggle = {
+                                    screenModel.setAutomaticRatedGroupPrimaryEnabled(
+                                        !state.automaticRatedGroupPrimaryEnabled,
+                                    )
+                                },
+                            )
+                        }
                     }
-                    item(key = "identity_review") {
-                        TextPreferenceWidget(
-                            title = stringResource(KMR.strings.identity_review_title),
-                            subtitle = stringResource(KMR.strings.identity_review_summary),
-                            onPreferenceClick = { navigator.push(CrossSourceIdentityReviewScreen()) },
-                        )
+                    if (section.includes("identity_review")) {
+                        item(key = "identity_review") {
+                            TextPreferenceWidget(
+                                title = stringResource(KMR.strings.identity_review_title),
+                                subtitle = stringResource(KMR.strings.identity_review_summary),
+                                onPreferenceClick = { navigator.push(CrossSourceIdentityReviewScreen()) },
+                            )
+                        }
                     }
-                    item(key = "best_version_header") {
-                        SectionHeader(stringResource(KMR.strings.best_version_settings_header))
+                    if (section.includes("best_version_header")) {
+                        item(key = "best_version_header") {
+                            SectionHeader(stringResource(KMR.strings.best_version_settings_header))
+                        }
                     }
-                    item(key = "best_version_sample_size") {
-                        BoundedIntPreferenceRow(
-                            title = stringResource(KMR.strings.best_version_preview_pages_title),
-                            summary = stringResource(KMR.strings.best_version_preview_pages_summary),
-                            valueTitle = stringResource(KMR.strings.best_version_preview_pages_title),
-                            current = SameMangaMatchSettings.clampSampleSize(state.bestVersionPreviewSampleSize),
-                            enabled = true,
-                            min = SameMangaMatchSettings.MIN_SAMPLE_SIZE,
-                            max = SameMangaMatchSettings.MAX_SAMPLE_SIZE,
-                            valueLabel = { it.toString() },
-                            onValueChange = screenModel::setBestVersionPreviewSampleSize,
-                        )
+                    if (section.includes("best_version_sample_size")) {
+                        item(key = "best_version_sample_size") {
+                            BoundedIntPreferenceRow(
+                                title = stringResource(KMR.strings.best_version_preview_pages_title),
+                                summary = stringResource(KMR.strings.best_version_preview_pages_summary),
+                                valueTitle = stringResource(KMR.strings.best_version_preview_pages_title),
+                                current = SameMangaMatchSettings.clampSampleSize(state.bestVersionPreviewSampleSize),
+                                enabled = true,
+                                min = SameMangaMatchSettings.MIN_SAMPLE_SIZE,
+                                max = SameMangaMatchSettings.MAX_SAMPLE_SIZE,
+                                valueLabel = { it.toString() },
+                                onValueChange = screenModel::setBestVersionPreviewSampleSize,
+                            )
+                        }
                     }
-                    item(key = "best_version_avoid_first_pages") {
-                        SameMangaSwitchRow(
-                            title = stringResource(KMR.strings.best_version_avoid_first_pages_title),
-                            summary = stringResource(KMR.strings.best_version_avoid_first_pages_summary),
-                            enabled = state.bestVersionAvoidFirstPages,
-                            onToggle = { screenModel.setBestVersionAvoidFirstPages(!state.bestVersionAvoidFirstPages) },
-                        )
+                    if (section.includes("best_version_avoid_first_pages")) {
+                        item(key = "best_version_avoid_first_pages") {
+                            SameMangaSwitchRow(
+                                title = stringResource(KMR.strings.best_version_avoid_first_pages_title),
+                                summary = stringResource(KMR.strings.best_version_avoid_first_pages_summary),
+                                enabled = state.bestVersionAvoidFirstPages,
+                                onToggle = { screenModel.setBestVersionAvoidFirstPages(!state.bestVersionAvoidFirstPages) },
+                            )
+                        }
                     }
-                    item(key = "group_preview_budget") {
-                        BoundedIntPreferenceRow(
-                            title = stringResource(KMR.strings.rec_group_preview_budget_title),
-                            summary = stringResource(KMR.strings.rec_group_preview_budget_summary),
-                            valueTitle = stringResource(KMR.strings.rec_group_preview_budget_title),
-                            current = GroupPreviewBudgetPolicy.validate(state.groupPreviewBudget),
-                            enabled = true,
-                            min = GroupPreviewBudgetPolicy.MIN,
-                            max = GroupPreviewBudgetPolicy.MAX,
-                            valueLabel = { it.toString() },
-                            onValueChange = screenModel::setGroupPreviewBudget,
-                        )
+                    if (section.includes("group_preview_budget")) {
+                        item(key = "group_preview_budget") {
+                            BoundedIntPreferenceRow(
+                                title = stringResource(KMR.strings.rec_group_preview_budget_title),
+                                summary = stringResource(KMR.strings.rec_group_preview_budget_summary),
+                                valueTitle = stringResource(KMR.strings.rec_group_preview_budget_title),
+                                current = GroupPreviewBudgetPolicy.validate(state.groupPreviewBudget),
+                                enabled = true,
+                                min = GroupPreviewBudgetPolicy.MIN,
+                                max = GroupPreviewBudgetPolicy.MAX,
+                                valueLabel = { it.toString() },
+                                onValueChange = screenModel::setGroupPreviewBudget,
+                            )
+                        }
                     }
 
-                    item(key = "management_header") {
-                        SectionHeader(stringResource(KMR.strings.rec_settings_management_header))
-                    }
-                    item(key = "quality_signal_history_entry") {
-                        // KMK v0.8.11: official TextPreferenceWidget action row instead of a centered
-                        // full-width TextButton, matching how official settings screens present
-                        // navigation/action rows.
-                        TextPreferenceWidget(
-                            title = stringResource(KMR.strings.quality_signal_history_open_button),
-                            onPreferenceClick = { navigator.push(QualitySignalHistoryScreen()) },
-                        )
+                    if (section.includes("runtime_health_issues")) {
+                        item(key = "runtime_health_issues") {
+                            val issueCount = healthIssues.size
+                            if (issueCount > 0) {
+                                TextPreferenceWidget(
+                                    title = stringResource(KMR.strings.rec_hub_issues_row_title),
+                                    subtitle = pluralStringResource(KMR.plurals.rec_hub_issues_count, count = issueCount, issueCount) +
+                                        ". " + stringResource(KMR.strings.rec_hub_issues_row_summary),
+                                    onPreferenceClick = { navigator.push(exh.recs.evaluation.SourceEvaluationScreen()) },
+                                )
+                            } else {
+                                TextPreferenceWidget(
+                                    title = stringResource(KMR.strings.rec_hub_no_issues_title),
+                                    subtitle = stringResource(KMR.strings.rec_hub_no_issues_summary),
+                                )
+                            }
+                        }
                     }
 
-                    item(key = "discovery_cache_header") {
-                        SectionHeader(stringResource(KMR.strings.rec_settings_discovery_cache_header))
+                    if (section.includes("auto_check_skipped_sources") && skippedSourceNames.isNotEmpty()) {
+                        item(key = "auto_check_skipped_sources") {
+                            TextPreferenceWidget(
+                                title = stringResource(KMR.strings.rec_hub_skipped_row_title),
+                                subtitle = stringResource(
+                                    KMR.strings.rec_hub_skipped_row_summary,
+                                    skippedSourceNames.joinToString(", "),
+                                ),
+                            )
+                        }
                     }
-                    item(key = "enrichment_cap") {
-                        BoundedIntPreferenceRow(
-                            title = stringResource(KMR.strings.rec_enrichment_cap_title),
-                            summary = stringResource(KMR.strings.rec_enrichment_cap_summary),
-                            valueTitle = stringResource(KMR.strings.rec_enrichment_cap_title),
-                            current = RecommendationEnrichmentCapPolicy.resolve(state.enrichmentCap),
-                            enabled = true,
-                            min = RecommendationEnrichmentCapPolicy.MIN,
-                            max = RecommendationEnrichmentCapPolicy.MAX,
-                            valueLabel = { it.toString() },
-                            onValueChange = screenModel::setEnrichmentCap,
-                        )
+
+                    if (section.includes("management_header")) {
+                        item(key = "management_header") {
+                            SectionHeader(stringResource(KMR.strings.rec_settings_management_header))
+                        }
+                    }
+                    if (section.includes("quality_signal_history_entry")) {
+                        item(key = "quality_signal_history_entry") {
+                            // KMK v0.8.11: official TextPreferenceWidget action row instead of a centered
+                            // full-width TextButton, matching how official settings screens present
+                            // navigation/action rows.
+                            TextPreferenceWidget(
+                                title = stringResource(KMR.strings.quality_signal_history_open_button),
+                                onPreferenceClick = { navigator.push(QualitySignalHistoryScreen()) },
+                            )
+                        }
+                    }
+
+                    if (section.includes("discovery_cache_header")) {
+                        item(key = "discovery_cache_header") {
+                            SectionHeader(stringResource(KMR.strings.rec_settings_discovery_cache_header))
+                        }
+                    }
+                    if (section.includes("enrichment_cap")) {
+                        item(key = "enrichment_cap") {
+                            BoundedIntPreferenceRow(
+                                title = stringResource(KMR.strings.rec_enrichment_cap_title),
+                                summary = stringResource(KMR.strings.rec_enrichment_cap_summary),
+                                valueTitle = stringResource(KMR.strings.rec_enrichment_cap_title),
+                                current = RecommendationEnrichmentCapPolicy.resolve(state.enrichmentCap),
+                                enabled = true,
+                                min = RecommendationEnrichmentCapPolicy.MIN,
+                                max = RecommendationEnrichmentCapPolicy.MAX,
+                                valueLabel = { it.toString() },
+                                onValueChange = screenModel::setEnrichmentCap,
+                            )
+                        }
                     }
                     // KMK --> EC-04 2026-09-01: configurable discovery-effort policy
-                    item(key = "discovery_effort_header") {
-                        SectionHeader(
-                            stringResource(KMR.strings.rec_discovery_effort_title),
-                            summary = stringResource(KMR.strings.rec_discovery_effort_summary),
-                        )
+                    if (section.includes("discovery_effort_header")) {
+                        item(key = "discovery_effort_header") {
+                            SectionHeader(
+                                stringResource(KMR.strings.rec_discovery_effort_title),
+                                summary = stringResource(KMR.strings.rec_discovery_effort_summary),
+                            )
+                        }
                     }
-                    item(key = "discovery_effort_content") {
-                        DiscoveryEffortLevelContent(
-                            current = state.discoveryEffortLevel,
-                            onSelect = screenModel::setDiscoveryEffortLevel,
-                        )
+                    if (section.includes("discovery_effort_content")) {
+                        item(key = "discovery_effort_content") {
+                            DiscoveryEffortLevelContent(
+                                current = state.discoveryEffortLevel,
+                                onSelect = screenModel::setDiscoveryEffortLevel,
+                            )
+                        }
                     }
-                    item(key = "discovery_candidate_budget") {
-                        BoundedIntPreferenceRow(
-                            title = stringResource(KMR.strings.rec_discovery_candidate_budget_title),
-                            summary = stringResource(KMR.strings.rec_discovery_candidate_budget_summary),
-                            valueTitle = stringResource(KMR.strings.rec_discovery_candidate_budget_title),
-                            current = state.discoveryCandidateBudget,
-                            enabled = true,
-                            min = exh.recs.memory.RecommendationDiscoveryCandidateBudgetPolicy.MIN,
-                            max = exh.recs.memory.RecommendationDiscoveryCandidateBudgetPolicy.MAX,
-                            valueLabel = { it.toString() },
-                            onValueChange = screenModel::setDiscoveryCandidateBudget,
-                        )
+                    // KMK --> v0.8.24 For You data saving
+                    if (section.includes("data_saving_header")) {
+                        item(key = "data_saving_header") {
+                            SectionHeader(
+                                stringResource(KMR.strings.rec_data_saving_title),
+                                summary = stringResource(KMR.strings.rec_data_saving_summary),
+                            )
+                        }
+                    }
+                    if (section.includes("data_saving_content")) {
+                        item(key = "data_saving_content") {
+                            DataSavingContent(
+                                current = state.dataSaving,
+                                onSelect = screenModel::setDataSaving,
+                            )
+                        }
                     }
                     // KMK <--
-                    item(key = "clear_discovery_history") {
-                        // KMK v0.8.11: official TextPreferenceWidget action row.
-                        TextPreferenceWidget(
-                            title = stringResource(KMR.strings.rec_reset_discovery_history),
-                            onPreferenceClick = screenModel::requestClearDiscoveryHistory,
-                        )
+                    if (section.includes("discovery_candidate_budget")) {
+                        item(key = "discovery_candidate_budget") {
+                            BoundedIntPreferenceRow(
+                                title = stringResource(KMR.strings.rec_discovery_candidate_budget_title),
+                                summary = stringResource(KMR.strings.rec_discovery_candidate_budget_summary),
+                                valueTitle = stringResource(KMR.strings.rec_discovery_candidate_budget_title),
+                                current = state.discoveryCandidateBudget,
+                                enabled = true,
+                                min = exh.recs.memory.RecommendationDiscoveryCandidateBudgetPolicy.MIN,
+                                max = exh.recs.memory.RecommendationDiscoveryCandidateBudgetPolicy.MAX,
+                                valueLabel = { it.toString() },
+                                onValueChange = screenModel::setDiscoveryCandidateBudget,
+                            )
+                        }
+                    }
+                    // KMK <--
+                    if (section.includes("clear_discovery_history")) {
+                        item(key = "clear_discovery_history") {
+                            // KMK v0.8.11: official TextPreferenceWidget action row.
+                            TextPreferenceWidget(
+                                title = stringResource(KMR.strings.rec_reset_discovery_history),
+                                onPreferenceClick = screenModel::requestClearDiscoveryHistory,
+                            )
+                        }
                     }
                     // KMK v0.8.21-fix4: R4/AUG-14 correction -- Management and Diagnostics is the
                     // persistent management surface for saved focus modes, per the corrected AUG-14
                     // contract. Rename/delete/reorder here read and write the exact same
                     // SavedFocusModeStore-backed preference as the For You page's Focus dialog --
                     // one owner, one persistence model, not a second system.
-                    item(key = "focus_header") {
-                        SectionHeader(stringResource(KMR.strings.rec_settings_focus_header))
+                    if (section.includes("focus_header")) {
+                        item(key = "focus_header") {
+                            SectionHeader(stringResource(KMR.strings.rec_settings_focus_header))
+                        }
                     }
-                    item(key = "focus_explanation") {
-                        Text(
-                            text = stringResource(KMR.strings.rec_settings_focus_explanation),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(
-                                horizontal = MaterialTheme.padding.medium,
-                                vertical = MaterialTheme.padding.extraSmall,
-                            ),
-                        )
-                    }
-                    item(key = "focus_saved_modes") {
-                        if (savedFocusModes.isEmpty()) {
+                    if (section.includes("focus_explanation")) {
+                        item(key = "focus_explanation") {
                             Text(
-                                text = stringResource(KMR.strings.rec_settings_focus_empty),
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = stringResource(KMR.strings.rec_settings_focus_explanation),
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(MaterialTheme.padding.medium),
+                                modifier = Modifier.padding(
+                                    horizontal = MaterialTheme.padding.medium,
+                                    vertical = MaterialTheme.padding.extraSmall,
+                                ),
                             )
-                        } else {
-                            Column {
-                                savedFocusModes.forEachIndexed { index, mode ->
-                                    SavedFocusModeManagementRow(
-                                        mode = mode,
-                                        canMoveUp = index > 0,
-                                        canMoveDown = index < savedFocusModes.lastIndex,
-                                        onMoveUp = {
-                                            val ids = savedFocusModes.map { it.id }.toMutableList()
-                                            ids.add(index - 1, ids.removeAt(index))
-                                            screenModel.reorderFocusModes(ids)
-                                        },
-                                        onMoveDown = {
-                                            val ids = savedFocusModes.map { it.id }.toMutableList()
-                                            ids.add(index + 1, ids.removeAt(index))
-                                            screenModel.reorderFocusModes(ids)
-                                        },
-                                        onRename = { focusRenameTarget = mode },
-                                        onDelete = { focusDeleteTarget = mode },
-                                    )
+                        }
+                    }
+                    if (section.includes("focus_saved_modes")) {
+                        item(key = "focus_saved_modes") {
+                            if (savedFocusModes.isEmpty()) {
+                                Text(
+                                    text = stringResource(KMR.strings.rec_settings_focus_empty),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(MaterialTheme.padding.medium),
+                                )
+                            } else {
+                                Column {
+                                    savedFocusModes.forEachIndexed { index, mode ->
+                                        SavedFocusModeManagementRow(
+                                            mode = mode,
+                                            canMoveUp = index > 0,
+                                            canMoveDown = index < savedFocusModes.lastIndex,
+                                            onMoveUp = {
+                                                val ids = savedFocusModes.map { it.id }.toMutableList()
+                                                ids.add(index - 1, ids.removeAt(index))
+                                                screenModel.reorderFocusModes(ids)
+                                            },
+                                            onMoveDown = {
+                                                val ids = savedFocusModes.map { it.id }.toMutableList()
+                                                ids.add(index + 1, ids.removeAt(index))
+                                                screenModel.reorderFocusModes(ids)
+                                            },
+                                            onRename = { focusRenameTarget = mode },
+                                            onDelete = { focusDeleteTarget = mode },
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                     // KMK v0.8.10: local, privacy-safe taste diagnostics -- see TasteDiagnosticsContent.
-                    item(key = "taste_diagnostics_header") {
-                        SectionHeader(
-                            stringResource(KMR.strings.taste_diagnostics_header),
-                            summary = null,
-                        )
+                    if (section.includes("taste_diagnostics_header")) {
+                        item(key = "taste_diagnostics_header") {
+                            SectionHeader(
+                                stringResource(KMR.strings.taste_diagnostics_header),
+                                summary = null,
+                            )
+                        }
                     }
-                    item(key = "taste_diagnostics_content") {
-                        TasteDiagnosticsContent(diagnostics = state.tasteDiagnostics)
+                    if (section.includes("taste_diagnostics_content")) {
+                        item(key = "taste_diagnostics_content") {
+                            TasteDiagnosticsContent(diagnostics = state.tasteDiagnostics)
+                        }
                     }
-                    item(key = "source_metadata_tag_diagnostics_header") {
-                        SectionHeader(
-                            stringResource(KMR.strings.rec_source_metadata_tag_diagnostics_header),
-                            summary = null,
-                        )
+                    if (section.includes("source_metadata_tag_diagnostics_header")) {
+                        item(key = "source_metadata_tag_diagnostics_header") {
+                            SectionHeader(
+                                stringResource(KMR.strings.rec_source_metadata_tag_diagnostics_header),
+                                summary = null,
+                            )
+                        }
                     }
-                    item(key = "source_metadata_tag_diagnostics_content") {
-                        // KMK v0.8.21-fix2: no longer passes a per-row review callback -- see
-                        // SourceMetadataTagDiagnostics.kt's removal note. The top-level Source
-                        // Evaluation entry in Recommendation Settings remains the one route.
-                        SourceMetadataTagDiagnosticsContent(
-                            evaluations = state.sourceMetadataTagDiagnostics,
-                        )
+                    if (section.includes("source_metadata_tag_diagnostics_content")) {
+                        item(key = "source_metadata_tag_diagnostics_content") {
+                            // KMK v0.8.21-fix2: no longer passes a per-row review callback -- see
+                            // SourceMetadataTagDiagnostics.kt's removal note. The top-level Source
+                            // Evaluation entry in Recommendation Settings remains the one route.
+                            SourceMetadataTagDiagnosticsContent(
+                                evaluations = state.sourceMetadataTagDiagnostics,
+                            )
+                        }
                     }
                 }
             }

@@ -117,7 +117,7 @@ private fun DiscordAccountsScreenContent() {
                 error != null -> {
                     Text(
                         text = if (error == DISCORD_ACCOUNTS_ERROR_KEY) {
-                            stringResource(KMR.strings.rec_error_internal)
+                            stringResource(KMR.strings.error_load_internal)
                         } else {
                             error
                         },

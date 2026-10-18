@@ -213,6 +213,8 @@ class BestVersionCompareScreenModel(
     private val restoreCrossSourceGroupState: RestoreCrossSourceGroupState = Injekt.get(),
     private val identityController: exh.recs.matching.CrossSourceIdentityDecisionController =
         exh.recs.matching.CrossSourceIdentityDecisionController(),
+    private val confirmedGroupTasteRatingActions: exh.recs.matching.ConfirmedGroupTasteRatingActions =
+        exh.recs.matching.ConfirmedGroupTasteRatingManager(),
 ) : StateScreenModel<BestVersionCompareScreenModel.State>(State()) {
 
     // KMK V3 Phase B: kept as a plain val (not a computed property) so every existing SourceRuntime.run
@@ -1387,6 +1389,10 @@ class BestVersionCompareScreenModel(
                 // not erase the confirmed relationship. Only the selected pair is moved; other
                 // members of a pre-existing target group remain in that group.
                 ensureConfirmedPairGroup(origin, target)
+                // This covers targets that were already locally tracked. If the requested TRACK
+                // migration creates the target source relationship, the success branch retries
+                // after MigrateMangaUseCase has committed that relationship.
+                confirmedGroupTasteRatingActions.propagateToConfirmedMember(origin, target)
                 // KMK Confirmed Blocker Remediation Phase 4: migrateMangaUseCase now returns a
                 // truthful mihon.domain.migration.usecases.MigrationOutcome instead of Unit -- a
                 // non-fatal exception partway through the migration previously vanished silently,
@@ -1442,6 +1448,13 @@ class BestVersionCompareScreenModel(
                                 migrationComplete = true,
                                 completedTargetMangaId = target.id,
                             )
+                        }
+                        try {
+                            confirmedGroupTasteRatingActions.propagateToConfirmedMember(origin, target)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            // Migration success is already recorded; rating sync remains best-effort.
                         }
                         // The migration has already completed at this point. The optional quality
                         // signal is deliberately best-effort and runs only after the truthful event,

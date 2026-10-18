@@ -1,7 +1,10 @@
 package eu.kanade.domain.track.interactor
 
+import android.app.Application
 import eu.kanade.domain.track.model.toDbTrack
+import eu.kanade.domain.track.service.DelayedTrackingUpdateJob
 import eu.kanade.domain.track.service.TrackPreferences
+import eu.kanade.domain.track.store.DelayedTrackingStore
 import eu.kanade.tachiyomi.data.track.EnhancedTracker
 import eu.kanade.tachiyomi.data.track.Tracker
 import kotlinx.coroutines.CancellationException
@@ -13,6 +16,8 @@ import tachiyomi.domain.chapter.model.toChapterUpdate
 import tachiyomi.domain.track.interactor.InsertTrack
 import tachiyomi.domain.track.model.Track
 import tachiyomi.domain.tracker.model.TrackerChapterProgressMappingPolicy
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import kotlin.math.max
 
 class SyncChapterProgressWithTrack(
@@ -20,6 +25,10 @@ class SyncChapterProgressWithTrack(
     private val insertTrack: InsertTrack,
     private val getChaptersByMangaId: GetChaptersByMangaId,
     private val trackPreferences: TrackPreferences,
+    private val enqueueUploadRetry: (Long, Double) -> Unit = { trackId, chapterNumber ->
+        Injekt.get<DelayedTrackingStore>().add(trackId, chapterNumber)
+        DelayedTrackingUpdateJob.setupTask(Injekt.get<Application>())
+    },
 ) {
     /**
      * Sync chapter progress with the [EnhancedTracker]
@@ -33,7 +42,7 @@ class SyncChapterProgressWithTrack(
             return null
         }
         // KMK -->
-        return sync(mangaId, remoteTrack, tracker)
+        return sync(mangaId, remoteTrack, tracker, queueFailedUpload = false)
     }
 
     /**
@@ -43,6 +52,11 @@ class SyncChapterProgressWithTrack(
         mangaId: Long,
         remoteTrack: Track,
         tracker: Tracker,
+        queueFailedUpload: Boolean = true,
+        // KMK --> v0.8.24: a manual pull always uploads newer local progress, but marking local chapters from
+        // the remote record is the separate "Sync reading progress from connected trackers" setting.
+        applyRemoteToLocal: Boolean = true,
+        // KMK <--
     ): Int? {
         // KMK <--
         // Current chapters in database, sort by source's order because database's order is a mess
@@ -65,11 +79,15 @@ class SyncChapterProgressWithTrack(
          * Some mangas has name such as Volume 2 Chapter 1 which will corrupt the order
          * if we sort by chapterNumber.
          */
-        val sourceTarget = TrackerChapterProgressMappingPolicy.resolve(
-            chapters = dbChapters,
-            trackerProgress = remoteTrack.lastChapterRead,
-            allowReadingOrderFallback = trackPreferences.matchTrackerProgressByReadingOrder().get(),
-        )
+        val sourceTarget = if (applyRemoteToLocal) {
+            TrackerChapterProgressMappingPolicy.resolve(
+                chapters = dbChapters,
+                trackerProgress = remoteTrack.lastChapterRead,
+                allowReadingOrderFallback = trackPreferences.matchTrackerProgressByReadingOrder().get(),
+            )
+        } else {
+            null
+        }
         val chapterUpdates = sourceTarget?.let { target ->
             dbChapters
                 .takeWhile { chapter ->
@@ -88,22 +106,38 @@ class SyncChapterProgressWithTrack(
         val lastRead = max(remoteTrack.lastChapterRead, localLastRead.toDouble())
         val updatedTrack = remoteTrack.copy(lastChapterRead = lastRead)
 
-        try {
-            // Update Tracker to localLastRead if needed
-            if (lastRead > remoteTrack.lastChapterRead) {
+        // Update Tracker to localLastRead if needed. Only a failure before remote success
+        // is a delayed tracking failure; local persistence must not create a false upload retry.
+        if (lastRead > remoteTrack.lastChapterRead) {
+            try {
                 tracker.update(updatedTrack.toDbTrack())
-                // update Track in database
-                insertTrack.await(updatedTrack)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (queueFailedUpload) {
+                    enqueueUploadRetry(remoteTrack.id, lastRead)
+                }
+                logcat(LogPriority.WARN, e)
+                return null
             }
-            // KMK -->
+            try {
+                insertTrack.await(updatedTrack)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logcat(LogPriority.WARN, e)
+                return null
+            }
+            // KMK --> v0.8.24: the tracker entry is universal across versions of a manga
+            MirrorTrackToLinkedVersions(insertTrack = { insertTrack }).await(updatedTrack)
+            // KMK <--
+        }
+        try {
             // Always update local chapters following Tracker even past chapters
-            if (chapterUpdates.isNotEmpty() &&
-                !tracker.hasNotStartedReading(remoteTrack.status)
-            ) {
+            if (chapterUpdates.isNotEmpty() && !tracker.hasNotStartedReading(remoteTrack.status)) {
                 updateChapter.awaitAll(chapterUpdates)
                 return lastRead.toInt()
             }
-            // KMK <--
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {

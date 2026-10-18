@@ -51,6 +51,7 @@ class CrossSourceGroupPrimaryDomainModuleRegistrationTest {
         override suspend fun getAllMangaTastes(): List<MangaTaste> = emptyList()
         override fun getAllMangaTastesAsFlow(): Flow<List<MangaTaste>> = emptyFlow()
         override suspend fun upsertMangaTaste(taste: MangaTaste) {}
+        override suspend fun insertMangaTasteIfAbsent(taste: MangaTaste) = false
         override suspend fun deleteMangaTaste(mangaId: Long) {}
         override suspend fun deleteMangaTaste(source: Long, url: String) {}
         override suspend fun deleteAllMangaTastes() {}

@@ -5,6 +5,7 @@ import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.source.Source
 import exh.recs.matching.CrossSourceIdentityDecisionController
 import exh.recs.matching.MangaIdentityKey
+import exh.recs.matching.NoOpConfirmedGroupTasteRatingActions
 import exh.recs.matching.SameMangaCandidateResult
 import exh.util.CrossSourceIdentityUndoJournal
 import exh.util.DispatcherHandle
@@ -156,6 +157,7 @@ class BestVersionIsolatedFixtureRollbackTest {
                 GetCrossSourceIdentityDecisions(identityRepository),
                 ReplaceCrossSourceIdentityDecisions(identityRepository),
             ),
+            confirmedGroupTasteRatingActions = NoOpConfirmedGroupTasteRatingActions,
         )
         val key = MangaIdentityKey(target.source, target.url)
         model.forceOriginManga(origin)

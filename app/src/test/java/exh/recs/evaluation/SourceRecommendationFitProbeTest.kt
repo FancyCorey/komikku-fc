@@ -48,6 +48,7 @@ private class FakeTasteRepository(
     override fun getAllMangaTastesAsFlow(): Flow<List<MangaTaste>> = emptyFlow()
     // KMK <--
     override suspend fun upsertMangaTaste(taste: MangaTaste) {}
+    override suspend fun insertMangaTasteIfAbsent(taste: MangaTaste) = false
     override suspend fun deleteMangaTaste(mangaId: Long) {}
     override suspend fun deleteMangaTaste(source: Long, url: String) {}
     override suspend fun deleteAllMangaTastes() {}

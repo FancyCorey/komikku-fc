@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import exh.recs.RecommendationErrorKind
 import exh.recs.matching.CrossSourceIdentityDecisionController
 import exh.recs.matching.MangaIdentityKey
+import exh.recs.matching.NoOpConfirmedGroupTasteRatingActions
 import exh.recs.matching.SameMangaCandidateResult
 import exh.util.DispatcherHandle
 import exh.util.FakePreferenceStore
@@ -195,6 +196,7 @@ class BestVersionFullscreenPreviewTest {
             getCrossSourceGroupPrimary = mockk(relaxed = true),
             restoreCrossSourceGroupState = mockk(relaxed = true),
             identityController = identityController(),
+            confirmedGroupTasteRatingActions = NoOpConfirmedGroupTasteRatingActions,
         )
     }
 

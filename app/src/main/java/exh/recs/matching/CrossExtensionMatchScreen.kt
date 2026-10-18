@@ -26,7 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -91,7 +93,6 @@ class CrossExtensionMatchScreen(
 
         val screenModel = rememberScreenModel { CrossExtensionMatchScreenModel(originMangaId, mode) }
         val state by screenModel.state.collectAsState()
-
         val rating = (mode as? CrossExtensionMatchMode.Rating)?.rating
 
         val screenTitle = when (mode) {
@@ -165,6 +166,42 @@ class CrossExtensionMatchScreen(
                         .navigationBarsPadding()
                         .padding(MaterialTheme.padding.medium),
                 ) {
+                    if (mode is CrossExtensionMatchMode.LocalTracking) {
+                        val groupRatingLabel = when {
+                            !state.isGroupRatingLoaded -> stringResource(KMR.strings.local_tracking_group_rating_loading)
+                            state.groupRating == null -> stringResource(KMR.strings.local_tracking_group_rating_not_rated)
+                            else -> stringResource(
+                                when (state.groupRating) {
+                                    MangaRating.LOVE -> KMR.strings.rated_manga_rating_love
+                                    MangaRating.LIKE -> KMR.strings.rated_manga_rating_like
+                                    MangaRating.DISLIKE -> KMR.strings.rated_manga_rating_dislike
+                                    MangaRating.NOT_INTERESTED -> KMR.strings.rated_manga_rating_not_interested
+                                    null -> KMR.strings.local_tracking_group_rating_not_rated
+                                },
+                            )
+                        }
+                        ConfirmedGroupRatingControl(
+                            loading = !state.isGroupRatingLoaded,
+                            updating = state.isGroupRatingUpdating,
+                            buttonLabel = stringResource(KMR.strings.local_tracking_group_rating_button, groupRatingLabel),
+                            notRatedLabel = stringResource(KMR.strings.local_tracking_group_rating_not_rated),
+                            ratingOptions = listOf(
+                                MangaRating.LOVE to stringResource(KMR.strings.rated_manga_rating_love),
+                                MangaRating.LIKE to stringResource(KMR.strings.rated_manga_rating_like),
+                                MangaRating.DISLIKE to stringResource(KMR.strings.rated_manga_rating_dislike),
+                                MangaRating.NOT_INTERESTED to stringResource(KMR.strings.rated_manga_rating_not_interested),
+                            ),
+                            onSetRating = screenModel::setGroupRating,
+                        )
+                        if (state.groupRatingUpdateFailed) {
+                            Text(
+                                text = stringResource(KMR.strings.local_tracking_group_rating_failed),
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(bottom = MaterialTheme.padding.small),
+                            )
+                        }
+                    }
                     state.identityFeedback?.let { feedback ->
                         Text(
                             text = stringResource(

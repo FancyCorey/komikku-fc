@@ -135,6 +135,10 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         getCache: GetRecommendationCache = mockk(relaxed = true),
         getKnownManga: GetKnownRecommendationMangaIds = mockk(relaxed = true),
         getChapterCounts: GetChapterCountsByMangaIds = mockk(relaxed = true),
+        getMemory: GetRecommendationCandidateMemory = mockk(relaxed = true),
+        getRecentReadingTagWeights: GetRecentReadingTagWeights? = null,
+        isNetworkConstrained: () -> Boolean = { false },
+        getSourceRecommendationFit: tachiyomi.domain.taste.interactor.GetSourceRecommendationFit? = null,
         upsertDiscovery: UpsertRecommendationDiscoveryProgress = mockk(relaxed = true),
         preferences: SourcePreferences = SourcePreferences(FakePreferenceStore()),
         naturalObservationSink: ((String) -> Unit)? = null,
@@ -150,6 +154,9 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
             naturalObservationSink = naturalObservationSink,
             isDebugBuild = debugBuild,
             getTasteProfile = getTasteProfile,
+            getRecentReadingTagWeights = getRecentReadingTagWeights,
+            isNetworkConstrained = isNetworkConstrained,
+            getSourceRecommendationFit = getSourceRecommendationFit,
             getTagAliases = getTagAliases,
             getDisabledSources = getDisabledSources,
             sourceManager = sourceManager,
@@ -162,7 +169,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
             clearRecommendationCache = mockk<ClearRecommendationCache>(relaxed = true),
             getKnownMangaIds = getKnownManga,
             getChapterCounts = getChapterCounts,
-            getMemory = mockk<GetRecommendationCandidateMemory>(relaxed = true),
+            getMemory = getMemory,
             upsertMemory = mockk<UpsertRecommendationCandidateMemory>(relaxed = true),
             pruneMemory = mockk<PruneRecommendationCandidateMemory>(relaxed = true),
             getDiscoveryProgress = mockk<GetRecommendationDiscoveryProgress>(relaxed = true),
@@ -921,6 +928,475 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         assertTrue((presentation.filtered as PersonalRecommendationResult.Success).isEmpty)
         assertFalse((presentation.broader as PersonalRecommendationResult.Success).isEmpty)
     }
+
+    // KMK --> v0.8.24 B4: a candidate remembered from an earlier refresh must be re-checked against the
+    // CURRENT known/rated set on a live Refresh, not only against the ids of this refresh's fresh page one.
+    private fun hideKnownRememberedSource(sourceId: Long): Source =
+        mockk<Source>(relaxed = true).also { source ->
+            every { source.id } returns sourceId
+            every { source.name } returns "Remembered Source"
+            every { source.lang } returns "en"
+            every { source.supportsLatest } returns false
+            every { source.getFilterList() } returns FilterList()
+            val fresh = SManga.create().apply {
+                url = "/fresh/a"
+                title = "Fresh A"
+                genre = "Action"
+                status = SManga.ONGOING
+                initialized = true
+            }
+            coEvery { source.getSearchManga(1, any(), any()) } returns MangasPage(listOf(fresh), false)
+        }
+
+    private suspend fun kotlinx.coroutines.test.TestScope.refreshWithRememberedLikedCandidate(
+        hideKnown: Boolean,
+        knownIds: Set<Long>,
+    ): List<Manga> {
+        val sourceId = 501L
+        val source = hideKnownRememberedSource(sourceId)
+        val profile = mockk<GetTasteProfile>()
+        coEvery { profile.await() } returns TasteProfile.EMPTY.copy(learnedTagWeights = mapOf("action" to 1.0))
+        val aliases = mockk<GetTagAliases>(relaxed = true)
+        coEvery { aliases.awaitAll() } returns emptyList()
+        val tastes = mockk<GetMangaTaste>(relaxed = true)
+        coEvery { tastes.awaitAll() } returns emptyList()
+        val manager = mockk<SourceManager>(relaxed = true)
+        every { manager.getVisibleSources() } returns listOf(source)
+        val localize = mockk<NetworkToLocalManga>()
+        coEvery { localize.invoke(any<List<Manga>>(), any()) } answers {
+            firstArg<List<Manga>>().mapIndexed { index, manga -> manga.copy(id = 101L + index) }
+        }
+        val remembered = Manga.create().copy(
+            id = 202L,
+            source = sourceId,
+            url = "/remembered/b",
+            ogTitle = "Remembered B",
+            ogGenre = listOf("Action"),
+        )
+        val getManga = mockk<GetManga>(relaxed = true)
+        coEvery { getManga.await(202L) } returns remembered
+        coEvery { getManga.await("/remembered/b", sourceId) } returns remembered
+        val memory = mockk<GetRecommendationCandidateMemory>(relaxed = true)
+        coEvery { memory.awaitBySourceQuery(sourceId, any()) } returns listOf(
+            tachiyomi.domain.taste.model.RecommendationCandidateMemory(
+                sourceId = sourceId,
+                url = "/remembered/b",
+                mangaId = 202L,
+                title = "Remembered B",
+                thumbnailUrl = null,
+                normalizedTitle = "remembered b",
+                lastScore = 5.0,
+                matchedGroupsJson = "action",
+                resultReasonsJson = null,
+                querySignature = "any",
+                queryTagsJson = "action",
+                queryStrategy = null,
+                page = 1,
+                discoveredAt = 1L,
+                lastScoredAt = 1L,
+                lastSeenAt = 1L,
+                profileFingerprint = null,
+                filteredReason = null,
+            ),
+        )
+        // Mirrors the real query: only ids that are actually known come back, whatever ids were asked about.
+        val known = mockk<GetKnownRecommendationMangaIds>()
+        coEvery { known.await(any()) } answers { firstArg<Collection<Long>>().filter { it in knownIds }.toSet() }
+        val preferences = SourcePreferences(FakePreferenceStore())
+        preferences.recommendationHideKnownManga().set(hideKnown)
+        preferences.recommendationRatedMangaVisibility().set(RatedMangaVisibility.SHOW_ALL_RATED)
+        val harness = buildHarness(
+            getTasteProfile = profile,
+            getTagAliases = aliases,
+            getMangaTaste = tastes,
+            sourceManager = manager,
+            networkToLocalManga = localize,
+            getManga = getManga,
+            getKnownManga = known,
+            getMemory = memory,
+            preferences = preferences,
+        )
+
+        harness.model.refresh()
+        advanceUntilIdle()
+
+        val result = harness.model.state.value.items[source] as PersonalRecommendationResult.Success
+        return result.result.map { it.manga }
+    }
+
+    @Test
+    fun `live refresh hides a remembered candidate the user has since rated when hide known is on`() = runTest {
+        val shown = refreshWithRememberedLikedCandidate(hideKnown = true, knownIds = setOf(202L))
+
+        assertTrue(shown.any { it.id == 101L }, "the fresh unknown candidate must still be shown")
+        assertFalse(shown.any { it.id == 202L }, "a remembered candidate that is now known must be hidden")
+    }
+
+    // KMK --> v0.8.24 B4: controlled chapter-floor comparison. The SAME fixed title (id 101, 42 locally known
+    // chapters, like the Voodoo Slam/Hijala observation) goes through the real refresh() once per floor, so
+    // nothing but the floor changes between runs. No live source pool is involved.
+    private suspend fun kotlinx.coroutines.test.TestScope.refreshWithChapterFloor(
+        floor: Int,
+        chapterCounts: Map<Long, Long>,
+    ): List<Manga> {
+        val sourceId = 502L
+        val source = hideKnownRememberedSource(sourceId)
+        val profile = mockk<GetTasteProfile>()
+        coEvery { profile.await() } returns TasteProfile.EMPTY.copy(learnedTagWeights = mapOf("action" to 1.0))
+        val aliases = mockk<GetTagAliases>(relaxed = true)
+        coEvery { aliases.awaitAll() } returns emptyList()
+        val tastes = mockk<GetMangaTaste>(relaxed = true)
+        coEvery { tastes.awaitAll() } returns emptyList()
+        val manager = mockk<SourceManager>(relaxed = true)
+        every { manager.getVisibleSources() } returns listOf(source)
+        val localize = mockk<NetworkToLocalManga>()
+        coEvery { localize.invoke(any<List<Manga>>(), any()) } answers {
+            firstArg<List<Manga>>().mapIndexed { index, manga -> manga.copy(id = 101L + index) }
+        }
+        // Mirrors the real query: ids without chapter rows are omitted from the result.
+        val counts = mockk<GetChapterCountsByMangaIds>()
+        coEvery { counts.await(any()) } answers {
+            firstArg<Collection<Long>>().filter { it in chapterCounts }.associateWith { chapterCounts.getValue(it) }
+        }
+        val preferences = SourcePreferences(FakePreferenceStore())
+        preferences.recommendationMinChapterCount().set(floor)
+        val harness = buildHarness(
+            getTasteProfile = profile,
+            getTagAliases = aliases,
+            getMangaTaste = tastes,
+            sourceManager = manager,
+            networkToLocalManga = localize,
+            getChapterCounts = counts,
+            preferences = preferences,
+        )
+
+        harness.model.refresh()
+        advanceUntilIdle()
+
+        val result = harness.model.state.value.items[source] as PersonalRecommendationResult.Success
+        return result.result.map { it.manga }
+    }
+
+    @Test
+    fun `chapter floor shows the same title below and at its verified count and hides it above`() = runTest {
+        val verifiedCounts = mapOf(101L to 42L)
+
+        assertTrue(refreshWithChapterFloor(40, verifiedCounts).any { it.id == 101L }, "floor 40 is below 42 chapters")
+        assertTrue(refreshWithChapterFloor(42, verifiedCounts).any { it.id == 101L }, "a count at the floor stays visible")
+        assertFalse(refreshWithChapterFloor(43, verifiedCounts).any { it.id == 101L }, "floor 43 is above 42 chapters")
+        assertTrue(refreshWithChapterFloor(0, verifiedCounts).any { it.id == 101L }, "floor Off never filters")
+    }
+
+    @Test
+    fun `chapter floor never hides a title whose chapter count is not known locally`() = runTest {
+        assertTrue(refreshWithChapterFloor(43, emptyMap()).any { it.id == 101L }, "unknown count fails open")
+    }
+    // KMK <--
+
+    // KMK --> v0.8.24 recent-reading profile through the real refresh() path. Two fresh candidates: one matches the
+    // long-term profile (Action), one matches only what was read recently (Romance).
+    private suspend fun kotlinx.coroutines.test.TestScope.refreshWithRecentReading(
+        baseProfile: TasteProfile,
+        recentWeights: Map<String, Double>?,
+    ): Pair<BrowsePersonalRecommendationsScreenModel.State, List<Manga>> {
+        val sourceId = 503L
+        val source = mockk<Source>(relaxed = true).also {
+            every { it.id } returns sourceId
+            every { it.name } returns "Recent Source"
+            every { it.lang } returns "en"
+            every { it.supportsLatest } returns false
+            every { it.getFilterList() } returns FilterList()
+            fun fresh(path: String, genreText: String) = SManga.create().apply {
+                url = path
+                title = path
+                genre = genreText
+                status = SManga.ONGOING
+                initialized = true
+            }
+            coEvery { it.getSearchManga(1, any(), any()) } returns
+                MangasPage(listOf(fresh("/action", "Action"), fresh("/romance", "Romance")), false)
+        }
+        val profile = mockk<GetTasteProfile>()
+        coEvery { profile.await() } returns baseProfile
+        val aliases = mockk<GetTagAliases>(relaxed = true)
+        coEvery { aliases.awaitAll() } returns emptyList()
+        val tastes = mockk<GetMangaTaste>(relaxed = true)
+        coEvery { tastes.awaitAll() } returns emptyList()
+        val manager = mockk<SourceManager>(relaxed = true)
+        every { manager.getVisibleSources() } returns listOf(source)
+        val localize = mockk<NetworkToLocalManga>()
+        coEvery { localize.invoke(any<List<Manga>>(), any()) } answers {
+            firstArg<List<Manga>>().mapIndexed { index, manga -> manga.copy(id = 101L + index) }
+        }
+        val recent = recentWeights?.let { weights ->
+            mockk<GetRecentReadingTagWeights>().also { interactor ->
+                coEvery { interactor.await(any(), any()) } returns weights
+            }
+        }
+        val harness = buildHarness(
+            getTasteProfile = profile,
+            getTagAliases = aliases,
+            getMangaTaste = tastes,
+            sourceManager = manager,
+            networkToLocalManga = localize,
+            getRecentReadingTagWeights = recent,
+        )
+
+        harness.model.refresh()
+        advanceUntilIdle()
+
+        val state = harness.model.state.value
+        val shown = (state.items[source] as? PersonalRecommendationResult.Success)?.result.orEmpty().map { it.manga }
+        return state to shown
+    }
+
+    private fun longTermActionProfile() = TasteProfile.EMPTY.copy(learnedTagWeights = mapOf("action" to 1.0))
+
+    @Test
+    fun `recent reading changes what refresh shows and ranks it above the long-term match`() = runTest {
+        val (_, withRecent) = refreshWithRecentReading(longTermActionProfile(), mapOf("romance" to 3.0))
+        assertEquals(listOf("/romance", "/action"), withRecent.map { it.url })
+
+        val (_, withoutRecent) = refreshWithRecentReading(longTermActionProfile(), null)
+        assertEquals(listOf("/action"), withoutRecent.map { it.url }, "control: no interactor keeps the long-term profile")
+    }
+
+    @Test
+    fun `recent reading alone is enough taste evidence when there are no ratings or tag preferences`() = runTest {
+        val (withRecentState, shown) = refreshWithRecentReading(TasteProfile.EMPTY, mapOf("action" to 2.0))
+        assertFalse(withRecentState.profileIsEmpty)
+        assertEquals(listOf("/action"), shown.map { it.url })
+
+        val (controlState, _) = refreshWithRecentReading(TasteProfile.EMPTY, null)
+        assertTrue(controlState.profileIsEmpty, "control: with no recent reading the empty-profile state still shows")
+    }
+    // KMK <--
+
+    // KMK --> v0.8.24 For You scheduling and data saving, through the real refresh() path.
+    private class QueueFixture(
+        val sources: List<Source>,
+        val started: java.util.concurrent.ConcurrentHashMap<Long, Long>,
+        val pagesRequested: java.util.concurrent.ConcurrentLinkedQueue<Pair<Long, Int>>,
+    )
+
+    private fun kotlinx.coroutines.test.TestScope.queueFixture(
+        count: Int,
+        slowSourceId: Long? = null,
+        slowMillis: Long = 0L,
+    ): QueueFixture {
+        val started = java.util.concurrent.ConcurrentHashMap<Long, Long>()
+        val pages = java.util.concurrent.ConcurrentLinkedQueue<Pair<Long, Int>>()
+        val sources = (1L..count.toLong()).map { index ->
+            mockk<Source>(relaxed = true).also { source ->
+                every { source.id } returns index
+                every { source.name } returns "Queue Source $index"
+                every { source.lang } returns "en"
+                every { source.supportsLatest } returns false
+                every { source.getFilterList() } returns FilterList()
+                coEvery { source.getSearchManga(any(), any(), any()) } coAnswers {
+                    val page = firstArg<Int>()
+                    pages += index to page
+                    if (page == 1) {
+                        started[index] = testScheduler.currentTime
+                        // Every search takes some (virtual) time, as a network call does, so completions interleave with
+                        // starts instead of the whole queue finishing before the first result is processed.
+                        kotlinx.coroutines.delay(if (index == slowSourceId) slowMillis else 100L)
+                    }
+                    MangasPage(
+                        listOf(
+                            SManga.create().apply {
+                                url = "/q$index/p$page"
+                                title = "Queue $index page $page"
+                                genre = "Action"
+                                status = SManga.ONGOING
+                                initialized = true
+                            },
+                        ),
+                        false,
+                    )
+                }
+            }
+        }
+        return QueueFixture(sources, started, pages)
+    }
+
+    private suspend fun kotlinx.coroutines.test.TestScope.refreshQueue(
+        fixture: QueueFixture,
+        dataSaving: String? = null,
+        constrained: Boolean = false,
+        fits: List<tachiyomi.domain.taste.model.SourceRecommendationFit>? = null,
+        autoCheck: Boolean = false,
+        applyResults: Boolean = true,
+    ) {
+        val profile = mockk<GetTasteProfile>()
+        coEvery { profile.await() } returns longTermActionProfile()
+        val aliases = mockk<GetTagAliases>(relaxed = true)
+        coEvery { aliases.awaitAll() } returns emptyList()
+        val tastes = mockk<GetMangaTaste>(relaxed = true)
+        coEvery { tastes.awaitAll() } returns emptyList()
+        val manager = mockk<SourceManager>(relaxed = true)
+        every { manager.getVisibleSources() } returns fixture.sources
+        val localize = mockk<NetworkToLocalManga>()
+        var nextId = 1_000L
+        coEvery { localize.invoke(any<List<Manga>>(), any()) } answers {
+            firstArg<List<Manga>>().map { manga -> manga.copy(id = nextId++) }
+        }
+        val preferences = SourcePreferences(FakePreferenceStore())
+        dataSaving?.let { preferences.recommendationDataSaving().set(it) }
+        preferences.recommendationAutoRecheckEnabled().set(autoCheck)
+        preferences.recommendationAutoRecheckApplyToForYou().set(applyResults)
+        // For You's own history: every fixture source tried several times recently with nothing shown, so only the check
+        // result decides whether a source is skipped in these fixtures.
+        if (fits != null) {
+            preferences.recommendationSourceFitStats().set(
+                SourceFitStatsStore.serialize(
+                    fixture.sources.map {
+                        SourceFitStats(
+                            sourceId = it.id, runCount = 5, shownCount = 0, noMatchCount = 5, filteredOutCount = 0, errorCount = 0,
+                            hiddenByDuplicateCount = 0, totalVisibleCandidates = 0, lastSuccessAt = 0L, lastErrorAt = 0L,
+                            updatedAt = 0L, recentRunCount = 5, recentShownCount = 0,
+                        )
+                    },
+                ),
+            )
+        }
+        val fitReader = fits?.let { list ->
+            mockk<tachiyomi.domain.taste.interactor.GetSourceRecommendationFit>().also { coEvery { it.awaitAll() } returns list }
+        }
+        val harness = buildHarness(
+            getTasteProfile = profile,
+            getTagAliases = aliases,
+            getMangaTaste = tastes,
+            sourceManager = manager,
+            networkToLocalManga = localize,
+            preferences = preferences,
+            isNetworkConstrained = { constrained },
+            getSourceRecommendationFit = fitReader,
+        )
+        harness.model.refresh()
+        advanceUntilIdle()
+    }
+
+    // KMK --> v0.8.24: automatic check results acting on For You
+    private fun noMatchesFit(sourceId: Long) = tachiyomi.domain.taste.model.SourceRecommendationFit(
+        fitKey = "fit$sourceId", evaluationKey = "eval$sourceId", sourceId = sourceId, extensionPkgName = "pkg", signatureHash = "sig",
+        extensionName = "ext", sourceName = "Queue Source $sourceId", lang = "en", evaluatedAt = 0, queryCount = 3,
+        querySuccessCount = 3, rawResultCount = 0, visibleCandidateCount = 0, filteredOutCount = 0, blockedTagCandidateCount = 0,
+        matchedGroupCount = 0, topPicksContribution = 0, noMatchesCount = 3, errorCount = 0, avgCandidateScore = 0.0,
+        recommendationQualityScore = 0.0, verdict = tachiyomi.domain.taste.model.RecommendationQualityVerdict.NO_MATCHES,
+        reasonsJson = "[]", errorMessage = null,
+    )
+
+    @Test
+    fun `with the automatic check on, For You skips a source its check found unusable`() = runTest {
+        val fixture = queueFixture(count = 5)
+        refreshQueue(fixture, fits = listOf(noMatchesFit(3L)), autoCheck = true)
+        assertEquals(setOf(1L, 2L, 4L, 5L), fixture.started.keys, "source 3 is skipped, every other source is searched")
+    }
+
+    @Test
+    fun `check results do nothing while the automatic check or Use results is off`() = runTest {
+        val checkOff = queueFixture(count = 5)
+        refreshQueue(checkOff, fits = listOf(noMatchesFit(3L)), autoCheck = false)
+        assertEquals((1L..5L).toSet(), checkOff.started.keys, "automatic check off: nothing skipped")
+
+        val applyOff = queueFixture(count = 5)
+        refreshQueue(applyOff, fits = listOf(noMatchesFit(3L)), autoCheck = true, applyResults = false)
+        assertEquals((1L..5L).toSet(), applyOff.started.keys, "Use results on For You off: nothing skipped")
+    }
+
+    @Test
+    fun `skipping never empties For You`() = runTest {
+        val fixture = queueFixture(count = 2)
+        refreshQueue(fixture, fits = listOf(noMatchesFit(1L), noMatchesFit(2L)), autoCheck = true)
+        assertEquals(setOf(1L, 2L), fixture.started.keys, "when every source would be skipped, none is")
+    }
+    // KMK <--
+
+    @Test
+    fun `a slow source does not delay the sources queued behind it`() = runTest {
+        val slowMillis = 10_000L
+        val fixture = queueFixture(count = 10, slowSourceId = 1L, slowMillis = slowMillis)
+
+        refreshQueue(fixture)
+
+        assertEquals((1L..10L).toSet(), fixture.started.keys, "every source is searched")
+        (6L..10L).forEach { id ->
+            assertTrue(
+                fixture.started.getValue(id) < slowMillis,
+                "source $id must start while the slow source is still running, but started at ${fixture.started[id]}ms",
+            )
+        }
+    }
+
+    @Test
+    fun `the refresh stops starting sources once enough rows are useful`() = runTest {
+        val fixture = queueFixture(count = 40)
+
+        refreshQueue(fixture)
+
+        val searched = fixture.started.keys.size
+        assertTrue(searched >= 20, "at least the row limit is searched, was $searched")
+        assertTrue(searched < 40, "the rest is not searched once the rows are full, was $searched")
+    }
+
+    @Test
+    fun `data saving skips the extra discovery page and the controls still request it`() = runTest {
+        fun extraPages(fixture: QueueFixture) = fixture.pagesRequested.count { it.second > 1 }
+
+        val always = queueFixture(count = 5)
+        refreshQueue(always, dataSaving = "on")
+        assertEquals(0, extraPages(always), "Always: no extra page")
+        assertEquals(
+            5,
+            always.pagesRequested.filter { it.second == 1 }.map { it.first }.toSet().size,
+            "page one is still searched for every source",
+        )
+        val pageOnePerSource = { f: QueueFixture ->
+            f.pagesRequested.filter { it.second == 1 }.groupingBy { it.first }.eachCount().values
+        }
+        assertTrue(
+            pageOnePerSource(always).all { it <= ForYouDataSavingPolicy.SAVING_MAX_PLANS_PER_SOURCE },
+            "Always: at most ${ForYouDataSavingPolicy.SAVING_MAX_PLANS_PER_SOURCE} query strategies per source, was ${pageOnePerSource(always)}",
+        )
+
+        val never = queueFixture(count = 5)
+        refreshQueue(never, dataSaving = "off", constrained = true)
+        assertTrue(extraPages(never) > 0, "Never keeps the discovery pages even on a constrained network")
+        assertTrue(
+            pageOnePerSource(never).any { it > ForYouDataSavingPolicy.SAVING_MAX_PLANS_PER_SOURCE },
+            "control: Never keeps every query strategy, was ${pageOnePerSource(never)}",
+        )
+
+        val autoConstrained = queueFixture(count = 5)
+        refreshQueue(autoConstrained, dataSaving = "auto", constrained = true)
+        assertEquals(0, extraPages(autoConstrained), "Automatic on a constrained network saves data")
+
+        val autoOpen = queueFixture(count = 5)
+        refreshQueue(autoOpen, dataSaving = "auto", constrained = false)
+        assertTrue(extraPages(autoOpen) > 0, "Automatic on an open network keeps the discovery pages")
+    }
+
+    @Test
+    fun `data saving stops at its smaller row limit`() = runTest {
+        val saving = queueFixture(count = 40)
+        refreshQueue(saving, dataSaving = "on")
+        val normal = queueFixture(count = 40)
+        refreshQueue(normal, dataSaving = "off")
+
+        assertTrue(saving.started.size < normal.started.size, "saving ${saving.started.size} vs normal ${normal.started.size}")
+        assertTrue(saving.started.size >= ForYouDataSavingPolicy.SAVING_MAX_VISIBLE_SOURCE_ROWS)
+    }
+    // KMK <--
+
+    @Test
+    fun `live refresh keeps a remembered candidate when hide known is off`() = runTest {
+        val shown = refreshWithRememberedLikedCandidate(hideKnown = false, knownIds = setOf(202L))
+
+        assertTrue(shown.any { it.id == 101L })
+        assertTrue(shown.any { it.id == 202L }, "with Hide known off a known remembered candidate stays visible")
+    }
+    // KMK <--
 
     @Test
     fun `public refresh reaches profile-empty terminal state`() = runTest {

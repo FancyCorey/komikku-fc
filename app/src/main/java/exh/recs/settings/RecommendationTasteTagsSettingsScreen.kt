@@ -64,6 +64,10 @@ class RecommendationTasteTagsSettingsScreen(
                 "tag_content",
                 "suggestions_header",
                 "suggestions_content",
+                "recommendation_languages_header",
+                "recommendation_languages_content",
+                "focus_modes_link",
+                "linked_versions_link",
             )
         }
         ScrollToAnchorEffect(lazyListState, itemKeysInOrder, anchor)
@@ -74,7 +78,7 @@ class RecommendationTasteTagsSettingsScreen(
         Scaffold(
             topBar = { scrollBehavior ->
                 AppBar(
-                    title = stringResource(KMR.strings.rec_settings_index_taste_filters),
+                    title = stringResource(KMR.strings.rec_hub_your_taste),
                     navigateUp = navigator::pop,
                     actions = {
                         RecommendationSettingsDetailActions(
@@ -93,10 +97,6 @@ class RecommendationTasteTagsSettingsScreen(
                 bottom = contentPadding.calculateBottomPadding(),
             )
             Column(modifier = Modifier.fillMaxSize().padding(top = contentPadding.calculateTopPadding())) {
-                RecommendationSettingsQuickAccessRow(
-                    current = RecommendationSettingsQuickAccessDestination.TasteAndFilters,
-                    onNavigate = { destination -> navigator.replace(destination.toScreen()) },
-                )
                 LazyColumn(state = lazyListState, contentPadding = listContentPadding, modifier = Modifier.weight(1f)) {
                     // KMK v0.8.14: moved in from the retired For You screen -- see class doc.
                     item(key = "rated_header") {
@@ -140,6 +140,35 @@ class RecommendationTasteTagsSettingsScreen(
                             onValueChange = screenModel::setMinChapterCount,
                         )
                     }
+                    // KMK --> v0.8.24 recent-reading profile
+                    item(key = "recent_reading") {
+                        BoundedIntPreferenceRow(
+                            title = stringResource(KMR.strings.rec_recent_reading),
+                            summary = stringResource(KMR.strings.rec_recent_reading_summary),
+                            valueTitle = stringResource(KMR.strings.rec_recent_reading_window),
+                            current = exh.recs.RecentReadingPolicy.resolveWindowDays(state.recentReadingWindowDays),
+                            enabled = state.recentReadingEnabled,
+                            min = exh.recs.RecentReadingPolicy.MIN_WINDOW_DAYS,
+                            max = exh.recs.RecentReadingPolicy.MAX_WINDOW_DAYS,
+                            valueLabel = { pluralStringResource(KMR.plurals.rec_recent_reading_days, count = it, it) },
+                            onEnabledChange = screenModel::setRecentReadingEnabled,
+                            onValueChange = screenModel::setRecentReadingWindowDays,
+                        )
+                    }
+                    item(key = "recent_reading_min_chapters") {
+                        BoundedIntPreferenceRow(
+                            title = stringResource(KMR.strings.rec_recent_reading_min_chapters),
+                            summary = stringResource(KMR.strings.rec_recent_reading_min_chapters_summary),
+                            valueTitle = stringResource(KMR.strings.rec_recent_reading_min_chapters),
+                            current = exh.recs.RecentReadingPolicy.resolveMinChapters(state.recentReadingMinChapters),
+                            enabled = state.recentReadingEnabled,
+                            min = exh.recs.RecentReadingPolicy.MIN_MIN_CHAPTERS,
+                            max = exh.recs.RecentReadingPolicy.MAX_MIN_CHAPTERS,
+                            valueLabel = { "$it" },
+                            onValueChange = screenModel::setRecentReadingMinChapters,
+                        )
+                    }
+                    // KMK <--
 
                     item(key = "tag_header") {
                         val tagCounts = RecommendationSettingsSectionSummaries.tagCounts(state.tagPreferences)
@@ -178,6 +207,38 @@ class RecommendationTasteTagsSettingsScreen(
                             suggestions = state.tasteSuggestions,
                             onAddPreferred = { screenModel.addTasteSuggestion(it, TagPreference.PREFER) },
                             onAddBlocked = { screenModel.addTasteSuggestion(it, TagPreference.BLOCK) },
+                        )
+                    }
+                    // KMK v0.8.24: the language selector lives with the other general preferences.
+                    item(key = "recommendation_languages_header") {
+                        SectionHeader(
+                            stringResource(KMR.strings.rec_settings_management_languages_header),
+                            summary = pluralStringResource(KMR.plurals.rec_settings_summary_languages, count = state.recommendationLanguages.size, state.recommendationLanguages.size),
+                        )
+                    }
+                    item(key = "recommendation_languages_content") {
+                        LanguageSelectorContent(
+                            selectedLanguages = state.recommendationLanguages,
+                            availableLanguages = state.availableLanguages,
+                            onToggle = screenModel::toggleRecommendationLanguage,
+                        )
+                    }
+                    item(key = "focus_modes_link") {
+                        eu.kanade.presentation.more.settings.widget.TextPreferenceWidget(
+                            title = stringResource(KMR.strings.rec_settings_focus_header),
+                            subtitle = stringResource(KMR.strings.rec_hub_focus_modes_link_summary),
+                            onPreferenceClick = {
+                                navigator.push(RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.FOCUS_MODES))
+                            },
+                        )
+                    }
+                    item(key = "linked_versions_link") {
+                        eu.kanade.presentation.more.settings.widget.TextPreferenceWidget(
+                            title = stringResource(KMR.strings.rec_hub_linked_versions_link),
+                            subtitle = stringResource(KMR.strings.rec_hub_linked_versions_link_summary),
+                            onPreferenceClick = {
+                                navigator.push(RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.LINKED_VERSIONS))
+                            },
                         )
                     }
                 }

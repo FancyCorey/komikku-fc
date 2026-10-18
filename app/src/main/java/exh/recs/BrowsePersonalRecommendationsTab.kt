@@ -109,6 +109,8 @@ import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.EmptyScreenAction
 import tachiyomi.presentation.core.theme.active
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.util.Locale
 import tachiyomi.core.common.i18n.stringResource as contextStringResource
 
@@ -133,7 +135,14 @@ private fun FocusDimension.labelRes() = when (this) {
 fun Screen.personalRecommendationsTab(): TabContent {
     val navigator = LocalNavigator.currentOrThrow
     val context = LocalContext.current
-    val screenModel = rememberScreenModel { BrowsePersonalRecommendationsScreenModel() }
+    // KMK v0.8.24: the recent-reading interactor is passed explicitly (see the screen model's constructor).
+    val screenModel = rememberScreenModel {
+        BrowsePersonalRecommendationsScreenModel(
+            getRecentReadingTagWeights = Injekt.get(),
+            isNetworkConstrained = { ForYouDataSavingPolicy.isConstrained(context) },
+            getSourceRecommendationFit = Injekt.get(),
+        )
+    }
     val state by screenModel.state.collectAsState()
     val scope = rememberCoroutineScope()
 

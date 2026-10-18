@@ -198,6 +198,46 @@ class SourcePreferences(
         preferenceStore.getInt("recommendation_min_chapter_count", exh.recs.RecommendationMinChapterCountPolicy.DEFAULT)
     // KMK <--
 
+    // KMK --> v0.8.24 For You data saving (exh.recs.ForYouDataSaving): auto / on / off, resolved on every read.
+    fun recommendationDataSaving() =
+        preferenceStore.getString("recommendation_data_saving", exh.recs.ForYouDataSaving.DEFAULT.storedValue)
+    // KMK <--
+
+    // KMK --> v0.8.24 automatic source re-check (Find new sources > Automatic check). Off until the user turns it on.
+    fun recommendationAutoRecheckEnabled() =
+        preferenceStore.getBoolean("recommendation_auto_recheck_enabled", exh.recs.evaluation.SourceAutoRecheckPolicy.DEFAULT_ENABLED)
+
+    fun recommendationAutoRecheckIntervalDays() =
+        preferenceStore.getInt("recommendation_auto_recheck_interval_days", exh.recs.evaluation.SourceAutoRecheckPolicy.DEFAULT_INTERVAL_DAYS)
+
+    fun recommendationAutoRecheckUnmeteredOnly() =
+        preferenceStore.getBoolean("recommendation_auto_recheck_unmetered_only", exh.recs.evaluation.SourceAutoRecheckPolicy.DEFAULT_UNMETERED_ONLY)
+
+    fun recommendationAutoRecheckBatteryGuard() =
+        preferenceStore.getBoolean("recommendation_auto_recheck_battery_guard", exh.recs.evaluation.SourceAutoRecheckPolicy.DEFAULT_BATTERY_GUARD)
+
+    fun recommendationAutoRecheckApplyToForYou() =
+        preferenceStore.getBoolean("recommendation_auto_recheck_apply_to_for_you", exh.recs.evaluation.SourceAutoRecheckPolicy.DEFAULT_APPLY_TO_FOR_YOU)
+
+    fun recommendationAutoRecheckLastRunMillis() =
+        preferenceStore.getLong("recommendation_auto_recheck_last_run_millis", 0L)
+    // KMK <--
+
+    // KMK --> v0.8.24 recent-reading profile. Values are resolved on every read by exh.recs.RecentReadingPolicy, so a
+    // stored out-of-range number can never reach the scorer or the For You cache fingerprint.
+    /** Whether For You also learns from what was read recently. */
+    fun recommendationRecentReadingEnabled() =
+        preferenceStore.getBoolean("recommendation_recent_reading_enabled", exh.recs.RecentReadingPolicy.DEFAULT_ENABLED)
+
+    /** Recent-reading window in days (1..30). */
+    fun recommendationRecentReadingWindowDays() =
+        preferenceStore.getInt("recommendation_recent_reading_window_days", exh.recs.RecentReadingPolicy.DEFAULT_WINDOW_DAYS)
+
+    /** A manga is treated as at least this many chapters long when measuring how much of it was read (1..50). */
+    fun recommendationRecentReadingMinChapters() =
+        preferenceStore.getInt("recommendation_recent_reading_min_chapters", exh.recs.RecentReadingPolicy.DEFAULT_MIN_CHAPTERS)
+    // KMK <--
+
     // KMK --> v0.7.34: configurable enrichment cap for For You sources
     /** Number of candidate manga per source to enrich with full metadata. Default 5; boosted sources get 2×. Max 20. */
     fun recommendationEnrichmentCap() = preferenceStore.getInt("recommendation_enrichment_cap", 5)

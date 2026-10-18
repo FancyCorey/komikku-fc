@@ -37,8 +37,10 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberNavigatorScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.manga.components.MangaCover
+import eu.kanade.presentation.more.settings.widget.SwitchPreferenceWidget
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.source.Source
@@ -57,6 +59,9 @@ import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
+import tachiyomi.presentation.core.util.collectAsState as collectPreferenceAsState
 
 // KMK v0.8.8 -->
 /**
@@ -100,6 +105,7 @@ class RecommendationSourcePrioritySettingsScreen(
         val state by screenModel.state.collectAsState()
         // KMK v0.8.14-fix1: read-only For You preview -- see RecommendationForYouPreviewSnapshotStore.
         var showForYouPreview by rememberSaveable { mutableStateOf(false) }
+        val uiPreferences = remember { Injekt.get<UiPreferences>() }
 
         // KMK v0.8.18-fix1: the right-edge quick-access panel was removed from this and every other
         // Recommendation Settings detail screen -- see exh.recs.settings shared components for its new
@@ -107,7 +113,7 @@ class RecommendationSourcePrioritySettingsScreen(
         Scaffold(
             topBar = { scrollBehavior ->
                 AppBar(
-                    title = stringResource(KMR.strings.rec_settings_index_for_you_sources),
+                    title = stringResource(KMR.strings.rec_hub_for_you_feed),
                     navigateUp = navigator::pop,
                     actions = {
                         RecommendationSettingsDetailActions(
@@ -142,6 +148,7 @@ class RecommendationSourcePrioritySettingsScreen(
             // placeholder keys -- only the static control keys below are ever used as search anchors.
             val itemKeysInOrder = remember(sourcesState.size, state.suggestFitOrderAvailable) {
                 buildList {
+                    add("show_for_you_tab")
                     add("preview_for_you")
                     add("source_header")
                     add("source_status_note")
@@ -172,10 +179,6 @@ class RecommendationSourcePrioritySettingsScreen(
             }
 
             Column(modifier = Modifier.fillMaxSize().padding(top = contentPadding.calculateTopPadding())) {
-                RecommendationSettingsQuickAccessRow(
-                    current = RecommendationSettingsQuickAccessDestination.ForYouSources,
-                    onNavigate = { destination -> navigator.replace(destination.toScreen()) },
-                )
                 LazyColumn(
                     state = lazyListState,
                     contentPadding = listContentPadding,
@@ -183,6 +186,18 @@ class RecommendationSourcePrioritySettingsScreen(
                 ) {
                     // KMK v0.8.14-fix1: preview action moved near the top of the screen, right after the
                     // header, instead of after every source-order action -- see the class doc.
+                    // KMK v0.8.24: same preference as Settings > Browse > Hide For You tab, shown here the right way round
+                    item(key = "show_for_you_tab") {
+                        val hideForYouTab by uiPreferences.hideForYouTab().collectPreferenceAsState()
+                        SwitchPreferenceWidget(
+                            title = stringResource(KMR.strings.rec_show_for_you_tab),
+                            subtitle = stringResource(
+                                if (hideForYouTab) KMR.strings.rec_show_for_you_tab_off else KMR.strings.rec_show_for_you_tab_on,
+                            ),
+                            checked = !hideForYouTab,
+                            onCheckedChanged = { uiPreferences.hideForYouTab().set(!it) },
+                        )
+                    }
                     item(key = "preview_for_you") {
                         TextPreferenceWidget(
                             title = stringResource(KMR.strings.rec_preview_for_you_title),

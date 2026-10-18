@@ -13,27 +13,51 @@ class DelayedTrackingStore(context: Context) {
     private val preferences = context.getSharedPreferences("tracking_queue", Context.MODE_PRIVATE)
 
     fun add(trackId: Long, lastChapterRead: Double) {
-        val previousLastChapterRead = preferences.getFloat(trackId.toString(), 0f)
-        if (lastChapterRead > previousLastChapterRead) {
-            logcat(LogPriority.DEBUG) { "Tracking item queued" }
-            preferences.edit {
-                putFloat(trackId.toString(), lastChapterRead.toFloat())
+        synchronized(preferences) {
+            val key = trackId.toString()
+            val previousLastChapterRead = preferences.getFloat(key, 0f)
+            if (lastChapterRead > previousLastChapterRead) {
+                logcat(LogPriority.DEBUG) { "Tracking item queued" }
+                preferences.edit {
+                    putFloat(key, lastChapterRead.toFloat())
+                }
             }
         }
     }
 
     fun remove(trackId: Long) {
-        preferences.edit {
-            remove(trackId.toString())
+        synchronized(preferences) {
+            preferences.edit {
+                remove(trackId.toString())
+            }
+        }
+    }
+
+    fun getTarget(trackId: Long): Double? = synchronized(preferences) {
+        val key = trackId.toString()
+        if (preferences.contains(key)) preferences.getFloat(key, 0f).toDouble() else null
+    }
+
+    /** Remove a queued target only when the persisted progress has satisfied it. */
+    fun removeIfAtMost(trackId: Long, satisfiedThrough: Double) {
+        synchronized(preferences) {
+            val key = trackId.toString()
+            if (preferences.contains(key) && preferences.getFloat(key, 0f).toDouble() <= satisfiedThrough) {
+                preferences.edit {
+                    remove(key)
+                }
+            }
         }
     }
 
     fun getItems(): List<DelayedTrackingItem> {
-        return preferences.all.mapNotNull {
-            DelayedTrackingItem(
-                trackId = it.key.toLong(),
-                lastChapterRead = it.value.toString().toFloat(),
-            )
+        return synchronized(preferences) {
+            preferences.all.mapNotNull {
+                DelayedTrackingItem(
+                    trackId = it.key.toLong(),
+                    lastChapterRead = it.value.toString().toFloat(),
+                )
+            }
         }
     }
 

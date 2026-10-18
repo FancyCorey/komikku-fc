@@ -46,27 +46,31 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.DragHandle
-import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Label
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material.icons.outlined.ThumbUpAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
@@ -290,6 +294,55 @@ internal fun DiscoveryEffortLevelContent(
             exh.recs.memory.DiscoveryEffortLevel.EXTENDED,
             KMR.strings.rec_discovery_effort_extended,
             KMR.strings.rec_discovery_effort_extended_description,
+        ),
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = MaterialTheme.padding.medium),
+    ) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
+            options.forEach { (option, labelRes, _) ->
+                FilterChip(
+                    selected = current == option,
+                    onClick = { onSelect(option) },
+                    label = { Text(stringResource(labelRes)) },
+                )
+            }
+        }
+        Text(
+            text = stringResource(options.first { it.first == current }.third),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = MaterialTheme.padding.extraSmall),
+        )
+    }
+}
+// KMK <--
+
+// KMK --> v0.8.24 For You data saving: same chip-row pattern as DiscoveryEffortLevelContent, with the trade-off
+// of the chosen mode shown underneath.
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun DataSavingContent(
+    current: exh.recs.ForYouDataSaving,
+    onSelect: (exh.recs.ForYouDataSaving) -> Unit,
+) {
+    val options = listOf(
+        Triple(
+            exh.recs.ForYouDataSaving.AUTO,
+            KMR.strings.rec_data_saving_auto,
+            KMR.strings.rec_data_saving_auto_description,
+        ),
+        Triple(
+            exh.recs.ForYouDataSaving.ALWAYS,
+            KMR.strings.rec_data_saving_always,
+            KMR.strings.rec_data_saving_always_description,
+        ),
+        Triple(
+            exh.recs.ForYouDataSaving.NEVER,
+            KMR.strings.rec_data_saving_never,
+            KMR.strings.rec_data_saving_never_description,
         ),
     )
     Column(
@@ -1523,19 +1576,22 @@ internal fun TasteDiagnosticsContent(diagnostics: TasteDiagnosticsResult?) {
  * "Background/network/installer"); see the v0.8.14 five-section structure this mirrors.
  */
 enum class RecommendationSettingsQuickAccessDestination {
-    ForYouSources,
-    TasteAndFilters,
-    SourceEvaluation,
-    SourcesToTry,
-    ManagementAndDiagnostics,
+    // KMK v0.8.24: the six task pages of the redesigned Recommendation Settings.
+    YourTaste,
+    ForYouFeed,
+    FindNewSources,
+    SpeedAndData,
+    LinkedVersions,
+    Troubleshooting,
 }
 
-private fun RecommendationSettingsQuickAccessDestination.titleRes(): StringResource = when (this) {
-    RecommendationSettingsQuickAccessDestination.ForYouSources -> KMR.strings.rec_settings_index_for_you_sources
-    RecommendationSettingsQuickAccessDestination.TasteAndFilters -> KMR.strings.rec_settings_index_taste_filters
-    RecommendationSettingsQuickAccessDestination.SourceEvaluation -> KMR.strings.rec_settings_index_evaluation
-    RecommendationSettingsQuickAccessDestination.SourcesToTry -> KMR.strings.rec_settings_index_discovery
-    RecommendationSettingsQuickAccessDestination.ManagementAndDiagnostics -> KMR.strings.rec_settings_index_diagnostics
+internal fun RecommendationSettingsQuickAccessDestination.hubTitleRes(): StringResource = when (this) {
+    RecommendationSettingsQuickAccessDestination.YourTaste -> KMR.strings.rec_hub_your_taste
+    RecommendationSettingsQuickAccessDestination.ForYouFeed -> KMR.strings.rec_hub_for_you_feed
+    RecommendationSettingsQuickAccessDestination.FindNewSources -> KMR.strings.rec_hub_find_sources
+    RecommendationSettingsQuickAccessDestination.SpeedAndData -> KMR.strings.rec_hub_speed_data
+    RecommendationSettingsQuickAccessDestination.LinkedVersions -> KMR.strings.rec_hub_linked_versions
+    RecommendationSettingsQuickAccessDestination.Troubleshooting -> KMR.strings.rec_hub_troubleshooting
 }
 
 /**
@@ -1544,74 +1600,30 @@ private fun RecommendationSettingsQuickAccessDestination.titleRes(): StringResou
  * always returns to [RecommendationSettingsIndexScreen]) instead of growing with every lateral jump.
  */
 fun RecommendationSettingsQuickAccessDestination.toScreen(): eu.kanade.presentation.util.Screen = when (this) {
-    RecommendationSettingsQuickAccessDestination.ForYouSources -> RecommendationSourcePrioritySettingsScreen()
-    RecommendationSettingsQuickAccessDestination.TasteAndFilters -> RecommendationTasteTagsSettingsScreen()
-    RecommendationSettingsQuickAccessDestination.SourceEvaluation -> exh.recs.evaluation.SourceEvaluationScreen()
-    RecommendationSettingsQuickAccessDestination.SourcesToTry -> RecommendationNonInstalledDiscoverySettingsScreen()
-    RecommendationSettingsQuickAccessDestination.ManagementAndDiagnostics -> RecommendationDiagnosticsSettingsScreen()
+    RecommendationSettingsQuickAccessDestination.YourTaste -> RecommendationTasteTagsSettingsScreen()
+    RecommendationSettingsQuickAccessDestination.ForYouFeed -> RecommendationSourcePrioritySettingsScreen()
+    RecommendationSettingsQuickAccessDestination.FindNewSources -> FindNewSourcesScreen()
+    RecommendationSettingsQuickAccessDestination.SpeedAndData ->
+        RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.SPEED_AND_DATA)
+    RecommendationSettingsQuickAccessDestination.LinkedVersions ->
+        RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.LINKED_VERSIONS)
+    RecommendationSettingsQuickAccessDestination.Troubleshooting ->
+        RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.TROUBLESHOOTING)
 }
 
-private fun RecommendationSettingsQuickAccessDestination.icon(): androidx.compose.ui.graphics.vector.ImageVector = when (this) {
-    RecommendationSettingsQuickAccessDestination.ForYouSources -> Icons.Outlined.Star
-    RecommendationSettingsQuickAccessDestination.TasteAndFilters -> Icons.Outlined.Label
-    RecommendationSettingsQuickAccessDestination.SourceEvaluation -> Icons.Outlined.FactCheck
-    RecommendationSettingsQuickAccessDestination.SourcesToTry -> Icons.Outlined.ThumbUpAlt
-    RecommendationSettingsQuickAccessDestination.ManagementAndDiagnostics -> Icons.Outlined.BugReport
-}
-
-/**
- * Horizontally-scrollable quick-access row shown near the top of every Recommendation Settings detail
- * screen (below the app bar, before the main content), so the user can move between the five approved
- * destinations without backing out to the index. Reuses the exact same title/icon each destination's
- * index row already uses -- this does not duplicate any control, it is navigation only. The current
- * destination is shown selected and is not itself clickable (tapping it would just re-push the same
- * screen).
- */
-@Composable
-internal fun RecommendationSettingsQuickAccessRow(
-    current: RecommendationSettingsQuickAccessDestination,
-    onNavigate: (RecommendationSettingsQuickAccessDestination) -> Unit,
-) {
-    val quickAccessDescription = stringResource(KMR.strings.rec_settings_quick_access_group)
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(current) {
-        val selectedIndex = RecommendationSettingsQuickAccessDestination.entries.indexOf(current)
-        if (selectedIndex >= 0) {
-            listState.animateScrollToItem(selectedIndex)
-        }
-    }
-
-    LazyRow(
-        state = listState,
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics {
-                contentDescription = quickAccessDescription
-            }
-            .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
-        contentPadding = PaddingValues(horizontal = MaterialTheme.padding.small),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-    ) {
-        items(
-            items = RecommendationSettingsQuickAccessDestination.entries,
-            key = { it.name },
-        ) { destination ->
-            val selected = destination == current
-            FilterChip(
-                selected = selected,
-                onClick = { if (!selected) onNavigate(destination) },
-                label = { Text(stringResource(destination.titleRes())) },
-                leadingIcon = {
-                    Icon(
-                        imageVector = destination.icon(),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                },
-            )
-        }
-    }
+internal fun RecommendationSettingsQuickAccessDestination.icon(filled: Boolean = false): androidx.compose.ui.graphics.vector.ImageVector = when (this) {
+    RecommendationSettingsQuickAccessDestination.YourTaste ->
+        if (filled) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
+    RecommendationSettingsQuickAccessDestination.ForYouFeed ->
+        if (filled) Icons.Filled.Star else Icons.Outlined.StarBorder
+    RecommendationSettingsQuickAccessDestination.FindNewSources ->
+        if (filled) Icons.Filled.Search else Icons.Outlined.Search
+    RecommendationSettingsQuickAccessDestination.SpeedAndData ->
+        if (filled) Icons.Filled.Bolt else Icons.Outlined.Bolt
+    RecommendationSettingsQuickAccessDestination.LinkedVersions ->
+        if (filled) Icons.Filled.Link else Icons.Outlined.Link
+    RecommendationSettingsQuickAccessDestination.Troubleshooting ->
+        if (filled) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle
 }
 
 /**
@@ -1817,7 +1829,7 @@ internal fun <T> EdgeQuickAccessPanel(
 /**
  * Right-edge quick-access panel for the five Recommendation Settings sections, shown on For You,
  * Loved, Liked, and Disliked (in addition to the Recommendation Settings detail screens
- * themselves, which use [RecommendationSettingsQuickAccessRow] instead). This restores the
+ * themselves, which no longer have a tab row). This restores the
  * panel's original stated purpose on those screens -- jumping directly into Recommendation
  * Settings -- rather than switching between For You/Loved/Liked/Disliked, which the bottom tab
  * bar and top tabs already cover.
@@ -1830,7 +1842,7 @@ fun RecommendationSettingsQuickAccessPanel(
     EdgeQuickAccessPanel(
         destinations = RecommendationSettingsQuickAccessDestination.entries,
         current = current,
-        title = { stringResource(it.titleRes()) },
+        title = { stringResource(it.hubTitleRes()) },
         icon = { it.icon() },
         onNavigate = onNavigate,
     )

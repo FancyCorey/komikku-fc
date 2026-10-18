@@ -25,7 +25,8 @@ class ConfirmedTrackedMangaTasteTargets(
         )
         val targets = buildList {
             for (member in members) {
-                val manga = getManga.await(member.url, member.source) ?: continue
+                val manga = getManga.await(member.url, member.source)
+                    ?: Manga.create().copy(source = member.source, url = member.url, ogTitle = member.title)
                 val isOrigin = manga.source == origin.source && manga.url == origin.url
                 val isTracked = isOrigin || localTrackerRepository.getWorkIdBySourceUrl(manga.source, manga.url) != null
                 if (isTracked) add(manga)

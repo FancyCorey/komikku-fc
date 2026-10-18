@@ -1,5 +1,6 @@
 package exh.recs
 
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -9,12 +10,10 @@ class RecommendationHubOwnershipSourceTest {
     fun `quick access keeps recommendation concepts in their named owners`() {
         val shared = source("src/main/java/exh/recs/settings/RecommendationSettingsSharedComponents.kt")
         val eval = source("src/main/java/exh/recs/evaluation/SourceEvaluationScreen.kt")
-        assertTrue(shared.contains("ForYouSources"))
-        assertTrue(shared.contains("TasteAndFilters"))
-        assertTrue(shared.contains("SourceEvaluation"))
-        assertTrue(shared.contains("SourcesToTry"))
-        assertTrue(shared.contains("ManagementAndDiagnostics"))
-        assertTrue(eval.contains("RecommendationSettingsQuickAccessRow"))
+        listOf("YourTaste", "ForYouFeed", "FindNewSources", "SpeedAndData", "LinkedVersions", "Troubleshooting")
+            .forEach { assertTrue(shared.contains(it), "missing destination $it") }
+        // KMK v0.8.24: the repeating tab row is gone; the hub is the single navigation surface.
+        assertFalse(eval.contains("RecommendationSettingsQuickAccessRow"))
     }
 
     @Test

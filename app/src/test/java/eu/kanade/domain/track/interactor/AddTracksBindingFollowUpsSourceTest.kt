@@ -14,7 +14,8 @@ class AddTracksBindingFollowUpsSourceTest {
     fun `remote accepted binding persists before follow-up sync with distinct failure callbacks`() {
         val providerBind = bindSource.indexOf("val boundItem = tracker.bind(item, hasReadChapters)")
         val followUps = bindSource.indexOf("runTrackerBindingFollowUps(")
-        val persist = bindSource.indexOf("persistLocalTrack = { insertTrack.await(track) }")
+        val persist = bindSource.indexOf("persistLocalTrack = {")
+        val share = bindSource.indexOf("ShareTrackerBindingWithLinkedVersions().await(track)")
         val synchronize = bindSource.indexOf("synchronize = {")
         val externalSync = bindSource.indexOf("syncLocalTrackingFromExternal?.sync(track, tracker)")
         val chapterSync = bindSource.indexOf("syncChapterProgressWithTrack.await(mangaId, track, tracker)")
@@ -24,6 +25,8 @@ class AddTracksBindingFollowUpsSourceTest {
         assertTrue(bindSource.contains("= withNonCancellableContext"))
         assertTrue(providerBind >= 0 && providerBind < followUps)
         assertTrue(followUps < persist && persist < synchronize)
+        // KMK v0.8.24: the entry is shared with linked versions only after it is saved locally, before follow-up sync
+        assertTrue(persist < share && share < synchronize)
         assertTrue(synchronize < externalSync && externalSync < chapterSync)
         assertTrue(chapterSync < localFailure && localFailure < syncFailure)
         assertTrue(bindSource.contains("RemoteAcceptedLocalSaveFailed"))

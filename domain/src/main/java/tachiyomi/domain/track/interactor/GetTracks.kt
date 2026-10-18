@@ -11,6 +11,19 @@ class GetTracks(
     private val trackRepository: TrackRepository,
 ) {
 
+    // KMK --> v0.8.24: other manga rows bound to the same remote tracker entry; empty on any failure
+    suspend fun awaitByRemoteId(trackerId: Long, remoteId: Long): List<Track> {
+        return try {
+            trackRepository.getTracksByRemoteId(trackerId, remoteId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR, e)
+            emptyList()
+        }
+    }
+    // KMK <--
+
     suspend fun awaitOne(id: Long): Track? {
         return try {
             trackRepository.getTrackById(id)

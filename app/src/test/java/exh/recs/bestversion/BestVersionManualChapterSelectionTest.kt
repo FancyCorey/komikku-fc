@@ -6,6 +6,7 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SChapterImpl
 import exh.recs.matching.CrossSourceIdentityDecisionController
 import exh.recs.matching.MangaIdentityKey
+import exh.recs.matching.NoOpConfirmedGroupTasteRatingActions
 import exh.util.DispatcherHandle
 import exh.util.FakePreferenceStore
 import exh.util.FakeTasteRepository
@@ -97,6 +98,7 @@ class BestVersionManualChapterSelectionTest {
             getCrossSourceGroupPrimary = mockk(relaxed = true),
             restoreCrossSourceGroupState = mockk(relaxed = true),
             identityController = identityController(),
+            confirmedGroupTasteRatingActions = NoOpConfirmedGroupTasteRatingActions,
         )
     }
 
