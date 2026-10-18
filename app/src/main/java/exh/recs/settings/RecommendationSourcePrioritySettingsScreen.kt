@@ -95,6 +95,7 @@ class RecommendationSourcePrioritySettingsScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val navigateUp = rememberRecommendationSettingsNavigateUp(navigator)
         val openForYou = rememberOpenForYouFromRecommendationSettings(navigator)
         // KMK EC-04 2026-09-04: shared across all four Recommendation Settings destination screens
         // via the enclosing Navigator instead of rememberScreenModel's per-Screen scoping, so the
@@ -114,7 +115,7 @@ class RecommendationSourcePrioritySettingsScreen(
             topBar = { scrollBehavior ->
                 AppBar(
                     title = stringResource(KMR.strings.rec_hub_for_you_feed),
-                    navigateUp = navigator::pop,
+                    navigateUp = navigateUp,
                     actions = {
                         RecommendationSettingsDetailActions(
                             onSearch = { navigator.push(RecommendationSettingsSearchScreen()) },

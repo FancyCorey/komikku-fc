@@ -48,7 +48,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Home
@@ -65,7 +64,6 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.DragHandle
-import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.Link
@@ -184,6 +182,16 @@ internal fun SectionHeader(title: String, summary: String? = null) {
             )
         }
     }
+}
+
+/**
+ * KMK v0.8.24: back for a Recommendation Settings page. In the tablet two-pane layout a page can be the only item in the
+ * right pane; then back leaves Recommendation Settings instead of doing nothing.
+ */
+@Composable
+internal fun rememberRecommendationSettingsNavigateUp(navigator: Navigator): () -> Unit {
+    val backPress = eu.kanade.presentation.util.LocalBackPress.current
+    return { if (navigator.canPop || backPress == null) navigator.pop() else backPress() }
 }
 
 /** Opens the For You tab through the same root-and-tab route from every settings surface. */
@@ -1590,7 +1598,6 @@ enum class RecommendationSettingsQuickAccessDestination {
     FindNewSources,
     SpeedAndData,
     LinkedVersions,
-    BestVersion,
     Troubleshooting,
 }
 
@@ -1601,7 +1608,6 @@ internal fun RecommendationSettingsQuickAccessDestination.hubTitleRes(): StringR
     RecommendationSettingsQuickAccessDestination.FindNewSources -> KMR.strings.rec_hub_find_sources
     RecommendationSettingsQuickAccessDestination.SpeedAndData -> KMR.strings.rec_hub_speed_data
     RecommendationSettingsQuickAccessDestination.LinkedVersions -> KMR.strings.rec_hub_linked_versions
-    RecommendationSettingsQuickAccessDestination.BestVersion -> KMR.strings.rec_hub_best_version
     RecommendationSettingsQuickAccessDestination.Troubleshooting -> KMR.strings.rec_hub_troubleshooting
 }
 
@@ -1620,10 +1626,19 @@ fun RecommendationSettingsQuickAccessDestination.toScreen(): eu.kanade.presentat
         RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.SPEED_AND_DATA)
     RecommendationSettingsQuickAccessDestination.LinkedVersions ->
         RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.LINKED_VERSIONS)
-    RecommendationSettingsQuickAccessDestination.BestVersion ->
-        RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.BEST_VERSION)
     RecommendationSettingsQuickAccessDestination.Troubleshooting ->
         RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.TROUBLESHOOTING)
+}
+
+/** True when [screen] is the page this destination opens (the split Diagnostics pages compare their section). */
+internal fun RecommendationSettingsQuickAccessDestination.matches(screen: cafe.adriel.voyager.core.screen.Screen): Boolean {
+    val target = toScreen()
+    if (target::class != screen::class) return false
+    return if (target is RecommendationDiagnosticsSettingsScreen && screen is RecommendationDiagnosticsSettingsScreen) {
+        target.section == screen.section
+    } else {
+        true
+    }
 }
 
 internal fun RecommendationSettingsQuickAccessDestination.icon(filled: Boolean = false): androidx.compose.ui.graphics.vector.ImageVector = when (this) {
@@ -1639,8 +1654,6 @@ internal fun RecommendationSettingsQuickAccessDestination.icon(filled: Boolean =
         if (filled) Icons.Filled.Bolt else Icons.Outlined.Bolt
     RecommendationSettingsQuickAccessDestination.LinkedVersions ->
         if (filled) Icons.Filled.Link else Icons.Outlined.Link
-    RecommendationSettingsQuickAccessDestination.BestVersion ->
-        if (filled) Icons.Filled.EmojiEvents else Icons.Outlined.EmojiEvents
     RecommendationSettingsQuickAccessDestination.Troubleshooting ->
         if (filled) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle
 }

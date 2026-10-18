@@ -22,7 +22,6 @@ class RecommendationSettingsRedesignSourceTest {
         RecommendationDiagnosticsSection.SPEED_AND_DATA,
         RecommendationDiagnosticsSection.LINKED_VERSIONS,
         RecommendationDiagnosticsSection.FOCUS_MODES,
-        RecommendationDiagnosticsSection.BEST_VERSION,
         RecommendationDiagnosticsSection.TROUBLESHOOTING,
     )
 
@@ -56,7 +55,7 @@ class RecommendationSettingsRedesignSourceTest {
     @Test
     fun `hub has six rows with current values and no tab row on detail pages`() {
         val hub = source("src/main/java/exh/recs/settings/RecommendationSettingsIndexScreen.kt")
-        assertEquals(8, RecommendationSettingsQuickAccessDestination.entries.size)
+        assertEquals(7, RecommendationSettingsQuickAccessDestination.entries.size)
         assertTrue(hub.contains("summaries.getValue(destination)"))
         assertTrue(hub.contains("filled = pressed"), "icon fills in while a row is pressed")
         listOf(
@@ -91,8 +90,8 @@ class RecommendationSettingsRedesignSourceTest {
     fun `an anchor-only deep link opens the task page that owns the anchor`() {
         val all = RecommendationDiagnosticsSection.ALL
         assertEquals(RecommendationDiagnosticsSection.SPEED_AND_DATA, RecommendationDiagnosticsSection.resolve(all, "data_saving_content"))
-        assertEquals(RecommendationDiagnosticsSection.BEST_VERSION, RecommendationDiagnosticsSection.resolve(all, "best_version_sample_size"))
-        assertEquals(RecommendationDiagnosticsSection.BEST_VERSION, RecommendationDiagnosticsSection.resolve(all, "quality_signal_history_entry"))
+        assertEquals(RecommendationDiagnosticsSection.LINKED_VERSIONS, RecommendationDiagnosticsSection.resolve(all, "best_version_sample_size"))
+        assertEquals(RecommendationDiagnosticsSection.LINKED_VERSIONS, RecommendationDiagnosticsSection.resolve(all, "quality_signal_history_entry"))
         assertEquals(all, RecommendationDiagnosticsSection.resolve(all, "no_such_anchor"))
         assertEquals(all, RecommendationDiagnosticsSection.resolve(all, null))
         assertEquals(

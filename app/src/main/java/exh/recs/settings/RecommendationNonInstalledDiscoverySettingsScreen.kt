@@ -55,6 +55,7 @@ class RecommendationNonInstalledDiscoverySettingsScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val navigateUp = rememberRecommendationSettingsNavigateUp(navigator)
         val openForYou = rememberOpenForYouFromRecommendationSettings(navigator)
         // KMK EC-04 2026-09-04: Navigator-scoped, shared with the other three Recommendation
         // Settings destination screens -- see RecommendationSourcePrioritySettingsScreen.Content().
@@ -136,7 +137,7 @@ class RecommendationNonInstalledDiscoverySettingsScreen(
                     titleContent = { Text(stringResource(KMR.strings.rec_settings_index_discovery)) },
                     searchQuery = searchQuery,
                     onChangeSearchQuery = { searchQuery = it },
-                    navigateUp = navigator::pop,
+                    navigateUp = navigateUp,
                     searchEnabled = false,
                     actions = {
                         RecommendationSettingsDetailActions(

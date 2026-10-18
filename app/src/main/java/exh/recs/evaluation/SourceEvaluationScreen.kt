@@ -165,6 +165,7 @@ class SourceEvaluationScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val navigateUp = exh.recs.settings.rememberRecommendationSettingsNavigateUp(navigator)
         val openForYou = exh.recs.settings.rememberOpenForYouFromRecommendationSettings(navigator)
         val context = LocalContext.current
         val screenModel = rememberScreenModel { SourceEvaluationScreenModel(context) }
@@ -588,7 +589,7 @@ class SourceEvaluationScreen(
                 // KMK: the For You shortcut returns to root and asks HomeScreen to select the tab.
                 AppBar(
                     title = stringResource(KMR.strings.rec_hub_check_sources),
-                    navigateUp = navigator::pop,
+                    navigateUp = navigateUp,
                     actions = {
                         RecommendationSettingsDetailActions(
                             onSearch = { navigator.push(RecommendationSettingsSearchScreen()) },

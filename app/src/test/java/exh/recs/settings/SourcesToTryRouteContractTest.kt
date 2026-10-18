@@ -26,7 +26,8 @@ class SourcesToTryRouteContractTest {
             "screenModel::cancelBulkSuggestionInstall",
             "screenModel::retrySuggestionInstallFailures",
             "screenModel::dismissSuggestionInstallFeedback",
-            "navigateUp = navigator::pop",
+            "navigateUp = navigateUp,",
+            "rememberRecommendationSettingsNavigateUp(navigator)",
         ).forEach { contract ->
             assertTrue(route.contains(contract), "Sources To Try route must retain $contract")
         }

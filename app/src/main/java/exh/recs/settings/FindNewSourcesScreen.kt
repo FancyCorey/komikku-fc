@@ -68,6 +68,7 @@ class FindNewSourcesScreen : Screen() {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val navigateUp = rememberRecommendationSettingsNavigateUp(navigator)
         val context = LocalContext.current
         val screenModel = navigator.rememberNavigatorScreenModel { RecommendationsSettingsScreenModel() }
         val state by screenModel.state.collectAsState()
@@ -91,7 +92,7 @@ class FindNewSourcesScreen : Screen() {
             topBar = { scrollBehavior ->
                 AppBar(
                     title = stringResource(KMR.strings.rec_hub_find_sources),
-                    navigateUp = navigator::pop,
+                    navigateUp = navigateUp,
                     scrollBehavior = scrollBehavior,
                     actions = {
                         AppBarActions(

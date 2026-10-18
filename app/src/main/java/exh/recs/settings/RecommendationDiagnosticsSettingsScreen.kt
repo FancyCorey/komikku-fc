@@ -98,6 +98,7 @@ class RecommendationDiagnosticsSettingsScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val navigateUp = rememberRecommendationSettingsNavigateUp(navigator)
         val openForYou = rememberOpenForYouFromRecommendationSettings(navigator)
         // KMK EC-04 2026-09-04: Navigator-scoped, shared with the other three Recommendation
         // Settings destination screens -- see RecommendationSourcePrioritySettingsScreen.Content().
@@ -159,7 +160,7 @@ class RecommendationDiagnosticsSettingsScreen(
             topBar = { scrollBehavior ->
                 AppBar(
                     title = stringResource(section.titleRes),
-                    navigateUp = navigator::pop,
+                    navigateUp = navigateUp,
                     actions = {
                         RecommendationSettingsDetailActions(
                             onSearch = { navigator.push(RecommendationSettingsSearchScreen()) },
@@ -433,7 +434,8 @@ class RecommendationDiagnosticsSettingsScreen(
                         }
                     }
 
-                    if (section.includes("management_header")) {
+                    // KMK v0.8.24: on the Linked versions page the history row follows the Best Version section directly
+                    if (section == RecommendationDiagnosticsSection.ALL) {
                         item(key = "management_header") {
                             SectionHeader(stringResource(KMR.strings.rec_settings_management_header))
                         }

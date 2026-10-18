@@ -173,6 +173,12 @@ object SettingsMainScreen : Screen() {
     }
 
     private fun Navigator.navigate(screen: VoyagerScreen, twoPane: Boolean) {
+        // KMK --> v0.8.24: Recommendation Settings has its own list-and-page layout on tablets, so it opens full screen
+        if (twoPane && screen === RecommendationSettingsIndexScreen) {
+            (parent ?: this).push(screen)
+            return
+        }
+        // KMK <--
         if (twoPane) replaceAll(screen) else push(screen)
     }
 

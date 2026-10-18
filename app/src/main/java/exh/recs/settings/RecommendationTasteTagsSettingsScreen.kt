@@ -48,6 +48,7 @@ class RecommendationTasteTagsSettingsScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val navigateUp = rememberRecommendationSettingsNavigateUp(navigator)
         val openForYou = rememberOpenForYouFromRecommendationSettings(navigator)
         // KMK EC-04 2026-09-04: Navigator-scoped, shared with the other three Recommendation
         // Settings destination screens -- see RecommendationSourcePrioritySettingsScreen.Content().
@@ -77,7 +78,7 @@ class RecommendationTasteTagsSettingsScreen(
             topBar = { scrollBehavior ->
                 AppBar(
                     title = stringResource(KMR.strings.rec_hub_your_taste),
-                    navigateUp = navigator::pop,
+                    navigateUp = navigateUp,
                     actions = {
                         RecommendationSettingsDetailActions(
                             onSearch = { navigator.push(RecommendationSettingsSearchScreen()) },

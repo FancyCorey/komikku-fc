@@ -1,30 +1,50 @@
 package exh.recs.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberNavigatorScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
+import eu.kanade.presentation.util.DefaultNavigatorScreenTransition
+import eu.kanade.presentation.util.LocalBackPress
+import eu.kanade.presentation.util.isTabletUi
 import exh.recs.ForYouDataSaving
 import kotlinx.collections.immutable.persistentListOf
 import tachiyomi.i18n.kmk.KMR
+import tachiyomi.presentation.core.components.TwoPanelBox
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
@@ -48,6 +68,46 @@ object RecommendationSettingsIndexScreen : KomikkuScreen() {
 
     @Composable
     override fun Content() {
+        // KMK v0.8.24: on tablets, like Komikku's own Settings, the list stays on the left and the chosen page opens on
+        // the right, so switching between pages needs no Back presses.
+        if (isTabletUi()) {
+            TwoPaneContent()
+        } else {
+            val navigator = LocalNavigator.currentOrThrow
+            HubList(twoPane = false, onNavigateUp = navigator::pop)
+        }
+    }
+
+    @Composable
+    private fun TwoPaneContent() {
+        val parentNavigator = LocalNavigator.currentOrThrow
+        Navigator(
+            screen = RecommendationSettingsQuickAccessDestination.entries.first().toScreen(),
+            onBackPressed = null,
+        ) { innerNavigator ->
+            val insets = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)
+            TwoPanelBox(
+                modifier = Modifier
+                    .windowInsetsPadding(insets)
+                    .consumeWindowInsets(insets),
+                startContent = {
+                    HubList(twoPane = true, onNavigateUp = parentNavigator::pop)
+                },
+                endContent = {
+                    // A page with nothing behind it in the right pane leaves Recommendation Settings on back.
+                    val pop: () -> Unit = {
+                        if (innerNavigator.canPop) innerNavigator.pop() else parentNavigator.pop()
+                    }
+                    CompositionLocalProvider(LocalBackPress provides pop) {
+                        DefaultNavigatorScreenTransition(navigator = innerNavigator)
+                    }
+                },
+            )
+        }
+    }
+
+    @Composable
+    private fun HubList(twoPane: Boolean, onNavigateUp: () -> Unit) {
         val navigator = LocalNavigator.currentOrThrow
         // Navigator-scoped and shared with the detail screens, so the summaries match what they show.
         val screenModel = navigator.rememberNavigatorScreenModel { RecommendationsSettingsScreenModel() }
@@ -91,8 +151,6 @@ object RecommendationSettingsIndexScreen : KomikkuScreen() {
                 stringResource(KMR.strings.rec_hub_speed_summary, dataSaving),
             RecommendationSettingsQuickAccessDestination.LinkedVersions to
                 stringResource(KMR.strings.rec_hub_linked_versions_summary),
-            RecommendationSettingsQuickAccessDestination.BestVersion to
-                stringResource(KMR.strings.rec_hub_best_version_summary),
             RecommendationSettingsQuickAccessDestination.Troubleshooting to troubleshootingSummary,
         )
 
@@ -100,7 +158,7 @@ object RecommendationSettingsIndexScreen : KomikkuScreen() {
             topBar = { scrollBehavior ->
                 AppBar(
                     title = stringResource(KMR.strings.taste_settings_title),
-                    navigateUp = navigator::pop,
+                    navigateUp = onNavigateUp,
                     scrollBehavior = scrollBehavior,
                     actions = {
                         // KMK v0.8.9: same icon/semantics as main Settings search's app-bar action.
@@ -116,14 +174,46 @@ object RecommendationSettingsIndexScreen : KomikkuScreen() {
                     },
                 )
             },
+            containerColor = if (twoPane) getPalerSurface() else MaterialTheme.colorScheme.surface,
         ) { contentPadding ->
+            val selected = if (twoPane) {
+                navigator.items.firstOrNull()?.let { root ->
+                    RecommendationSettingsQuickAccessDestination.entries.firstOrNull { it.matches(root) }
+                }
+            } else {
+                null
+            }
             LazyColumn(contentPadding = contentPadding) {
                 items(RecommendationSettingsQuickAccessDestination.entries, key = { "rec-settings-hub-${it.name}" }) { destination ->
-                    HubRow(
-                        destination = destination,
-                        summary = summaries.getValue(destination),
-                        onClick = { navigator.push(destination.toScreen()) },
-                    )
+                    val isSelected = destination == selected
+                    val rowModifier = if (twoPane) {
+                        Modifier
+                            .padding(horizontal = 8.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .then(if (isSelected) Modifier.background(MaterialTheme.colorScheme.surfaceVariant) else Modifier)
+                    } else {
+                        Modifier
+                    }
+                    CompositionLocalProvider(
+                        LocalContentColor provides if (isSelected) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            LocalContentColor.current
+                        },
+                    ) {
+                        HubRow(
+                            destination = destination,
+                            summary = summaries.getValue(destination),
+                            modifier = rowModifier,
+                            onClick = {
+                                if (twoPane) {
+                                    navigator.replaceAll(destination.toScreen())
+                                } else {
+                                    navigator.push(destination.toScreen())
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -135,11 +225,12 @@ object RecommendationSettingsIndexScreen : KomikkuScreen() {
 private fun HubRow(
     destination: RecommendationSettingsQuickAccessDestination,
     summary: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     var pressed by remember { mutableStateOf(false) }
     TextPreferenceWidget(
-        modifier = Modifier.pointerInput(Unit) {
+        modifier = modifier.pointerInput(Unit) {
             // Observe only (never consumes), so the row's own click and ripple still work.
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
@@ -153,5 +244,19 @@ private fun HubRow(
         icon = destination.icon(filled = pressed),
         onPreferenceClick = onClick,
     )
+}
+
+/** Same paler list background as Komikku's two-pane Settings (SettingsMainScreen.getPalerSurface). */
+@Composable
+private fun getPalerSurface(): androidx.compose.ui.graphics.Color {
+    val surface = MaterialTheme.colorScheme.surface
+    val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    return remember(surface, dark) {
+        val arr = FloatArray(3)
+        androidx.core.graphics.ColorUtils.colorToHSL(surface.toArgb(), arr)
+        arr[2] = if (dark) arr[2] - 0.05f else (arr[2] + 0.02f)
+        arr[2] = arr[2].coerceIn(0f, 1f)
+        androidx.compose.ui.graphics.Color.hsl(arr[0], arr[1], arr[2])
+    }
 }
 // KMK <--

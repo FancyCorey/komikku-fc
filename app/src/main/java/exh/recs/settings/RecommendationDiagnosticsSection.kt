@@ -60,13 +60,7 @@ enum class RecommendationDiagnosticsSection(
             "automatic_local_tracking_status_inference",
             "automatic_rated_group_primary",
             "identity_review",
-        ),
-    ),
-
-    // KMK v0.8.24: Best Version is a major feature of its own, not a corner of linked versions
-    BEST_VERSION(
-        KMR.strings.rec_hub_best_version,
-        setOf(
+            // KMK v0.8.24: Best Version is part of how linked versions work, so it is a section of this page
             "best_version_header",
             "best_version_sample_size",
             "best_version_avoid_first_pages",
