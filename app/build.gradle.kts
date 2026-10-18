@@ -116,6 +116,8 @@ android {
         buildConfigField("boolean", "GOOGLE_DRIVE_SYNC_ENABLED", "${Config.enableGoogleDriveSync}")
         buildConfigField("String", "GOOGLE_DRIVE_CLIENT_SECRETS_ASSET", buildConfigString("client_secrets.json"))
         buildConfigField("String", "GOOGLE_DRIVE_CLIENT_ID", buildConfigString(""))
+        // KMK v0.8.24: OAuth client ID of Komikku's own MangaBaka application; empty hides MangaBaka in Settings
+        buildConfigField("String", "MANGABAKA_CLIENT_ID", configuredGoogleDriveValue("kmk.mangabaka.clientId", ""))
         buildConfigField("String", "SOURCES_TO_TRY_FIXTURE_SIGNER_SHA256", buildConfigString(""))
         buildConfigField("String", "BEST_VERSION_FIXTURE_PROFILE", buildConfigString(""))
         buildConfigField("String", "ALTERNATE_SOURCE_READER_FIXTURE_PROFILE", buildConfigString(""))
