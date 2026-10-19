@@ -56,6 +56,7 @@ object KmkRecsReleaseNotes {
         - **Tracker privacy on linked versions:** Making a tracker entry private or public from one version now applies to the other versions that share that entry, so a later change made from another version no longer undoes it.
         - **For You after enough rows:** Sources still searching when For You already had enough rows no longer leave a loading row behind, so the refresh finishes properly.
         - **Automatic source check requirements:** The automatic check now waits for Wi-Fi and a charged battery for the whole check, not only when it starts, and turning the automatic check off also stops a check it already started. A check you start yourself is not affected.
+        - **For You feed source list:** Labels such as Boosted, Great fit and Top Picks no longer break across lines. Each is a one-line tag, and Boosted is outlined because it is your own setting rather than a result.
         - **Linked versions list:** Opening a version from the local-tracking versions list shows its full page instead of a cramped view inside the sheet.
 
         ## KMK-Recs v0.8.23.1

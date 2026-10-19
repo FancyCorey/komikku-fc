@@ -1307,7 +1307,6 @@
     <!-- KMK --> <string name="source_evaluation_rec_error_kind_private_required">Private installer required</string>
     <!-- KMK -->
     <!-- KMK v0.7.45: Final Feature B — compact Top Picks contribution count on the fit badge -->
-    <!-- KMK v0.8.22 --> <string name="rec_source_fit_with_top_picks_count">%1$s · Top Picks %2$d</string>
     <!-- KMK v0.7.44: compact row expand/collapse diagnostics -->
     <!-- KMK v0.8.15-fix1: renamed from "Show details"/"Hide details"; this toggle is specifically For You search-compatibility/error-kind information, distinct from the catalogue-evidence "Details" toggle below. See the plan's clarified Details/Errors/Install action model. --> <string name="source_evaluation_row_show_details">Errors</string>
     <!-- KMK v0.8.15-fix1 --> <string name="source_evaluation_row_hide_details">Hide errors</string>

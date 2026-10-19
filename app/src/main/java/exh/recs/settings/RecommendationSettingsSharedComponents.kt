@@ -16,6 +16,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -74,7 +75,6 @@ import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -782,6 +782,32 @@ internal fun BoundedIntPreferenceRow(
 }
 // KMK <--
 
+// KMK --> v0.8.24
+/**
+ * A non-interactive one-line status label for a source row; long text ends with an ellipsis instead of wrapping.
+ * [outlined] marks something the user set (Boosted) rather than a result, so the two never look alike.
+ */
+@Composable
+private fun SourceStatusTag(text: String, containerColor: Color, contentColor: Color, outlined: Boolean = false) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = if (outlined) Color.Transparent else containerColor,
+        contentColor = contentColor,
+        border = if (outlined) BorderStroke(1.dp, MaterialTheme.colorScheme.outline) else null,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        )
+    }
+}
+// KMK <--
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ReorderableCollectionItemScope.SourcePriorityItem(
     source: Source,
@@ -860,18 +886,19 @@ internal fun ReorderableCollectionItemScope.SourcePriorityItem(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 // KMK <--
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // KMK v0.8.24: status labels are one-line tags that wrap as whole tags (a notification Badge broke
+                // "Great fit · Top Picks 4" across lines inside the pill), aligned with the source name.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.extraSmall),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.extraSmall),
+                ) {
                     if (isBoosted) {
-                        Badge(
-                            modifier = Modifier.padding(start = MaterialTheme.padding.small),
+                        SourceStatusTag(
+                            text = stringResource(KMR.strings.rec_source_boosted),
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ) {
-                            Text(
-                                text = stringResource(KMR.strings.rec_source_boosted),
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        }
+                            contentColor = MaterialTheme.colorScheme.primary,
+                            outlined = true,
+                        )
                     }
                     if (!isDisliked && enabled) {
                         val rollingLabel: SourceFitLabel? = if (fitStats != null && fitStats.runCount > 0) fitStats.fitLabel else null
@@ -931,20 +958,17 @@ internal fun ReorderableCollectionItemScope.SourcePriorityItem(
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
                         if (fitLabel != null) {
+                            SourceStatusTag(text = fitLabel, containerColor = fitContainerColor, contentColor = fitContentColor)
                             val contributionCount = fitStats?.topPicksContributionCount ?: 0
-                            val badgeText = if (useRolling && contributionCount > 0) {
-                                stringResource(KMR.strings.rec_source_fit_with_top_picks_count, fitLabel, contributionCount)
-                            } else {
-                                fitLabel
-                            }
-                            Badge(
-                                modifier = Modifier.padding(start = MaterialTheme.padding.small),
-                                containerColor = fitContainerColor,
-                                contentColor = fitContentColor,
-                            ) {
-                                Text(
-                                    text = badgeText,
-                                    style = MaterialTheme.typography.labelSmall,
+                            if (useRolling && contributionCount > 0) {
+                                SourceStatusTag(
+                                    text = pluralStringResource(
+                                        KMR.plurals.rec_source_top_picks_count,
+                                        count = contributionCount,
+                                        contributionCount,
+                                    ),
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }

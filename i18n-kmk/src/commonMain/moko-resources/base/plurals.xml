@@ -12,6 +12,11 @@
             <item quantity="one">Show %1$d more</item>
             <item quantity="other">Show %1$d more</item>
         </plurals>
+    <!-- KMK v0.8.24: how often a source's picks reached Top Picks, shown as its own tag in For You feed -->
+    <plurals name="rec_source_top_picks_count">
+        <item quantity="one">%1$d in Top Picks</item>
+        <item quantity="other">%1$d in Top Picks</item>
+    </plurals>
     <plurals name="rec_source_status_shown">
             <item quantity="one">Shown: %1$d match</item>
             <item quantity="other">Shown: %1$d matches</item>
