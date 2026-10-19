@@ -26,9 +26,10 @@ class GetTasteDiagnostics(
         val aliases = tasteRepository.getAllTagAliases()
         val tagPreferences = tasteRepository.getAllTagTastes()
 
+        // KMK v0.8.24: one batched read instead of one query per rated manga
+        val genresById = mangaRepository.genresByMangaId(tastes.map { it.mangaId })
         val ratedManga = tastes.mapNotNull { taste ->
-            val genres = runCatching { mangaRepository.getMangaById(taste.mangaId).genre }.getOrNull()
-                ?: return@mapNotNull null
+            val genres = genresById[taste.mangaId] ?: return@mapNotNull null
             RatedMangaGenres(ratingValue = taste.rating, genres = genres)
         }
 

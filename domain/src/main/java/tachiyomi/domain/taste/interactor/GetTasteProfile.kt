@@ -39,6 +39,8 @@ class GetTasteProfile(
         val sourcePositive = mutableMapOf<Long, Int>()
         val sourceNegative = mutableMapOf<Long, Int>()
 
+        // KMK v0.8.24: one batched read instead of one query per rated manga
+        val genresById = mangaRepository.genresByMangaId(tastes.map { it.mangaId })
         for (taste in tastes) {
             val weight = when (taste.rating) {
                 MangaRating.LOVE.value -> 2.0
@@ -54,9 +56,7 @@ class GetTasteProfile(
             }
 
             // Fetch manga genres; skip if manga row was purged
-            val genres = runCatching {
-                mangaRepository.getMangaById(taste.mangaId).genre
-            }.getOrNull() ?: continue
+            val genres = genresById[taste.mangaId] ?: continue
 
             for (genre in genres) {
                 val groupKey = genre.toGroupKey()

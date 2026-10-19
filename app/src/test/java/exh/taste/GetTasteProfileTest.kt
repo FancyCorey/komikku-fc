@@ -237,5 +237,8 @@ class GetTasteProfileTest {
         object : StubMangaRepository() {
             override suspend fun getMangaById(id: Long): Manga =
                 mangaById[id] ?: throw NoSuchElementException("Manga $id not found")
+
+            // KMK v0.8.24: the taste profile reads rated manga in batches
+            override suspend fun getMangaByIds(ids: Collection<Long>): List<Manga> = ids.mapNotNull { mangaById[it] }
         }
 }
