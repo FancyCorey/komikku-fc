@@ -1185,6 +1185,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         slowMillis: Long = 0L,
         slowSourceIds: Set<Long> = setOfNotNull(slowSourceId),
         genreOf: (Long) -> String = { "Action" },
+        searchFindsNothing: Set<Long> = emptySet(),
     ): QueueFixture {
         val started = java.util.concurrent.ConcurrentHashMap<Long, Long>()
         val pages = java.util.concurrent.ConcurrentLinkedQueue<Pair<Long, Int>>()
@@ -1198,6 +1199,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
                 coEvery { source.getSearchManga(any(), any(), any()) } coAnswers {
                     val page = firstArg<Int>()
                     pages += index to page
+                    if (index in searchFindsNothing) return@coAnswers MangasPage(emptyList(), false)
                     if (page == 1) {
                         started[index] = testScheduler.currentTime
                         // Every search takes some (virtual) time, as a network call does, so completions interleave with
@@ -1218,6 +1220,20 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
                     )
                 }
             }
+        }
+        sources.filter { it.id in searchFindsNothing }.forEach { source ->
+            coEvery { source.getPopularManga(any()) } returns MangasPage(
+                listOf(
+                    SManga.create().apply {
+                        url = "/popular${source.id}"
+                        title = "Popular ${source.id}"
+                        genre = genreOf(source.id)
+                        status = SManga.ONGOING
+                        initialized = true
+                    },
+                ),
+                false,
+            )
         }
         return QueueFixture(sources, started, pages)
     }
@@ -1371,6 +1387,17 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
 
         val row = state.items.entries.single { it.key.id == 2L }.value as PersonalRecommendationResult.Success
         assertTrue(row.isEmpty, "off restores the previous behavior")
+    }
+
+    // KMK v0.8.24: a source whose search finds nothing still gets its Popular page (the catalogue fallback)
+    @Test
+    fun `a source whose searches find nothing falls back to its Popular page`() = runTest {
+        val fixture = queueFixture(count = 2, searchFindsNothing = setOf(2L))
+
+        val state = refreshQueue(fixture)
+
+        val row = state.items.entries.single { it.key.id == 2L }.value as PersonalRecommendationResult.Success
+        assertEquals(listOf("/popular2"), row.result.map { it.manga.url }, "status ${state.sourceStatuses[2L]?.status}")
     }
 
     // KMK v0.8.24: sources still searching when the rows fill up are stopped and leave no spinner behind

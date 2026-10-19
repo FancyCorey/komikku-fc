@@ -1967,6 +1967,18 @@ class BrowsePersonalRecommendationsScreenModel(
                 knownIds, displayLimit, minChapterCount, hideKnownManga, exposureContext,
             )
 
+            // KMK v0.8.24: nothing to show yet. Previously the last search step returned its empty result here, so the
+            // Latest lane and the Popular fallback after the search chain never ran for a source whose searches found
+            // nothing. Hand back to the chain instead; searchSource then tries them and decides the final status.
+            if (mergedRecommendations.isEmpty()) {
+                return PersonalizedPlanAttemptResult(
+                    outcome = null,
+                    hadRawResults = hadRawResults,
+                    lastError = null,
+                    shouldContinue = true,
+                )
+            }
+
             val status = RecommendationSourceRunStatus(
                 sourceId = source.id,
                 status = if (mergedRecommendations.isNotEmpty()) {
@@ -2872,7 +2884,9 @@ class BrowsePersonalRecommendationsScreenModel(
         if (entry.profileFingerprint != fingerprint) return null
 
         val ids = entry.resultMangaIds.split(",").mapNotNull { it.trim().toLongOrNull() }
-        if (ids.isEmpty()) return emptyList()
+        // KMK v0.8.24: an empty cached result is a miss, not a hit. Treating it as a hit kept a source whose search
+        // once found nothing empty until the cache expired, without trying its searches or Popular fallback again.
+        if (ids.isEmpty()) return null
 
         val scores = entry.resultScores?.split(",").orEmpty().mapNotNull { it.trim().toDoubleOrNull() }
         val cachedGroups = entry.resultReasons?.split(", ").orEmpty().filter { it.isNotBlank() }
