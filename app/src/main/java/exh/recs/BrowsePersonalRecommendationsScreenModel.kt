@@ -63,6 +63,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -104,6 +105,7 @@ import java.security.MessageDigest
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.EmptyCoroutineContext
 
 data class PersonalRecommendation(
     val manga: Manga,
@@ -117,6 +119,8 @@ data class PersonalRecommendation(
      */
     val lane: RecommendationDiscoveryLane = RecommendationDiscoveryLane.PERSONALIZED,
     // KMK <--
+    // KMK v0.8.24: a looser match (see ForYouLooserMatchPolicy); never part of Top Picks
+    val looser: Boolean = false,
 )
 
 sealed interface PersonalRecommendationResult {
@@ -124,6 +128,9 @@ sealed interface PersonalRecommendationResult {
     data class Error(val throwable: Throwable) : PersonalRecommendationResult
     data class Success(val result: List<PersonalRecommendation>) : PersonalRecommendationResult {
         val isEmpty: Boolean get() = result.isEmpty()
+
+        // KMK v0.8.24: every item in this row is a looser match
+        val isLooser: Boolean get() = result.isNotEmpty() && result.all { it.looser }
         val reason: String? get() = result
             .flatMap { it.matchedGroups }
             .distinct()
@@ -816,9 +823,10 @@ class BrowsePersonalRecommendationsScreenModel(
             currentBoostedSourceIds = boostedSourceIds
             if (retryOnly != null) {
                 mutableState.value.items.forEach { (source, result) ->
-                    if (source.id !in retryOnly && result is PersonalRecommendationResult.Success && result.result.isNotEmpty()) {
-                        completedSourceResults[source.id] = source to result.result
-                        combinedAccumulator.add(result.result, source.id)
+                    val topPicksEligible = (result as? PersonalRecommendationResult.Success)?.result?.filterNot { it.looser }.orEmpty()
+                    if (source.id !in retryOnly && topPicksEligible.isNotEmpty()) {
+                        completedSourceResults[source.id] = source to topPicksEligible
+                        combinedAccumulator.add(topPicksEligible, source.id)
                     }
                 }
             }
@@ -1045,6 +1053,7 @@ class BrowsePersonalRecommendationsScreenModel(
                 // starting only after the slowest of 1-5). Concurrency is the same SOURCE_BATCH_SIZE; results are applied
                 // as they arrive; once enough rows are useful the sources that have not finished are cancelled.
                 val slots = Semaphore(SOURCE_BATCH_SIZE)
+                val looserMatchesEnabled = sourcePreferences.recommendationLooserMatches().get()
                 val outcomeChannel = Channel<SourceSearchOutcome>(capacity = candidateSources.size.coerceAtLeast(1))
                 val enoughRows = AtomicBoolean(false)
                 val visibleRowCap = if (dataSaving) {
@@ -1076,26 +1085,31 @@ class BrowsePersonalRecommendationsScreenModel(
                                 return@withPermit
                             }
                             outcomeChannel.send(
-                                searchSource(
-                                    source, queryKey, fingerprint, topTags, scoringProfile, aliasMap, aliasCandidates,
-                                    tasteByKey, visibility, hideKnownManga, seenKeys, forceRefresh,
-                                    source.id in boostedSourceIds,
-                                    lastStrategy = strategyMap[source.id],
-                                    // KMK v0.8.13
-                                    lastRunStatus = lastStatusMap[source.id],
-                                    // KMK --> v0.7.26
-                                    minChapterCount = minChapterCount,
-                                    // KMK <--
-                                    // KMK v0.8.2
-                                    resultBudget = resultBudget,
-                                    latestBudgetState = latestBudgetState,
-                                    // KMK <--
-                                    refreshGeneration = refreshGeneration,
-                                    // An inline Retry is an explicit user-requested attempt and must bypass
-                                    // automatic suppression for the selected failed sources only.
-                                    bypassSourceFailureSuppression = retryOnly != null,
-                                    dataSaving = dataSaving,
-                                ),
+                                // KMK v0.8.24: one pool per source search, only when looser matches are on
+                                withContext(if (looserMatchesEnabled) LooserCandidatePool() else EmptyCoroutineContext) {
+                                    withLooserMatches(scoringProfile, aliasMap) {
+                                        searchSource(
+                                            source, queryKey, fingerprint, topTags, scoringProfile, aliasMap, aliasCandidates,
+                                            tasteByKey, visibility, hideKnownManga, seenKeys, forceRefresh,
+                                            source.id in boostedSourceIds,
+                                            lastStrategy = strategyMap[source.id],
+                                            // KMK v0.8.13
+                                            lastRunStatus = lastStatusMap[source.id],
+                                            // KMK --> v0.7.26
+                                            minChapterCount = minChapterCount,
+                                            // KMK <--
+                                            // KMK v0.8.2
+                                            resultBudget = resultBudget,
+                                            latestBudgetState = latestBudgetState,
+                                            // KMK <--
+                                            refreshGeneration = refreshGeneration,
+                                            // An inline Retry is an explicit user-requested attempt and must bypass
+                                            // automatic suppression for the selected failed sources only.
+                                            bypassSourceFailureSuppression = retryOnly != null,
+                                            dataSaving = dataSaving,
+                                        )
+                                    }
+                                },
                             )
                         }
                     }
@@ -2410,6 +2424,8 @@ class BrowsePersonalRecommendationsScreenModel(
             chapterCounts,
         )
         val enriched = enricher.enrich(source, saved, smangaByUrl, enrichLimit)
+        // KMK v0.8.24: only present while looser matches are on
+        currentCoroutineContext()[LooserCandidatePool]?.add(enriched)
         val scored = PersonalRecommendationScorer.rankCandidates(
             enriched,
             profile,
@@ -3545,6 +3561,24 @@ class BrowsePersonalRecommendationsScreenModel(
 
     // KMK --> v0.8.24
     /**
+     * Every way a source's search can end goes through here: when it ended "Filtered out" (results came back, none matched
+     * the taste) with an empty row and looser matches are on, the row shows a few looser matches from this search's own
+     * candidates (see [ForYouLooserMatchPolicy]). Status, usefulness and strategy are unchanged.
+     */
+    private suspend fun withLooserMatches(
+        profile: TasteProfile,
+        aliasMap: Map<String, String>,
+        search: suspend () -> SourceSearchOutcome,
+    ): SourceSearchOutcome {
+        val outcome = search()
+        val pool = currentCoroutineContext()[LooserCandidatePool] ?: return outcome
+        val result = outcome.result as? PersonalRecommendationResult.Success ?: return outcome
+        if (!result.isEmpty || outcome.status.status != RecommendationSourceStatus.FilteredOut) return outcome
+        val looser = ForYouLooserMatchPolicy.pick(pool.snapshot(), profile, aliasMap)
+        return if (looser.isEmpty()) outcome else outcome.copy(result = PersonalRecommendationResult.Success(looser))
+    }
+
+    /**
      * Removes the Loading rows of [sourceIds] that were stopped once enough rows were useful. Only touches the refresh
      * that owns them: a newer refresh's rows are never changed. Finished rows are left as they are.
      */
@@ -3579,8 +3613,10 @@ class BrowsePersonalRecommendationsScreenModel(
                 }
                 // Lock order: loadLaunchLock -> accumulatorLock -> pure event publication.
                 val (rowResult, detailResult) = synchronized(accumulatorLock) {
-                    if (result is PersonalRecommendationResult.Success && result.result.isNotEmpty()) {
-                        completedSourceResults[source.id] = source to result.result
+                    // KMK v0.8.24: looser matches stay in their own row, never in Top Picks
+                    val topPicksEligible = (result as? PersonalRecommendationResult.Success)?.result?.filterNot { it.looser }.orEmpty()
+                    if (topPicksEligible.isNotEmpty()) {
+                        completedSourceResults[source.id] = source to topPicksEligible
                     } else {
                         completedSourceResults.remove(source.id)
                     }
@@ -3643,8 +3679,10 @@ class BrowsePersonalRecommendationsScreenModel(
                 ForYouRefreshTelemetry.staleResultRejected(refreshGeneration, activeRefreshGeneration.get(), source.id)
                 return
             }
-            if (result is PersonalRecommendationResult.Success && result.result.isNotEmpty()) {
-                completedSourceResults[source.id] = source to result.result
+            // KMK v0.8.24: looser matches stay in their own row, never in Top Picks
+            val topPicksEligible = (result as? PersonalRecommendationResult.Success)?.result?.filterNot { it.looser }.orEmpty()
+            if (topPicksEligible.isNotEmpty()) {
+                completedSourceResults[source.id] = source to topPicksEligible
             } else {
                 completedSourceResults.remove(source.id)
             }

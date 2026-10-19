@@ -1183,6 +1183,10 @@ private fun PersonalRecommendationsContent(
                                             } else {
                                                 add(source.lang.uppercase(Locale.ROOT))
                                             }
+                                            // KMK v0.8.24: say why a weaker row is there
+                                            if ((original as? PersonalRecommendationResult.Success)?.isLooser == true) {
+                                                add(stringResource(KMR.strings.rec_looser_matches_row))
+                                            }
                                         }.joinToString(" • "),
                                         onClick = { onClickSource(source) },
                                         // KMK --> v0.7.5: long-press to export source row

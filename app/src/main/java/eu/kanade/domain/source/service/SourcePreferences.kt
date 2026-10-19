@@ -174,6 +174,9 @@ class SourcePreferences(
     /** When true, hides manga that are already rated, in library, started, or read from For You results. */
     fun recommendationHideKnownManga() = preferenceStore.getBoolean("recommendation_hide_known_manga", true)
 
+    // KMK v0.8.24: a source whose results all miss the taste match shows a few looser matches (exh.recs.ForYouLooserMatchPolicy)
+    fun recommendationLooserMatches() = preferenceStore.getBoolean("recommendation_looser_matches", true)
+
     /** Compact serialized last For You source run statuses for display in Recommendation Settings. */
     fun recommendationLastSourceRunStatuses() = preferenceStore.getString("recommendation_last_source_run_statuses", "")
 

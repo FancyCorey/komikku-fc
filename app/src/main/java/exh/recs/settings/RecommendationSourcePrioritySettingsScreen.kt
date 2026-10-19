@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberNavigatorScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.manga.components.MangaCover
@@ -197,6 +198,17 @@ class RecommendationSourcePrioritySettingsScreen(
                             ),
                             checked = !hideForYouTab,
                             onCheckedChanged = { uiPreferences.hideForYouTab().set(!it) },
+                        )
+                    }
+                    // KMK v0.8.24: looser matches for sources whose results all miss the taste match
+                    item(key = "looser_matches") {
+                        val looserPreference = remember { Injekt.get<SourcePreferences>().recommendationLooserMatches() }
+                        val looserMatches by looserPreference.collectPreferenceAsState()
+                        SwitchPreferenceWidget(
+                            title = stringResource(KMR.strings.rec_looser_matches_title),
+                            subtitle = stringResource(KMR.strings.rec_looser_matches_summary),
+                            checked = looserMatches,
+                            onCheckedChanged = { looserPreference.set(it) },
                         )
                     }
                     item(key = "preview_for_you") {

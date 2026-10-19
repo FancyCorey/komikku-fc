@@ -1890,4 +1890,8 @@ You can choose when this is offered in Settings, Reader, Alternate sources.</str
     <string name="rec_hub_best_version_summary">How Best Version compares versions, and its history</string>
     <string name="rec_hub_focus_modes">Focus modes</string>
     <string name="rec_hub_best_version">Best Version</string>
+    <!-- KMK v0.8.24 For You looser matches -->
+    <string name="rec_looser_matches_title">Show looser matches</string>
+    <string name="rec_looser_matches_summary">When a source\'s manga don\'t match your taste, show a few of them anyway instead of an empty row. Your blocked tags and ratings still apply, and Top Picks stays strict.</string>
+    <string name="rec_looser_matches_row">Looser matches: its tags don\'t match your taste</string>
 </resources>

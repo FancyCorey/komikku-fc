@@ -1184,6 +1184,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         slowSourceId: Long? = null,
         slowMillis: Long = 0L,
         slowSourceIds: Set<Long> = setOfNotNull(slowSourceId),
+        genreOf: (Long) -> String = { "Action" },
     ): QueueFixture {
         val started = java.util.concurrent.ConcurrentHashMap<Long, Long>()
         val pages = java.util.concurrent.ConcurrentLinkedQueue<Pair<Long, Int>>()
@@ -1208,7 +1209,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
                             SManga.create().apply {
                                 url = "/q$index/p$page"
                                 title = "Queue $index page $page"
-                                genre = "Action"
+                                genre = genreOf(index)
                                 status = SManga.ONGOING
                                 initialized = true
                             },
@@ -1228,6 +1229,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         fits: List<tachiyomi.domain.taste.model.SourceRecommendationFit>? = null,
         autoCheck: Boolean = false,
         applyResults: Boolean = true,
+        looserMatches: Boolean? = null,
     ): BrowsePersonalRecommendationsScreenModel.State {
         val profile = mockk<GetTasteProfile>()
         coEvery { profile.await() } returns longTermActionProfile()
@@ -1244,6 +1246,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         }
         val preferences = SourcePreferences(FakePreferenceStore())
         dataSaving?.let { preferences.recommendationDataSaving().set(it) }
+        looserMatches?.let { preferences.recommendationLooserMatches().set(it) }
         preferences.recommendationAutoRecheckEnabled().set(autoCheck)
         preferences.recommendationAutoRecheckApplyToForYou().set(applyResults)
         // For You's own history: every fixture source tried several times recently with nothing shown, so only the check
@@ -1340,6 +1343,34 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         val searched = fixture.started.keys.size
         assertTrue(searched >= 20, "at least the row limit is searched, was $searched")
         assertTrue(searched < 40, "the rest is not searched once the rows are full, was $searched")
+    }
+
+    // KMK v0.8.24: a source whose manga all miss the taste match shows a few looser matches in its own row
+    @Test
+    fun `a source whose results all miss the taste match shows looser matches outside Top Picks`() = runTest {
+        // source 2 only has Romance (the profile likes Action), so its results all miss the taste match
+        val fixture = queueFixture(count = 2, genreOf = { if (it == 2L) "Romance" else "Action" })
+
+        val state = refreshQueue(fixture)
+
+        val looserRow = state.items.entries.single { it.key.id == 2L }.value as PersonalRecommendationResult.Success
+        assertTrue(looserRow.isLooser, "source 2 shows looser matches")
+        assertTrue(looserRow.result.isNotEmpty())
+        val strictRow = state.items.entries.single { it.key.id == 1L }.value as PersonalRecommendationResult.Success
+        assertFalse(strictRow.isLooser)
+        assertEquals(RecommendationSourceStatus.FilteredOut, state.sourceStatuses[2L]?.status, "still counted as filtered out")
+        val topPicks = (state.combinedResult as? PersonalRecommendationResult.Success)?.result.orEmpty()
+        assertTrue(topPicks.isNotEmpty() && topPicks.none { it.manga.source == 2L || it.looser }, "Top Picks stays strict")
+    }
+
+    @Test
+    fun `with looser matches off a source whose results miss the taste match stays empty`() = runTest {
+        val fixture = queueFixture(count = 2, genreOf = { if (it == 2L) "Romance" else "Action" })
+
+        val state = refreshQueue(fixture, looserMatches = false)
+
+        val row = state.items.entries.single { it.key.id == 2L }.value as PersonalRecommendationResult.Success
+        assertTrue(row.isEmpty, "off restores the previous behavior")
     }
 
     // KMK v0.8.24: sources still searching when the rows fill up are stopped and leave no spinner behind
