@@ -430,4 +430,20 @@ class RecommendationFocusPolicyTest {
         assertEquals(FocusDimension.GENRE, classifyFocusDimension("webtoon romance".normalizeTag()))
     }
     // KMK <--
+
+    // KMK --> v0.8.24: source filter names with counts or ids are one Focus tag
+    @Test
+    fun `trailing counts and ids are dropped so one tag appears once`() {
+        val raw = listOf("Adventure", "Adventure (157)", "adventure 158", "ADVENTURE 27", "Adventure 1 2")
+        assertEquals(setOf("adventure"), raw.map { canonicalFocusGroup(it, emptyMap()) }.toSet())
+    }
+
+    @Test
+    fun `numbers that are the tag itself are kept`() {
+        assertEquals("4 koma", canonicalFocusGroup("4-Koma", emptyMap()))
+        assertEquals("18", canonicalFocusGroup("18+", emptyMap()))
+        assertEquals("3d", canonicalFocusGroup("3D", emptyMap()))
+        assertEquals("adventurer", canonicalFocusGroup("Adventurer", emptyMap()), "a different word stays separate")
+    }
+    // KMK <--
 }

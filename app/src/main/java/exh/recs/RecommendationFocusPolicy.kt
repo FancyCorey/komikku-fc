@@ -119,13 +119,18 @@ internal object RecommendationFocusPolicy {
 
 /** Resolves a raw source/user label through the same normalized alias contract used for matching. */
 internal fun canonicalFocusGroup(raw: String, aliasMap: Map<String, String>): String {
-    val normalized = raw.normalizeTag()
+    // KMK v0.8.24: sources append counts or ids to filter names ("Adventure (157)", "Adventure 27"), which made one tag
+    // appear many times in Focus. Trailing number words after a real word are dropped ("4 Koma" is kept).
+    val normalized = raw.normalizeTag().replace(trailingCountRegex, "")
     // Resolve at most one user-provided hop, then the built-in metadata aliases. User aliases
     // remain authoritative, while built-in aliases make equivalent format/demographic labels one
     // selectable group instead of leaking duplicates into the picker.
     val userCanonical = aliasMap[normalized]?.normalizeTag() ?: normalized
     return (aliasMap[userCanonical] ?: userCanonical).normalizeTag()
 }
+
+/** One or more trailing " <number>" words directly after a letter. */
+private val trailingCountRegex = Regex("""(?<=\p{L})( \d+)+$""")
 
 /**
  * Title-Case display label for a canonicalized (lowercase, space-separated) focus group key, e.g.
