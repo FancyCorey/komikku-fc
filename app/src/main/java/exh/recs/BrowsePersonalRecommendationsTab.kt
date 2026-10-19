@@ -72,6 +72,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.stack.StackEvent
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.presentation.browse.components.GlobalSearchCardRow
 import eu.kanade.presentation.browse.components.GlobalSearchErrorResultItem
 import eu.kanade.presentation.browse.components.GlobalSearchLoadingResultItem
@@ -881,6 +882,12 @@ fun Screen.personalRecommendationsTab(): TabContent {
                     },
                     // KMK --> v0.7.25: retry after offline
                     onRetry = screenModel::retryFailedSourcesOrRefresh,
+                    // KMK v0.8.24
+                    onStopUsingSource = { source -> screenModel.stopUsingSourceInForYou(source.id) },
+                    onCheckSource = screenModel::checkSource,
+                    onManageExtension = { pkgName ->
+                        navigator.push(eu.kanade.tachiyomi.ui.browse.extension.details.ExtensionDetailsScreen(pkgName))
+                    },
                     onRefresh = screenModel::refresh,
                     onClearFocus = {
                         screenModel.setActiveFocus(RecommendationFocusPolicy.FocusCriteria.EMPTY)
@@ -928,6 +935,10 @@ private fun PersonalRecommendationsContent(
     // KMK <--
     // KMK --> v0.7.25: retry callback for offline state
     onRetry: () -> Unit = {},
+    // KMK v0.8.24: "Don't use in For You", "Check source" and "Manage extension" on a failing source
+    onStopUsingSource: (Source) -> Unit = {},
+    onCheckSource: (Source) -> Unit = {},
+    onManageExtension: (String) -> Unit = {},
     // Pull-to-refresh and offline recovery intentionally refresh every enabled source.
     onRefresh: () -> Unit = {},
     onClearFocus: () -> Unit = {},
@@ -1021,6 +1032,22 @@ private fun PersonalRecommendationsContent(
                 statuses = state.sourceStatuses,
             )
             val allDone = state.total > 0 && state.progress == state.total
+            // KMK v0.8.24: installed extensions, to say when a failing source's extension is outdated or no longer offered
+            val installedExtensions by remember {
+                try {
+                    Injekt.get<eu.kanade.tachiyomi.extension.ExtensionManager>().installedExtensionsFlow
+                } catch (_: Exception) {
+                    kotlinx.coroutines.flow.MutableStateFlow(emptyList())
+                }
+            }.collectAsState()
+            // KMK v0.8.24: each source's For You history, for the failure suggestions; read once per refresh
+            val sourceFitStats = remember(state.resultGeneration) {
+                try {
+                    SourceFitStatsStore.parse(Injekt.get<SourcePreferences>().recommendationSourceFitStats().get())
+                } catch (_: Exception) {
+                    emptyMap()
+                }
+            }
             // Exposure is recorded
             // only for a loaded, non-empty, fully-settled ("correct") result -- never for loading,
             // partial, or empty states. Keying on (resultGeneration, allDone) restarts this effect
@@ -1217,9 +1244,24 @@ private fun PersonalRecommendationsContent(
                                                         original.throwable.formattedMessage
                                                     },
                                                     action = {
-                                                        TextButton(onClick = onRetry) {
-                                                            Text(text = stringResource(MR.strings.action_retry))
+                                                        // KMK v0.8.24: suggest what to do about this failure
+                                                        val extension = installedExtensions.firstOrNull { ext ->
+                                                            ext.sources.any { it.id == source.id }
                                                         }
+                                                        ForYouSourceFailureActions(
+                                                            source = source,
+                                                            advice = ForYouSourceFailurePolicy.advise(
+                                                                original.throwable,
+                                                                sourceFitStats[source.id],
+                                                            ),
+                                                            extensionObsolete = extension?.isObsolete == true,
+                                                            extensionHasUpdate = extension?.hasUpdate == true,
+                                                            check = state.sourceChecks[source.id],
+                                                            onRetry = onRetry,
+                                                            onStopUsing = { onStopUsingSource(source) },
+                                                            onCheck = { onCheckSource(source) },
+                                                            onManageExtension = extension?.let { ext -> { onManageExtension(ext.pkgName) } },
+                                                        )
                                                     },
                                                 )
                                             }
@@ -1508,5 +1550,99 @@ private fun FocusSectionEmptyState(onShowBroaderResults: () -> Unit) {
             Text(stringResource(KMR.strings.rec_for_you_focus_show_broader))
         }
     }
+}
+// KMK <--
+
+// KMK --> v0.8.24
+/**
+ * Suggestions under a failed source row: a plain hint for the likely cause, the extension's state, how often the source
+ * failed when it keeps failing, and only the buttons that fit (see ForYouSourceFailurePolicy and the 0.8.24
+ * FAILING-SOURCES design rules). "Check source" tells a source that only fails in For You from one that does not work
+ * at all; removing or updating the extension happens on its own screen, never from here.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+internal fun ForYouSourceFailureActions(
+    source: Source,
+    advice: ForYouSourceFailurePolicy.Advice,
+    extensionObsolete: Boolean,
+    extensionHasUpdate: Boolean,
+    check: ForYouSourceFailurePolicy.Check?,
+    onRetry: () -> Unit,
+    onStopUsing: () -> Unit,
+    onCheck: () -> Unit,
+    onManageExtension: (() -> Unit)?,
+) {
+    val context = LocalContext.current
+    val hint = when (advice.cause) {
+        ForYouSourceFailurePolicy.Cause.CONNECTION -> KMR.strings.rec_source_failure_hint_connection
+        ForYouSourceFailurePolicy.Cause.SITE_CHECK -> KMR.strings.rec_source_failure_hint_site_check
+        ForYouSourceFailurePolicy.Cause.SITE_PROBLEM -> KMR.strings.rec_source_failure_hint_site_problem
+        ForYouSourceFailurePolicy.Cause.EXTENSION -> KMR.strings.rec_source_failure_hint_extension
+        ForYouSourceFailurePolicy.Cause.UNKNOWN -> null
+    }
+    val extensionNote = when {
+        extensionObsolete -> KMR.strings.rec_source_failure_extension_obsolete
+        extensionHasUpdate -> KMR.strings.rec_source_failure_extension_update
+        else -> null
+    }
+    val checkNote = when (check) {
+        ForYouSourceFailurePolicy.Check.CHECKING -> KMR.strings.rec_source_failure_checking
+        ForYouSourceFailurePolicy.Check.WORKS -> KMR.strings.rec_source_failure_check_works
+        ForYouSourceFailurePolicy.Check.BROKEN -> KMR.strings.rec_source_failure_check_broken
+        null -> null
+    }
+    val showManage = onManageExtension != null &&
+        (extensionObsolete || extensionHasUpdate || check == ForYouSourceFailurePolicy.Check.BROKEN)
+    val siteUrl = (source as? eu.kanade.tachiyomi.source.online.HttpSource)?.baseUrl?.takeIf { it.isNotBlank() }
+    androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // At most a few short notes: once "Check source" has an answer it replaces the generic hint and the count.
+        if (checkNote == null) {
+            hint?.let { FailureNote(stringResource(it)) }
+        }
+        extensionNote?.let { FailureNote(stringResource(it)) }
+        if (checkNote == null && advice.keepsFailing) {
+            FailureNote(stringResource(KMR.strings.rec_source_failure_keeps_failing, advice.failedRuns, advice.totalRuns))
+        }
+        checkNote?.let { FailureNote(stringResource(it)) }
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center) {
+            TextButton(onClick = onRetry) { Text(text = stringResource(KMR.strings.rec_source_failure_try_again)) }
+            if (advice.suggestsOpenSite && siteUrl != null) {
+                TextButton(
+                    onClick = {
+                        context.startActivity(
+                            eu.kanade.tachiyomi.ui.webview.WebViewActivity.newIntent(context, siteUrl, source.id, source.name),
+                        )
+                    },
+                ) { Text(text = stringResource(KMR.strings.rec_source_failure_open_site)) }
+            }
+            if (advice.keepsFailing && check == null) {
+                TextButton(onClick = onCheck) { Text(text = stringResource(KMR.strings.rec_source_failure_check)) }
+            }
+            if (showManage) {
+                TextButton(onClick = { onManageExtension?.invoke() }) {
+                    Text(text = stringResource(KMR.strings.rec_source_failure_manage_extension))
+                }
+            }
+            if (advice.keepsFailing || check == ForYouSourceFailurePolicy.Check.BROKEN) {
+                TextButton(
+                    onClick = {
+                        onStopUsing()
+                        context.toast(context.contextStringResource(KMR.strings.rec_source_failure_stopped, source.name))
+                    },
+                ) { Text(text = stringResource(KMR.strings.rec_source_failure_stop_using)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FailureNote(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+    )
 }
 // KMK <--

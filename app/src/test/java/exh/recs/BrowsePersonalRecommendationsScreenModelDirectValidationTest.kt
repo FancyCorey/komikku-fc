@@ -1389,6 +1389,28 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         assertTrue(row.isEmpty, "off restores the previous behavior")
     }
 
+    // KMK v0.8.24: "Check source" on a failing row tells a source that only fails in For You from a broken one
+    @Test
+    fun `check source reports works when its Popular page loads and broken when it fails`() = runTest {
+        val working = mockk<Source>(relaxed = true).also {
+            every { it.id } returns -9_101L
+            coEvery { it.getPopularManga(1) } returns MangasPage(emptyList(), false)
+        }
+        val broken = mockk<Source>(relaxed = true).also {
+            // a failure is remembered process-wide (SourceRuntimeFailureRegistry): ids no other test uses
+            every { it.id } returns -9_102L
+            coEvery { it.getPopularManga(1) } throws java.io.IOException("site gone")
+        }
+        val model = buildHarness().model
+
+        model.checkSource(working)
+        model.checkSource(broken)
+        advanceUntilIdle()
+
+        assertEquals(ForYouSourceFailurePolicy.Check.WORKS, model.state.value.sourceChecks[-9_101L])
+        assertEquals(ForYouSourceFailurePolicy.Check.BROKEN, model.state.value.sourceChecks[-9_102L])
+    }
+
     // KMK v0.8.24: a source whose search finds nothing still gets its Popular page (the catalogue fallback)
     @Test
     fun `a source whose searches find nothing falls back to its Popular page`() = runTest {

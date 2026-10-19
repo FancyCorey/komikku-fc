@@ -128,6 +128,7 @@ class KmkNumericPluralReconciliationTest {
             "rec_match_selection_count",
             "rec_numeric_value_range",
             "rec_settings_summary_source_priority",
+            "rec_source_failure_keeps_failing",
             "rec_suggestion_install_selected",
             "rec_suggestion_install_visible",
             "source_evaluation_catalogue_row_subtitle",

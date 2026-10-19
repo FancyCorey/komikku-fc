@@ -1894,4 +1894,21 @@ You can choose when this is offered in Settings, Reader, Alternate sources.</str
     <string name="rec_looser_matches_title">Show looser matches</string>
     <string name="rec_looser_matches_summary">When a source\'s manga don\'t match your taste, show a few of them anyway instead of an empty row. Your blocked tags and ratings still apply, and Top Picks stays strict.</string>
     <string name="rec_looser_matches_row">Looser matches: its tags don\'t match your taste</string>
+    <!-- KMK v0.8.24 For You: suggested fixes for failing sources -->
+    <string name="rec_source_failure_hint_connection">Check your connection, then try again.</string>
+    <string name="rec_source_failure_hint_site_check">The site wants a browser check. Open it once, then try again.</string>
+    <string name="rec_source_failure_hint_site_problem">The site is having problems. Try again later.</string>
+    <string name="rec_source_failure_hint_extension">This extension may need an update.</string>
+    <string name="rec_source_failure_keeps_failing">This source failed in %1$d of %2$d refreshes.</string>
+    <string name="rec_source_failure_try_again">Try again</string>
+    <string name="rec_source_failure_extension_obsolete">This extension is no longer offered by its repository, so the source may have stopped working.</string>
+    <string name="rec_source_failure_extension_update">An update is available for this extension.</string>
+    <string name="rec_source_failure_check">Check source</string>
+    <string name="rec_source_failure_checking">Checking whether the source works when browsing…</string>
+    <string name="rec_source_failure_check_works">It works when browsing. Only For You\'s searches fail, so you can stop using it in For You.</string>
+    <string name="rec_source_failure_check_broken">It doesn\'t work when browsing either. Update or remove its extension, or stop using it in For You.</string>
+    <string name="rec_source_failure_manage_extension">Manage extension</string>
+    <string name="rec_source_failure_open_site">Open site</string>
+    <string name="rec_source_failure_stop_using">Don\'t use in For You</string>
+    <string name="rec_source_failure_stopped">%1$s won\'t be used in For You. Turn it back on in Recommendation Settings, For You feed.</string>
 </resources>

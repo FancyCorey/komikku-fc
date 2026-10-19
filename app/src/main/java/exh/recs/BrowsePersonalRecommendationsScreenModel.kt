@@ -563,6 +563,64 @@ class BrowsePersonalRecommendationsScreenModel(
         }
     }
 
+    // KMK --> v0.8.24
+    /**
+     * "Don't use in For You" on a source that keeps failing: the same recommendation-only switch as For You feed (the
+     * extension stays installed and enabled), recorded in Action History so it can be undone. The row leaves the page now;
+     * later refreshes skip the source.
+     */
+    fun stopUsingSourceInForYou(sourceId: Long, onDone: () -> Unit = {}) {
+        screenModelScope.launch {
+            val setSourceEnabled = Injekt.get<tachiyomi.domain.taste.interactor.SetRecommendationSourceEnabled>()
+            val wasEnabled = sourceId !in getDisabledSources.await()
+            val entry = exh.util.PreferenceUndoEntry(
+                id = exh.util.PreferenceUndoEntry.newId(),
+                timestamp = System.currentTimeMillis(),
+                actionType = exh.util.PreferenceJournalActionType.SOURCE_EXCLUSION,
+                identityKey = sourceId.toString(),
+                previousValue = wasEnabled,
+                expectedPostValue = false,
+                readCurrent = { sourceId !in getDisabledSources.await() },
+                restore = { enabled -> setSourceEnabled.await(sourceId, enabled) },
+            )
+            // same order as the For You feed switch: change, then journal
+            setSourceEnabled.await(sourceId, enabled = false)
+            exh.util.PreferenceUndoJournal.record(entry)
+            mutableState.update { state ->
+                state.copy(items = state.items.mutate { map -> map.keys.filter { it.id == sourceId }.forEach(map::remove) })
+            }
+            onDone()
+        }
+    }
+    // KMK <--
+
+    // KMK --> v0.8.24
+    /**
+     * "Check source" on a source that keeps failing: loads its Popular page once, outside For You's searches, to tell a
+     * source that only fails in For You from one that does not work at all. One request, only when the user asks.
+     */
+    fun checkSource(source: Source) {
+        if (mutableState.value.sourceChecks[source.id] == ForYouSourceFailurePolicy.Check.CHECKING) return
+        mutableState.update { it.copy(sourceChecks = it.sourceChecks.put(source.id, ForYouSourceFailurePolicy.Check.CHECKING)) }
+        screenModelScope.launch {
+            val works = try {
+                withTimeoutOrNull(ForYouSourceFailurePolicy.CHECK_TIMEOUT_MS) {
+                    SourceRuntime.run(source, SourceRuntimeOperation.Popular, coroutineDispatcher) {
+                        getPopularManga(1)
+                    }.getOrThrowSourceRuntimeException()
+                    true
+                } ?: false
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                false
+            }
+            val check = if (works) ForYouSourceFailurePolicy.Check.WORKS else ForYouSourceFailurePolicy.Check.BROKEN
+            mutableState.update { it.copy(sourceChecks = it.sourceChecks.put(source.id, check)) }
+        }
+    }
+    // KMK <--
+
     /** Serializes refresh requests so a superseded load cannot cancel a newer search job. */
     private fun requestLoad(forceRefresh: Boolean, retrySourceIds: Set<Long>? = null) {
         synchronized(loadLaunchLock) {
@@ -3823,6 +3881,8 @@ class BrowsePersonalRecommendationsScreenModel(
         /** Per-source last-run statuses — updated as each source completes. */
         val sourceStatuses: PersistentMap<Long, RecommendationSourceRunStatus> = persistentMapOf(),
         // KMK <--
+        // KMK v0.8.24: results of "Check source" on failing rows, by source id
+        val sourceChecks: PersistentMap<Long, ForYouSourceFailurePolicy.Check> = persistentMapOf(),
         val isLoading: Boolean = true,
         val profileIsEmpty: Boolean = false,
         // KMK --> v0.7.25: true when device has no internet at load time
