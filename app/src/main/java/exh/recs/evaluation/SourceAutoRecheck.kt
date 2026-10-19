@@ -33,15 +33,12 @@ object SourceAutoRecheckScheduler {
         val workManager = context.workManager
         if (!preferences.recommendationAutoRecheckEnabled().get()) {
             workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
+            // A check the schedule already started stops too; a manual check is left alone.
+            SourceRecommendationQualityJob.cancelAutomatic(context)
             return
         }
         val days = SourceAutoRecheckPolicy.coerceIntervalDays(preferences.recommendationAutoRecheckIntervalDays().get())
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(
-                if (preferences.recommendationAutoRecheckUnmeteredOnly().get()) NetworkType.UNMETERED else NetworkType.CONNECTED,
-            )
-            .setRequiresBatteryNotLow(preferences.recommendationAutoRecheckBatteryGuard().get())
-            .build()
+        val constraints = constraints(preferences)
         val request = PeriodicWorkRequestBuilder<SourceAutoRecheckWorker>(days.toLong(), TimeUnit.DAYS)
             .setConstraints(constraints)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.HOURS)
@@ -50,6 +47,14 @@ object SourceAutoRecheckScheduler {
         // UPDATE keeps the existing schedule's timing where possible and applies the new interval and constraints.
         workManager.enqueueUniquePeriodicWork(UNIQUE_WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
+
+    /** The Wi-Fi and battery requirements, applied both to the schedule and to the check it starts. */
+    fun constraints(preferences: SourcePreferences): Constraints = Constraints.Builder()
+        .setRequiredNetworkType(
+            if (preferences.recommendationAutoRecheckUnmeteredOnly().get()) NetworkType.UNMETERED else NetworkType.CONNECTED,
+        )
+        .setRequiresBatteryNotLow(preferences.recommendationAutoRecheckBatteryGuard().get())
+        .build()
 }
 
 /**
@@ -81,7 +86,12 @@ class SourceAutoRecheckWorker(
                     status = SourceRecommendationQualityQueueState.Status.Running,
                     totalCount = targets.size,
                 )
-                SourceRecommendationQualityJob.start(context, SourceEvaluationInstallerPolicy.InstallerMode.CURRENT)
+                SourceRecommendationQualityJob.start(
+                    context,
+                    SourceEvaluationInstallerPolicy.InstallerMode.CURRENT,
+                    // The check itself, not only this launcher, must wait for Wi-Fi and battery as chosen.
+                    automaticConstraints = SourceAutoRecheckScheduler.constraints(preferences),
+                )
             }
             // A skipped run still counts as checked: nothing needed doing, or another check was already doing it.
             preferences.recommendationAutoRecheckLastRunMillis().set(System.currentTimeMillis())

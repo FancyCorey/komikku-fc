@@ -22,6 +22,9 @@ object TrackLinkedVersionMirrorPolicy {
             score = updated.score,
             startDate = updated.startDate,
             finishDate = updated.finishDate,
+            // Every tracker update sends the whole entry, including this flag. A sibling left with a stale value would
+            // undo a privacy change on the next edit made from that version.
+            private = updated.private,
         )
         return mirrored.takeIf { it != sibling }
     }

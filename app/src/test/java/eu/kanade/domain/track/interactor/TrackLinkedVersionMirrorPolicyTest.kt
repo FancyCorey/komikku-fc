@@ -28,6 +28,23 @@ class TrackLinkedVersionMirrorPolicyTest {
         assertEquals("T2", mirrored.title)
     }
 
+    // KMK v0.8.24: the shared entry's privacy follows the version that changed it, in both directions
+    @Test
+    fun `privacy is mirrored both ways, and a privacy-only change is not a no-op`() {
+        val publicSibling = track(id = 2, mangaId = 2)
+        val madePrivate = TrackLinkedVersionMirrorPolicy.mirror(publicSibling, track(1, 1).copy(private = true), allowLower = true)!!
+        assertEquals(true, madePrivate.private)
+
+        val madePublic = TrackLinkedVersionMirrorPolicy.mirror(madePrivate, track(1, 1).copy(private = false), allowLower = true)!!
+        assertEquals(false, madePublic.private)
+    }
+
+    @Test
+    fun `the progress guard still wins over privacy on the reading path`() {
+        val ahead = track(id = 2, mangaId = 2, chapter = 10.0)
+        assertNull(TrackLinkedVersionMirrorPolicy.mirror(ahead, track(1, 1, chapter = 9.0).copy(private = true)))
+    }
+
     @Test
     fun `never lowers progress, never crosses remote entries, and skips no-op writes`() {
         assertNull(TrackLinkedVersionMirrorPolicy.mirror(track(2, 2, chapter = 10.0), track(1, 1, chapter = 9.0)))

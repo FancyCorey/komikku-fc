@@ -35,6 +35,28 @@ class MirrorTrackToLinkedVersionsTest {
         coVerify(exactly = 1) { insert.await(match { it.id == 2L && it.lastChapterRead == 5.0 }) }
     }
 
+    // KMK v0.8.24: privacy change on one version -> the other version's stored copy -> an edit made from that version
+    @Test
+    fun `a later edit from another version keeps the privacy set on the first`() = runTest {
+        for (makePrivate in listOf(true, false)) {
+            val versionA = track(1, 1, chapter = 5.0).copy(private = makePrivate)
+            val versionB = track(2, 2, chapter = 5.0).copy(private = !makePrivate)
+            val stored = mutableListOf<Track>()
+            val getTracks = mockk<GetTracks>()
+            val insertTrack = mockk<InsertTrack>()
+            coEvery { getTracks.awaitByRemoteId(10L, 20L) } returns listOf(versionA, versionB)
+            coEvery { insertTrack.await(any()) } answers { stored += firstArg<Track>() }
+
+            // setRemotePrivate on A -> updateRemote -> authoritative mirror
+            MirrorTrackToLinkedVersions({ getTracks }, { insertTrack }).await(versionA, authoritative = true)
+            val storedB = stored.single { it.id == 2L }
+
+            // A later score edit from B starts from B's stored row; the record sent to the tracker carries its flag
+            val sentFromB = storedB.copy(score = 7.0)
+            assertTrue(sentFromB.private == makePrivate, "B's next update must not revert privacy to ${!makePrivate}")
+        }
+    }
+
     @Test
     fun `the reading path never lowers another version`() = runTest {
         val updated = track(1, 1, chapter = 5.0)

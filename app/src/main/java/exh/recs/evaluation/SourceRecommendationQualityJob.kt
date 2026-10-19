@@ -3,6 +3,7 @@ package exh.recs.evaluation
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
@@ -106,6 +107,10 @@ class SourceRecommendationQualityJob(
     override suspend fun doWork(): Result {
         val targets = SourceRecommendationQualityJobState.pendingTargets
 
+        // KMK v0.8.24: an automatic check that WorkManager stopped (Wi-Fi or battery requirement no longer met) and
+        // later restarts has nothing staged any more; it ends quietly and the next scheduled check picks up what is left.
+        if (targets.isNullOrEmpty() && inputData.getBoolean(KEY_AUTOMATIC, false)) return Result.success()
+
         if (targets.isNullOrEmpty()) {
             logcat(LogPriority.WARN) {
                 "KMK SourceRecommendationQualityJob: no pending targets (process may have restarted)"
@@ -164,17 +169,42 @@ class SourceRecommendationQualityJob(
         private const val UNIQUE_WORK_NAME = "SourceRecommendationQualityJob:active"
         private const val KEY_INSTALLER_MODE = "installer_mode"
 
+        // KMK --> v0.8.24: marks a check started by the automatic schedule, so it can be cancelled on its own
+        internal const val TAG_AUTOMATIC = "SourceRecommendationQualityJob:automatic"
+        private const val KEY_AUTOMATIC = "automatic"
+        // KMK <--
+
         fun isRunning(context: Context): Boolean =
             context.workManager.isRunning(TAG_JOB)
 
-        fun start(context: Context, installerMode: SourceEvaluationInstallerPolicy.InstallerMode) {
+        /**
+         * @param automaticConstraints set only by the automatic schedule: the check then carries the schedule's Wi-Fi and
+         * battery requirements while it runs (WorkManager stops it when they stop being met) and is tagged so that turning
+         * the automatic check off cancels it. A manual check passes null and is never affected by either.
+         */
+        fun start(
+            context: Context,
+            installerMode: SourceEvaluationInstallerPolicy.InstallerMode,
+            // KMK v0.8.24
+            automaticConstraints: Constraints? = null,
+        ) {
             val request = OneTimeWorkRequestBuilder<SourceRecommendationQualityJob>()
                 .addTag(TAG_JOB)
                 .setInputData(
                     androidx.work.Data.Builder()
                         .putString(KEY_INSTALLER_MODE, installerMode.name)
+                        // KMK v0.8.24
+                        .putBoolean(KEY_AUTOMATIC, automaticConstraints != null)
                         .build(),
                 )
+                // KMK --> v0.8.24
+                .apply {
+                    automaticConstraints?.let {
+                        addTag(TAG_AUTOMATIC)
+                        setConstraints(it)
+                    }
+                }
+                // KMK <--
                 .build()
             context.workManager.enqueueUniqueWork(
                 UNIQUE_WORK_NAME,
@@ -186,6 +216,12 @@ class SourceRecommendationQualityJob(
         fun cancel(context: Context) {
             context.workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
         }
+
+        // KMK --> v0.8.24: cancels only a check started by the automatic schedule, never a manual one
+        fun cancelAutomatic(context: Context) {
+            context.workManager.cancelAllWorkByTag(TAG_AUTOMATIC)
+        }
+        // KMK <--
     }
 }
 // KMK <--

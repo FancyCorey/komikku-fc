@@ -16,10 +16,11 @@ class LocalTrackingSeedSourceTest {
         .substringBefore("fun removeLocalTracking(")
 
     @Test
-    fun `a new shared work falls back to the furthest read chapter of any linked version`() {
-        assertTrue(source.contains("val sharedReadMark = if (sharedLatestRead == null)"))
-        assertTrue(source.contains(".filter { it.read && it.isRecognizedNumber }"))
-        assertTrue(source.contains("val seedChapter = sharedLatestRead?.third ?: sharedReadMark?.second"))
+    fun `a new shared work starts from the policy's seed across linked versions`() {
+        assertTrue(source.contains("val seed = LocalTrackingHistoryProgressPolicy.seed("))
+        assertTrue(source.contains("val seedChapter = seed?.chapter"))
+        assertTrue(source.contains("val seedSource = seed?.version?.source"))
+        assertTrue(source.contains("startDate = seed?.firstReadAt"))
     }
 
     @Test
@@ -30,6 +31,9 @@ class LocalTrackingSeedSourceTest {
 
     @Test
     fun `chapter modification seconds are converted to milliseconds`() {
-        assertTrue(source.contains("chapter.lastModifiedAt * 1000"))
+        assertTrue(
+            File("src/main/java/eu/kanade/tachiyomi/ui/manga/track/LocalTrackingHistoryProgressPolicy.kt").readText()
+                .contains("chapter.lastModifiedAt * 1000"),
+        )
     }
 }

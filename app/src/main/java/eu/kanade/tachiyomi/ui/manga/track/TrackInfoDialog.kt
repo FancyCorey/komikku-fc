@@ -857,31 +857,18 @@ data class TrackInfoDialogHomeScreen(
                 }
                 // Seed a newly created shared work from the latest read across the confirmed
                 // versions. Reading one version must not lose progress when tracking another.
-                val sharedHistoryProgress = targets
-                    .mapNotNull { target ->
-                        LocalTrackingHistoryProgressPolicy.resolve(getHistory.await(target.id))
-                            ?.let { progress -> target to progress }
-                    }
-                    .maxByOrNull { it.second.progressAt }
-                val sharedLatestRead = sharedHistoryProgress?.let { (target, progress) ->
-                    getChapter.await(progress.chapterId)?.let { chapter -> Triple(target, progress, chapter) }
-                }
-                // KMK --> v0.8.24: chapters can be marked read without reading history (marked by hand, restored, or
-                // synced from a tracker). Without history, start from the furthest read chapter of any linked version
-                // instead of chapter 0.
-                val sharedReadMark = if (sharedLatestRead == null) {
-                    targets
-                        .mapNotNull { target ->
-                            getChaptersByMangaId.await(target.id)
-                                .filter { it.read && it.isRecognizedNumber }
-                                .maxByOrNull { it.chapterNumber }
-                                ?.let { chapter -> target to chapter }
-                        }
-                        .maxByOrNull { it.second.chapterNumber }
-                } else {
-                    null
-                }
-                // KMK <--
+                // KMK v0.8.24: chapters marked read further than anything with reading history (marked by hand, restored
+                // or synced) count too; see LocalTrackingHistoryProgressPolicy.seed.
+                val seed = LocalTrackingHistoryProgressPolicy.seed(
+                    targets.map { target ->
+                        LocalTrackingHistoryProgressPolicy.VersionProgress(
+                            version = target,
+                            history = getHistory.await(target.id),
+                            chapters = getChaptersByMangaId.await(target.id),
+                        )
+                    },
+                    now = now,
+                )
                 var sharedWorkId = localTrackerRepository.getWorkIdBySourceUrl(manga.source, manga.url)
                 var sharedWorkInitialized = false
                 for (target in targets) {
@@ -901,12 +888,10 @@ data class TrackInfoDialogHomeScreen(
                             ),
                         )
                     } else if (!sharedWorkInitialized) {
-                        val historyProgress = sharedHistoryProgress?.second
                         // KMK v0.8.24: the source is the version the chapter was read on (it was the loop target before)
-                        val seedSource = sharedLatestRead?.first?.source ?: sharedReadMark?.first?.source
-                        val seedChapter = sharedLatestRead?.third ?: sharedReadMark?.second
-                        val seedProgressAt = sharedLatestRead?.second?.progressAt
-                            ?: sharedReadMark?.second?.let { chapter -> (chapter.lastModifiedAt * 1000).takeIf { it > 0L } ?: now }
+                        val seedSource = seed?.version?.source
+                        val seedChapter = seed?.chapter
+                        val seedProgressAt = seed?.progressAt
                         localTrackerRepository.upsertWork(
                             LocalTrackedWork(
                                 id = workId,
@@ -920,7 +905,7 @@ data class TrackInfoDialogHomeScreen(
                                 lastChapterUrl = seedChapter?.url,
                                 lastChapterLabel = seedChapter?.name,
                                 lastProgressAt = seedChapter?.let { seedProgressAt },
-                                startDate = historyProgress?.firstReadAt
+                                startDate = seed?.firstReadAt
                                     ?: now.takeIf { status != LocalTrackedWorkStatus.PLANNED },
                                 finishDate = LocalTrackingActionPolicy.finishDateForStatus(status, now),
                                 createdAt = now,

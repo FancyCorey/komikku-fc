@@ -1183,6 +1183,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         count: Int,
         slowSourceId: Long? = null,
         slowMillis: Long = 0L,
+        slowSourceIds: Set<Long> = setOfNotNull(slowSourceId),
     ): QueueFixture {
         val started = java.util.concurrent.ConcurrentHashMap<Long, Long>()
         val pages = java.util.concurrent.ConcurrentLinkedQueue<Pair<Long, Int>>()
@@ -1200,7 +1201,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
                         started[index] = testScheduler.currentTime
                         // Every search takes some (virtual) time, as a network call does, so completions interleave with
                         // starts instead of the whole queue finishing before the first result is processed.
-                        kotlinx.coroutines.delay(if (index == slowSourceId) slowMillis else 100L)
+                        kotlinx.coroutines.delay(if (index in slowSourceIds) slowMillis else 100L)
                     }
                     MangasPage(
                         listOf(
@@ -1227,7 +1228,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         fits: List<tachiyomi.domain.taste.model.SourceRecommendationFit>? = null,
         autoCheck: Boolean = false,
         applyResults: Boolean = true,
-    ) {
+    ): BrowsePersonalRecommendationsScreenModel.State {
         val profile = mockk<GetTasteProfile>()
         coEvery { profile.await() } returns longTermActionProfile()
         val aliases = mockk<GetTagAliases>(relaxed = true)
@@ -1275,6 +1276,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         )
         harness.model.refresh()
         advanceUntilIdle()
+        return harness.model.state.value
     }
 
     // KMK --> v0.8.24: automatic check results acting on For You
@@ -1338,6 +1340,25 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         val searched = fixture.started.keys.size
         assertTrue(searched >= 20, "at least the row limit is searched, was $searched")
         assertTrue(searched < 40, "the rest is not searched once the rows are full, was $searched")
+    }
+
+    // KMK v0.8.24: sources still searching when the rows fill up are stopped and leave no spinner behind
+    @Test
+    fun `stopping early leaves no unfinished rows and the refresh counts as finished`() = runTest {
+        // Sources 1-3 are slow and still in flight while the fast ones fill every row.
+        val fixture = queueFixture(count = 40, slowSourceIds = setOf(1L, 2L, 3L), slowMillis = 600_000L)
+
+        val state = refreshQueue(fixture)
+
+        assertTrue(setOf(1L, 2L, 3L).all { fixture.started.containsKey(it) }, "the slow sources were started")
+        assertTrue(fixture.started.size < 40, "the refresh still stopped early, searched ${fixture.started.size}")
+        assertTrue(
+            state.items.values.none { it is PersonalRecommendationResult.Loading },
+            "no Loading row is left: ${state.items.filterValues { it is PersonalRecommendationResult.Loading }.keys.map { it.id }}",
+        )
+        assertTrue(state.items.keys.none { it.id in setOf(1L, 2L, 3L) }, "a stopped source writes no result")
+        assertTrue(state.total > 0 && state.progress == state.total, "progress ${state.progress}/${state.total} is complete")
+        assertFalse(state.isLoading)
     }
 
     @Test

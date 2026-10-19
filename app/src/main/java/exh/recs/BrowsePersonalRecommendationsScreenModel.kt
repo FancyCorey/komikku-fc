@@ -1069,6 +1069,12 @@ class BrowsePersonalRecommendationsScreenModel(
                                     searchContexts = state.searchContexts.mutate { map -> map[source.id] = initialContext },
                                 )
                             }
+                            // KMK v0.8.24: a registration that landed just after the row cap was reached removes itself,
+                            // so a stopped source never leaves a spinner behind (see stopUnfinishedSources).
+                            if (enoughRows.get()) {
+                                stopUnfinishedSources(refreshGeneration, setOf(source.id))
+                                return@withPermit
+                            }
                             outcomeChannel.send(
                                 searchSource(
                                     source, queryKey, fingerprint, topTags, scoringProfile, aliasMap, aliasCandidates,
@@ -1124,6 +1130,9 @@ class BrowsePersonalRecommendationsScreenModel(
                     if (usefulCount >= visibleRowCap) {
                         enoughRows.set(true)
                         workers.forEach { it.cancel() }
+                        // KMK v0.8.24: sources stopped mid-search never report; without this their Loading rows stayed,
+                        // so the refresh never counted as finished (spinners, and no exposure recorded for it).
+                        stopUnfinishedSources(refreshGeneration, candidateSources.mapTo(HashSet()) { it.id })
                         break
                     }
                 }
@@ -3530,6 +3539,22 @@ class BrowsePersonalRecommendationsScreenModel(
             confirmedGroupLocalTrackingPropagator.ensureTrackedForRating(
                 confirmedMangaGroupTargets.await(origin),
             )
+        }
+    }
+    // KMK <--
+
+    // KMK --> v0.8.24
+    /**
+     * Removes the Loading rows of [sourceIds] that were stopped once enough rows were useful. Only touches the refresh
+     * that owns them: a newer refresh's rows are never changed. Finished rows are left as they are.
+     */
+    private fun stopUnfinishedSources(refreshGeneration: Long, sourceIds: Set<Long>) {
+        mutableState.update { state ->
+            if (state.resultGeneration != refreshGeneration) return@update state
+            val stopped = state.items.filter { (source, result) ->
+                source.id in sourceIds && result is PersonalRecommendationResult.Loading
+            }.keys
+            if (stopped.isEmpty()) state else state.copy(items = state.items.mutate { map -> stopped.forEach(map::remove) })
         }
     }
     // KMK <--

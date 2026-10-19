@@ -12,10 +12,11 @@ class LocalTrackingGroupHistorySourceTest {
     fun `new shared local work aggregates history across confirmed targets`() {
         val text = source("app/src/main/java/eu/kanade/tachiyomi/ui/manga/track/TrackInfoDialog.kt")
 
-        assertTrue(text.contains("val sharedHistoryProgress = targets"))
-        assertTrue(text.contains(".maxByOrNull { it.second.progressAt }"))
-        // KMK v0.8.24: the seed now prefers history and falls back to read chapters
-        assertTrue(text.contains("val seedChapter = sharedLatestRead?.third ?: sharedReadMark?.second"))
+        // KMK v0.8.24: history and read chapters of every confirmed target feed one seed decision
+        assertTrue(text.contains("val seed = LocalTrackingHistoryProgressPolicy.seed("))
+        assertTrue(text.contains("targets.map { target ->"))
+        assertTrue(text.contains("history = getHistory.await(target.id),"))
+        assertTrue(text.contains("chapters = getChaptersByMangaId.await(target.id),"))
     }
 
     private fun source(relativePath: String): String {
