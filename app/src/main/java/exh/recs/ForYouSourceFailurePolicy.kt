@@ -39,6 +39,8 @@ object ForYouSourceFailurePolicy {
         error.javaClass.simpleName == "CloudflareBypassException" -> Cause.SITE_CHECK
         error is HttpException && (error.code == 403 || error.code == 503) -> Cause.SITE_CHECK
         error is HttpException && (error.code == 429 || error.code in 500..599) -> Cause.SITE_PROBLEM
+        // the For You per-source deadline: the site answered too slowly or not at all
+        error is ForYouSourceTimeoutException -> Cause.SITE_PROBLEM
         error is UnknownHostException || error is SocketTimeoutException -> Cause.CONNECTION
         error is LinkageError -> Cause.EXTENSION
         error is HttpException -> Cause.UNKNOWN
@@ -57,4 +59,7 @@ object ForYouSourceFailurePolicy {
         )
     }
 }
+/** v0.8.24: a For You source search that did not finish within the per-source deadline. */
+class ForYouSourceTimeoutException(seconds: Long) :
+    java.util.concurrent.TimeoutException("Took longer than $seconds seconds")
 // KMK <--

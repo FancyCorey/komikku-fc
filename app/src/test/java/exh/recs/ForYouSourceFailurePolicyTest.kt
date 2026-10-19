@@ -36,6 +36,7 @@ class ForYouSourceFailurePolicyTest {
         assertEquals(ForYouSourceFailurePolicy.Cause.CONNECTION, cause(IOException("reset")))
         assertEquals(ForYouSourceFailurePolicy.Cause.EXTENSION, cause(NoClassDefFoundError()))
         assertEquals(ForYouSourceFailurePolicy.Cause.UNKNOWN, cause(IllegalStateException()))
+        assertEquals(ForYouSourceFailurePolicy.Cause.SITE_PROBLEM, cause(ForYouSourceTimeoutException(30)))
     }
 
     @Test

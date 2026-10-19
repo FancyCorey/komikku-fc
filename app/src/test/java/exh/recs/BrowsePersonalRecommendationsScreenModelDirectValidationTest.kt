@@ -1389,6 +1389,21 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         assertTrue(row.isEmpty, "off restores the previous behavior")
     }
 
+    // KMK v0.8.24: one stuck source no longer holds the whole refresh open
+    @Test
+    fun `a source that does not finish within the deadline ends as an error and the refresh completes`() = runTest {
+        val fixture = queueFixture(count = 3, slowSourceIds = setOf(2L), slowMillis = 600_000L)
+
+        val state = refreshQueue(fixture)
+
+        val stuck = state.items.entries.single { it.key.id == 2L }.value
+        assertTrue(stuck is PersonalRecommendationResult.Error && stuck.throwable is ForYouSourceTimeoutException, "was $stuck")
+        assertEquals(RecommendationSourceStatus.Error, state.sourceStatuses[2L]?.status)
+        assertTrue(state.items.entries.filter { it.key.id != 2L }.all { it.value is PersonalRecommendationResult.Success })
+        assertFalse(state.isLoading, "the refresh finished")
+        assertEquals(state.total, state.progress)
+    }
+
     // KMK v0.8.24: "Check source" on a failing row tells a source that only fails in For You from a broken one
     @Test
     fun `check source reports works when its Popular page loads and broken when it fails`() = runTest {

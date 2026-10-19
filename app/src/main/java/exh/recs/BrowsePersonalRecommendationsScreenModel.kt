@@ -1142,7 +1142,11 @@ class BrowsePersonalRecommendationsScreenModel(
                                 stopUnfinishedSources(refreshGeneration, setOf(source.id))
                                 return@withPermit
                             }
-                            outcomeChannel.send(
+                            // KMK v0.8.24: a source that has not finished within the deadline ends as an error row instead of
+                            // holding the refresh open (on the user's tablet one failing source took 116 s while the other 13
+                            // finished within 6 s). The search runs as a child of this worker so awaiting it can time out
+                            // even when the source is stuck in a call that ignores cancellation; its late result is dropped.
+                            val running = this@launch.async {
                                 // KMK v0.8.24: one pool per source search, only when looser matches are on
                                 withContext(if (looserMatchesEnabled) LooserCandidatePool() else EmptyCoroutineContext) {
                                     withLooserMatches(scoringProfile, aliasMap) {
@@ -1167,7 +1171,11 @@ class BrowsePersonalRecommendationsScreenModel(
                                             dataSaving = dataSaving,
                                         )
                                     }
-                                },
+                                }
+                            }
+                            outcomeChannel.send(
+                                withTimeoutOrNull(ForYouSourceDeadline.DEADLINE_MS) { running.await() }
+                                    ?: ForYouSourceDeadline.timedOut(running, source),
                             )
                         }
                     }
@@ -3626,6 +3634,24 @@ class BrowsePersonalRecommendationsScreenModel(
         manga.distinctBy { it.source to it.url }.forEach { origin ->
             confirmedGroupLocalTrackingPropagator.ensureTrackedForRating(
                 confirmedMangaGroupTargets.await(origin),
+            )
+        }
+    }
+    // KMK <--
+
+    // KMK --> v0.8.24
+    private object ForYouSourceDeadline {
+        /** Provisional: most sources finish in a few seconds; this only cuts off the stuck or very slow ones. */
+        const val DEADLINE_MS = 30_000L
+
+        fun timedOut(running: kotlinx.coroutines.Deferred<SourceSearchOutcome>, source: Source): SourceSearchOutcome {
+            running.cancel()
+            return SourceSearchOutcome(
+                source = source,
+                result = PersonalRecommendationResult.Error(ForYouSourceTimeoutException(DEADLINE_MS / 1000)),
+                successfulStrategy = null,
+                status = RecommendationSourceRunStatus(source.id, RecommendationSourceStatus.Error),
+                isUseful = false,
             )
         }
     }
