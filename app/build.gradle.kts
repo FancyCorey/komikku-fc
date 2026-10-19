@@ -381,6 +381,9 @@ android {
                     "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
                 )
                 it.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+                // KMK v0.8.24: the full unit suite outgrew Gradle's default 512 MB test heap; the test JVM died silently
+                // ("Could not complete execution for Gradle Test Executor") part-way through. Test runs only.
+                it.maxHeapSize = "2g"
             }
         }
         managedDevices {
