@@ -123,6 +123,7 @@ class KmkNumericPluralReconciliationTest {
             "rec_bundle_import_complete_body",
             "rec_bundle_load_error_unsupported_version",
             "rec_focus_more_tags",
+            "rec_focus_show_all",
             "rec_for_you_selected_count",
             "rec_for_you_source_evaluated_candidates",
             "rec_latest_exploration_percent",

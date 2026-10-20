@@ -34,21 +34,28 @@ import tachiyomi.presentation.core.i18n.stringResource
 // KMK -->
 /**
  * v0.8.24 Focus picker layout. Many sources bring their own copy of the same tags, so a flat alphabetical list grew to
- * hundreds of rows. The picker now shows the small Format/Demographic/Access groups first, then genres in three tiers:
- * the user's own tags, tags in what For You is showing now, and everything else folded under "More tags". A search shows
- * every match unfolded. Selected tags always stay visible in their tier.
+ * hundreds of rows. The picker now shows the small Format/Demographic/Access groups first, then the user's own tags,
+ * then genres grouped by kind (see [FocusTagCategory]) with tags in what For You shows now first; long groups show a
+ * preview with "Show all", and unrecognized tags are folded under "More tags". A search shows every match unfolded.
+ * Selected tags always stay visible under "Your tags".
  */
 internal object FocusPickerLayout {
 
     /** Provisional: how many of the user's strongest tags are listed first. */
     const val MAX_YOUR_TAGS = 16
 
+    /** Provisional: chips shown in a category before "Show all". */
+    const val CATEGORY_PREVIEW = 12
+
     data class Layout(
         val dimensions: List<Pair<FocusDimension, List<String>>>,
         val yourTags: List<String>,
-        val common: List<String>,
-        val more: List<String>,
-    )
+        /** Genre tags by kind (see [FocusTagCategory]); tags in what For You shows now come first in each. */
+        val categories: List<Pair<FocusTagCategory, List<String>>>,
+    ) {
+        /** Every genre tag, for search. */
+        val allGenres: List<String> get() = yourTags + categories.flatMap { it.second }
+    }
 
     fun build(
         options: List<String>,
@@ -59,14 +66,16 @@ internal object FocusPickerLayout {
         val byDimension = options.groupBy(::classifyFocusDimension)
         val genres = byDimension[FocusDimension.GENRE].orEmpty()
         val yours = genres.filter { it in preferred || it in selected }
-        val common = genres.filter { it !in yours && it in shownNow }
-        val more = genres.filter { it !in yours && it !in shownNow }
+        val byCategory = genres.filter { it !in yours }
+            .sortedWith(compareBy({ it !in shownNow }, { it }))
+            .groupBy(FocusTagCategory::classify)
         return Layout(
             dimensions = listOf(FocusDimension.FORMAT, FocusDimension.DEMOGRAPHIC, FocusDimension.PRESENTATION_ACCESS)
                 .mapNotNull { dimension -> byDimension[dimension]?.takeIf { it.isNotEmpty() }?.let { dimension to it } },
             yourTags = yours,
-            common = common,
-            more = more,
+            categories = FocusTagCategory.displayOrder.mapNotNull { category ->
+                byCategory[category]?.takeIf { it.isNotEmpty() }?.let { category to it }
+            },
         )
     }
 
@@ -116,8 +125,6 @@ internal fun FocusTagPicker(
     onCycle: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var moreOpen by remember { mutableStateOf(false) }
-
     @Composable
     fun Chips(groups: List<String>) {
         FlowRow(
@@ -138,6 +145,9 @@ internal fun FocusTagPicker(
         )
     }
 
+    // Categories opened with "Show all"; Other starts folded entirely
+    var expanded by remember { mutableStateOf(emptySet<FocusTagCategory>()) }
+
     LazyColumn(modifier = modifier) {
         layout.dimensions.forEach { (dimension, groups) ->
             item(key = "dim-${dimension.name}") {
@@ -148,7 +158,7 @@ internal fun FocusTagPicker(
         if (searching) {
             item(key = "search") {
                 Header(stringResource(KMR.strings.rec_for_you_focus_dimension_genre))
-                Chips(layout.yourTags + layout.common + layout.more)
+                Chips(layout.allGenres)
             }
             return@LazyColumn
         }
@@ -158,38 +168,58 @@ internal fun FocusTagPicker(
                 Chips(layout.yourTags)
             }
         }
-        if (layout.common.isNotEmpty()) {
-            item(key = "common") {
-                Header(stringResource(KMR.strings.rec_focus_common_tags))
-                Chips(layout.common)
-            }
-        }
-        if (layout.more.isNotEmpty()) {
-            item(key = "more-toggle") {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(role = Role.Button) { moreOpen = !moreOpen }
-                        .padding(vertical = 8.dp),
-                ) {
-                    Text(
-                        text = stringResource(KMR.strings.rec_focus_more_tags, layout.more.size),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.weight(1f),
+        layout.categories.forEach { (category, groups) ->
+            val isOther = category == FocusTagCategory.OTHER
+            val open = category in expanded
+            item(key = "cat-${category.name}") {
+                if (isOther) {
+                    FoldHeader(
+                        text = stringResource(KMR.strings.rec_focus_more_tags, groups.size),
+                        open = open,
+                        onToggle = { expanded = if (open) expanded - category else expanded + category },
                     )
-                    Icon(
-                        imageVector = if (moreOpen) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
+                    if (open) Chips(groups)
+                } else {
+                    Header(stringResource(category.titleRes))
+                    val shown = if (open) groups else groups.take(FocusPickerLayout.CATEGORY_PREVIEW)
+                    Chips(shown)
+                    if (groups.size > FocusPickerLayout.CATEGORY_PREVIEW) {
+                        FoldHeader(
+                            text = if (open) {
+                                stringResource(KMR.strings.rec_focus_show_fewer)
+                            } else {
+                                stringResource(KMR.strings.rec_focus_show_all, groups.size)
+                            },
+                            open = open,
+                            onToggle = { expanded = if (open) expanded - category else expanded + category },
+                        )
+                    }
                 }
             }
-            if (moreOpen) {
-                item(key = "more") { Chips(layout.more) }
-            }
         }
+    }
+}
+
+@Composable
+private fun FoldHeader(text: String, open: Boolean, onToggle: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onToggle)
+            .padding(vertical = 8.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            imageVector = if (open) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
     }
 }
 

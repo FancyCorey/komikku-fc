@@ -47,6 +47,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
@@ -58,6 +59,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -1620,6 +1622,8 @@ enum class RecommendationSettingsQuickAccessDestination {
     ForYouFeed,
     FocusModes,
     FindNewSources,
+    // KMK v0.8.24: the source evaluation page directly, not only through Find new sources
+    SourceEvaluation,
     SpeedAndData,
     LinkedVersions,
     Troubleshooting,
@@ -1630,6 +1634,7 @@ internal fun RecommendationSettingsQuickAccessDestination.hubTitleRes(): StringR
     RecommendationSettingsQuickAccessDestination.ForYouFeed -> KMR.strings.rec_hub_for_you_feed
     RecommendationSettingsQuickAccessDestination.FocusModes -> KMR.strings.rec_hub_focus_modes
     RecommendationSettingsQuickAccessDestination.FindNewSources -> KMR.strings.rec_hub_find_sources
+    RecommendationSettingsQuickAccessDestination.SourceEvaluation -> KMR.strings.rec_hub_check_sources
     RecommendationSettingsQuickAccessDestination.SpeedAndData -> KMR.strings.rec_hub_speed_data
     RecommendationSettingsQuickAccessDestination.LinkedVersions -> KMR.strings.rec_hub_linked_versions
     RecommendationSettingsQuickAccessDestination.Troubleshooting -> KMR.strings.rec_hub_troubleshooting
@@ -1646,6 +1651,7 @@ fun RecommendationSettingsQuickAccessDestination.toScreen(): eu.kanade.presentat
     RecommendationSettingsQuickAccessDestination.FocusModes ->
         RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.FOCUS_MODES)
     RecommendationSettingsQuickAccessDestination.FindNewSources -> FindNewSourcesScreen()
+    RecommendationSettingsQuickAccessDestination.SourceEvaluation -> exh.recs.evaluation.SourceEvaluationScreen()
     RecommendationSettingsQuickAccessDestination.SpeedAndData ->
         RecommendationDiagnosticsSettingsScreen(section = RecommendationDiagnosticsSection.SPEED_AND_DATA)
     RecommendationSettingsQuickAccessDestination.LinkedVersions ->
@@ -1674,6 +1680,8 @@ internal fun RecommendationSettingsQuickAccessDestination.icon(filled: Boolean =
         if (filled) Icons.Filled.FilterAlt else Icons.Outlined.FilterAlt
     RecommendationSettingsQuickAccessDestination.FindNewSources ->
         if (filled) Icons.Filled.Search else Icons.Outlined.Search
+    RecommendationSettingsQuickAccessDestination.SourceEvaluation ->
+        if (filled) Icons.Filled.Assessment else Icons.Outlined.Assessment
     RecommendationSettingsQuickAccessDestination.SpeedAndData ->
         if (filled) Icons.Filled.Bolt else Icons.Outlined.Bolt
     RecommendationSettingsQuickAccessDestination.LinkedVersions ->

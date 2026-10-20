@@ -1829,8 +1829,8 @@
     <string name="rec_hub_linked_versions_link">Rating prompts and linked versions</string>
     <string name="rec_hub_linked_versions_link_summary">Rate and track versions of a manga together</string>
     <string name="rec_hub_find_sources_summary">Check your sources against your taste</string>
-    <string name="rec_hub_check_sources">Check my sources</string>
-    <string name="rec_hub_check_sources_summary">Compare your installed sources with your taste</string>
+    <string name="rec_hub_check_sources">Source evaluation</string>
+    <string name="rec_hub_check_sources_summary">Check how well each installed source works with For You</string>
     <string name="rec_hub_suggested_sources">Suggested for you</string>
     <string name="rec_hub_suggested_sources_summary">Install sources that match your taste</string>
     <string name="rec_auto_recheck_header">Automatic check</string>
@@ -1913,7 +1913,15 @@ You can choose when this is offered in Settings, Reader, Alternate sources.</str
     <string name="rec_source_failure_stopped">%1$s won\'t be used in For You. Turn it back on in Recommendation Settings, For You feed.</string>
     <!-- KMK v0.8.24 Focus picker sections -->
     <string name="rec_focus_your_tags">Your tags</string>
-    <string name="rec_focus_common_tags">In For You now</string>
     <string name="rec_focus_more_tags">More tags (%1$d)</string>
     <string name="rec_focus_chip_hint">Tap a tag to include it, again to exclude it, and once more to clear it.</string>
+    <!-- KMK v0.8.24 Focus tag categories -->
+    <string name="rec_focus_category_genre">Genres</string>
+    <string name="rec_focus_category_story">Story and tropes</string>
+    <string name="rec_focus_category_setting">Settings and worlds</string>
+    <string name="rec_focus_category_characters">Characters</string>
+    <string name="rec_focus_category_mature">Mature and relationships</string>
+    <string name="rec_focus_category_other">Other tags</string>
+    <string name="rec_focus_show_all">Show all (%1$d)</string>
+    <string name="rec_focus_show_fewer">Show fewer</string>
 </resources>

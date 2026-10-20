@@ -147,6 +147,8 @@ object RecommendationSettingsIndexScreen : KomikkuScreen() {
                 } else {
                     pluralStringResource(KMR.plurals.rec_hub_suggestions_count, count = state.nonInstalledSuggestions.size, state.nonInstalledSuggestions.size)
                 },
+            RecommendationSettingsQuickAccessDestination.SourceEvaluation to
+                stringResource(KMR.strings.rec_hub_check_sources_summary),
             RecommendationSettingsQuickAccessDestination.SpeedAndData to
                 stringResource(KMR.strings.rec_hub_speed_summary, dataSaving),
             RecommendationSettingsQuickAccessDestination.LinkedVersions to

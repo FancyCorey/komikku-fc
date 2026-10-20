@@ -9,16 +9,21 @@ import tachiyomi.domain.taste.model.TasteProfile
 class FocusPickerLayoutTest {
 
     @Test
-    fun `genres split into your tags, tags shown now and the rest`() {
+    fun `genres are grouped by kind after your tags, with tags shown now first`() {
         val layout = FocusPickerLayout.build(
-            options = listOf("action", "fantasy", "murim", "romance", "webtoon", "yaoi"),
-            preferred = setOf("action", "murim"),
-            shownNow = setOf("fantasy", "action"),
+            options = listOf("academy", "action", "comedy", "harem", "legendary", "murim", "regression", "romance", "webtoon", "yaoi"),
+            preferred = setOf("murim"),
+            shownNow = setOf("romance"),
             selected = setOf("yaoi"),
         )
-        assertEquals(listOf("action", "murim", "yaoi"), layout.yourTags, "liked and selected tags first")
-        assertEquals(listOf("fantasy"), layout.common)
-        assertEquals(listOf("romance"), layout.more)
+        assertEquals(listOf("murim", "yaoi"), layout.yourTags, "liked and selected tags first")
+        val byCategory = layout.categories.toMap()
+        assertEquals(listOf("romance", "action", "comedy"), byCategory[FocusTagCategory.GENRE], "shown now first, then a-z")
+        assertEquals(listOf("regression"), byCategory[FocusTagCategory.STORY])
+        assertEquals(listOf("academy"), byCategory[FocusTagCategory.SETTING])
+        assertEquals(listOf("harem"), byCategory[FocusTagCategory.MATURE])
+        assertEquals(listOf("legendary"), byCategory[FocusTagCategory.OTHER])
+        assertEquals(FocusTagCategory.displayOrder.filter { it in byCategory }, layout.categories.map { it.first })
         assertTrue(layout.dimensions.any { (dimension, groups) -> dimension == FocusDimension.FORMAT && "webtoon" in groups })
     }
 

@@ -693,6 +693,11 @@ fun Screen.personalRecommendationsTab(): TabContent {
                 iconTint = if (focusCriteria.isActive) MaterialTheme.colorScheme.active else LocalContentColor.current,
                 onClick = { focusDialogOpen = true },
             ),
+            // KMK v0.8.24: the source evaluation page, one tap from For You
+            AppBar.OverflowAction(
+                title = stringResource(KMR.strings.rec_hub_check_sources),
+                onClick = { navigator.push(exh.recs.evaluation.SourceEvaluationScreen()) },
+            ),
             // KMK --> v0.7.5: Export Top Picks -- moved to overflow in v0.8.11 (Phase G).
             AppBar.OverflowAction(
                 title = stringResource(KMR.strings.rec_bundle_export_top_picks),

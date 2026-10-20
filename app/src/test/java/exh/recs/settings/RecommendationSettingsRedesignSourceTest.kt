@@ -53,9 +53,9 @@ class RecommendationSettingsRedesignSourceTest {
     }
 
     @Test
-    fun `hub has six rows with current values and no tab row on detail pages`() {
+    fun `hub has one row per major feature with current values and no tab row on detail pages`() {
         val hub = source("src/main/java/exh/recs/settings/RecommendationSettingsIndexScreen.kt")
-        assertEquals(7, RecommendationSettingsQuickAccessDestination.entries.size)
+        assertEquals(8, RecommendationSettingsQuickAccessDestination.entries.size)
         assertTrue(hub.contains("summaries.getValue(destination)"))
         assertTrue(hub.contains("filled = pressed"), "icon fills in while a row is pressed")
         listOf(

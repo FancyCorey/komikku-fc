@@ -16,14 +16,15 @@ class EdgeQuickAccessPanelLayoutPolicyTest {
     private val destinationCount = RecommendationSettingsQuickAccessDestination.entries.size
 
     @Test
-    fun `all seven destinations are preserved`() {
-        assertEquals(7, destinationCount)
+    fun `all eight destinations are preserved`() {
+        assertEquals(8, destinationCount)
         assertEquals(
             listOf(
                 RecommendationSettingsQuickAccessDestination.YourTaste,
                 RecommendationSettingsQuickAccessDestination.ForYouFeed,
                 RecommendationSettingsQuickAccessDestination.FocusModes,
                 RecommendationSettingsQuickAccessDestination.FindNewSources,
+                RecommendationSettingsQuickAccessDestination.SourceEvaluation,
                 RecommendationSettingsQuickAccessDestination.SpeedAndData,
                 RecommendationSettingsQuickAccessDestination.LinkedVersions,
                 RecommendationSettingsQuickAccessDestination.Troubleshooting,

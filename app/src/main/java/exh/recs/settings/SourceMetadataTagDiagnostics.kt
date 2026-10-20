@@ -157,6 +157,7 @@ internal fun SourceMetadataTagDiagnosticsContent(
     var statusFilter by rememberSaveable { mutableStateOf(SourceMetadataTagDiagnosticsPolicy.StatusFilter.ALL) }
     var sortOrder by rememberSaveable { mutableStateOf(SourceMetadataTagDiagnosticsPolicy.SortOrder.SOURCE) }
     var expandedKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var showAllRows by rememberSaveable { mutableStateOf(false) }
     val rows = SourceMetadataTagDiagnosticsPolicy.queryRows(
         evaluations = allRows,
         query = SourceMetadataTagDiagnosticsPolicy.Query(searchText, statusFilter, sortOrder),
@@ -221,7 +222,10 @@ internal fun SourceMetadataTagDiagnosticsContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        rows.forEach { row ->
+        // KMK v0.8.24: building every row at once (hundreds on a large install) froze Troubleshooting briefly as it
+        // opened. The first rows show straight away; the rest on request.
+        val shownRows = if (showAllRows) rows else rows.take(INITIAL_ROWS)
+        shownRows.forEach { row ->
             val evaluation = row.evaluation
             val key = evaluation.evaluationKey
             val sourceLabel = SourceMetadataTagDiagnosticsPolicy.sourceLabelFor(evaluation, evaluationModeEnabled)
@@ -322,6 +326,11 @@ internal fun SourceMetadataTagDiagnosticsContent(
                 }
             }
         }
+        if (!showAllRows && rows.size > INITIAL_ROWS) {
+            androidx.compose.material3.TextButton(onClick = { showAllRows = true }) {
+                Text(stringResource(KMR.strings.rec_focus_show_all, rows.size))
+            }
+        }
     }
 }
 
@@ -350,3 +359,6 @@ private fun SourceMetadataTagDiagnosticsPolicy.SortOrder.resource() = when (this
     SourceMetadataTagDiagnosticsPolicy.SortOrder.CONFIDENCE -> KMR.strings.rec_source_metadata_tag_diagnostics_sort_confidence
     SourceMetadataTagDiagnosticsPolicy.SortOrder.ISSUES -> KMR.strings.rec_source_metadata_tag_diagnostics_sort_issues
 }
+
+// KMK v0.8.24: rows built when Troubleshooting opens; the rest after "Show all"
+private const val INITIAL_ROWS = 20
