@@ -93,7 +93,7 @@ object SourceRuntime {
         // risk. This check is unconditional for every run()/runBlockingSourceCall() caller now,
         // unless the caller explicitly opts out via [bypassSuppression] for one bounded retry.
         if (!bypassSuppression) {
-            suppressionFailureOrNull(source)?.let { return Result.failure(it) }
+            suppressionFailureOrNull(source, operation)?.let { return Result.failure(it) }
         }
         // KMK v0.8.21-fix6: captured before the attempt so a post-success clear can detect whether a
         // concurrent caller recorded a newer failure while this attempt was in flight (see
@@ -150,7 +150,7 @@ object SourceRuntime {
         block: Source.() -> T,
     ): Result<T> {
         // KMK v0.8.10-fix8: same enforced suppression as run() above.
-        suppressionFailureOrNull(source)?.let { return Result.failure(it) }
+        suppressionFailureOrNull(source, operation)?.let { return Result.failure(it) }
         return try {
             Result.success(source.block())
         } catch (e: CancellationException) {
@@ -185,14 +185,21 @@ object SourceRuntime {
      * caller should proceed normally. Shared by [run] and [runBlockingSourceCall] so both enforce the
      * same suppression window identically.
      */
-    fun suppressionFailureOrNull(source: Source): SourceTemporarilyUnavailableException? {
+    fun suppressionFailureOrNull(
+        source: Source,
+        // KMK v0.8.24
+        operation: SourceRuntimeOperation? = null,
+    ): SourceTemporarilyUnavailableException? {
         if (!SourceRuntimeFailureRegistry.isTemporarilyUnavailable(source.id)) return null
         val entry = SourceRuntimeFailureRegistry.get(source.id)
-        // KMK v0.8.24: only a broken or incompatible extension (a LinkageError, which can crash again when touched) is
-        // refused. An ordinary failure -- one image timing out, a 404, a network blip -- used to refuse every later call
-        // to the source for a minute without trying it, so one bad page made large downloads fail chapter after chapter
-        // and blocked the downloader's own retries and the reader. Those failures are still recorded for diagnostics.
-        if (entry?.kind != SourceRuntimeFailureKind.ExtensionIncompatible) return null
+        // KMK v0.8.24: reading and downloading are never refused because of an ordinary failure, and an ordinary failed
+        // page or image never refuses searching. One image timing out used to refuse every later call to the source for a
+        // minute without trying it, so large downloads failed chapter after chapter and their own retries were refused.
+        // A broken or incompatible extension (LinkageError, which can crash again when touched) is still refused
+        // everywhere, and an ordinary search/browse failure still holds back the next automatic search as before.
+        if (entry?.kind != SourceRuntimeFailureKind.ExtensionIncompatible) {
+            if (operation in CONTENT_OPERATIONS || entry?.operation in CONTENT_OPERATIONS) return null
+        }
         return SourceTemporarilyUnavailableException(
             sourceId = source.id,
             sourceName = source.name,
@@ -361,3 +368,6 @@ fun <T> Result<T>.getOrThrowSourceRuntimeException(): T {
     }
 }
 // KMK <--
+
+// KMK v0.8.24: reading and downloading calls (see SourceRuntime.suppressionFailureOrNull)
+private val CONTENT_OPERATIONS = setOf(SourceRuntimeOperation.PageList, SourceRuntimeOperation.ImageUrl, SourceRuntimeOperation.Image)

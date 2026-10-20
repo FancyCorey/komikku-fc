@@ -595,6 +595,27 @@ class SourceRuntimeTest {
     }
 
     @Test
+    fun `a failed image does not hold back searching, but a failed search still holds back the next search`() = runTest {
+        val source = FakeSource(812L, "Mixed Source")
+        SourceRuntimeFailureRegistry.clear(812L)
+        SourceRuntime.run<Unit>(source, SourceRuntimeOperation.Image) { throw java.io.IOException("image gone") }
+        var searched = false
+        SourceRuntime.run(source, SourceRuntimeOperation.Search) { searched = true }
+        assertTrue(searched, "an image failure must not refuse a search")
+
+        SourceRuntime.run<Unit>(source, SourceRuntimeOperation.Search) { throw java.io.IOException("search failed") }
+        var searchedAgain = false
+        val result = SourceRuntime.run(source, SourceRuntimeOperation.Search) { searchedAgain = true }
+        assertFalse(searchedAgain, "a fresh search failure still holds back the next automatic search")
+        assertTrue(result.exceptionOrNull() is SourceTemporarilyUnavailableException)
+
+        var downloaded = false
+        SourceRuntime.run(source, SourceRuntimeOperation.Image) { downloaded = true }
+        assertTrue(downloaded, "reading and downloading are never held back by an ordinary failure")
+        SourceRuntimeFailureRegistry.clear(812L)
+    }
+
+    @Test
     fun `SourceRuntime runBlockingSourceCall suppresses a temporarily unavailable source before touching its block`() {
         val source = FakeSource(802L, "Recently Broken Source (blocking)")
         SourceRuntimeFailureRegistry.clear(802L)
