@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kmk-screenshot-manifest version="1" release="0.8.24" inventory="candidate-illustration-inventory" hash-algorithm="SHA-256">
+  <candidate-binding>
+    <package>app.komikku.kmk</package>
+    <variant>kmkPublicTest</variant>
+    <version name="1.14.1" code="96" min-sdk="26" target-sdk="36"/>
+    <artifact abi="x86_64" sha256="1E601664E56F24CC2A867E444C48E5177B0B2D6C7A72BB7E97BBF9211F7A4502"/>
+    <signer sha256="AF5EC546F3F640B71E3E19E69B9C1913AF27803E255C80ABE65BB96C022D417A" kind="android-debug"/>
+    <capture-environment>Android emulator, API 30, 1080x1920, dark theme, upgraded in place from the v0.8.23 candidate; Hide technical names in screenshots on, so source, extension and tag names are placeholders; status and navigation bars cropped; scaled to 720 pixels wide</capture-environment>
+    <limits>Public-test build signed with the Android debug certificate; not the production-signed release artifact. Manga titles, covers and genre names are visible, as in the earlier approved For You illustrations. These images illustrate behavior and do not assert that every state is shown.</limits>
+  </candidate-binding>
+  <artifact id="whats-new-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/whats-new.png" sha256="7478B4D004A46B76207446F2F31501B173391AE67A72552DC01AB2EB54C5EE6F" width="720" height="1154">
+    <route>more/about/whats-new</route>
+    <state>current-version-and-beginning-of-release-notes</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="recommendation-settings-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/recommendation-settings.png" sha256="1B5C7ECC19ED3CA6A40285BC361F338241565B53FD05EA4D7C5B48D65CBCBB4A" width="720" height="1154">
+    <route>settings/recommendations</route>
+    <state>first-page-one-entry-per-feature</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="your-taste-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/your-taste.png" sha256="193F4D9C24FB523FA0B2AA20BD837CA628503D4B3A76042036F835F869191AF9" width="720" height="1154">
+    <route>settings/recommendations/your-taste</route>
+    <state>known-manga-minimum-chapters-recent-reading</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="your-taste-tags-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/your-taste-tags.png" sha256="F5E3C11239C187C6E28DF3652317672DC87229062350288A4D8E5E6EA05FD23E" width="720" height="1154">
+    <route>settings/recommendations/your-taste</route>
+    <state>recent-reading-window-and-preferred-tags</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="for-you-feed-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/for-you-feed.png" sha256="CB1AD65C51CFED04E320C67AD4B1C0C124FA119C957F075702DEC0C7D6FB688A" width="720" height="1154">
+    <route>settings/recommendations/for-you-feed</route>
+    <state>looser-matches-preview-exploration-repeat-display</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="for-you-feed-sources-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/for-you-feed-sources.png" sha256="0B8F97BFD31BC8FDE6C16F8CF5530F877ECC64379DD01F2B30D4113593325285" width="720" height="1154">
+    <route>settings/recommendations/for-you-feed</route>
+    <state>source-priority-with-status-tags</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="find-new-sources-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/find-new-sources.png" sha256="85B2B151026C61B9CAF2A1E875C77D2C15FBC2977FFF4053E3DD62D694AD6D0B" width="720" height="1154">
+    <route>settings/recommendations/find-new-sources</route>
+    <state>automatic-check-off</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="speed-and-data-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/speed-and-data.png" sha256="5AD5D14224727C9EB93475029591BC704210A3D49F00CEB952631E7D11929F7D" width="720" height="1154">
+    <route>settings/recommendations/speed-and-data</route>
+    <state>use-less-data-automatic</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="linked-versions-settings-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/linked-versions-settings.png" sha256="C1EA8E3AD0479104E74F256C7E8C1689AC5AA906139FE4980BA06F714328C9FE" width="720" height="1154">
+    <route>settings/recommendations/linked-versions</route>
+    <state>rating-and-matching-settings</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="troubleshooting-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/troubleshooting.png" sha256="7E01532E32076EE151AD8E944CE78C29A53E62769DFB63DD87B90096DFA7197C" width="720" height="1154">
+    <route>settings/recommendations/troubleshooting</route>
+    <state>sources-with-problems-and-taste-diagnostics</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="source-evaluation-management-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/source-evaluation-management.png" sha256="C94D2090A663518C65908DCAFA01BA6A69F6F9F2E6E343168B01CFA550122D47" width="720" height="1154">
+    <route>settings/recommendations/source-evaluation</route>
+    <state>diagnostics-and-source-management</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="focus-modes-settings-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/focus-modes-settings.png" sha256="42AC42256B3F6E3D8683CF5B0F6F6FC4B5102ADE175F61094BBA9A90931E9ADA" width="720" height="1154">
+    <route>settings/recommendations/focus-modes</route>
+    <state>no-saved-modes</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="source-evaluation-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/source-evaluation.png" sha256="0C8EB3B3E41B14547FB38D5951B44BC3E0260AAA5A1E96C49DFF31FCF1A8F9FC" width="720" height="1154">
+    <route>settings/recommendations/source-evaluation</route>
+    <state>start-unavailable-with-reason</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="source-evaluation-reassess-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/source-evaluation-reassess.png" sha256="BD8FDB140EBF5DD8A77067498AC4909CBEFBDD68D02696B0CC3EC3CCF1E3F903" width="720" height="1154">
+    <route>settings/recommendations/source-evaluation</route>
+    <state>reassessment-recommended</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="for-you-rows-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/for-you-rows.png" sha256="9120857232B47D27B1002A65E8DC28A04DEE395F66FA5DD550CC6C665E639E9E" width="720" height="1154">
+    <route>browse/for-you</route>
+    <state>loaded-rows</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="for-you-failed-source-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/for-you-failed-source.png" sha256="50686FE4355412911FB914DB4AEEC84858E79085A7A974EC41AE41551647044F" width="720" height="1154">
+    <route>browse/for-you</route>
+    <state>failed-rows-with-actions</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="for-you-check-source-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/for-you-check-source.png" sha256="6608AA120A900DE92969E4D7610D0D9543EDFB335B2FE1EAA359034C3F3C903E" width="720" height="1154">
+    <route>browse/for-you</route>
+    <state>check-source-result-broken</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="focus-picker-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/focus-picker.png" sha256="F69CCDEB1F097A7E441CE851737DE8D46C3FD1A6B0AD91E38D6732D5AF50BBDF" width="720" height="1154">
+    <route>browse/for-you/focus</route>
+    <state>one-included-one-excluded</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="focus-categories-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/focus-categories.png" sha256="268D5E42C34917EF438E2F6DBBC27B411F10FF428B730D7F6F04F59CC0B485A2" width="720" height="1154">
+    <route>browse/for-you/focus</route>
+    <state>grouped-tags-more-tags-folded</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="focus-active-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/focus-active.png" sha256="99884DD3FBC64D507B93C94CA0D803E71E5AD67E18B0EBF7589616286D2AB4F7" width="720" height="1154">
+    <route>browse/for-you</route>
+    <state>focus-active-show-broader-results</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="manga-page-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/manga-page.png" sha256="CC24688EA1FE6942A4149FBC703F5F5A0DAAE0317E440BE278C45E4A82145F39" width="720" height="1154">
+    <route>library/manga</route>
+    <state>preference-like</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="tracker-sheet-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/tracker-sheet.png" sha256="E7902B33B969CD1DA4F3E165CE9CFD0A39D6A1A8863F0047C6F2BA6B27545703" width="720" height="823">
+    <route>library/manga/tracking</route>
+    <state>local-tracking-entry</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="confirmed-versions-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/confirmed-versions.png" sha256="3FE63CBB9D66D6D71C027BF91A44D851AB8A97D1E2A530D61DFEE0FE2044546C" width="720" height="1154">
+    <route>library/manga/tracking/local-tracking/confirmed-versions</route>
+    <state>three-confirmed-versions</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="track-other-versions-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/track-other-versions.png" sha256="E4233E88A6CBCB49DF1B0C2A5FA5C4CBF8107D0AFCBE1FAE77FB780F49AB204C" width="720" height="1154">
+    <route>library/manga/tracking/local-tracking/track-other-versions</route>
+    <state>group-rating-like</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="group-rating-menu-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/group-rating-menu.png" sha256="F8F11B712B3FF7F7934E8CE7754B3836C35B304A83F21DF13C019B7DCD9C647E" width="720" height="1154">
+    <route>library/manga/tracking/local-tracking/track-other-versions</route>
+    <state>group-rating-choices</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="reader-alternate-sources-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/reader-alternate-sources.png" sha256="2E566F9E752E2650E4D2B7084B052BB70AF625A5D269BF64514636330DE67B87" width="720" height="1154">
+    <route>settings/reader/alternate-sources</route>
+    <state>both-offers-on</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="reading-timer-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/reading-timer.png" sha256="9A6CEC3F866CB6E314579446C27DD576991FDD18482985691A7BAAB7F4376468" width="720" height="1154">
+    <route>reader/reading-timer</route>
+    <state>length-and-warnings</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="reading-timer-end-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/reading-timer-end.png" sha256="ACECE87F8B095CCB9A1A8708096D9AD28F14DE3BCF4CAA86CE72F20C630C08B9" width="720" height="1154">
+    <route>reader/reading-timer</route>
+    <state>when-time-is-up</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="alternate-source-chooser-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/alternate-source-chooser.png" sha256="62D60DF4C1D083E9F1739B5C42A58C204C22516490727A8438557B76659ABF5E" width="720" height="1154">
+    <route>reader/alternate-source-chooser</route>
+    <state>current-source-and-two-matches</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="hide-names-setting-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/hide-names-setting.png" sha256="0CCBA3AB84668AAD82AE6EA0D2B56294B51E300A0FF2E6CB2CA0E8418AE438C1" width="720" height="427">
+    <route>settings/advanced/developer-tools</route>
+    <state>hide-technical-names-on</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+</kmk-screenshot-manifest>

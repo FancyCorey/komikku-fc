@@ -49,8 +49,10 @@ object ForYouSourceFailurePolicy {
     }
 
     fun advise(error: Throwable, stats: SourceFitStats?): Advice {
-        val runs = stats?.runCount ?: 0
-        val errors = stats?.errorCount ?: 0
+        // The counts shown must be the ones the label was judged on: the recent window when it has enough runs
+        val useRecent = stats != null && stats.recentRunCount >= SourceFitStats.MIN_RUNS_FOR_LABEL
+        val runs = if (useRecent) stats!!.recentRunCount else stats?.runCount ?: 0
+        val errors = if (useRecent) stats!!.recentErrorCount else stats?.errorCount ?: 0
         return Advice(
             cause = cause(error),
             keepsFailing = stats != null && stats.fitLabel == SourceFitLabel.OftenErrors,

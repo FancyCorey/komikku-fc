@@ -10,6 +10,12 @@ Open the timer from the reader's timer action. Manage the reading schedule from 
 
 These are optional controls around the normal reader. When they are disabled, ordinary reader behavior stays the same. Schedule and timer messages can be dismissed and do not change chapter progress on their own.
 
+<p align="center"><img src="../visual-guide/v0.8.24/reading-timer.png" width="260" alt="Reading timer with How long and warnings"></p>
+<p align="center"><em>The reading timer: how long, and when to warn you.</em></p>
+
+<p align="center"><img src="../visual-guide/v0.8.24/reading-timer-end.png" width="260" alt="Reading timer When time is up section"></p>
+<p align="center"><em>When time is up: finish the chapter, and optionally one more.</em></p>
+
 The schedule entry in the reader opens the same choices found under **Settings > Reader**, so there is only one place to manage the schedule. Changes are saved with the app's other settings.
 
 **Reading schedule** lets you choose days and time windows, then either block reading during those windows or allow reading only during them. Enable the schedule to apply it. It affects this app's reader only, not other apps. If an allowed period ends while you are already reading, you can finish that chapter; a new chapter waits until reading is allowed again.
@@ -177,6 +183,9 @@ The additional reader-options section under **Settings > Reader** contains these
 
 Under **Recommendation Settings > Linked versions and ratings**, **Ask for a rating after finishing** controls the completion offer. **Ask about other versions** controls the later offer to rate other versions after saving a rating. Neither setting chooses a rating for you.
 
+<p align="center"><img src="../visual-guide/reader-completion-preference.png" width="260" alt="Completion rating offer after the final chapter"></p>
+<p align="center"><em>The rating offer after finishing the latest chapter.</em></p>
+
 After the final available chapter, the optional completion prompt is offered when the reader is not schedule-blocked and you are in a regular reader session, not an active alternate-source session. Choose **Not now** or press Back to leave without changing your rating. Accepting the offer lets you choose Love, Like, Dislike, or Not interested. After you save a rating, the app can offer to help you rate other versions when **Ask about other versions** is enabled, including versions it finds when no linked group is already confirmed. Your rating changes only when you select one. If you then decline the offer to rate other versions, the rating you already saved stays in place; those other versions are not rated by that dismissal.
 
 ## Jump to last read
@@ -196,6 +205,9 @@ Open **Settings > Reader > Alternate sources**. The section explains how reading
 | Offer when chapters are missing | Chapters are skipped between this chapter and the next. |
 | Offer when this source has no next chapter | You reach the last chapter this source has. |
 
+<p align="center"><img src="../visual-guide/v0.8.24/reader-alternate-sources.png" width="260" alt="Settings, Reader, Alternate sources section"></p>
+<p align="center"><em>The Alternate sources section in Reader settings.</em></p>
+
 When either applies, **Continue from another source** appears at the end of the chapter, with a one-line note that you can come back from the top bar. The first time you use it, a short explanation, **Read from another source?**, says that you pick the source and the chapter and that **Return to primary source** in the top bar brings you back. Choose **Continue** to go on, or **Not now** to stay where you are.
 
 ### Switch to another source
@@ -204,6 +216,9 @@ When either applies, **Continue from another source** appears at the end of the 
 2. In **Choose the matching chapter**, review the suggested chapter. The first chapter with the same number is selected when available. Otherwise, the closest available number is suggested; if two are equally close, the lower number wins. For example, if you are on chapter 5 and the other source has only 4 and 6, it suggests 4.
 3. Check the chapter name and translation-group label when supplied by the source. Several translations may have the same chapter number. You can select a different entry, then choose **Read this chapter**, or **Stay on this source** to cancel.
 4. While you read from the other source, **Return to primary source** in the top bar brings you back. While that source pair is active, use **Switch source** in the reader to choose a chapter from the other source. After returning to the primary source, the same action lets you switch back to the alternate source; returning is not the end of the pair.
+
+<p align="center"><img src="../visual-guide/v0.8.24/alternate-source-chooser.png" width="260" alt="Choose an alternate source dialog"></p>
+<p align="center"><em>The chooser shows the current source first, then Search another title and Search more sources.</em></p>
 
 The suggested chapter number is not a guarantee that the contents match. Some sources split chapters or start numbering at a different point. If the app warns that the match is uncertain, check the pages before continuing. **Correct chapter mapping** lets you change which chapters correspond; **This chapter is not the match** keeps the current chapter open while you choose another match. If you have read ahead and the other source lacks that chapter, choose a suitable chapter from its list instead.
 
@@ -228,23 +243,16 @@ If a page does not load, check its error message. Opening an alternate source is
 
 ```mermaid
 flowchart TD
-    Progress["Finish the final page"] --> Enabled{"Completion rating enabled?"}
-    Enabled -->|No| Normal["Continue or exit normally"]
-    Enabled -->|Yes| Eligible{"Primary version, no active alternate session, and schedule permits?"}
-    Eligible -->|No| Normal
-    Eligible -->|Yes| Genuine{"Finished the latest available chapter?"}
-    Genuine -->|No| Normal
-    Genuine -->|Yes| Exit["Leave the reader"]
-    Exit --> Prompt["Offer to rate the manga when enabled"]
-    Prompt -->|Not now or Back| Return["Return without a rating change"]
-    Prompt -->|Accept| Choices["Choose a rating"]
-    Choices -->|Love, Like, Dislike, or Not interested| Save["Save your rating"]
-    Choices -->|Cancel or Back| Return
-    Save --> Ask{"Ask about other versions enabled?"}
-    Ask -->|Yes| Offer["Offer to find and rate other versions"]
+    Progress["Finish the final page"] --> Eligible{"Completion rating on, the latest available<br/>chapter finished in the primary version,<br/>and the schedule permits?"}
+    Eligible -->|No| Normal["Continue or exit normally"]
+    Eligible -->|Yes| Prompt["Leave the reader:<br/>the app offers a rating"]
+    Prompt -->|Not now, Cancel or Back| Return["Return without a rating change"]
+    Prompt -->|Choose a rating| Save["Save your rating"]
+    Save --> Ask{"Ask about other<br/>versions on?"}
     Ask -->|No| Rated["Return with your rating saved"]
-    Offer -->|Cancel or Back| Rated
+    Ask -->|Yes| Offer["Offer to find and rate other versions"]
     Offer -->|Accept| Other["Review and select other versions to rate"]
+    Offer -->|Cancel or Back| Rated
     Other --> Rated
 ```
 
@@ -253,7 +261,7 @@ The prompt appears after leaving the reader, not over the final page. Declining 
 ## Reader settings flow
 
 ```mermaid
-flowchart LR
+flowchart TD
     Settings["Open Reader settings"] --> Preferences["Choose how pages and controls behave"]
     Preferences --> Viewer["Read with your saved choices"]
     Viewer --> Change["Return to settings when you want to change them"]

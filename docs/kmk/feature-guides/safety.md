@@ -21,12 +21,12 @@ A source can be unavailable even when its address is correct. [Source evaluation
 Read the message for the action that failed. A temporary connection problem may be worth retrying. A rejected link, missing manga, or conflicting Undo needs a different next step.
 
 ```mermaid
-flowchart TD
-    Problem["An action did not finish"] --> Kind{"What happened?"}
-    Kind -->|Connection problem| Retry["Check the connection, then retry"]
-    Kind -->|Missing manga or chapter| Find["Find the item again"]
+flowchart LR
+    Problem["An action did<br/>not finish"] --> Kind{"What<br/>happened?"}
+    Kind -->|Connection| Retry["Check the connection,<br/>then retry"]
+    Kind -->|Missing item| Find["Find the manga or<br/>chapter again"]
     Kind -->|Undo conflict| Current["Check your current choice"]
-    Kind -->|You cancelled| Stop["Leave the action stopped"]
+    Kind -->|Cancelled| Stop["Leave the action stopped"]
 ```
 
 Cancelling does not necessarily reverse work already completed. For example, an interrupted restore may have restored some items. See [Backups](backups.md) and [Troubleshooting](troubleshooting.md) for the relevant recovery steps.
@@ -34,6 +34,9 @@ Cancelling does not necessarily reverse work already completed. For example, an 
 ## Undoing supported changes
 
 Open **More > Settings > Advanced > Action history** to review recorded actions. Use **Undo** when it is offered for the change you want to reverse. Not every action is reversible.
+
+<p align="center"><img src="../visual-guide/action-history-undo.png" width="360" alt="Action history with Undo"></p>
+<p align="center"><em>Undo is offered only for supported changes.</em></p>
 
 Undo checks the value affected by that action before restoring it. If that value no longer matches what the action saved, Undo can report a conflict instead of replacing your current choice. Check the current setting or manga state and make the change directly if needed.
 
@@ -69,6 +72,6 @@ flowchart TD
 
 The app cannot safely remove an export it cannot identify. A failed removal leaves the file in place. Development builds can also offer removal of a successful extension export for testing; that is not the normal public-build behavior.
 
-Before sending a file, screenshot, or log to someone else, check it for manga titles, recognized page text, links, account details, and other information you do not want to share. Evaluation mode does not hide everything and does not anonymize exported data. See [Sharing](sharing.md) for what it changes.
+Before sending a file, screenshot, or log to someone else, check it for manga titles, recognized page text, links, account details, and other information you do not want to share. Name hiding does not hide everything and does not anonymize exported data. See [Sharing](sharing.md) for what it changes.
 
 To report a security concern, follow the [security policy](../../../SECURITY.md).

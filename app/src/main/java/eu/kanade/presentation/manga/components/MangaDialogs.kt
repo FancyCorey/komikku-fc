@@ -84,7 +84,7 @@ fun LocalTrackingVersionsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text(stringResource(KMR.strings.local_tracking_other_versions)) },
+        title = { Text(stringResource(KMR.strings.local_tracking_confirmed_versions)) },
         text = {
             Column(
                 modifier = Modifier
@@ -141,7 +141,12 @@ private fun LocalTrackingVersionCard(
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                text = version.sourceName,
+                // KMK v0.8.24: hidden like every other source name while Evaluation Mode is on
+                text = if (exh.util.rememberEvaluationModeEnabled()) {
+                    exh.util.EvaluationModeFormatter.sourceLabel(version.source)
+                } else {
+                    version.sourceName
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

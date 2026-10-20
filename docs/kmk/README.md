@@ -22,7 +22,8 @@ Komikku FC helps you find manga, compare sources, keep track of reading, and man
 - [Release notes](release-notes.md) summarizes the current public feature set and compatibility boundary.
 - [Technical reference](technical-reference/README.md) explains the XML files used to map features and screenshots.
 - [Feature reference (XML)](technical-reference/feature-reference.xml) lists routes, states, privacy rules, and implementation owners in a machine-readable form.
-- [v0.8.23 screenshot manifest (XML)](technical-reference/screenshot-manifest-v0.8.23.xml) lists the current What's New illustration and its SHA-256 hash. This partial collection does not illustrate every v0.8.23 workflow.
+- [v0.8.24 screenshot manifest (XML)](technical-reference/screenshot-manifest-v0.8.24.xml) lists the v0.8.24 illustrations and their SHA-256 hashes.
+- [v0.8.23 screenshot manifest (XML)](technical-reference/screenshot-manifest-v0.8.23.xml) lists the v0.8.23 What's New illustration and its SHA-256 hash. This partial collection does not illustrate every v0.8.23 workflow.
 - [Historical screenshot manifest (XML)](technical-reference/screenshot-manifest.xml) lists the earlier illustrations' routes, states, visible-content limits, and SHA-256 hashes.
 - [Security policy](../../SECURITY.md) explains how to report a vulnerability without publishing sensitive information.
 
@@ -37,10 +38,10 @@ Feature pages have short filenames, such as `ratings.md`, `versions.md`, and `ba
 - Library, Browse, Reader, Settings, backup, tracking, and extension features continue to use Komikku's familiar screens and navigation.
 - Komikku FC saves data through Komikku's existing database and settings. Supported source failures keep their own results so other sources can still be useful; this does not guarantee that every extension crash can be contained.
 - Cancelling work stops pending operations where supported. It does not reverse completed file writes, installations, or outside tracker updates.
-- Evaluation Mode changes visible names in screenshots; it does not change saved identifiers, user data, source requests, or the item an action affects.
+- Name hiding changes visible names in screenshots; it does not change saved identifiers, user data, source requests, or the item an action affects.
 - Reversible actions record the previous value before a change and keep that record only when the change succeeds.
 - The public fork uses its own package name, launcher name, update source, release page, and issue tracker while keeping the original Komikku artwork.
 
 ## Screenshots and privacy
 
-The visual guide includes discovery, settings, source-quality, cross-source matching, and Best Version workflows. Evaluation Mode replaces source names with neutral labels while leaving the manga artwork and feature result understandable. Feature guides provide written steps for workflows that depend on personal preferences, reading history, account information, page content, or device configuration.
+The visual guide includes discovery, settings, source-quality, cross-source matching, and Best Version workflows. Name hiding replaces source names with neutral labels while leaving the manga artwork and feature result understandable. Feature guides provide written steps for workflows that depend on personal preferences, reading history, account information, page content, or device configuration.

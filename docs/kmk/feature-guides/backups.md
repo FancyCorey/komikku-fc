@@ -6,6 +6,9 @@ Use Komikku's normal backup screen to save your library together with Komikku FC
 
 Open **Settings > Data and storage**, then use Komikku's backup or restore actions. Komikku FC data appears inside the supported backup categories rather than through a separate backup screen.
 
+<p align="center"><img src="../visual-guide/backup-and-restore.png" width="260" alt="Backup and restore choices"></p>
+<p align="center"><em>Choose what to include in a backup.</em></p>
+
 ## What Komikku FC adds to a backup
 
 Use the app's normal backup actions to choose a file location or schedule. Alongside library data, a backup can include your ratings, recommendation settings, linked manga versions and preferred versions, plus saved source-quality choices.
@@ -36,19 +39,8 @@ Keep the backup somewhere you trust. It can reveal your library, ratings, readin
 
 ```mermaid
 flowchart TD
-    Start["Create backup"] --> Options["Check backup choices, including these examples"]
-    Options --> Core["Library: manga, chapters and reading history"]
-    Options --> Settings["App settings: saved controls and preferences"]
-    Options --> Taste["Taste profile: ratings, tags, linked versions and source choices"]
-    Options --> Local["Local tracking: progress, status, score, dates and lists"]
-    Options --> Source["Source settings: preferences for configurable sources"]
-    Options --> Sensitive["Optional sensitive settings: off by default"]
-    Core --> Encode["Create the backup file"]
-    Taste --> Encode
-    Settings --> Encode
-    Local --> Encode
-    Source --> Encode
-    Sensitive --> Encode
+    Start["Create backup"] --> Options["Choose what to include:<br/>Library, App settings, Taste profile,<br/>Local tracking, Source settings,<br/>and optional sensitive settings (off by default)"]
+    Options --> Encode["Create the backup file"]
 ```
 
 Komikku FC data uses the existing backup format and appears as clear backup options. It does not create a second kind of archive.
@@ -56,13 +48,11 @@ Komikku FC data uses the existing backup format and appears as clear backup opti
 ## Restore and check the result
 
 ```mermaid
-flowchart TD
-    File["Choose a trusted backup file"] --> Options["Choose what to restore"]
-    Options --> Restore["Restore selected data"]
-    Restore --> Result{"How did it finish?"}
-    Result -->|Finished| Check["Check your library, ratings and progress"]
-    Result -->|Some entries failed| Errors["Read the error report and check what is missing"]
-    Result -->|Cancelled or failed| Partial["Check what already returned before retrying"]
+flowchart LR
+    File["Choose a trusted backup file<br/>and what to restore"] --> Result{"How did the<br/>restore finish?"}
+    Result -->|Finished| Check["Check your library,<br/>ratings and progress"]
+    Result -->|Some failed| Errors["Read the error report and<br/>check what is missing"]
+    Result -->|Stopped| Partial["Check what already returned<br/>before retrying"]
 ```
 
 The restore result includes the selected Komikku FC data. An error report means you should check the affected entries before trying again.

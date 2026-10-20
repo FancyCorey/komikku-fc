@@ -6,9 +6,15 @@ Save how you feel about a manga with Love, Like, Dislike, or Not interested. You
 
 On a manga page, choose **Love**, **Like**, **Dislike**, or **Not interested**. The For You menu opens each collection. When versions are linked, you can choose which matching versions should receive the same preference.
 
+<p align="center"><img src="../visual-guide/v0.8.24/manga-page.png" width="260" alt="Manga page with the Like preference selected"></p>
+<p align="center"><em>The preference button shows the current choice, here Like.</em></p>
+
 ## Choose or clear a rating
 
 Each manga has one current rating. Choosing Like after Love replaces Love; choosing Not interested replaces the previous rating too. **Clear rating** removes the choice and returns the manga to an unrated state. Not interested has its own collection and visible marker, just like the other choices.
+
+<p align="center"><img src="../visual-guide/not-interested-other-versions.png" width="260" alt="Preference actions with Not interested selected"></p>
+<p align="center"><em>Not interested is a preference like the others.</em></p>
 
 Open the Loved, Liked, Disliked, or Not interested collection from For You to review your choices. A manga appears in the collection for its current rating. Linking versions does not merge their chapter lists or make them a single library entry.
 
@@ -34,9 +40,15 @@ Clearing a rating removes the selected rating, including from the eligible track
 
 ## Rate a whole group at once
 
-Open a manga's **Trackers**, then select the title in its **Local tracking** entry to open **Track other versions**. Its **Group rating** button shows the confirmed group's current rating, or **Not rated**.
+Open a manga's **Trackers**, then choose **Track other versions** in its **Local tracking** entry. The **Group rating** button above the Track button shows the confirmed group's current rating, or **Not rated**.
 
-Select it to choose Love, Like, Dislike, or Not interested, or to clear the rating, for every confirmed version at once. The usual rating choices apply, and the change is saved even for confirmed versions you have not opened yet. If the rating cannot be loaded or saved, the button says so and you can try again.
+<p align="center"><img src="../visual-guide/v0.8.24/track-other-versions.png" width="260" alt="Track other versions with the Group rating button"></p>
+<p align="center"><em>Track other versions, with Group rating above the Track button.</em></p>
+
+<p align="center"><img src="../visual-guide/v0.8.24/group-rating-menu.png" width="260" alt="Group rating choices"></p>
+<p align="center"><em>Choose a rating, or Not rated, for every confirmed version.</em></p>
+
+Select it to choose Love, Like, Dislike, or Not interested, or **Not rated** to clear the rating, for every confirmed version at once. The usual rating choices apply, and the change is saved even for confirmed versions you have not opened yet. If the rating cannot be loaded or saved, the button says so and you can try again.
 
 Confirming a version through **Best Version** also gives the chosen version the confirmed group's rating.
 
@@ -44,11 +56,17 @@ Confirming a version through **Best Version** also gives the chosen version the 
 
 After a supported rating change, open **Action history** and use **Undo** if it is offered. The app checks for later changes before restoring the earlier choice. If you changed the rating again, Undo may report a conflict rather than overwrite your newer rating.
 
+<p align="center"><img src="../visual-guide/action-history-undo.png" width="360" alt="Action history with an Undo action"></p>
+<p align="center"><em>A supported change listed in Action history with Undo.</em></p>
+
 Undoing a local rating is not a promise to undo changes on a tracker website, reinstall extensions, or restore every related reading-progress change. Check the action shown in the history screen.
 
 ## Linked-version behavior
 
 Linked versions are entries for the same manga from different sources, not different releases of the app. Use **Linked versions** to inspect them and **Manage group** to change the group. Check that the entries really are the same manga before combining them.
+
+<p align="center"><img src="../visual-guide/linked-versions-evaluation-mode.png" width="260" alt="Rated collection with linked versions"></p>
+<p align="center"><em>Linked versions in a rated collection.</em></p>
 
 To combine entries, select two or more matching versions in a rated collection, choose the merge-into-group action, and review the confirmation. Cancel if the selection is wrong. You can also select all entries in a group, remove selected entries from a group, or ungroup it. Removing a version from a group does not clear its rating or delete its manga data.
 
@@ -68,17 +86,9 @@ To manage chapter progress separately, see [Local tracking](local-tracking.md). 
 
 ```mermaid
 flowchart TD
-    Current["Current preference or none"] --> Action{"Choose an action"}
-    Action -->|Love| Love["Save Love"]
-    Action -->|Like| Like["Save Like"]
-    Action -->|Dislike| Dislike["Save Dislike"]
-    Action -->|Not Interested| NotInterested["Save Not Interested"]
-    Action -->|Clear rating| Neutral["Return to no preference"]
-    Love --> Updated["Update the matching collection"]
-    Like --> Updated
-    Dislike --> Updated
-    NotInterested --> Updated
-    Neutral --> Updated
+    Current["Current preference or none"] --> Action{"Choose Love, Like, Dislike,<br/>Not interested, or Clear rating"}
+    Action --> Save["Save the new preference,<br/>or no preference after Clear rating"]
+    Save --> Updated["The manga appears in the matching collection"]
     Updated --> Current
 ```
 
@@ -117,16 +127,13 @@ The app asks for confirmation before combining separate versions or existing gro
 ## Maintain a group
 
 ```mermaid
-flowchart LR
-    Group["Linked manga group"] --> Primary["Choose primary version"]
-    Group --> Remove["Remove one version"]
-    Group --> Ungroup["Ungroup all versions"]
-    Group --> Merge["Merge with another group"]
-    Remove --> Valid{"At least two versions remain?"}
-    Valid -->|Yes| Group
-    Valid -->|No| Separate["Return to separate manga"]
-    Ungroup --> Separate
-    Merge --> Group
+flowchart TD
+    Group["Linked manga group"] --> Action{"What do you change?"}
+    Action -->|Primary version or merge| Same["The group stays together"]
+    Action -->|Remove one version| Valid{"At least two versions remain?"}
+    Action -->|Ungroup| Separate["Versions return to separate manga"]
+    Valid -->|Yes| Same
+    Valid -->|No| Separate
 ```
 
 With fewer than two versions, the rated collection no longer shows a multi-version group. Removing a version or ungrouping does not clear its rating.
@@ -134,11 +141,11 @@ With fewer than two versions, the rated collection no longer shows a multi-versi
 ## Grouped display
 
 ```mermaid
-flowchart LR
-    Group["Matching linked versions in a rated collection"] --> Manual{"Your chosen primary is available?"}
+flowchart TD
+    Group["Linked versions in<br/>a rated collection"] --> Manual{"Your chosen primary<br/>is available?"}
     Manual -->|Yes| Chosen["Show your chosen version"]
-    Manual -->|No| Auto{"Automatic primary selection enabled?"}
-    Auto -->|Yes| Read["Show most-read version; earliest rating breaks ties"]
+    Manual -->|No| Auto{"Automatic primary<br/>selection on?"}
+    Auto -->|Yes| Read["Show the most-read version;<br/>the earliest rating breaks ties"]
     Auto -->|No| Default["Use the collection's default group choice"]
     Chosen --> Sort["Use your collection and sort settings"]
     Read --> Sort

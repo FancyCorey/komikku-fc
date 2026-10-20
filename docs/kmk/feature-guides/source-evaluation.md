@@ -11,6 +11,9 @@ You can open Source evaluation from four places:
 - the For You menu;
 - the **Sources with problems** row under **Recommendation Settings > Troubleshooting**.
 
+<p align="center"><img src="../visual-guide/v0.8.24/source-evaluation.png" width="260" alt="Source evaluation with run options, Start and the reason it is unavailable"></p>
+<p align="center"><em>Run options, Start, and the reason Start is unavailable.</em></p>
+
 The page is laid out in this order:
 
 1. Readiness and progress.
@@ -26,7 +29,7 @@ When **Start** cannot be used, a line under it says why:
 | Message | What to do |
 | --- | --- |
 | Start is unavailable until an extension installer is ready. See Installer below. | Set up the installer in the Installer section. |
-| Nothing to evaluate yet: every available source already has a result. | Use reassessment, or install more sources. |
+| Nothing to evaluate yet: every available source already has a result. | Use reassessment under **Check older results again**, or install more sources. |
 | No extension list is available yet. Check your extension repositories in Browse. | Add or refresh an extension repository. |
 | No available source matches your languages and content settings. Check Languages on Your taste. | Change the recommendation languages or content options. |
 
@@ -46,19 +49,25 @@ The saved result shows how well the source fits, how much information supports t
 
 ## Reassess results
 
-An old result can stop describing the source well when your taste or the extension changes. The reassessment section offers the actions that apply:
+An old result can stop describing the source well when your taste or the extension changes. The **Check older results again** section offers the actions that apply:
 
 | Action | When it appears | What it does |
 | --- | --- | --- |
-| Reassess using current tastes | Your ratings have changed enough since the results were saved. | Checks already evaluated sources again against your current taste. |
+| Reassess sources, or Reassess using current tastes | Saved results exist. The label is **Reassess sources**, with a note that reassessment is recommended, once you have added many ratings since the last check. | Checks already evaluated sources again against your current taste. |
 | Reassess updated extensions | Extensions you evaluated have been updated since their result. | Checks only those updated extensions again. |
-| Reassess outdated sources | Some saved results no longer match your current settings or installed extensions. | Checks the outdated sources that the current run can process, and says how many were left out and why. |
+| Reassess outdated (number of sources) | Some saved results no longer match your current settings or installed extensions. | Checks the outdated sources that the current run can process, and says how many were left out and why. **Continue reassessing outdated** resumes it. |
+
+<p align="center"><img src="../visual-guide/v0.8.24/source-evaluation-reassess.png" width="260" alt="Reassessment section recommending a reassessment after new ratings"></p>
+<p align="center"><em>Reassessment is recommended after many new ratings.</em></p>
 
 Reassessment uses the same installer, warnings, and cleanup as a normal check.
 
 ## Automatic check
 
 **Recommendation Settings > Find new sources > Automatic check** can re-check your sources on a schedule. It is off until you turn it on. Once on, it re-checks only sources whose result is missing or out of date, every 7, 14, or 30 days, or a custom number of days from 1 to 90.
+
+<p align="center"><img src="../visual-guide/v0.8.24/find-new-sources.png" width="260" alt="Automatic check settings under Find new sources"></p>
+<p align="center"><em>The automatic check settings are under Find new sources.</em></p>
 
 By default it waits for Wi-Fi and for the battery not to be low. These requirements apply for the whole check, not only when it starts. If they stop being met, the check stops, and a later scheduled check picks up the sources that are still out of date. Turning **Check automatically** off also stops a check it has already started. The automatic check never installs or removes a source and never changes your source order. A check you start yourself on this page is not affected by these settings.
 
@@ -71,17 +80,14 @@ With **Use results on For You** on, For You skips a source only when two things 
 
 ```mermaid
 flowchart TD
-    Schedule["Scheduled time arrives"] --> Enabled{"Check automatically on?"}
-    Enabled -->|No| Wait["Nothing runs"]
-    Enabled -->|Yes| Conditions{"Network and battery requirements met?"}
-    Conditions -->|No| Later["Wait until they are"]
-    Conditions -->|Yes| Pick["Pick sources with a missing or outdated result"]
-    Pick --> Run["Check them"]
+    Schedule["Scheduled time arrives"] --> Ready{"Check automatically on, and the<br/>network and battery requirements met?"}
+    Ready -->|No| Wait["Nothing runs yet"]
+    Ready -->|Yes| Run["Check sources with a missing or outdated result"]
     Run --> Still{"Requirements still met?"}
     Still -->|No| Stop["Stop; a later check continues"]
     Still -->|Yes| Save["Save the results"]
     Save --> Apply{"Use results on For You on?"}
-    Apply -->|Yes| Skip["Skip sources with no usable picks here and in recent For You refreshes"]
+    Apply -->|Yes| Skip["Skip sources with no usable picks<br/>here and in recent For You refreshes"]
     Apply -->|No| Keep["For You uses every enabled source"]
 ```
 
@@ -112,6 +118,9 @@ If too few manga appear, check your minimum chapter count, blocked tags, languag
 
 **Recommendation Settings > Troubleshooting** also shows your rating counts, suggestions based on repeated ratings, how much manga information a source provides, and its past results. A suggestion needs support from more than one rated manga; one rating does not automatically create a rule for an entire genre.
 
+<p align="center"><img src="../visual-guide/source-quality-diagnostics.png" width="260" alt="Source quality diagnostics"></p>
+<p align="center"><em>Source quality information for one source.</em></p>
+
 Source-quality marks describe the source's collection, not your opinion of one manga. Use source actions to change those marks; see [Sources](sources.md) for their location and effects. Showing quality-marked results on the evaluation page does not remove the marks. These choices are separate from rating manga. The check is not a security audit or a guarantee that an extension is safe to install.
 
 ## Show and sort past results
@@ -124,7 +133,7 @@ Sort by Best fit, Newest, Source name, Extension name, For You compatibility, or
 
 ## Understand the management resets
 
-Expand **Management** to find these actions. Each requests confirmation. Cancel the confirmation if you want to keep the saved information.
+Expand **Source management** to find these actions. Each requests confirmation. Cancel the confirmation if you want to keep the saved information.
 
 | Action | What it clears or resets |
 | --- | --- |
@@ -140,7 +149,10 @@ Some actions appear only when there is information to clear. None of these actio
 
 When no evaluation job is active, open **Diagnostics and recovery**. **View warning** shows the installation and cleanup warning again without starting a check.
 
-**Copy Diagnostics** puts a short report on your clipboard; it does not send it anywhere. The report includes the app version, time, evaluation options, counts, current job stage, and Shizuku setup status. Source and extension names can appear when Evaluation mode is off. Evaluation mode replaces those names with generic labels. This report uses error categories rather than raw errors and does not include extension package names or signature hashes. Read the copied text before sharing it; this does not describe the contents of other logs or screenshots.
+<p align="center"><img src="../visual-guide/v0.8.24/source-evaluation-management.png" width="260" alt="Diagnostics and recovery with a source-loading warning, and Source management"></p>
+<p align="center"><em>A source-loading warning with Details, followed by Source management.</em></p>
+
+**Copy Diagnostics** puts a short report on your clipboard; it does not send it anywhere. The report includes the app version, time, evaluation options, counts, current job stage, and Shizuku setup status. Source and extension names can appear when name hiding is off. Name hiding replaces those names with generic labels. This report uses error categories rather than raw errors and does not include extension package names or signature hashes. Read the copied text before sharing it; this does not describe the contents of other logs or screenshots.
 
 If a source-loading warning appears in this section, open **Details**. Sources that failed to load are also listed under **Recommendation Settings > Troubleshooting > Sources with problems**, which opens this page. The available actions depend on the problem:
 
@@ -214,12 +226,11 @@ Changing filters or installed extensions does not silently mix old and new evalu
 ## Failure isolation
 
 ```mermaid
-flowchart TD
-    Operation["A source check encounters a problem"] --> Kind{"What happened?"}
-    Kind -->|You cancelled| Stop["The check stops; unfinished sources are not complete"]
-    Kind -->|A source failed but the check can continue| Record["Read that source's failure explanation"]
-    Record --> Continue["Other sources can still be checked"]
-    Kind -->|The check cannot safely continue| Failed["The check stops; resolve the problem before retrying"]
+flowchart LR
+    Operation["A source check<br/>hits a problem"] --> Kind{"What<br/>happened?"}
+    Kind -->|Cancelled| Stop["The check stops;<br/>unfinished sources<br/>are not complete"]
+    Kind -->|One source failed| Record["Read its explanation;<br/>other sources can<br/>still be checked"]
+    Kind -->|Cannot continue| Failed["The check stops; resolve<br/>the problem before retrying"]
 ```
 
 Recoverable failures remain local to one source. Cancellation is never converted into a successful result.

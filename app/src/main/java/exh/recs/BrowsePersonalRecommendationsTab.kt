@@ -232,6 +232,11 @@ fun Screen.personalRecommendationsTab(): TabContent {
     if (focusDialogOpen) {
         AlertDialog(
             onDismissRequest = {
+                // KMK v0.8.24: closing without Apply discards the unapplied selection; it used to keep filtering the
+                // page while the saved focus stayed empty, so Clear focus could not remove it
+                focusInclude = persistedFocus.include
+                focusExclude = persistedFocus.exclude
+                focusMatchAll = persistedFocus.matchAll
                 focusSearchQuery = ""
                 focusDialogOpen = false
             },
@@ -830,6 +835,9 @@ fun Screen.personalRecommendationsTab(): TabContent {
                     },
                     onRefresh = screenModel::refresh,
                     onClearFocus = {
+                        focusInclude = emptySet()
+                        focusExclude = emptySet()
+                        focusMatchAll = true
                         screenModel.setActiveFocus(RecommendationFocusPolicy.FocusCriteria.EMPTY)
                         showBroaderResults = false
                     },

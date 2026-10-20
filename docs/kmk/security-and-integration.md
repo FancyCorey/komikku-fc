@@ -22,6 +22,6 @@ Undo is not a complete backup. Undoing a chapter's read or bookmark change does 
 
 Successful exports are kept. If an incomplete export can be identified, the app can offer **Keep** or **Remove** for that file. Remove targets that file only, not its folder; a failed removal leaves the file in place. If the app cannot identify the file, it cannot offer that cleanup safely.
 
-Source evaluation's copied diagnostics replace raw error text with a short category. They can still include source and extension names when Evaluation mode is off. Evaluation mode changes those names to neutral labels; it does not hide manga titles, account information, notifications, or everything in a screenshot or export.
+Source evaluation's copied diagnostics replace raw error text with a short category. They can still include source and extension names when name hiding is off. Name hiding changes those names to neutral labels; it does not hide manga titles, account information, notifications, or everything in a screenshot or export.
 
 Read any file, screenshot, or log before sharing it. See [Sharing](feature-guides/sharing.md) and [Privacy and data](privacy-and-data.md). Report security concerns through the [security policy](../../SECURITY.md).

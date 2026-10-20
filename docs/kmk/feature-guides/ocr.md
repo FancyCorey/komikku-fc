@@ -6,6 +6,9 @@
 
 Open **More > OCR Search Downloads**. The search screen lets you process all downloaded manga, choose a page limit, search recognized text, and clear saved search text.
 
+<p align="center"><img src="../visual-guide/ocr-search-downloads.png" width="260" alt="OCR search for downloaded pages"></p>
+<p align="center"><em>Search text in downloaded pages.</em></p>
+
 ## What OCR Search Downloads is for
 
 First process your downloads, then enter the words you want to find. Processing can take time, storage, and battery. The current text reader uses Latin-script recognition, so do not expect reliable results for every language, unusual lettering, or low-quality image.
@@ -26,7 +29,7 @@ Search puts stronger word matches above partial matches. Select a result to open
 
 ## Before sharing a result
 
-Result cards can show recognized page text, manga and chapter titles, source names, and page numbers. These can reveal what you read. Evaluation mode can hide supported source labels, but not manga titles or recognized text. Inspect the whole screenshot before sharing it; see [Sharing](sharing.md).
+Result cards can show recognized page text, manga and chapter titles, source names, and page numbers. These can reveal what you read. Name hiding can hide supported source labels, but not manga titles or recognized text. Inspect the whole screenshot before sharing it; see [Sharing](sharing.md).
 
 ## Entry and indexing
 
@@ -75,12 +78,7 @@ Stronger word matches appear higher in the results. A result is a saved referenc
 flowchart TD
     Text["Recognized page text"] --> Local["Saved only on this device"]
     Local --> Search["On-device search"]
-    Local --> Clear{"Cleanup choice"}
-    Clear --> Chapter["One chapter"]
-    Clear --> Manga["One manga"]
-    Clear --> Failed["Empty or failed search entries"]
-    Clear --> Old["Entries made by an older text reader"]
-    Clear --> All["Entire OCR index"]
+    Local --> Clear["Clear it by chapter, by manga,<br/>empty or failed entries,<br/>entries from an older text reader,<br/>or the entire index"]
 ```
 
 The index is local and can be rebuilt. Cleanup changes only the search index and does not delete downloaded page files. Deleting a manga or chapter from the library does not automatically remove its OCR rows; use the chapter or manga cleanup action from an OCR result when you want to remove them. When **Clear database** removes non-library manga from selected sources, it also removes those manga's OCR rows but leaves downloaded page files in place. Restoring library entries removes OCR rows that no longer match a chapter or manga. None of these cleanup actions deletes downloaded page files.

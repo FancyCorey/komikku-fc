@@ -18,7 +18,7 @@ class FocusTagCategoryTest {
             "Demon Lord" to FocusTagCategory.CHARACTERS, "Villainess" to FocusTagCategory.CHARACTERS,
             "Female Lead" to FocusTagCategory.CHARACTERS,
             "Harem" to FocusTagCategory.MATURE, "Boys' Love" to FocusTagCategory.MATURE, "18+" to FocusTagCategory.MATURE,
-            "Legendary" to FocusTagCategory.OTHER, "Ichi" to FocusTagCategory.OTHER,
+            "Legendary" to FocusTagCategory.OTHER, "Ichi" to FocusTagCategory.OTHER, "Lolicon" to FocusTagCategory.OTHER,
         ).forEach { (tag, expected) -> assertEquals(expected, kind(tag), tag) }
     }
 

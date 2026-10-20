@@ -17,6 +17,9 @@ Open **Settings > Recommendation Settings**, or open For You and select its sett
 | Linked versions and ratings | Rating prompts, tracking linked versions together, same-manga matching, and Best Version previews. |
 | Troubleshooting | Source loading problems, sources skipped by the automatic check, taste diagnostics, and source tag quality. |
 
+<p align="center"><img src="../visual-guide/v0.8.24/recommendation-settings.png" width="260" alt="Recommendation Settings first page listing one entry per feature"></p>
+<p align="center"><em>The first page lists one entry per feature, each with its current value.</em></p>
+
 On a phone, choose an entry to open its page, then press Back to return to the list. On a wider screen, the list stays on the left and the chosen page opens beside it. In both layouts, the row for the page you are on keeps a filled icon. **Source evaluation** can also be opened from the For You menu.
 
 ## How the settings are organized
@@ -31,6 +34,9 @@ Number settings are checked before the app uses them. A stored value outside a s
 
 Set **Minimum chapter count** to a number from 0 to 50. **0** means **Off**, which is the default, so there is no minimum. Choosing 1 to 50 hides manga with a known count below your choice. This changes recommendations, not your library or saved reading progress.
 
+<p align="center"><img src="../visual-guide/v0.8.24/your-taste.png" width="260" alt="Your taste page with known-manga choices, minimum chapter count and recent reading"></p>
+<p align="center"><em>Your taste: known manga, minimum chapter count, and recent reading.</em></p>
+
 A newly discovered manga's chapter count is usually unknown until its chapter list has been loaded. After For You shows its rows, it loads the chapter lists of up to 20 shown titles whose count is unknown, a few at a time. It removes titles below your minimum and remembers each count for two weeks, so later refreshes can filter those titles straight away. Only titles whose count could not be checked yet remain unfiltered. The check does not run while For You is saving data.
 
 The setting does not guarantee that every suggested manga has the requested number of chapters. Lower the number or turn it off if too few results remain.
@@ -44,6 +50,9 @@ The setting does not guarantee that every suggested manga has the requested numb
 ### Control familiar manga and tags
 
 Under **Ratings and known manga**, choose whether to hide disliked manga, hide all rated manga, or show all rated manga. **Hide manga you already know** is a separate switch: it excludes manga you have rated, added to your library, or started reading, including titles remembered from earlier refreshes that you rated, added, or read since then. Showing rated manga does not override that separate switch.
+
+<p align="center"><img src="../visual-guide/v0.8.24/your-taste-tags.png" width="260" alt="Preferred tags shown as neutral placeholders"></p>
+<p align="center"><em>Preferred and blocked tags. Name hiding replaces tag names with placeholders.</em></p>
 
 Add a genre or tag as **Preferred** to favor matching manga, or as **Blocked** to exclude matches. You can edit or delete your saved choices. Taste suggestions come from your rated manga, and a suggestion is saved as preferred or blocked only when you choose that action. A suggestion is not a setting already applied for you.
 
@@ -60,11 +69,20 @@ Add a genre or tag as **Preferred** to favor matching manga, or as **Blocked** t
 | Wait before showing a title again | Moves titles you were recently shown later in the list for the chosen number of days. **Clear repeat history** forgets what was shown. |
 | Source order | Enable or disable each source for recommendations and arrange their priority. You can reset the order, or apply a suggested order based on source fit when that action is offered. |
 
+<p align="center"><img src="../visual-guide/v0.8.24/for-you-feed.png" width="260" alt="For You feed settings with the looser matches switch"></p>
+<p align="center"><em>For You feed: looser matches, the preview, new-release exploration, and repeat display.</em></p>
+
+<p align="center"><img src="../visual-guide/v0.8.24/for-you-feed-sources.png" width="260" alt="Source priority list with one-line status tags"></p>
+<p align="center"><em>Each source row shows one-line tags. Boosted is outlined because it is your own choice.</em></p>
+
 Each source row shows one-line tags for its current state. **Boosted** is outlined because it is your own choice, while tags such as **Great fit** and **Top Picks** describe results. The number beside **Great fit** describes the source's earlier contribution to Top Picks, not how many manga must appear now. The **Shown** count describes the latest refresh after filters and duplicate handling.
 
 ## Focus modes
 
 Saved **Focus modes** can be renamed, deleted, and moved up or down here. They are the same modes used by For You's Focus control, not a separate set of settings. Deleting a saved mode does not delete manga from your library. See [Recommendations](recommendations.md#focus-on-what-you-want-now) for choosing tags in Focus.
+
+<p align="center"><img src="../visual-guide/v0.8.24/focus-modes-settings.png" width="260" alt="Focus modes page with no saved modes yet"></p>
+<p align="center"><em>Saved Focus modes are listed here once you save one from For You.</em></p>
 
 ## Find new sources
 
@@ -73,6 +91,9 @@ This page contains three things:
 - **Source evaluation** checks how well each installed source works with For You. See [Source evaluation](source-evaluation.md).
 - **Suggested for you** opens Sources to Try, which suggests extensions to install. See [Sources](sources.md).
 - **Automatic check** re-checks your installed sources on a schedule.
+
+<p align="center"><img src="../visual-guide/v0.8.24/find-new-sources.png" width="260" alt="Find new sources page with Source evaluation, Suggested for you and Automatic check"></p>
+<p align="center"><em>Find new sources, with the automatic check turned off.</em></p>
 
 ### Automatic check
 
@@ -97,6 +118,9 @@ Sources that **Use results on For You** is skipping are listed under **Troublesh
 | Automatic | Saves data on a metered or slow connection, and uses the normal amount otherwise. This is the default. |
 | Always | Always saves data. |
 | Never | Never saves data. |
+
+<p align="center"><img src="../visual-guide/v0.8.24/speed-and-data.png" width="260" alt="Speed and data page with Use less data on recommendations set to Automatic"></p>
+<p align="center"><em>Use less data on recommendations, set to Automatic.</em></p>
 
 While saving data, For You:
 
@@ -125,6 +149,9 @@ A limit is not a promise that the source will return that many suitable manga.
 ## Linked versions and ratings
 
 A linked version is the same manga available from another source. It is not a software update or a different version of the app. These controls can also be found through settings search.
+
+<p align="center"><img src="../visual-guide/v0.8.24/linked-versions-settings.png" width="260" alt="Linked versions and ratings page"></p>
+<p align="center"><em>Rating prompts, linked-version tracking, and same-manga matching.</em></p>
 
 | Setting | What it lets you choose |
 | --- | --- |
@@ -158,6 +185,9 @@ These settings change the small comparison samples, not the chapter itself. **Vi
 | Taste diagnostics | How your ratings and tags were turned into a taste profile. |
 | Source details and tag checks | How well each source's tags match the genres For You understands. The first 20 sources are listed straight away, with **Show all** for the rest. |
 
+<p align="center"><img src="../visual-guide/v0.8.24/troubleshooting.png" width="260" alt="Troubleshooting page listing sources with problems, then taste diagnostics"></p>
+<p align="center"><em>Troubleshooting after four sources failed to load: Sources with problems leads to Source evaluation.</em></p>
+
 These sections help explain the information the app has collected. They are not proof that every title has complete or correct metadata.
 
 ## Expected interaction behavior
@@ -167,7 +197,7 @@ When you change a setting, it is saved automatically. Return to For You and refr
 ## Navigation map
 
 ```mermaid
-flowchart TD
+flowchart LR
     Entry["Recommendation Settings"] --> Taste["Your taste"]
     Entry --> Feed["For You feed"]
     Entry --> Focus["Focus modes"]
@@ -177,9 +207,8 @@ flowchart TD
     Entry --> Linked["Linked versions and ratings"]
     Entry --> Trouble["Troubleshooting"]
     Find --> Evaluation
-    Find --> Try["Suggested for you (Sources to Try)"]
+    Find --> Try["Suggested for you<br/>(Sources to Try)"]
     ForYou["For You menu"] --> Evaluation
-    Entry -.-> Search["Search settings"]
 ```
 
 Each entry opens one page, and Find new sources also links to Source evaluation and Sources to Try. **Search settings** is a separate way to jump directly to a control; it is not another entry.
@@ -204,15 +233,12 @@ Values are checked before use. Invalid stored numbers fall back to safe limits i
 sequenceDiagram
     actor User
     participant Search as Settings search
-    participant Screen as Destination page
-    participant Store as Saved settings
-
+    participant Page as Settings page
     User->>Search: Enter setting terms
     Search-->>User: Show matching settings
     User->>Search: Choose a match
-    Search->>Screen: Open the page and scroll to the setting
-    Screen->>Store: Read current value
-    Store-->>Screen: Show your current choice
+    Search->>Page: Open the page at that setting
+    Page-->>User: Show your current choice
 ```
 
 Search results explain both the setting and the page that contains it.

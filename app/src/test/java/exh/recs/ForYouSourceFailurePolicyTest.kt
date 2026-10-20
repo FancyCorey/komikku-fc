@@ -46,6 +46,15 @@ class ForYouSourceFailurePolicyTest {
     }
 
     @Test
+    fun `the failure counts shown are the recent ones the label was judged on`() {
+        val recent = stats(runs = 120, errors = 20).copy(recentRunCount = 10, recentShownCount = 2, recentErrorCount = 8)
+        val advice = ForYouSourceFailurePolicy.advise(HttpException(500), recent)
+        assertTrue(advice.keepsFailing)
+        assertEquals(8, advice.failedRuns)
+        assertEquals(10, advice.totalRuns)
+    }
+
+    @Test
     fun `a source keeps failing only when most of its runs failed, using the Often errors rule`() {
         val greedScans = ForYouSourceFailurePolicy.advise(HttpException(403), stats(runs = 163, errors = 138))
         assertTrue(greedScans.keepsFailing)

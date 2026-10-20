@@ -340,12 +340,12 @@
     <!-- KMK v0.8.13: this specifically means no raw search results were found by any query
          attempt, and the catalogue fallback (Popular page 1) either was not eligible or also found
          nothing raw. See RecommendationCatalogueFallbackPolicy. -->
-    <string name="rec_source_status_explain_no_matches">The search itself returned no results at all -- not even before filtering. This can mean the source has little content matching your top tags, or its search doesn\'t respond well to tag-based queries. If you know this source has relevant manga, try Source Evaluation\'s search-compatibility check.</string>
+    <string name="rec_source_status_explain_no_matches">The search itself returned no results at all -- not even before filtering. This can mean the source has little content matching your top tags, or its search doesn\'t respond well to tag-based queries. If you know this source has relevant manga, try Source evaluation\'s search-compatibility check.</string>
     <!-- KMK v0.8.13: results were found but excluded either by ratings/known/blocked tags, or
          because they had no positive taste match (a preferred/liked tag or source affinity alone is
          not enough, see the v0.8.13 relevance gate). -->
     <string name="rec_source_status_explain_filtered">The search found manga, but every result was excluded -- either already in your library/rated/marked not-interested, blocked by a tag you\'ve blocked, or it didn\'t share any tag you\'ve rated positively (a source you like alone isn\'t enough to show a manga).</string>
-    <string name="rec_source_status_explain_error">This source ran into an error during the last For You refresh. Try refreshing again, or check Source Evaluation for a more detailed error if it keeps happening.</string>
+    <string name="rec_source_status_explain_error">This source ran into an error during the last For You refresh. Try refreshing again, or check Source evaluation for a more detailed error if it keeps happening.</string>
     <string name="rec_browse_restrictions_unavailable">For You restrictions could not be applied. Go back and open this source again.</string>
     <string name="rec_source_status_explain_disabled">This source is turned off in For You sources, so it wasn\'t searched.</string>
     <string name="rec_source_status_explain_not_searched_limit">For You searches only a bounded number of sources per refresh to stay fast. This source wasn\'t reached this time -- it may be searched on a future refresh.</string>
@@ -369,7 +369,7 @@
     <string name="rec_match_search_hint">Search this title across sources</string>
     <string name="rec_match_search_action">Search installed sources</string>
     <string name="rec_match_applying">Applying…</string>
-    <string name="rec_sources_to_try_header">Sources To Try</string>
+    <string name="rec_sources_to_try_header">Sources to Try</string>
     <string name="rec_sources_to_try_empty">No strong source suggestions yet. Install and use more sources to improve suggestions.</string>
     <string name="rec_suggestion_install">Install</string>
     <string name="rec_suggestion_installing">Installing…</string>
@@ -409,10 +409,10 @@
     <!-- KMK --> <string name="pref_block_explicit_porn_hentai_sources">Block explicit porn/hentai sources</string>
     <!-- KMK --> <string name="pref_block_explicit_porn_hentai_sources_summary">Hides clearly explicit adult and hentai sources. Does not affect ecchi-only sources.</string>
     <!-- KMK v0.6.8 Source Evaluation -->
-    <!-- KMK --> <string name="source_evaluation_title">Source Evaluation</string>
+    <!-- KMK --> <string name="source_evaluation_title">Source evaluation</string>
     <!-- KMK v0.8.18-fix1 --> <string name="source_evaluation_go_to_for_you">Go to For You</string>
-    <!-- KMK --> <string name="source_evaluation_settings_header">Source Evaluation</string>
-    <!-- KMK --> <string name="source_evaluation_open_button">Open Source Evaluation</string>
+    <!-- KMK --> <string name="source_evaluation_settings_header">Source evaluation</string>
+    <!-- KMK --> <string name="source_evaluation_open_button">Open Source evaluation</string>
     <!-- KMK v0.8.14: "probe" replaced with plain "test" per the copy audit --> <string name="source_evaluation_settings_desc">Temporarily add sources you have not installed to see how well they match your taste.</string>
     <!-- KMK --> <string name="source_evaluation_options">Evaluation Options</string>
     <!-- KMK v0.8.11 section headers and search-entry text -->
@@ -486,7 +486,7 @@
     <!-- KMK -->
     <!-- KMK -->
     <!-- KMK -->
-    <!-- KMK --> <string name="taste_diagnostics_signals_explanation">Used: manga ratings, their genres, and your explicit tag preferences. Not used: reading history, extension/source content, or anything not already stored for the taste system.</string>
+    <!-- KMK --> <string name="taste_diagnostics_signals_explanation">Used: manga ratings, their genres, your explicit tag preferences and, with Use recent reading on, the tags of what you read recently. Not used: source content or anything else outside your taste settings.</string>
     <!-- KMK v0.6.11 Shizuku setup -->
     <!-- KMK --> <string name="shizuku_setup_title">Shizuku</string>
     <!-- KMK --> <string name="shizuku_status_not_installed">Not installed</string>
@@ -548,12 +548,12 @@
     <!-- KMK --> <string name="source_evaluation_clear_confirm_message">This clears cached source evaluation data only. Your library, ratings, preferences, and installed extensions are not affected.</string>
     <!-- KMK --> <string name="source_evaluation_clear_confirm">Clear</string>
     <!-- KMK v0.6.16 -->
-    <!-- KMK --> <string name="source_evaluation_screen_error_title">Source Evaluation Error</string>
+    <!-- KMK --> <string name="source_evaluation_screen_error_title">Source evaluation error</string>
     <!-- KMK --> <string name="source_evaluation_screen_error_dismiss">Dismiss</string>
     <!-- KMK --> <string name="source_evaluation_unsafe_sources_title">Quarantined Extensions</string>
-    <!-- KMK --> <string name="source_evaluation_unsafe_sources_desc">These extensions were quarantined after a suspected fatal crash during evaluation. They are skipped in future evaluations. If a quarantined extension still crashes Komikku outside Source Evaluation, uninstall or disable it manually from the Extensions screen.</string>
+    <!-- KMK --> <string name="source_evaluation_unsafe_sources_desc">These extensions were quarantined after a suspected fatal crash during evaluation. They are skipped in future evaluations. If a quarantined extension still crashes Komikku outside Source evaluation, uninstall or disable it manually from the Extensions screen.</string>
     <!-- KMK v0.6.17 -->
-    <!-- KMK --> <string name="source_evaluation_unsafe_installed_warning">This extension is installed. Quarantine only prevents it from being evaluated — it does not uninstall it. If it crashes Komikku outside Source Evaluation, remove it from the Extensions screen.</string>
+    <!-- KMK --> <string name="source_evaluation_unsafe_installed_warning">This extension is installed. Quarantine only prevents it from being evaluated — it does not uninstall it. If it crashes Komikku outside Source evaluation, remove it from the Extensions screen.</string>
     <!-- KMK -->
     <!-- KMK --> <string name="source_evaluation_unsafe_sources_view">View</string>
     <!-- KMK --> <string name="source_evaluation_unsafe_sources_clear">Clear quarantine</string>
@@ -938,11 +938,11 @@
     <!-- KMK --> <string name="source_evaluation_rec_quality_cancel">Cancel</string>
     <!-- KMK --> <string name="source_recommendation_quality_job_notification_title">Checking For You search compatibility</string>
     <!-- KMK --> <string name="source_recommendation_quality_job_completed">For You search compatibility check complete</string>
-    <!-- KMK --> <string name="source_evaluation_job_conflict_evaluation_running">Source Evaluation is already running. Wait for it to finish before checking For You search compatibility.</string>
-    <!-- KMK --> <string name="source_evaluation_job_conflict_quality_running">A For You search compatibility check is already running. Wait for it to finish before starting Source Evaluation.</string>
+    <!-- KMK --> <string name="source_evaluation_job_conflict_evaluation_running">Source evaluation is already running. Wait for it to finish before checking For You search compatibility.</string>
+    <!-- KMK --> <string name="source_evaluation_job_conflict_quality_running">A For You search compatibility check is already running. Wait for it to finish before starting Source evaluation.</string>
     <!-- KMK v0.7.11: source evaluation hardening -->
-    <!-- KMK --> <string name="source_evaluation_consent_title">Source Evaluation — Advanced Feature</string>
-    <!-- KMK --> <string name="source_evaluation_consent_message">Source Evaluation temporarily installs extension packages, loads source definitions, runs network probes, scores results, and then attempts to uninstall them.\n\nPrivate mode (recommended): installs and removes silently.\nCurrent or Shizuku mode: Android may show install/uninstall prompts per extension.\n\nOnly non-installed extensions are evaluated. Your library, ratings, and already-installed extensions are not changed unless you explicitly install a result.\n\nYou can view this warning again from the Copy Diagnostics area.</string>
+    <!-- KMK --> <string name="source_evaluation_consent_title">Source evaluation — advanced feature</string>
+    <!-- KMK --> <string name="source_evaluation_consent_message">Source evaluation temporarily installs extension packages, loads source definitions, runs network probes, scores results, and then attempts to uninstall them.\n\nPrivate mode (recommended): installs and removes silently.\nCurrent or Shizuku mode: Android may show install/uninstall prompts per extension.\n\nOnly non-installed extensions are evaluated. Your library, ratings, and already-installed extensions are not changed unless you explicitly install a result.\n\nYou can view this warning again from the Copy Diagnostics area.</string>
     <!-- KMK --> <string name="source_evaluation_consent_confirm">I understand, continue</string>
     <!-- KMK --> <string name="source_evaluation_view_warning">View evaluation warning</string>
     <!-- KMK --> <string name="source_evaluation_offline_error">No internet connection. Please check your connection and try again.</string>
@@ -1507,7 +1507,7 @@
     <!-- KMK v0.8.12 --> <string name="rec_settings_index_matching_versions">Other versions and Best Version</string>
     <!-- KMK v0.8.12 --> <string name="rec_settings_index_matching_versions_summary">Choose how the app finds other source versions and compares them</string>
     <!-- KMK --> <string name="rec_settings_index_taste_tags">Taste and tags</string>
-    <!-- KMK --> <string name="rec_settings_index_evaluation">Source Evaluation</string>
+    <!-- KMK --> <string name="rec_settings_index_evaluation">Source evaluation</string>
     <!-- KMK --> <string name="rec_settings_index_discovery">Sources to Try</string>
     <!-- KMK --> <string name="rec_settings_index_diagnostics">Advanced and troubleshooting</string>
     <!-- KMK v0.8.18: right-edge quick-access panel handle -->
@@ -1583,7 +1583,7 @@
     <!-- KMK --> <string name="source_evaluation_runtime_health_uninstall">Uninstall</string>
     <!-- KMK --> <string name="source_evaluation_runtime_health_disable">Disable loading</string>
     <!-- KMK --> <string name="source_evaluation_runtime_health_disable_confirm_title">Disable this extension?</string>
-    <!-- KMK --> <string name="source_evaluation_runtime_health_disable_confirm_body">%1$s will no longer be loaded by the app until you remove this block from Source Evaluation\'s blocked-packages list.</string>
+    <!-- KMK --> <string name="source_evaluation_runtime_health_disable_confirm_body">%1$s will no longer be loaded by the app until you remove this block from Source evaluation\'s blocked-packages list.</string>
 
     <!-- KMK v0.8.18: manual extension APK export -->
     <!-- KMK --> <string name="extension_export_action">Export extension</string>
@@ -1659,7 +1659,7 @@
 
     <!-- KMK debug-build-only fixture selector for deterministic Source Evaluation error routes -->
     <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_title">Source check sample data</string>
-    <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_summary">Testing builds only. Use prepared results to check Source Evaluation screens without contacting real sources or installing extensions.</string>
+    <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_summary">Testing builds only. Use prepared results to check Source evaluation screens without contacting real sources or installing extensions.</string>
     <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_off">Off (normal evaluation)</string>
     <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_candidate_load_error">Candidate load error</string>
     <!-- KMK --> <string name="source_evaluation_debug_fixture_mode_connectivity_lost">Connectivity lost</string>
@@ -1693,7 +1693,7 @@
     <!-- KMK v0.8.20-fix1: count-based per-source metadata/tag diagnostics. -->
     <!-- KMK --> <string name="rec_source_metadata_tag_diagnostics_header">Source details and tag checks</string>
     <!-- KMK -->
-    <!-- KMK --> <string name="rec_source_metadata_tag_diagnostics_no_data">No source evaluation data is available yet. Run Source Evaluation to collect it.</string>
+    <!-- KMK --> <string name="rec_source_metadata_tag_diagnostics_no_data">No source evaluation data is available yet. Run Source evaluation to collect it.</string>
     <!-- KMK --> <string name="rec_source_metadata_tag_diagnostics_row_summary">%1$s, %2$s, %3$s, %4$s</string>
     <!-- KMK --> <string name="rec_source_metadata_tag_diagnostics_show_details">Show details</string>
     <!-- KMK --> <string name="rec_source_metadata_tag_diagnostics_hide_details">Hide details</string>
@@ -1796,6 +1796,7 @@
     <string name="local_tracking_group_rating_not_rated">Not rated</string>
     <string name="local_tracking_group_rating_loading">Loading group rating…</string>
     <string name="local_tracking_group_rating_failed">Couldn't load or update the group rating. Try again.</string>
+    <string name="local_tracking_confirmed_versions">Confirmed versions</string>
     <string name="local_tracking_share_progress_with_version">Keep reading progress in sync</string>
     <string name="track_registration_in_progress">Adding…</string>
     <string name="tracking_added_sync_failed">Tracking was added, but a follow-up sync failed. Check its status before adding it again.</string>
@@ -1899,7 +1900,7 @@ You can choose when this is offered in Settings, Reader, Alternate sources.</str
     <string name="rec_source_failure_hint_site_check">The site wants a browser check. Open it once, then try again.</string>
     <string name="rec_source_failure_hint_site_problem">The site is having problems. Try again later.</string>
     <string name="rec_source_failure_hint_extension">This extension may need an update.</string>
-    <string name="rec_source_failure_keeps_failing">This source failed in %1$d of %2$d refreshes.</string>
+    <string name="rec_source_failure_keeps_failing">This source failed in %1$d of its last %2$d refreshes.</string>
     <string name="rec_source_failure_try_again">Try again</string>
     <string name="rec_source_failure_extension_obsolete">This extension is no longer offered by its repository, so the source may have stopped working.</string>
     <string name="rec_source_failure_extension_update">An update is available for this extension.</string>

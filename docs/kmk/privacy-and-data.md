@@ -29,6 +29,6 @@ Exports use Android's document APIs. Cleanup is limited to the exact document cr
 
 ## Screenshots and diagnostics
 
-Evaluation Mode replaces source and repository names with neutral labels. It does not hide manga artwork, titles, account information, reader pages, notifications, or every part of Android's interface. Before sharing a screenshot, check the whole image and any accompanying XML for private content, identifiers, paths, URLs, and status-bar information.
+Name hiding replaces source and repository names with neutral labels. It does not hide manga artwork, titles, account information, reader pages, notifications, or every part of Android's interface. Before sharing a screenshot, check the whole image and any accompanying XML for private content, identifiers, paths, URLs, and status-bar information.
 
-Source evaluation's copied diagnostics use a short category instead of raw error text. When Evaluation mode is off, source and extension names can remain in that text. Other logs or exported files may contain additional information. See [Sharing](feature-guides/sharing.md) and [file safety](feature-guides/safety.md) before sending them to someone else.
+Source evaluation's copied diagnostics use a short category instead of raw error text. When name hiding is off, source and extension names can remain in that text. Other logs or exported files may contain additional information. See [Sharing](feature-guides/sharing.md) and [file safety](feature-guides/safety.md) before sending them to someone else.

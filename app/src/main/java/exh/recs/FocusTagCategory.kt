@@ -20,7 +20,7 @@ internal enum class FocusTagCategory(
             "boys love", "girls love", "shounen ai", "shoujo ai", "reverse harem", "gender bender", "adult", "mature",
             "bl", "gl", "18",
         ),
-        words = setOf("harem", "ecchi", "smut", "yaoi", "yuri", "gore", "hentai", "erotica", "nsfw", "lolicon", "shotacon"),
+        words = setOf("harem", "ecchi", "smut", "yaoi", "yuri", "gore", "hentai", "erotica", "nsfw", "shotacon"),
     ),
     STORY(
         KMR.strings.rec_focus_category_story,

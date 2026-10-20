@@ -113,12 +113,12 @@ An active source pair lets you switch in either direction through **Switch sourc
 flowchart TD
     App["Komikku FC"] --> Local["Store ratings, progress, settings, history, and OCR text locally"]
     App --> Sources["Request online manga through installed extensions"]
-    App --> Sharing["Evaluation Mode replaces selected visible labels"]
+    App --> Sharing["Name hiding replaces selected visible labels"]
     App --> Files["Choose exports and backups through Android's file chooser"]
 ```
 
 Komikku FC does not add a separate recommendation account or server. Installed extensions still handle their online catalogue requests, and connected external trackers have separate update settings.
 
-Evaluation Mode changes selected visible labels, not saved identifiers, requests, or actions. Titles, artwork, reading context, genre suggestions, and counts can remain visible. Inspect the whole screen before sharing it.
+Name hiding changes selected visible labels, not saved identifiers, requests, or actions. Titles, artwork, reading context, genre suggestions, and counts can remain visible. Inspect the whole screen before sharing it.
 
 OCR text can be rebuilt from downloaded pages, so it is excluded from backup and sync. Clearing the index does not delete those pages. Backups can include ratings, settings, linked versions, and local tracking when their separate options are selected. Sensitive settings are optional; protect any backup you share. See [Privacy and data](privacy-and-data.md) and [Backups](feature-guides/backups.md).

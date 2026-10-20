@@ -25,6 +25,9 @@ Source evaluation has a separate restriction for extensions associated with a de
 
 Open **Recommendation Settings > For You feed** and check which sources are enabled. Then open **Your taste** and check the recommendation languages and filters, including the minimum chapter count.
 
+<p align="center"><img src="../visual-guide/v0.8.24/for-you-feed-sources.png" width="260" alt="For You feed source list with enabled switches"></p>
+<p align="center"><em>Check which sources are enabled under For You feed.</em></p>
+
 A strong source-fit rating does not guarantee many visible recommendations. Fit describes the source's usefulness; shown results also depend on your manga filters and what the source returned.
 
 ```mermaid
@@ -49,21 +52,18 @@ In Sources to Try, clear a search that finds nothing before changing your settin
 
 Read the message on the failed row first. It names the likely cause: your connection, a browser check the site wants, a problem on the site, or an extension that may need an update.
 
+<p align="center"><img src="../visual-guide/v0.8.24/for-you-failed-source.png" width="260" alt="Failed For You rows with Try again, Check source, Manage extension and Don't use in For You"></p>
+<p align="center"><em>A row that keeps failing offers Check source and Don't use in For You.</em></p>
+
 ```mermaid
 flowchart TD
-    Row["A For You row failed"] --> Cause{"What does the row say?"}
-    Cause -->|Connection| Connection["Check your connection, then Try again"]
-    Cause -->|Browser check| Site["Open site, complete the check, then Try again"]
-    Cause -->|Site problem| Later["Try again later"]
-    Cause -->|Extension| Update["Manage extension and update it"]
-    Connection --> Again{"Still failing in most refreshes?"}
-    Site --> Again
-    Later --> Again
-    Update --> Again
+    Row["A For You row failed"] --> Cause["Follow the row's hint: check the connection,<br/>open the site for a browser check,<br/>wait for the site, or update the extension"]
+    Cause --> Again{"Still failing in most refreshes?"}
+    Again -->|No| Done["Browse the row"]
     Again -->|Yes| Check["Check source"]
     Check --> Works{"Works when browsing?"}
-    Works -->|Yes| Stop["Don't use in For You; keep reading from it in Browse"]
-    Works -->|No| Remove["Update or remove the extension, or don't use it in For You"]
+    Works -->|Yes| Stop["Don't use in For You;<br/>keep reading from it in Browse"]
+    Works -->|No| Remove["Update or remove the extension,<br/>or don't use it in For You"]
 ```
 
 A source that is far slower than the others in the same refresh ends as an error row with **Try again**. The time limit follows how long your other sources took, between 30 seconds and 3 minutes, so a slow connection does not cut sources off. **Don't use in For You** affects recommendations only; it does not uninstall the extension. Turn the source back on under **For You feed**.
@@ -75,6 +75,9 @@ One failed image or page list no longer makes the rest of a large download from 
 ## Preview or reader pages fail
 
 In **Find Best Version**, use **Retry** when a preview fails. **View in Reader** provides another way to open the selected chapter even if preview images failed; it still needs the chapter to be available. Press Back to return to the comparison page.
+
+<p align="center"><img src="../visual-guide/best-version-preview-comparison.png" width="260" alt="Best Version preview comparison"></p>
+<p align="center"><em>Preview samples with Retry and View in Reader.</em></p>
 
 ```mermaid
 flowchart TD
@@ -96,18 +99,16 @@ For downloaded-page text searches, check that the pages are still downloaded and
 A recoverable source error may leave other results available, but not every crash can be caught. If the app closes, reopen it and inspect the current state before repeating a restore, migration, or bulk installation. Some work may already have completed.
 
 ```mermaid
-flowchart TD
-    Stop["The app closes or an action is interrupted"] --> Open["Reopen the app"]
-    Open --> State["Check what already changed"]
-    State --> Choice{"What needs attention?"}
-    Choice -->|Reading| Chapter["Check the current chapter and tracker"]
-    Choice -->|Restore or migration| Backup["Check restored items before retrying"]
-    Choice -->|Bulk installation| Installed["Check installed extensions before retrying"]
-    Choice -->|Repeated closure| Report["Record the steps and app version"]
+flowchart LR
+    Stop["The app closed or an action stopped:<br/>reopen it and check what changed"] --> Choice{"What needs<br/>attention?"}
+    Choice -->|Reading| Chapter["Check the current<br/>chapter and tracker"]
+    Choice -->|Restore or migration| Backup["Check restored items<br/>before retrying"]
+    Choice -->|Bulk install| Installed["Check installed extensions<br/>before retrying"]
+    Choice -->|Keeps closing| Report["Record the steps<br/>and app version"]
 ```
 
 For a repeatable problem, include the app version from **More > About > Version**, the steps taken, the expected result, and what happened. A screenshot or crash log can help, but a crash report may not be available for every closure.
 
-Check screenshots and logs before sharing: logs can contain source names and technical details, and screenshots can expose manga titles or account information. Evaluation mode does not anonymize everything. See [Sharing](sharing.md) and the repository's [issue tracker](https://github.com/FancyCorey/komikku-fc/issues).
+Check screenshots and logs before sharing: logs can contain source names and technical details, and screenshots can expose manga titles or account information. Name hiding does not anonymize everything. See [Sharing](sharing.md) and the repository's [issue tracker](https://github.com/FancyCorey/komikku-fc/issues).
 
 For interrupted restores and supported Undo actions, see [Backups](backups.md) and [Links, Undo, and file safety](safety.md). Cancellation is not a promise that all completed work was reversed.

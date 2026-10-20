@@ -322,6 +322,9 @@ class KmkRecsReleaseNotesTest {
             // settings redesign and the optional automatic source check
             "**Automatic source check:**", "off until you turn it on", "never installs or removes a source or changes your source order", "Use results on For You",
             "**Recommendation Settings:**", "one entry per major feature", "Every setting is still there",
+            // documentation capture pass
+            "titled Confirmed versions", "hides source names", "**Focus picker:**", "Clear focus always clears it",
+            "**Failing source counts:**", "same recent refreshes", "**Wording:**", "recent reading is used",
         ).forEach { phrase -> assertTrue(section.contains(phrase), "v0.8.24 What's New is missing: $phrase") }
     }
 

@@ -33,12 +33,12 @@ flowchart TD
 A rating tells the app what you think of a manga. Tracking remembers your chapter progress. Settings can start local tracking when you rate a manga or share progress across confirmed linked versions, but these are separate choices. Linking versions does not mean copying all library data or changing external tracker accounts.
 
 ```mermaid
-flowchart TD
-    Manga["Open a manga"] --> Rating["Rate it to express your preference"]
-    Manga --> Track["Use tracking to remember your progress"]
-    Rating --> Recommendations["Ratings can influence recommendations"]
-    Track --> Reading["Progress helps you resume reading"]
-    Link["Link confirmed versions of the same manga"] --> Settings["Choose whether linked versions share ratings or local progress"]
+flowchart LR
+    Manga["Open a manga"] --> Rating["Rate it to express<br/>your preference"]
+    Manga --> Track["Use tracking to<br/>remember your progress"]
+    Rating --> Recommendations["Ratings can influence<br/>recommendations"]
+    Track --> Reading["Progress helps you<br/>resume reading"]
+    Link["Link confirmed versions<br/>of the same manga"] --> Settings["Choose whether they share<br/>ratings or local progress"]
 ```
 
 ## Compare before changing versions
@@ -74,7 +74,7 @@ See [Backups](backups.md) for sensitive-data options, merge behavior, and restor
 Recommendations do not require a separate Komikku FC recommendation account. That does not make all app activity offline: installed sources receive requests for manga and pages, connected trackers can receive updates, and exports or backups can contain personal reading information.
 
 ```mermaid
-flowchart TD
+flowchart LR
     App["Komikku FC"] --> Local["Stores supported settings, ratings, history, and local progress"]
     App --> Sources["Contacts sources to load manga and pages"]
     App --> Trackers["Can update connected tracker accounts"]
@@ -82,8 +82,12 @@ flowchart TD
     Files --> Check["Check file contents before sharing"]
 ```
 
-**Evaluation mode** hides supported identifying labels on screen only. It does not hide manga titles or artwork, sanitize exported files, or change the source an action uses. Check screenshots and files yourself before sharing them.
+**Name hiding** replaces supported identifying labels on screen only. It does not hide manga titles or artwork, sanitize exported files, or change the source an action uses. Check screenshots and files yourself before sharing them.
 
 ## Read What's New
 
 The in-app **What's New** history explains Komikku FC feature changes separately from Komikku's upstream release information. Open older sections when you want to review previous changes. Reading or acknowledging the history is not the same as downloading or installing an update.
+
+
+<p align="center"><img src="../visual-guide/v0.8.24/whats-new.png" width="260" alt="What's New showing Komikku FC v0.8.24"></p>
+<p align="center"><em>What's New for v0.8.24.</em></p>

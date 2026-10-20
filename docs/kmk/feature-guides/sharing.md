@@ -4,13 +4,19 @@ You can share recommendation lists, export installed extensions, or take screens
 
 ## Hide labels in screenshots
 
-Open **Settings > Advanced** and enable **Evaluation mode**. Supported source, extension, repository, and preference-tag labels become neutral labels. These labels can change after restarting the app.
+Open **Settings > Advanced** and, under **Developer tools**, turn on **Hide technical names in screenshots**. This guide calls it name hiding. Supported source, extension, repository, and preference-tag labels become neutral labels. These labels can change after restarting the app.
+
+<p align="center"><img src="../visual-guide/v0.8.24/hide-names-setting.png" width="360" alt="Hide technical names in screenshots switch turned on"></p>
+<p align="center"><em>Settings, Advanced, Developer tools: Hide technical names in screenshots.</em></p>
+
+<p align="center"><img src="../visual-guide/recommendation-bundle-export.png" width="260" alt="Exporting a recommendation bundle"></p>
+<p align="center"><em>Exporting Top Picks as a recommendation bundle.</em></p>
 
 This changes only supported labels on screen. Your saved manga, source connections, and actions stay the same. Manga titles, artwork, reader pages, ratings, reading history, account names, notifications, and Android controls are not hidden automatically.
 
 ```mermaid
 flowchart TD
-    Settings["Open Settings > Advanced"] --> Enable["Enable Evaluation mode"]
+    Settings["Open Settings > Advanced"] --> Enable["Turn on Hide technical names in screenshots"]
     Enable --> Labels["Supported identifying labels become neutral"]
     Labels --> Check["Check the rest of the screen for private details"]
     Check --> Capture["Take your screenshot"]
@@ -20,7 +26,7 @@ flowchart TD
 
 Use the export action in **For You** or **Top Picks**, then choose where Android should save the file. Someone importing it can review the recommendations; opening the file alone does not add its manga to their library.
 
-**Evaluation mode does not hide information inside exported files.** Recommendation files can contain real manga titles and links, source and extension names, repository names, cover links, descriptions, genres, recommendation scores, and the preference groups that matched. These details can reveal your reading interests, even without account information.
+**Name hiding does not hide information inside exported files.** Recommendation files can contain real manga titles and links, source and extension names, repository names, cover links, descriptions, genres, recommendation scores, and the preference groups that matched. These details can reveal your reading interests, even without account information.
 
 An extension export contains the selected installed extension package, or an archive of selected packages. It is not a backup of your library, ratings, reading history, or tracker accounts. Share only extensions you trust and have permission to distribute.
 
@@ -69,4 +75,4 @@ flowchart TD
     Private -->|No| Share["Send only to your intended recipient"]
 ```
 
-Evaluation mode is a screenshot aid, not a privacy guarantee. Check each image or file yourself.
+Name hiding is a screenshot aid, not a privacy guarantee. Check each image or file yourself.

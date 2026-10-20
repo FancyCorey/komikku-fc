@@ -6,6 +6,12 @@ Extensions connect Komikku FC to manga sources. Install only extensions you trus
 
 Open **Browse > Extensions** for installed and available extension actions. **Sources To Try** also lets you choose suggested extensions to install using your selected installation method.
 
+<p align="center"><img src="../visual-guide/browse-evaluation-mode.png" width="260" alt="Browse with installed sources"></p>
+<p align="center"><em>Installed sources in Browse.</em></p>
+
+<p align="center"><img src="../visual-guide/extension-export-confirmation.png" width="260" alt="Extension export confirmation"></p>
+<p align="center"><em>Exporting an installed extension.</em></p>
+
 ## Installation and trust
 
 Choose an install or update action to get an extension. The extension installer setting controls how it is installed: private installation keeps it within the app, while other supported methods may install it as an Android package or require extra setup. Android confirmation prompts depend on the method and permissions; they do not appear for every operation.
@@ -64,7 +70,7 @@ flowchart TD
     Result -->|Unknown| Check["File is left as it is; check it yourself"]
 ```
 
-Export copies an already-installed extension file without modifying or re-signing it. A multiple-extension archive also includes extension names, versions, package identifiers, signatures, and repository information. It does not contain your library or tracker account data. Evaluation mode does not hide these details inside the export.
+Export copies an already-installed extension file without modifying or re-signing it. A multiple-extension archive also includes extension names, versions, package identifiers, signatures, and repository information. It does not contain your library or tracker account data. Name hiding does not hide these details inside the export.
 
 Public builds keep successful exports. If your build also offers **Keep** or **Remove** after success, that is a separate choice, not automatic deletion. Cleanup targets only the file created by this export. Failed removal leaves the file in place. See [Sharing](sharing.md) for incomplete files, cancellation, and unknown results.
 

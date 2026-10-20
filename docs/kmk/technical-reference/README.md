@@ -6,6 +6,7 @@ This directory contains XML references that help documentation tools and release
 
 - [`feature-reference.xml`](feature-reference.xml) maps each Komikku FC feature to its route, purpose, visible states, privacy rule, documentation page, and primary implementation owner.
 - [`screenshot-manifest-v0.8.23.xml`](screenshot-manifest-v0.8.23.xml) lists the v0.8.23 illustrations (What's New, Local Tracking decimal progress, Local Tracking refresh, and the source-switching chooser) with their SHA-256 hashes. The images were captured from the v0.8.23 public-test build using synthetic test content; the What's New image shows the beginning of scrollable release notes.
+- [`screenshot-manifest-v0.8.24.xml`](screenshot-manifest-v0.8.24.xml) lists the v0.8.24 illustrations of Recommendation Settings, For You, Focus, Source evaluation, tracking, the reader and What's New, with their SHA-256 hashes. They were captured from the v0.8.24 public-test build with source, extension and tag names replaced by placeholders.
 - [`screenshot-manifest.xml`](screenshot-manifest.xml) records the earlier illustrations, the states they show, their privacy checks, and their SHA-256 hashes.
 
 These files are not Android UI dumps and do not contain screen coordinates, device identifiers, account details, manga titles, source names, URLs, or local storage paths. Use the [user guide](../user-guide.md) for instructions, the [feature guides](../feature-guides/README.md) for behavior, and the [visual feature guide](../visual-guide/README.md) for the images themselves.

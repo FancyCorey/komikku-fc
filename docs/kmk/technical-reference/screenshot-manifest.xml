@@ -1,121 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<kmk-screenshot-manifest version="4" hash-algorithm="SHA-256">
-  <artifact id="for-you-evaluation" type="screenshot" path="../visual-guide/for-you-evaluation-mode.png" sha256="FC1ED39C020B5B315B88F7C89350762F752898B8CAEDC94965FC2F834DB4B090">
+<kmk-screenshot-manifest version="5" hash-algorithm="SHA-256">
+  <artifact id="for-you-evaluation" type="screenshot" path="../visual-guide/for-you-evaluation-mode.png" sha256="B373CA12C11089EB25288742DB8F5BB51AE06B716CDE78ED89394ED718436E23">
     <route>browse/for-you</route>
     <state>loaded</state>
     <sanitization>cropped-to-app; evaluation-mode-source-labels; artwork-and-recommendation-context-approved; no-device-status; no-account; no-local-path</sanitization>
   </artifact>
-  <artifact id="browse-evaluation" type="screenshot" path="../visual-guide/browse-evaluation-mode.png" sha256="DB12AEA430C8075E1721DCF49BF88BB74ACD8C0259293E2014938726D477D484">
+  <artifact id="browse-evaluation" type="screenshot" path="../visual-guide/browse-evaluation-mode.png" sha256="6D9B49197EAEC837DA1423F42179577DEE4BD3C77FDB013F28E01D51ADB381BA">
     <route>browse/sources</route>
     <state>loaded</state>
     <sanitization>cropped-to-app; evaluation-mode-source-labels; no-device-status; no-account; no-local-path</sanitization>
   </artifact>
-  <artifact id="recommendation-settings" type="screenshot" path="../visual-guide/recommendation-settings.png" sha256="1C1BBF44001AAE8A83382AFF19DB08ABC2C0045E2A00C8608FB88EE8D9DA489A">
-    <route>settings/recommendations</route>
-    <state>loaded</state>
-    <sanitization>cropped-to-app; no-device-status; no-account; no-title-content; no-local-path</sanitization>
-  </artifact>
-  <artifact id="management-diagnostics" type="screenshot" path="../visual-guide/management-diagnostics.png" sha256="3F34636F48373F5F37EA5FFCCD05B0729D1FB3C0C7B005306979371269874EAB">
-    <route>settings/recommendations/management</route>
-    <state>loaded</state>
-    <sanitization>cropped-to-app; generic-settings-only; no-device-status; no-account; no-title-content; no-local-path</sanitization>
-  </artifact>
-  <artifact id="source-evaluation" type="screenshot" path="../visual-guide/source-evaluation.png" sha256="3D85D1C55E9AFCDBEB4D79428927A833384943E622C5DBA62881CE71DA5D7ED5">
-    <route>settings/recommendations/source-evaluation</route>
-    <state>partial-result</state>
-    <sanitization>cropped-to-app; aggregate-counts-only; no-device-status; no-source-identity; no-raw-error; no-local-path</sanitization>
-  </artifact>
-  <artifact id="sources-to-try-evaluation" type="screenshot" path="../visual-guide/sources-to-try-evaluation-mode.png" sha256="F07CAF194100BB4B18D5C97A7D9C6F7FA032DDA227943621FED4C8F559BDDB94">
+  <artifact id="sources-to-try-evaluation" type="screenshot" path="../visual-guide/sources-to-try-evaluation-mode.png" sha256="336135D5677253DB4D6133D85D81B8CAA7EF14F86C6F7F5BBE574F562DC4ECC2">
     <route>settings/recommendations/sources-to-try</route>
     <state>suggestions</state>
     <sanitization>cropped-to-app; evaluation-mode-source-labels; no-device-status; no-account; no-local-path</sanitization>
   </artifact>
-  <artifact id="not-interested-other-versions" type="screenshot" path="../visual-guide/not-interested-other-versions.png" sha256="A4AFEDD5F25B9ED34518F38A315EC956B3F685424E2C27209FA81A21E31654A7">
+  <artifact id="not-interested-other-versions" type="screenshot" path="../visual-guide/not-interested-other-versions.png" sha256="985C5E28B0C21E811AD295B5D697B08ACB332C4AD5387D0B46B3BDA88A3AAD50">
     <route>manga/detail/other-versions/not-interested</route>
     <state>selected</state>
     <sanitization>cropped-to-app; evaluation-mode-source-labels; artwork-and-title-context-approved; no-device-status; no-account; no-local-path</sanitization>
   </artifact>
-  <artifact id="linked-versions-evaluation" type="screenshot" path="../visual-guide/linked-versions-evaluation-mode.png" sha256="5095DBE7B16E7BC253CCCCA61E9EC4018BF0669CD52214B7F0D1B215725E7FD4">
+  <artifact id="linked-versions-evaluation" type="screenshot" path="../visual-guide/linked-versions-evaluation-mode.png" sha256="5BCB7208CD0916980B7146207512A14BDDD7705F2274566F05575679EEBE634A">
     <route>manga/detail/other-versions</route>
     <state>selected</state>
     <sanitization>cropped-to-app; evaluation-mode-source-labels; artwork-and-title-context-approved; no-device-status; no-account; no-local-path</sanitization>
   </artifact>
-  <artifact id="best-version-chapter-selection" type="screenshot" path="../visual-guide/best-version-chapter-selection.png" sha256="F42B01CF3294DEEEE0BE2B28ED23695B81699961F61732D52A9B37F2DCB6AFF3">
+  <artifact id="best-version-chapter-selection" type="screenshot" path="../visual-guide/best-version-chapter-selection.png" sha256="0A0DE89518C4D805F9993BCF8C613F2DCF8446F9DD15E2BD8F4129C9F593D2F0">
     <route>manga/find-other-versions/best-version</route>
     <state>chapter-selection</state>
     <sanitization>cropped-to-app; evaluation-mode-source-labels; artwork-and-title-context-approved; no-device-status; no-account; no-local-path</sanitization>
   </artifact>
-  <artifact id="best-version-preview-comparison" type="screenshot" path="../visual-guide/best-version-preview-comparison.png" sha256="DF2A3E6842F6EA37A722BF0B1293E1341A04650D72E6101C3783B21FE5237BAC">
+  <artifact id="best-version-preview-comparison" type="screenshot" path="../visual-guide/best-version-preview-comparison.png" sha256="ED774F301EB37FE34884FC80D40EB33C05CF6E34CBAA3DBB38882DB4DC896C3D">
     <route>manga/find-other-versions/best-version/preview</route>
     <state>loaded</state>
     <sanitization>cropped-to-app; evaluation-mode-source-labels; artwork-and-title-context-approved; no-device-status; no-account; no-local-path</sanitization>
   </artifact>
-  <artifact id="top-picks-preference-actions" type="screenshot" path="../visual-guide/top-picks-preference-actions.png" sha256="1A730FE5962485EA81617498C8633325B9211AD5697684CD43C4AD78426FB91E">
+  <artifact id="top-picks-preference-actions" type="screenshot" path="../visual-guide/top-picks-preference-actions.png" sha256="D8C1929711F0677C82D43A8FD298587DE1FF7CC943778D6B254C50CC7068F660">
     <route>browse/for-you/selection</route>
     <state>selected-actions-open</state>
     <sanitization>cropped-to-app; evaluation-mode-source-labels; artwork-and-title-context-approved; no-device-status; no-account; no-local-path</sanitization>
   </artifact>
-  <artifact id="related-manga-results" type="screenshot" path="../visual-guide/related-manga-results.png" sha256="378958D1D26F48B63EB5A78EB344FF017E57120E899AEF581C08B76090F330FD">
+  <artifact id="related-manga-results" type="screenshot" path="../visual-guide/related-manga-results.png" sha256="803CE9D419D5506FD689BD63768044B3DB65A7926160B90374D630FD788885A3">
     <route>manga/related</route>
     <state>loaded-partial</state>
     <sanitization>cropped-to-app; evaluation-mode-source-labels; artwork-and-title-context-approved; no-device-status; no-account; no-local-path</sanitization>
   </artifact>
-  <artifact id="taste-and-filters" type="screenshot" path="../visual-guide/taste-and-filters.png" sha256="AE434262A7EAF419C267A5E920F122A93959C802153B260C17BA74C3A82ECFF6">
-    <route>settings/recommendations/taste-and-filters</route>
-    <state>loaded</state>
-    <sanitization>cropped-to-app; evaluation-mode-tag-labels; aggregate-rating-counts-approved; no-device-status; no-account; no-local-path</sanitization>
-  </artifact>
-  <artifact id="reading-schedule" type="screenshot" path="../visual-guide/reading-schedule.png" sha256="9F4BC5B70453C04BBB0B88CFA15E85E99CEDF0877ADA747521D10E5A8620A939">
+  <artifact id="reading-schedule" type="screenshot" path="../visual-guide/reading-schedule.png" sha256="4EBBD8684BC85F3F59FFD93A65EA9815DEE19225BC606EC8FC4A8519ACB0CA9A">
     <route>settings/reader/reading-schedule</route>
     <state>configured-dialog</state>
     <sanitization>cropped-to-app; generic-schedule-only; no-device-status; no-account; no-title-content; no-local-path</sanitization>
   </artifact>
-  <artifact id="reader-completion-preference" type="screenshot" path="../visual-guide/reader-completion-preference.png" sha256="68661105B7C977A816D8144A5223C3D8C4D5C3290C21F0EA32CCC2F6788EDA68">
+  <artifact id="reader-completion-preference" type="screenshot" path="../visual-guide/reader-completion-preference.png" sha256="12E310739F9D5D3F4D8A9A346E77DE89FEA3BED22E6C51F6718C0EC66FEF4C09">
     <route>reader/final-chapter/completion-preference</route>
     <state>prompt</state>
     <sanitization>cropped-to-app-content; disposable-title-excluded; generic-page-art-approved; no-device-status; no-account; no-source-identity; no-local-path</sanitization>
   </artifact>
-  <artifact id="reader-linked-version-follow-up" type="screenshot" path="../visual-guide/reader-linked-version-follow-up.png" sha256="519209C9B53C72D686426C0D72DB1CB314F1E5C4EC47677EB229EED0F3656599">
+  <artifact id="reader-linked-version-follow-up" type="screenshot" path="../visual-guide/reader-linked-version-follow-up.png" sha256="4EA39C3BEF9C26B40453C58212AF8214A3EE7D8F4F95E3B5307B1E14F9DD79D3">
     <route>reader/final-chapter/linked-version-follow-up</route>
     <state>prompt</state>
     <sanitization>cropped-to-app-content; disposable-title-excluded; generic-page-art-approved; no-device-status; no-account; no-source-identity; no-local-path</sanitization>
   </artifact>
-  <artifact id="extension-export-confirmation" type="screenshot" path="../visual-guide/extension-export-confirmation.png" sha256="0B7624CD1DB2708ECFF28A7B4A018CE515CF4D47302714E00A7DA3387DB8465C">
+  <artifact id="extension-export-confirmation" type="screenshot" path="../visual-guide/extension-export-confirmation.png" sha256="3F4859E61612F61B37DA33DF3B39102C47F7A7DF4F75BD2B1D5A737F77418357">
     <route>extensions/detail/export</route>
     <state>confirmation</state>
     <sanitization>cropped-to-app; no-extension-identity; no-repository-identity; no-device-status; no-account; no-local-path</sanitization>
   </artifact>
-  <artifact id="source-quality-diagnostics" type="screenshot" path="../visual-guide/source-quality-diagnostics.png" sha256="F2308386F005BDDCA0E43D85864E8553FCB766650A0B0BE389EC0589900B1ABD">
+  <artifact id="source-quality-diagnostics" type="screenshot" path="../visual-guide/source-quality-diagnostics.png" sha256="131387C3EA348A271645C163D671354D265A140B82F005237E52638D7B61A538">
     <route>settings/recommendations/management/source-quality-diagnostics</route>
     <state>expanded</state>
     <sanitization>cropped-to-app; evaluation-mode-source-labels; per-source-aggregate-counts-and-metadata-detail; no-device-status; no-account; no-raw-response; no-local-path</sanitization>
   </artifact>
-  <artifact id="ocr-search-downloads" type="screenshot" path="../visual-guide/ocr-search-downloads.png" sha256="4848F3D9E657E2264C71F062749F6CC6E3E35E91FAD74BE084A4EA47EC254E9D">
+  <artifact id="ocr-search-downloads" type="screenshot" path="../visual-guide/ocr-search-downloads.png" sha256="9237C894E6C0A16E22F5D96F0AB81BEA468783908FFAF112EF0FE6AAE13F706C">
     <route>more/ocr-search-downloads</route>
     <state>indexed-summary</state>
     <sanitization>cropped-to-app; aggregate-index-counts-approved; no-device-status; no-source-identity; no-account; no-page-text; no-local-path</sanitization>
   </artifact>
-  <artifact id="action-history-undo" type="screenshot" path="../visual-guide/action-history-undo.png" sha256="D607C60ECCBB0779315F719036A062456FC132841CD2DAD72F7D6DE8B8CE710A">
+  <artifact id="action-history-undo" type="screenshot" path="../visual-guide/action-history-undo.png" sha256="9A96AC8417A4617B711C72CA4988982E8A8B09277DEF03A1009B746685704A08">
     <route>settings/advanced/action-history</route>
     <state>completed-local-action-with-undo</state>
     <sanitization>cropped-to-feature-pane; aggregate-action-label; no-device-status; no-source-identity; no-manga-title; no-account; no-local-path</sanitization>
   </artifact>
-  <artifact id="backup-and-restore" type="screenshot" path="../visual-guide/backup-and-restore.png" sha256="15ABA39EFA9F16ACBE87D2492DBD2B003FDCD597C7C8A1FAA06C89572631617D">
+  <artifact id="backup-and-restore" type="screenshot" path="../visual-guide/backup-and-restore.png" sha256="8E63CC74BA4BE039EC74AC95E0749DFBC86381D852673EE9F23E5DB1C0189EF4">
     <route>settings/data-and-storage</route>
     <state>configured-with-backup-status</state>
     <sanitization>cropped-to-backup-pane; generic-storage-summary; raw-storage-usage-path-excluded; no-device-status; no-account; no-library-content</sanitization>
   </artifact>
-  <artifact id="kmk-whats-new" type="screenshot" path="../visual-guide/kmk-whats-new.png" sha256="D595AE478BBE07697D8CF658E3442BA2A726D5FA1EE8C906A4934CE5169CE10C">
-    <route>settings/about/kmk-whats-new</route>
-    <state>historical-v0.8.20-fix5-group-expanded</state>
-    <sanitization>cropped-to-feature-pane; public-release-history-only; no-device-status; no-account; no-source-identity; no-local-path</sanitization>
-  </artifact>
-  <artifact id="group-recommendations" type="screenshot" path="../visual-guide/group-recommendations.png" sha256="CA56B43079591550B97D26243E1DDE5EC7140D00761FB25053FB681363477210">
+  <artifact id="group-recommendations" type="screenshot" path="../visual-guide/group-recommendations.png" sha256="82DFB2E82EBFCBD54D8A424E5DB116F2CEC24674F090E6C56C49143B2DF3CF06">
     <route>rated/loved/group-recommendations</route>
     <state>loaded-progressive-results</state>
     <sanitization>cropped-to-app; evaluation-mode-source-labels; artwork-title-and-recommendation-context-approved; no-device-status; no-account; no-local-path</sanitization>
   </artifact>
-  <artifact id="recommendation-bundle-export" type="screenshot" path="../visual-guide/recommendation-bundle-export.png" sha256="5913BFC615ECFCD21CE6609BE4E25962A17A452DC10371964E9F9600DFD5FEF6">
+  <artifact id="recommendation-bundle-export" type="screenshot" path="../visual-guide/recommendation-bundle-export.png" sha256="E075C220E419C97DFD9CEA21B72B2A25D3EAA69459510F2148F95249681128BB">
     <route>browse/for-you/more/export-top-picks</route>
     <state>export-action-open</state>
     <sanitization>cropped-to-app; evaluation-mode-source-labels; artwork-title-and-recommendation-context-approved; no-document-picker; no-device-status; no-account; no-local-path</sanitization>

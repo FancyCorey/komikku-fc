@@ -43,6 +43,8 @@ When published, download [Komikku FC v0.8.24](https://github.com/FancyCorey/komi
 - Pulling down to refresh a tracked manga always uploads your newer reading progress. Opening a manga asks your trackers for progress at most once every 15 minutes, and not at all while offline.
 - Versions tracked on the same tracker entry now share their tracker progress and their private or public setting. Versions confirmed as the same manga through another version (A = B and B = C) share one local-tracking record.
 - Titles you rated, added, or read since an earlier For You refresh no longer reappear after Refresh.
+- Closing the Focus picker without Apply keeps your previous focus, and Clear focus always clears it.
+- The local-tracking versions list is titled Confirmed versions and hides source names when name hiding is on.
 - The reading timer screen has larger text and three sections: how long, when to warn you, and what happens when time is up.
 
 ### Added in v0.8.23
@@ -78,7 +80,7 @@ The overview below covers capabilities across releases; it is not a list of feat
 - Recommendations based on rated or linked manga groups, with results appearing source by source, a configurable initial result count, and separate explanations for slow or failed sources.
 - Shareable recommendation bundles and an import review that identifies missing or uncertain matches before you choose what to add to your library.
 - Searchable Recommendation Settings with one entry per feature: Your taste, For You feed, Focus modes, Find new sources, Source evaluation, Speed and data, Linked versions and ratings, and Troubleshooting. Together they cover taste and tags, languages, known or rated manga, minimum chapters, source priority, matching, result limits, discovery, data saving, cache, and maintenance.
-- Focus modes list tags as grouped chips: format, demographic, and access first, then your own tags, then genres grouped by kind. Unrecognized tags are folded under More tags.
+- Focus modes list tags as grouped chips: format, demographic, and presentation and access first, then your own tags, then genres grouped by kind. Unrecognized tags are folded under More tags.
 - Rating-derived tag suggestions, taste diagnostics, source-quality marks and history, Source evaluation continuation and reassessment, an optional scheduled source check, and searchable or sortable Sources to Try.
 - Love, Like, Dislike, and Not Interested as equal preference choices, with searchable collections, bulk actions, linked-version groups, preferred versions, and Action History undo that protects later changes and shows accurate counts for group additions and moves.
 - Rating can include unrated confirmed versions, and group management merges every selected group and exposes the same commands from More and the overflow menu.
@@ -131,7 +133,7 @@ The overview below covers capabilities across releases; it is not a list of feat
 - Local OCR indexing and search for downloaded pages can be cancelled; indexed pages can be removed by manga or chapter. Recognized text is not included in backups or sync.
 - Komikku FC backup and restore support for ratings, recommendation settings, linked manga and preferred versions, source quality, and Local Tracking. Source Evaluation results and run history are not included in exported backups and are not rebuilt by restore. Taste profile and Local tracking are separate backup choices; include both for linked reading progress.
 - Android document-based recommendation and extension export with exact-created-file cleanup, plus supported package install and removal operations.
-- Evaluation Mode, diagnostics with limited identifying details, Action History entries that distinguish supported undo from events you cannot reverse locally, navigation warnings, and recovery information for extension failures. Fatal crashes are not guaranteed to be contained.
+- Name hiding, diagnostics with limited identifying details, Action History entries that distinguish supported undo from events you cannot reverse locally, navigation warnings, and recovery information for extension failures. Fatal crashes are not guaranteed to be contained.
 - A grouped in-app Komikku FC change history that remains separate from Komikku's own release notes.
 
 ## Guides

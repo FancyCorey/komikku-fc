@@ -10,9 +10,9 @@ Use this guide to find and use Komikku FC features. Each section starts with the
 4. Select a manga card to open its details, or select the arrow at the end of a row to see more results from that source.
 5. Use refresh after changing ratings, filters, source order, or discovery settings.
 
-![For You with personalized manga rows, matching tags, and hidden source names](visual-guide/for-you-evaluation-mode.png)
+<p align="center"><img src="visual-guide/for-you-evaluation-mode.png" width="260" alt="For You with personalized manga rows, matching tags, and hidden source names"></p>
 
-*For You in Evaluation Mode. The recommendations stay visible while source names are hidden.*
+*For You with name hiding on. The recommendations stay visible while source names are hidden.*
 
 Before displaying a manga, For You checks your language, blocked genres and tags, source settings, and exclusions. The minimum chapter count hides manga with a known count below your choice. After the rows appear, For You checks the chapter lists of up to 20 shown titles whose count is unknown and removes those below your minimum. A title that could not be checked yet can still appear. Personalized matches remain the majority when enough are available. A smaller selection from each source's recent catalogue can add variety, but it must pass the same checks. Repeatedly shown, untouched cards can move lower without being removed. Library manga and rated or tracked manga are not lowered by that repeat-display rule. See [Recommendation settings](feature-guides/recommendation-settings.md) for the display-history window and filters.
 
@@ -52,9 +52,9 @@ Opening a bundle never adds manga automatically. Invalid structure and unresolve
 
 On a wider screen, the list of entries stays beside the page you opened.
 
-![Recommendation settings before the v0.8.24 rebuild](visual-guide/recommendation-settings.png)
+<p align="center"><img src="visual-guide/v0.8.24/recommendation-settings.png" width="260" alt="Recommendation Settings first page with one entry per feature"></p>
 
-*This screenshot shows the layout used before v0.8.24, which had five sections. The v0.8.24 page lists the eight entries above; the visual guide has not been updated yet.*
+*The first page lists one entry per feature, each with its current value.*
 
 You can configure:
 
@@ -71,9 +71,9 @@ You can configure:
 
 Number settings are checked before use so an invalid saved value does not create an unlimited search or result list.
 
-![Management and diagnostics settings before the v0.8.24 rebuild](visual-guide/management-diagnostics.png)
+<p align="center"><img src="visual-guide/v0.8.24/speed-and-data.png" width="260" alt="Speed and data with Use less data on recommendations"></p>
 
-*Before v0.8.24, maintenance tools sat on one Management and diagnostics page. They are now split between Speed and data, Linked versions and ratings, and Troubleshooting.*
+*Speed and data: data saving, result limits, and discovery history.*
 
 ## Manga preferences
 
@@ -87,14 +87,14 @@ See [Ratings and linked versions](feature-guides/ratings.md) to manage your choi
 4. Use **Clear rating** or **Undo not interested** to return to neutral.
 5. Open the corresponding Loved, Liked, Disliked, or Not Interested collection from the For You menu to review those entries.
 
-When Action History is available in Evaluation Mode, supported changes include the value that existed before the change. You can reverse bulk For You actions from Action History. The short confirmation message shown after a bulk action does not currently include its own **Undo** button.
+When Action History is available with name hiding on, supported changes include the value that existed before the change. You can reverse bulk For You actions from Action History. The short confirmation message shown after a bulk action does not currently include its own **Undo** button.
 
 ## Local tracking
 
 1. Open a manga and select **Trackers**.
 2. In **Local tracking**, select the status, chapter, score, or date to change it. The chapter picker supports scrolling and direct entry, including zero and decimal chapter numbers.
 3. Open or refresh a manga to apply its saved local progress to its available chapters.
-4. To keep confirmed copies from other sources caught up, enable **Share progress across linked versions** in **Settings > Tracking**. Select the local tracker title to review participating versions and turn **Keep reading progress in sync** off for a version you want to keep separate.
+4. To keep confirmed copies from other sources caught up, enable **Share progress across linked versions** in **Settings > Tracking**. Select the local tracker title to open **Confirmed versions** and turn **Keep reading progress in sync** off for a version you want to keep separate.
 
 For example, progress at chapter 15 can mark available chapters through the matching point read on another participating version. A confirmed chapter match takes priority; otherwise the app uses the highest available number at or below 15. This does not download pages, make later chapters unread, or send an outside tracker update. If you mark an earlier chapter unread but leave saved progress farther ahead, loading or refreshing can mark it read again. See [Local tracking](feature-guides/local-tracking.md) for matching limits and separate external-tracker settings.
 
@@ -108,17 +108,17 @@ For example, progress at chapter 15 can mark available chapters through the matc
 6. Use reassessment when your tastes or installed extensions change, or when the app reports stale evaluation data.
 7. To re-check sources on a schedule, turn on **Check automatically** under **Find new sources > Automatic check**.
 
-![Source evaluation showing progress, warnings, and reassessment actions](visual-guide/source-evaluation.png)
+<p align="center"><img src="visual-guide/v0.8.24/source-evaluation.png" width="260" alt="Source evaluation with run options and the reason Start is unavailable"></p>
 
-*Source evaluation can show useful progress and partial results without displaying raw source errors.*
+*Source evaluation shows run options and Start first, and explains when Start is unavailable.*
 
-Source evaluation samples how well a source fits your preferences and separately checks recommendation searches. It is not a complete catalogue inspection or a security guarantee. Copied diagnostics show short error categories and counts, but can include source and extension names when Evaluation Mode is off. Review the text before sharing it. See [Source evaluation](feature-guides/source-evaluation.md) for sorting, resets, the automatic check, and recovery actions.
+Source evaluation samples how well a source fits your preferences and separately checks recommendation searches. It is not a complete catalogue inspection or a security guarantee. Copied diagnostics show short error categories and counts, but can include source and extension names when name hiding is off. Review the text before sharing it. See [Source evaluation](feature-guides/source-evaluation.md) for sorting, resets, the automatic check, and recovery actions.
 
 ## Sources to try
 
 See [Sources to try and source priority](feature-guides/sources.md) for suggestion, filtering, and installation handoff states.
 
-![Sources to try with ranked suggestions and hidden source names](visual-guide/sources-to-try-evaluation-mode.png)
+<p align="center"><img src="visual-guide/sources-to-try-evaluation-mode.png" width="260" alt="Sources to try with ranked suggestions and hidden source names"></p>
 
 *Sort source suggestions by fit, name, or language before choosing an installation action.*
 
@@ -133,7 +133,7 @@ If the installed-source list or a network response is unavailable, the app shows
 
 See [Finding and comparing manga versions](feature-guides/versions.md) for search, linking, comparison, and migration handoff.
 
-![Matching manga versions grouped under hidden source names](visual-guide/linked-versions-evaluation-mode.png)
+<p align="center"><img src="visual-guide/linked-versions-evaluation-mode.png" width="260" alt="Matching manga versions grouped under hidden source names"></p>
 
 *Review the matches found across sources and keep only the versions that belong together.*
 
@@ -189,29 +189,29 @@ The schedule is off by default. If you open the reader during a restricted time,
 
 Enable **Ask for a rating after finishing** under **Recommendation Settings > Linked versions and ratings** if you want the offer after leaving a newly completed final chapter. Rereads and already-rated manga do not trigger it. Choose a rating or skip the prompt. **Ask about other versions** controls the later offer to rate other versions; dismissing that offer keeps the rating you already saved.
 
-![Reader follow-up for applying the preference to matching versions](visual-guide/reader-linked-version-follow-up.png)
+<p align="center"><img src="visual-guide/reader-linked-version-follow-up.png" width="260" alt="Reader follow-up for applying the preference to matching versions"></p>
 
-## Evaluation Mode and Action History
+## Name hiding and Action History
 
-See [Evaluation Mode and exports](feature-guides/sharing.md) for presentation privacy and [Ratings and linked versions](feature-guides/ratings.md) for reversible actions.
+See [Name hiding and exports](feature-guides/sharing.md) for presentation privacy and [Ratings and linked versions](feature-guides/ratings.md) for reversible actions.
 
-Evaluation Mode replaces source names and other identifying labels with neutral text for review and screenshots. It does not change saved data, actions, source requests, or network behavior.
+Name hiding (**Settings > Advanced > Developer tools > Hide technical names in screenshots**) replaces source names and other identifying labels with neutral text for review and screenshots. It does not change saved data, actions, source requests, or network behavior.
 
-![Browse with source names hidden by Evaluation Mode](visual-guide/browse-evaluation-mode.png)
+<p align="center"><img src="visual-guide/browse-evaluation-mode.png" width="260" alt="Browse with source names replaced by name hiding"></p>
 
-*Browse keeps its normal layout and navigation while Evaluation Mode hides source names.*
+*Browse keeps its normal layout and navigation while name hiding replaces source names.*
 
 Open **Action History** to review supported reversible actions. If the same value changed again after the original action, the app refuses to undo it instead of overwriting newer data. Some outside actions, such as updates sent to a tracking service, can be listed but cannot be reversed locally.
 
-![Action History with a completed local preference change and its Undo action](visual-guide/action-history-undo.png)
+<p align="center"><img src="visual-guide/action-history-undo.png" width="360" alt="Action History with a completed local preference change and its Undo action"></p>
 
 ## Export and cleanup
 
-See [Evaluation Mode and exports](feature-guides/sharing.md) for chooser, cancellation, success, and exact-file cleanup states.
+See [Name hiding and exports](feature-guides/sharing.md) for chooser, cancellation, success, and exact-file cleanup states.
 
 Extension, recommendation, and library exports use Android's document picker. Choose the destination through the system UI. Public builds keep successful exports. If cleanup is offered for an incomplete, failed, or cancelled export, Keep or Remove applies only to the document that export created. A removal failure can leave it in place. Cancellation does not mean that an already-created file was removed, and cleanup does not scan unrelated storage.
 
-![For You with the Export Top Picks action open](visual-guide/recommendation-bundle-export.png)
+<p align="center"><img src="visual-guide/recommendation-bundle-export.png" width="260" alt="For You with the Export Top Picks action open"></p>
 
 ## OCR search for downloads
 
@@ -225,7 +225,7 @@ See [Searching downloaded pages with OCR](feature-guides/ocr.md) for indexing, c
 
 Recognition runs on the device. The extracted text stays on the device, is excluded from backup and sync, and can be removed without deleting downloaded pages. It works best with Latin-script text; stylized or non-Latin pages may produce incomplete results.
 
-![OCR Search Downloads with a real indexed summary and indexing controls](visual-guide/ocr-search-downloads.png)
+<p align="center"><img src="visual-guide/ocr-search-downloads.png" width="260" alt="OCR Search Downloads with a real indexed summary and indexing controls"></p>
 
 ## Backup and restore
 
@@ -235,7 +235,7 @@ Backups can include your ratings, recommendation choices, source evaluations, li
 
 OCR text is excluded from backup because it can be regenerated from local downloads. Action History also cannot roll back changes made by outside services or installed packages.
 
-![Data and storage settings with backup, restore, scheduling, and privacy guidance](visual-guide/backup-and-restore.png)
+<p align="center"><img src="visual-guide/backup-and-restore.png" width="260" alt="Data and storage settings with backup, restore, scheduling, and privacy guidance"></p>
 
 ## Extension operations
 
@@ -243,11 +243,11 @@ See [Extension management](feature-guides/extensions.md) for isolation, consent,
 
 Choose the ordinary installer under **Settings > Advanced > Extensions > Extension installer**. Available methods depend on your build; private installation is not offered in public builds. Android prompts depend on the method and permissions. Source Evaluation has a separate installer choice for its checks. A failing extension does not necessarily affect unrelated sources, but a source failure is not a guarantee that every crash will be contained. Extension export uses Android's document picker and acts only on extensions you select. Cleanup is limited to the document created by that export.
 
-![Extension export confirmation explaining the executable package boundary](visual-guide/extension-export-confirmation.png)
+<p align="center"><img src="visual-guide/extension-export-confirmation.png" width="260" alt="Extension export confirmation explaining the executable package boundary"></p>
 
 ## Privacy and troubleshooting
 
-- Turn on Evaluation Mode before sharing screenshots that would otherwise show source names.
+- Turn on name hiding before sharing screenshots that would otherwise show source names.
 - Review screenshots for title preferences, account state, reader pages, notifications, status bars, and document paths.
 - Review a diagnostic summary before publishing it; do not publish raw errors or logs.
 - A source-specific error should be retried or reassessed independently; it should not require clearing app data.

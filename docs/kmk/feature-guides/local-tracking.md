@@ -8,6 +8,9 @@ Local tracking remembers your reading status and chapter progress in Komikku FC.
 2. Find its **Local tracking** entry. If it has no entry yet, rating the manga can start one when **Start tracking when you rate a manga** is enabled.
 3. Select the reading status, chapter number, score, or date to change it.
 
+<p align="center"><img src="../visual-guide/v0.8.24/tracker-sheet.png" width="360" alt="Tracking sheet with the Local tracking entry"></p>
+<p align="center"><em>The Local tracking entry in the tracking sheet. Select the title to see confirmed versions.</em></p>
+
 The chapter picker lets you scroll to a chapter. You can also enter a number, including zero or a decimal such as `4.1`.
 
 ## Keep another source caught up
@@ -19,6 +22,15 @@ When you open or refresh a manga, the app applies its saved local progress to th
 With **Share progress across linked versions** enabled, participating confirmed versions can also catch up with progress recorded on another version. For example, if you read through chapter 15 on one source, opening or refreshing a linked version can mark its chapters through the matching point as read. This does not send an update to an outside tracker account.
 
 If there is no saved chapter match between the sources, the app uses the highest available chapter number that does not exceed your saved progress. With progress at 15 and a list containing chapters 14 and 16 but no 15, it can mark through 14, not 16. Recognized decimal chapters such as 4.1 are included, and multiple translations with the same number can all be marked read through that point.
+
+```mermaid
+flowchart TD
+    Open["Open or refresh a linked version"] --> Sharing{"Progress sharing on,<br/>and this version takes part?"}
+    Sharing -->|No| Own["Only this version's own progress applies"]
+    Sharing -->|Yes| Match{"Saved chapter match for the progress?"}
+    Match -->|Yes| Mark["Mark read through the matched chapter"]
+    Match -->|No| Number["Mark read through the highest chapter number<br/>that does not pass your progress"]
+```
 
 A chapter match you previously confirmed takes priority over comparing numbers. If two sources use different numbering, the matched chapter can therefore have a different number. Unnumbered chapters need an identifiable chapter match; the app cannot reliably guess their place from the title alone. No matching available chapter means there may be nothing to mark yet.
 
@@ -32,11 +44,21 @@ Versions you confirmed as the same manga through another version share one local
 
 When local tracking starts, it begins at the chapter you read most recently on any linked version. If chapters are marked read further than that on any linked version, it starts there instead. Chapters can be marked read by hand, from a backup, or from a tracker.
 
+```mermaid
+flowchart TD
+    A["Version A"] ---|"confirmed"| B["Version B"]
+    B ---|"confirmed"| C["Version C"]
+    C -.-> Record["One shared local-tracking<br/>record for A, B and C"]
+```
+
 ### Stop sharing with one version
 
-1. Select the manga title in its **Local tracking** entry to open **Track other versions**, which lists its confirmed linked versions. Selecting a version there opens its full manga page.
+1. Select the manga title in its **Local tracking** entry to open **Confirmed versions**, which lists its confirmed linked versions. Selecting a version there opens its full manga page. **Track other versions**, below the entry, is a separate search for more versions.
 2. Find the version you want to keep separate.
 3. Clear **Keep reading progress in sync** for that version. Select it again to rejoin progress sharing.
+
+<p align="center"><img src="../visual-guide/v0.8.24/confirmed-versions.png" width="260" alt="Confirmed versions dialog with Keep reading progress in sync for each version"></p>
+<p align="center"><em>Confirmed versions, each with Keep reading progress in sync.</em></p>
 
 This changes progress sharing for that version, not your rating, whether the manga is in your library, or an external tracker account.
 
@@ -66,6 +88,17 @@ Pulling down to refresh a tracked manga always uploads your newer reading progre
 
 Opening a manga asks your trackers for its progress at most once every 15 minutes, and not at all while you are offline. Going back and forth between pages therefore does not repeat the requests, and an offline device does not show a tracker error for each tracker. Pull down to refresh to ask straight away.
 
+```mermaid
+flowchart TD
+    OpenManga["Open a tracked manga"] --> Recent{"Asked in the last<br/>15 minutes, or offline?"}
+    Recent -->|Yes| Skip["Use the saved<br/>tracker progress"]
+    Recent -->|No| Ask["Ask the trackers<br/>for progress"]
+    Pull["Pull down to refresh"] --> Upload["Upload newer<br/>reading progress"]
+    Upload --> Sync{"Sync from connected<br/>trackers on?"}
+    Sync -->|Yes| MarkRead["Tracker progress can<br/>mark chapters read"]
+    Sync -->|No| Keep["Chapters keep their<br/>current marks"]
+```
+
 ### Versions that share a tracker entry
 
 When two versions of a manga are tracked on the same external tracker entry, they share that tracker record. Reading one version, changing it in the tracking sheet, or refreshing it updates the other's tracker progress straight away. Making the entry private or public from one version applies to the other versions too, so a later change from another version does not undo it.
@@ -75,6 +108,15 @@ Only the tracker record is shared. No extra tracker requests are made, and no ch
 When you add an external tracker, your reading progress and, when there is one, your start date are sent in a single request.
 
 **Update progress when marked as read** is a separate choice for manual read marking. It applies when a connected tracker is available and the selected chapters are farther ahead than saved tracker progress. Marking chapters unread does not send a lower chapter through this action.
+
+```mermaid
+flowchart TD
+    Read["Read, edit, or refresh one version"] --> Entry["Its tracker entry is updated"]
+    Entry --> Shared{"Same entry on<br/>another version?"}
+    Shared -->|No| Done["Nothing else changes"]
+    Shared -->|Yes| Other["The other version shows the same progress and private setting"]
+    Other --> Later["Its chapters are marked read when you open it"]
+```
 
 ### Connect an external tracker
 

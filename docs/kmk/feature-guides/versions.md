@@ -22,11 +22,13 @@ The matching screen answers “are these the same manga?” The Best Version scr
 
 ## What the comparison looks like
 
-| Chapter selection | Preview comparison |
-| --- | --- |
-| ![Best Version screen with comparable chapter choices under neutral source labels](../visual-guide/best-version-chapter-selection.png) | ![Best Version screen with loaded page previews under neutral source labels](../visual-guide/best-version-preview-comparison.png) |
+<p align="center"><img src="../visual-guide/best-version-chapter-selection.png" width="300" alt="Best Version screen with comparable chapter choices under neutral source labels"></p>
+<p align="center"><em>Chapter selection: choose comparable chapters from each version.</em></p>
 
-With Evaluation Mode enabled, source names appear as neutral labels. Chapter choices and page previews work the same way.
+<p align="center"><img src="../visual-guide/best-version-preview-comparison.png" width="300" alt="Best Version screen with loaded page previews under neutral source labels"></p>
+<p align="center"><em>Preview comparison: sample pages from each version side by side.</em></p>
+
+With name hiding enabled, source names appear as neutral labels. Chapter choices and page previews work the same way.
 
 ## Read a chapter before choosing
 
@@ -39,9 +41,9 @@ If a candidate's chapter list cannot be loaded, use **Retry** for the failed can
 ## Matching and comparison overview
 
 ```mermaid
-flowchart LR
+flowchart TD
     Origin["Current manga"] --> Search["Find other versions"]
-    Search --> Review["User reviews candidates"]
+    Search --> Review["Review the candidates"]
     Review --> Links["Versions you confirmed are the same manga"]
     Links --> Compare["Chapter and preview comparison"]
     Compare --> Choice{"Which version do you want?"}
@@ -75,14 +77,13 @@ flowchart TD
     Chapter["Select a chapter"] --> Preview["Load small page previews"]
     Preview --> Result{"Did previews load?"}
     Result -->|Yes| Pages["Compare pages or open Full screen"]
-    Result -->|No| Failed["Preview failed: Retry is available"]
+    Result -->|No| Failed["Preview failed: use Retry"]
     Failed -->|Retry| Preview
-    Chapter --> Reader["View in Reader: try the selected chapter"]
+    Pages --> Reader["View in Reader to check the full chapter"]
+    Failed --> Reader
     Reader --> Loaded{"Can the chapter open?"}
-    Loaded -->|Yes| Read["Read with your usual controls"]
-    Read -->|Back| Compare["Return to the comparison screen"]
-    Loaded -->|No| Other["Check the message and try another chapter"]
-    Other --> Chapter
+    Loaded -->|Yes| Back["Read, then press Back<br/>to return to the comparison"]
+    Loaded -->|No| Other["Check the message and choose another chapter"]
 ```
 
 Each linked version tracks its own preview. If one preview fails, the other comparisons remain visible.
@@ -93,10 +94,7 @@ Each linked version tracks its own preview. If one preview fails, the other comp
 flowchart TD
     Choose["Select another version as best"] --> Confirm{"Review the confirmation"}
     Confirm -->|Cancel| Unchanged["Return without changing entries"]
-    Confirm -->|Migrate| Replace["Replace the current entry"]
-    Confirm -->|Copy| Copy["Keep the current entry as well"]
-    Replace --> Execute["Apply migration choices"]
-    Copy --> Execute
+    Confirm -->|Migrate or Copy| Execute["Apply migration choices;<br/>Copy also keeps the current entry"]
     Execute --> Result{"What happened?"}
     Result -->|Migration finished| Open["Open migrated manga"]
     Result -->|A step failed| Failed["Report completed and failed steps"]
@@ -110,6 +108,6 @@ If a migration step fails, check the result before trying again. Some changes ma
 
 ## Data, privacy, and recovery
 
-Back up your library before replacing entries. Supported backups can include the links between versions and your preferred version for a linked group. Small page previews are not downloaded chapters for offline reading. Evaluation Mode hides source names on screen without changing which manga you compare or choose. A backup cannot undo changes made to a connected tracker account.
+Back up your library before replacing entries. Supported backups can include the links between versions and your preferred version for a linked group. Small page previews are not downloaded chapters for offline reading. Name hiding replaces source names on screen without changing which manga you compare or choose. A backup cannot undo changes made to a connected tracker account.
 
 Komikku FC handles finding, linking, and comparing versions. If you choose another version, Komikku then takes you through its normal library-migration steps.
