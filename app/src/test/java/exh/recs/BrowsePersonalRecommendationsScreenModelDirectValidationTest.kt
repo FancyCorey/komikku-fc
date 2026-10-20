@@ -1404,6 +1404,17 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         assertEquals(state.total, state.progress)
     }
 
+    @Test
+    fun `on a slow network where every source is slow none is cut off`() = runTest {
+        // 40 s per search (several searches per source): far slower than any normal connection, under the 3-minute cap
+        val fixture = queueFixture(count = 3, slowSourceIds = setOf(1L, 2L, 3L), slowMillis = 40_000L)
+
+        val state = refreshQueue(fixture)
+
+        assertTrue(state.items.values.all { it is PersonalRecommendationResult.Success }, "every slow source still delivered")
+        assertFalse(state.isLoading)
+    }
+
     // KMK v0.8.24: "Check source" on a failing row tells a source that only fails in For You from a broken one
     @Test
     fun `check source reports works when its Popular page loads and broken when it fails`() = runTest {

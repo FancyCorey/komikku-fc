@@ -1111,6 +1111,8 @@ class BrowsePersonalRecommendationsScreenModel(
                 // starting only after the slowest of 1-5). Concurrency is the same SOURCE_BATCH_SIZE; results are applied
                 // as they arrive; once enough rows are useful the sources that have not finished are cancelled.
                 val slots = Semaphore(SOURCE_BATCH_SIZE)
+                // KMK v0.8.24: adaptive per-source limit for this refresh
+                val sourceDeadline = ForYouSourceDeadlinePolicy()
                 val looserMatchesEnabled = sourcePreferences.recommendationLooserMatches().get()
                 val outcomeChannel = Channel<SourceSearchOutcome>(capacity = candidateSources.size.coerceAtLeast(1))
                 val enoughRows = AtomicBoolean(false)
@@ -1142,10 +1144,11 @@ class BrowsePersonalRecommendationsScreenModel(
                                 stopUnfinishedSources(refreshGeneration, setOf(source.id))
                                 return@withPermit
                             }
-                            // KMK v0.8.24: a source that has not finished within the deadline ends as an error row instead of
-                            // holding the refresh open (on the user's tablet one failing source took 116 s while the other 13
-                            // finished within 6 s). The search runs as a child of this worker so awaiting it can time out
-                            // even when the source is stuck in a call that ignores cancellation; its late result is dropped.
+                            // KMK v0.8.24: a source far slower than the others in this refresh ends as an error row instead
+                            // of holding the refresh open (on the user's tablet one failing source took 116 s while the other
+                            // 13 finished within 6 s). The limit adapts (ForYouSourceDeadlinePolicy), so a slow network is
+                            // not cut off. The search runs as a child of this worker so waiting can stop even when the
+                            // source is stuck in a call that ignores cancellation; its late result is dropped.
                             val running = this@launch.async {
                                 // KMK v0.8.24: one pool per source search, only when looser matches are on
                                 withContext(if (looserMatchesEnabled) LooserCandidatePool() else EmptyCoroutineContext) {
@@ -1173,10 +1176,20 @@ class BrowsePersonalRecommendationsScreenModel(
                                     }
                                 }
                             }
-                            outcomeChannel.send(
-                                withTimeoutOrNull(ForYouSourceDeadline.DEADLINE_MS) { running.await() }
-                                    ?: ForYouSourceDeadline.timedOut(running, source),
-                            )
+                            // Waiting is measured in check intervals, so it follows the coroutine clock (also in tests).
+                            var waitedMs = 0L
+                            var outcome: SourceSearchOutcome? = null
+                            while (outcome == null) {
+                                outcome = withTimeoutOrNull(ForYouSourceDeadlinePolicy.CHECK_INTERVAL_MS) { running.await() }
+                                if (outcome == null) {
+                                    waitedMs += ForYouSourceDeadlinePolicy.CHECK_INTERVAL_MS
+                                    val limitMs = sourceDeadline.limitMs()
+                                    if (waitedMs >= limitMs) outcome = ForYouSourceDeadline.timedOut(running, source, limitMs)
+                                } else {
+                                    sourceDeadline.recordFinished(waitedMs)
+                                }
+                            }
+                            outcomeChannel.send(outcome)
                         }
                     }
                 }
@@ -3640,15 +3653,17 @@ class BrowsePersonalRecommendationsScreenModel(
     // KMK <--
 
     // KMK --> v0.8.24
+    /** A source past its limit (see [ForYouSourceDeadlinePolicy]) ends as an error row; its late result is dropped. */
     private object ForYouSourceDeadline {
-        /** Provisional: most sources finish in a few seconds; this only cuts off the stuck or very slow ones. */
-        const val DEADLINE_MS = 30_000L
-
-        fun timedOut(running: kotlinx.coroutines.Deferred<SourceSearchOutcome>, source: Source): SourceSearchOutcome {
+        fun timedOut(
+            running: kotlinx.coroutines.Deferred<SourceSearchOutcome>,
+            source: Source,
+            limitMs: Long,
+        ): SourceSearchOutcome {
             running.cancel()
             return SourceSearchOutcome(
                 source = source,
-                result = PersonalRecommendationResult.Error(ForYouSourceTimeoutException(DEADLINE_MS / 1000)),
+                result = PersonalRecommendationResult.Error(ForYouSourceTimeoutException(limitMs / 1000)),
                 successfulStrategy = null,
                 status = RecommendationSourceRunStatus(source.id, RecommendationSourceStatus.Error),
                 isUseful = false,
