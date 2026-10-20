@@ -50,6 +50,7 @@ object KmkRecsReleaseNotes {
 
         ##### Fix
 
+        - **Downloads:** One failed image or page list no longer makes the rest of a large download from that source fail. After any ordinary error, such as a timeout or a missing page, Komikku FC used to refuse that source for a minute without trying it, so queued chapters failed one after another and retries could not get through. Now only a broken or incompatible extension is held back.
         - **Hide manga you already know:** Titles remembered from earlier For You refreshes are now checked against what you have since rated, added or read, so a title you liked no longer reappears after Refresh.
         - **Rating linked versions:** Group ratings now save for linked versions you have not opened yet.
         - **Tracker progress on other versions:** When two versions of a manga are tracked on the same tracker entry, reading one, changing it in the tracking sheet, or refreshing it now updates the other's tracker progress straight away. Only the tracker record is shared: no extra tracker requests are made and no chapters are marked on other sources until you open them. With "Track linked versions together" on, linking a tracker entry to one version also links it to the other confirmed versions that do not have one yet.

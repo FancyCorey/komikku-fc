@@ -569,6 +569,31 @@ class SourceRuntimeTest {
         assertEquals(SourceRuntimeOperation.Popular, ex.lastOperation)
     }
 
+    // KMK v0.8.24: one failed image or page list must not refuse the source's next calls (large downloads failed
+    // chapter after chapter, and the downloader's own retries were refused without touching the network)
+    @Test
+    fun `an ordinary failure is recorded but the next call still reaches the source`() = runTest {
+        val source = FakeSource(811L, "Flaky Image Host")
+        SourceRuntimeFailureRegistry.clear(811L)
+        listOf<Throwable>(
+            java.io.IOException("connection reset"),
+            java.net.SocketTimeoutException("timeout"),
+            IllegalStateException("HTTP error 404"),
+        ).forEach { failure ->
+            SourceRuntime.run<Unit>(source, SourceRuntimeOperation.Image) { throw failure }
+            assertTrue(SourceRuntimeFailureRegistry.isTemporarilyUnavailable(811L), "still recorded for diagnostics")
+
+            var touched = false
+            val result = SourceRuntime.run(source, SourceRuntimeOperation.Image) {
+                touched = true
+                "image"
+            }
+            assertTrue(touched, "the next call after ${failure::class.simpleName} must reach the source")
+            assertEquals("image", result.getOrNull())
+        }
+        SourceRuntimeFailureRegistry.clear(811L)
+    }
+
     @Test
     fun `SourceRuntime runBlockingSourceCall suppresses a temporarily unavailable source before touching its block`() {
         val source = FakeSource(802L, "Recently Broken Source (blocking)")

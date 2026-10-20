@@ -314,7 +314,7 @@ class KmkRecsReleaseNotesTest {
             "**Tracker refresh:**", "even with \"Sync reading progress from connected trackers\" off", "**Tracker retries:**",
             // For You scheduling and the Hide-known fix
             "**For You source scheduling:**", "instead of waiting for a whole group of five sources",
-            "**Hide manga you already know:**", "no longer reappears after Refresh",
+            "**Downloads:**", "rest of a large download", "**Hide manga you already know:**", "no longer reappears after Refresh",
             "**Komikku updates:**", "**Reading timer:**", "**Local tracking across linked versions:**", "A = B and B = C",
             "**Reading from an alternate source:**", "returns to the reader instead of your library", "**Linked versions list:**",
             "**Alternate sources in Reader settings:**", "Continue from another source",

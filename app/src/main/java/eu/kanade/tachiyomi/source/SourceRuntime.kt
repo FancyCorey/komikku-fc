@@ -188,6 +188,11 @@ object SourceRuntime {
     fun suppressionFailureOrNull(source: Source): SourceTemporarilyUnavailableException? {
         if (!SourceRuntimeFailureRegistry.isTemporarilyUnavailable(source.id)) return null
         val entry = SourceRuntimeFailureRegistry.get(source.id)
+        // KMK v0.8.24: only a broken or incompatible extension (a LinkageError, which can crash again when touched) is
+        // refused. An ordinary failure -- one image timing out, a 404, a network blip -- used to refuse every later call
+        // to the source for a minute without trying it, so one bad page made large downloads fail chapter after chapter
+        // and blocked the downloader's own retries and the reader. Those failures are still recorded for diagnostics.
+        if (entry?.kind != SourceRuntimeFailureKind.ExtensionIncompatible) return null
         return SourceTemporarilyUnavailableException(
             sourceId = source.id,
             sourceName = source.name,
