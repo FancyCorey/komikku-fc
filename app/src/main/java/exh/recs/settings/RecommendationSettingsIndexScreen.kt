@@ -16,17 +16,21 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -48,6 +52,7 @@ import tachiyomi.presentation.core.components.TwoPanelBox
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
+import tachiyomi.presentation.core.util.secondaryItemAlpha
 import eu.kanade.presentation.util.Screen as KomikkuScreen
 
 // KMK v0.8.24 -->
@@ -178,6 +183,8 @@ object RecommendationSettingsIndexScreen : KomikkuScreen() {
             },
             containerColor = if (twoPane) getPalerSurface() else MaterialTheme.colorScheme.surface,
         ) { contentPadding ->
+            // KMK v0.8.24: the open page (tablet) or the page opened last (phone) keeps its filled icon
+            var lastOpened by rememberSaveable { mutableStateOf<String?>(null) }
             val selected = if (twoPane) {
                 navigator.items.firstOrNull()?.let { root ->
                     RecommendationSettingsQuickAccessDestination.entries.firstOrNull { it.matches(root) }
@@ -206,8 +213,10 @@ object RecommendationSettingsIndexScreen : KomikkuScreen() {
                         HubRow(
                             destination = destination,
                             summary = summaries.getValue(destination),
+                            selected = isSelected || (!twoPane && destination.name == lastOpened),
                             modifier = rowModifier,
                             onClick = {
+                                lastOpened = destination.name
                                 if (twoPane) {
                                     navigator.replaceAll(destination.toScreen())
                                 } else {
@@ -222,16 +231,30 @@ object RecommendationSettingsIndexScreen : KomikkuScreen() {
     }
 }
 
-/** A settings-list row whose icon fills in while it is pressed (outlined at rest). Ripple comes from the row itself. */
+/**
+ * A settings-list row whose icon fills in when it is pressed and stays filled while it is the selected page (KMK v0.8.24).
+ * The change is animated: the outline cross-fades into the filled icon, the colour follows, and the icon pops slightly.
+ */
 @Composable
 private fun HubRow(
     destination: RecommendationSettingsQuickAccessDestination,
     summary: String,
+    selected: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     var pressed by remember { mutableStateOf(false) }
-    TextPreferenceWidget(
+    val filled = pressed || selected
+    val tint by androidx.compose.animation.animateColorAsState(
+        targetValue = if (filled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        label = "hubIconTint",
+    )
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (pressed) 1.15f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.5f),
+        label = "hubIconScale",
+    )
+    eu.kanade.presentation.more.settings.widget.BasePreferenceWidget(
         modifier = modifier.pointerInput(Unit) {
             // Observe only (never consumes), so the row's own click and ripple still work.
             awaitEachGesture {
@@ -242,9 +265,30 @@ private fun HubRow(
             }
         },
         title = stringResource(destination.hubTitleRes()),
-        subtitle = summary,
-        icon = destination.icon(filled = pressed),
-        onPreferenceClick = onClick,
+        subcomponent = {
+            Text(
+                text = summary,
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .secondaryItemAlpha(),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 10,
+            )
+        },
+        icon = {
+            androidx.compose.animation.Crossfade(targetState = filled, label = "hubIconFill") { isFilled ->
+                Icon(
+                    imageVector = destination.icon(filled = isFilled),
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    },
+                )
+            }
+        },
+        onClick = onClick,
     )
 }
 
