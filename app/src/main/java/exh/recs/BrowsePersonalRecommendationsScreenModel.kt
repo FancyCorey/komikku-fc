@@ -846,17 +846,20 @@ class BrowsePersonalRecommendationsScreenModel(
         // Reuse the same aliasMap/groupToAliases
         // already fetched above (no second GetTagAliases call) to build the Focus feature's own
         // alias map + known-group universe -- see buildFocusAliasMap/buildFocusKnownGroups.
-        val focusAliasMap = buildFocusAliasMap(aliasMap)
+        val baseFocusAliasMap = buildFocusAliasMap(aliasMap)
         // KMK C3 (HR-2026-08-26-FOCUS-CRITERION-CATALOG-COMPLETENESS, E4.3): third union input --
         // genre-like labels extracted from eligible sources' own FilterList, accumulated across this
         // process's lifetime (not just this load) via SourceGenreCatalogCache. See its own doc for
         // why this makes the catalog a real source-filter-style contract instead of only loaded-
         // result genres plus the alias/synonym systems.
-        val focusKnownGroups = buildFocusKnownGroups(
+        val baseFocusKnownGroups = buildFocusKnownGroups(
             groupToAliases,
             exh.recs.sources.SourceGenreCatalogCache.snapshot(),
-            focusAliasMap,
+            baseFocusAliasMap,
         )
+        // KMK v0.8.24: plural spellings of a tag that the user's sources show in both forms are one Focus tag
+        val focusAliasMap = FocusPickerLayout.withPluralMerges(baseFocusAliasMap, baseFocusKnownGroups)
+        val focusKnownGroups = baseFocusKnownGroups.map { canonicalFocusGroup(it, focusAliasMap) }.toSet()
 
         val recommendationLanguages = sourcePreferences.recommendationSourceLanguages().get()
         val storedOrder = RecommendationSourceOrdering.parse(sourcePreferences.recommendationSourceOrder().get())
@@ -1006,6 +1009,8 @@ class BrowsePersonalRecommendationsScreenModel(
                     resultGeneration = refreshGeneration,
                     focusAliasMap = focusAliasMap,
                     focusKnownGroups = focusKnownGroups,
+                    // KMK v0.8.24
+                    focusPreferredGroups = FocusPickerLayout.preferredGroups(scoringProfile, focusAliasMap),
                 )
             } else {
                 it.copy(
@@ -1022,6 +1027,8 @@ class BrowsePersonalRecommendationsScreenModel(
                     resultGeneration = refreshGeneration,
                     focusAliasMap = focusAliasMap,
                     focusKnownGroups = focusKnownGroups,
+                    // KMK v0.8.24
+                    focusPreferredGroups = FocusPickerLayout.preferredGroups(scoringProfile, focusAliasMap),
                 )
             }
         }
@@ -4035,6 +4042,8 @@ class BrowsePersonalRecommendationsScreenModel(
         // actually exercised in Top Picks and every source lane, not just in isolated policy tests.
         val focusAliasMap: Map<String, String> = emptyMap(),
         val focusKnownGroups: Set<String> = emptySet(),
+        // KMK v0.8.24: the user's strongest liked tags, listed first in Focus
+        val focusPreferredGroups: Set<String> = emptySet(),
     ) {
         val progress: Int = items.count { it.value !is PersonalRecommendationResult.Loading }
         val total: Int = items.size

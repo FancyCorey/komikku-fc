@@ -1911,4 +1911,9 @@ You can choose when this is offered in Settings, Reader, Alternate sources.</str
     <string name="rec_source_failure_open_site">Open site</string>
     <string name="rec_source_failure_stop_using">Don\'t use in For You</string>
     <string name="rec_source_failure_stopped">%1$s won\'t be used in For You. Turn it back on in Recommendation Settings, For You feed.</string>
+    <!-- KMK v0.8.24 Focus picker sections -->
+    <string name="rec_focus_your_tags">Your tags</string>
+    <string name="rec_focus_common_tags">In For You now</string>
+    <string name="rec_focus_more_tags">More tags (%1$d)</string>
+    <string name="rec_focus_chip_hint">Tap a tag to include it, again to exclude it, and once more to clear it.</string>
 </resources>

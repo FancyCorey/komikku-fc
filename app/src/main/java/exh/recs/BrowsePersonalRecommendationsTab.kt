@@ -115,23 +115,6 @@ import uy.kohesive.injekt.api.get
 import java.util.Locale
 import tachiyomi.core.common.i18n.stringResource as contextStringResource
 
-// KMK --> EC-04 2026-09-01: typed focus dimensions (Genre/Demographic slice). Presentation-only
-// view of the domain-level [FocusDimension] classification (see RecommendationFocusPolicy.kt) --
-// this only decides how the existing flat focusOptions list is grouped/labelled in the LazyColumn
-// below; it changes no matching, persistence, or alias behavior.
-private sealed interface FocusOptionRow {
-    data class SectionHeader(val dimension: FocusDimension) : FocusOptionRow
-    data class Group(val group: String) : FocusOptionRow
-}
-
-private fun FocusDimension.labelRes() = when (this) {
-    FocusDimension.FORMAT -> KMR.strings.rec_for_you_focus_dimension_format
-    FocusDimension.DEMOGRAPHIC -> KMR.strings.rec_for_you_focus_dimension_demographic
-    FocusDimension.PRESENTATION_ACCESS -> KMR.strings.rec_for_you_focus_dimension_presentation_access
-    FocusDimension.GENRE -> KMR.strings.rec_for_you_focus_dimension_genre
-}
-// KMK <--
-
 @Composable
 fun Screen.personalRecommendationsTab(): TabContent {
     val navigator = LocalNavigator.currentOrThrow
@@ -224,32 +207,18 @@ fun Screen.personalRecommendationsTab(): TabContent {
     val visibleFocusOptions = remember(focusOptions, focusSearchQuery, state.focusAliasMap) {
         filterFocusGroups(focusOptions, focusSearchQuery, state.focusAliasMap)
     }
-    // KMK --> EC-04 2026-09-01: typed focus dimensions. Unknown labels remain in Genre, so the
-    // sections when a Demographic-classified group is actually present -- most sources never
-    // surface one, so this stays byte-identical to the pre-existing flat list for them (no header,
-    // no visual change) rather than disclosing a dimension the current data can't support.
-    val focusOptionRows: List<FocusOptionRow> = remember(visibleFocusOptions) {
-        val grouped = visibleFocusOptions.groupBy(::classifyFocusDimension)
-        val orderedDimensions = listOf(
-            FocusDimension.FORMAT,
-            FocusDimension.DEMOGRAPHIC,
-            FocusDimension.PRESENTATION_ACCESS,
-            FocusDimension.GENRE,
-        )
-        if (grouped.keys.all { it == FocusDimension.GENRE }) {
-            grouped[FocusDimension.GENRE].orEmpty().map { FocusOptionRow.Group(it) }
-        } else {
-            buildList {
-                orderedDimensions.forEach { dimension ->
-                    grouped[dimension]?.takeIf { it.isNotEmpty() }?.let { groups ->
-                        add(FocusOptionRow.SectionHeader(dimension))
-                        groups.forEach { add(FocusOptionRow.Group(it)) }
-                    }
-                }
-            }
-        }
+    // KMK v0.8.24: tags in what For You is showing now, and the picker sections built from them
+    val focusShownNow = remember(state.items, state.focusAliasMap) {
+        state.items.values.asSequence()
+            .filterIsInstance<PersonalRecommendationResult.Success>()
+            .flatMap { it.result.asSequence() }
+            .flatMap { it.manga.genre.orEmpty().asSequence() }
+            .map { canonicalFocusGroup(it, state.focusAliasMap) }
+            .toSet()
     }
-    // KMK <--
+    val focusLayout = remember(visibleFocusOptions, state.focusPreferredGroups, focusShownNow, focusInclude, focusExclude) {
+        FocusPickerLayout.build(visibleFocusOptions, state.focusPreferredGroups, focusShownNow, focusInclude + focusExclude)
+    }
     // KMK v0.8.21-fix2: AUG-14 slice 3 UI -- saved For You focus modes.
     // KMK v0.8.21-fix4: R4/AUG-14 completion -- rename/edit/delete/reorder and a truthful
     // malformed-preset indicator, previously deferred (see Plan D's "Saved custom modes" frozen
@@ -275,6 +244,13 @@ fun Screen.personalRecommendationsTab(): TabContent {
                         label = { Text(stringResource(KMR.strings.rec_for_you_focus_search_hint)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
+                    )
+                    // KMK v0.8.24
+                    Text(
+                        text = stringResource(KMR.strings.rec_focus_chip_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
                     )
                     if (savedFocusModes.isNotEmpty()) {
                         Text(
@@ -381,60 +357,19 @@ fun Screen.personalRecommendationsTab(): TabContent {
                     } else if (visibleFocusOptions.isEmpty()) {
                         Text(stringResource(KMR.strings.rec_for_you_focus_search_empty))
                     } else {
-                        LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
-                            items(focusOptionRows.size) { index ->
-                                when (val row = focusOptionRows[index]) {
-                                    is FocusOptionRow.SectionHeader -> {
-                                        Text(
-                                            text = stringResource(row.dimension.labelRes()),
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-                                        )
-                                    }
-                                    is FocusOptionRow.Group -> {
-                                        val group = row.group
-                                        val isIncluded = group in focusInclude
-                                        val isExcluded = group in focusExclude
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = group.toFocusDisplayLabel(),
-                                                modifier = Modifier.weight(1f),
-                                            )
-                                            // KMK v0.8.21-fix5: R4/AUG-14 completion -- Include/Exclude
-                                            // are mutually exclusive per group; selecting one clears
-                                            // the other.
-                                            IconToggleButton(
-                                                checked = isIncluded,
-                                                onCheckedChange = { checked ->
-                                                    focusInclude = if (checked) focusInclude + group else focusInclude - group
-                                                    if (checked) focusExclude = focusExclude - group
-                                                },
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Outlined.Add,
-                                                    contentDescription = stringResource(KMR.strings.rec_for_you_focus_include),
-                                                    tint = if (isIncluded) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                                                )
-                                            }
-                                            IconToggleButton(
-                                                checked = isExcluded,
-                                                onCheckedChange = { checked ->
-                                                    focusExclude = if (checked) focusExclude + group else focusExclude - group
-                                                    if (checked) focusInclude = focusInclude - group
-                                                },
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Outlined.Remove,
-                                                    contentDescription = stringResource(KMR.strings.rec_for_you_focus_exclude),
-                                                    tint = if (isExcluded) MaterialTheme.colorScheme.error else LocalContentColor.current,
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        // KMK v0.8.24: tag chips in sections (see FocusTagPicker) instead of one row per tag
+                        FocusTagPicker(
+                            layout = focusLayout,
+                            include = focusInclude,
+                            exclude = focusExclude,
+                            searching = focusSearchQuery.isNotBlank(),
+                            onCycle = { group ->
+                                val (newInclude, newExclude) = cycleFocusGroup(group, focusInclude, focusExclude)
+                                focusInclude = newInclude
+                                focusExclude = newExclude
+                            },
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
                         // KMK v0.8.21-fix5: R4/AUG-14 completion -- Match All vs Match Any governs
                         // only focusInclude, and only matters with more than one include criterion;
                         // Match All is the default. Excludes always work as "match none", regardless.
