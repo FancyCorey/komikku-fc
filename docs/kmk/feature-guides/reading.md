@@ -4,7 +4,7 @@ Read chapters, switch between sources, manage optional reading times, and find y
 
 ## Where you find it
 
-Open the timer from the reader's timer action. Manage the reading schedule from that dialog or **Settings > Reader > Reading schedule**. Completion-rating options are under **Recommendation settings > Versions and quality**; the rating offer appears after leaving the final available chapter when enabled. **Jump to last read** appears in the manga toolbar when the chapter list contains a valid read-position target.
+Open the timer from the reader's timer action. Manage the reading schedule from that dialog or **Settings > Reader > Reading schedule**. Completion-rating options are under **Recommendation Settings > Linked versions and ratings**; the rating offer appears after leaving the final available chapter when enabled. **Jump to last read** appears in the manga toolbar when the chapter list contains a valid read-position target.
 
 ## What changes and what stays familiar
 
@@ -14,7 +14,13 @@ The schedule entry in the reader opens the same choices found under **Settings >
 
 **Reading schedule** lets you choose days and time windows, then either block reading during those windows or allow reading only during them. Enable the schedule to apply it. It affects this app's reader only, not other apps. If an allowed period ends while you are already reading, you can finish that chapter; a new chapter waits until reading is allowed again.
 
-The **manual timer** is separate from the schedule. It counts active reading time rather than time spent with the app in the background. Its finish-current-chapter and extra-chapter choices control what happens when the timer runs out. The extra allowance, when enabled, is for one next chapter reached by normal forward reading, not arbitrary chapter-list jumps. A timer allowance does not override a schedule restriction.
+The **manual timer** is separate from the schedule. It counts active reading time rather than time spent with the app in the background. The timer dialog has three sections:
+
+- **How long**: pick a preset or a custom number of minutes.
+- **Warn me before time is up**: choose the warnings.
+- **When time is up**: choose **Let me finish the current chapter**, and optionally **Allow one extra chapter after that**.
+
+These choices apply from the moment you start the timer. The extra allowance, when enabled, is for one next chapter reached by normal forward reading, not arbitrary chapter-list jumps. A timer allowance does not override a schedule restriction.
 
 ## Page layout and controls
 
@@ -169,7 +175,7 @@ The additional reader-options section under **Settings > Reader** contains these
 
 ## Completion and rating behavior
 
-Under **Recommendation settings > Versions and quality**, **Ask for a rating after finishing** controls the completion offer. **Ask about other versions** controls the later offer to rate other versions after saving a rating. Neither setting chooses a rating for you.
+Under **Recommendation Settings > Linked versions and ratings**, **Ask for a rating after finishing** controls the completion offer. **Ask about other versions** controls the later offer to rate other versions after saving a rating. Neither setting chooses a rating for you.
 
 After the final available chapter, the optional completion prompt is offered when the reader is not schedule-blocked and you are in a regular reader session, not an active alternate-source session. Choose **Not now** or press Back to leave without changing your rating. Accepting the offer lets you choose Love, Like, Dislike, or Not interested. After you save a rating, the app can offer to help you rate other versions when **Ask about other versions** is enabled, including versions it finds when no linked group is already confirmed. Your rating changes only when you select one. If you then decline the offer to rate other versions, the rating you already saved stays in place; those other versions are not rated by that dismissal.
 
@@ -181,10 +187,23 @@ On manga with long chapter lists, **Jump to last read** scrolls to your saved re
 
 An alternate source is another source offering the same manga. The **primary source** here means the one you started reading from, not the version of the app. Switching sources does not automatically add the other manga to your library.
 
-1. Open the reader's alternate-source chooser and select an available manga. If the app asks whether it is the same manga, check the title and confirm only when it is correct. Use **Search installed sources** or **Global search** if you need to find another version.
+### Choose when it is offered
+
+Open **Settings > Reader > Alternate sources**. The section explains how reading from another source works and has two switches, both on by default:
+
+| Setting | When the button appears |
+| --- | --- |
+| Offer when chapters are missing | Chapters are skipped between this chapter and the next. |
+| Offer when this source has no next chapter | You reach the last chapter this source has. |
+
+When either applies, **Continue from another source** appears at the end of the chapter, with a one-line note that you can come back from the top bar. The first time you use it, a short explanation, **Read from another source?**, says that you pick the source and the chapter and that **Return to primary source** in the top bar brings you back. Choose **Continue** to go on, or **Not now** to stay where you are.
+
+### Switch to another source
+
+1. Open the reader's alternate-source chooser and select an available manga. If the app asks whether it is the same manga, check the title and confirm only when it is correct. The chooser first shows the source you are currently reading from. Use **Search more sources** to look in more of your sources, or **Search another title** if the manga is listed under a different name. Pressing Back in that search returns you to the reader.
 2. In **Choose the matching chapter**, review the suggested chapter. The first chapter with the same number is selected when available. Otherwise, the closest available number is suggested; if two are equally close, the lower number wins. For example, if you are on chapter 5 and the other source has only 4 and 6, it suggests 4.
-3. Check the chapter name and translation-group label when supplied by the source. Several translations may have the same chapter number. You can select a different entry before confirming.
-4. While that source pair is active, use **Switch source** in the reader to choose a chapter from the other source. After returning to the primary source, the same action lets you switch back to the alternate source; returning is not the end of the pair.
+3. Check the chapter name and translation-group label when supplied by the source. Several translations may have the same chapter number. You can select a different entry, then choose **Read this chapter**, or **Stay on this source** to cancel.
+4. While you read from the other source, **Return to primary source** in the top bar brings you back. While that source pair is active, use **Switch source** in the reader to choose a chapter from the other source. After returning to the primary source, the same action lets you switch back to the alternate source; returning is not the end of the pair.
 
 The suggested chapter number is not a guarantee that the contents match. Some sources split chapters or start numbering at a different point. If the app warns that the match is uncertain, check the pages before continuing. **Correct chapter mapping** lets you change which chapters correspond; **This chapter is not the match** keeps the current chapter open while you choose another match. If you have read ahead and the other source lacks that chapter, choose a suitable chapter from its list instead.
 

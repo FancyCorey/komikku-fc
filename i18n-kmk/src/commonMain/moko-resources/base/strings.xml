@@ -1848,7 +1848,7 @@
     <string name="rec_auto_recheck_custom_days">Days (1 to 90)</string>
     <string name="rec_auto_recheck_dialog_hint">Shorter intervals use more data. Every 14 days suits most libraries.</string>
     <string name="rec_hub_issues_row_title">Sources with problems</string>
-    <string name="rec_hub_issues_row_summary">Open Check my sources to retry, update or turn them off</string>
+    <string name="rec_hub_issues_row_summary">Open Source evaluation to retry, update or turn them off</string>
     <string name="rec_hub_no_issues_title">No issues found</string>
     <string name="rec_hub_no_issues_summary">Sources that fail to load will be listed here</string>
     <string name="rec_hub_troubleshooting_summary_issues">Needs attention: %1$s</string>

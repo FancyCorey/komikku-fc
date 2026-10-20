@@ -10,7 +10,7 @@ Komikku FC is an independent Android manga reader based on Komikku. It keeps the
 - [Local tracking](local-tracking.md): remember chapter progress without a tracker account.
 - [Versions](versions.md): compare the same manga from different sources.
 - [Reading](reading.md): use reader controls and switch between sources.
-- [Source Evaluation](source-evaluation.md): check source fit and search compatibility.
+- [Source evaluation](source-evaluation.md): check source fit and search compatibility, by hand or on a schedule.
 - [Sources](sources.md) and [Extensions](extensions.md): find and manage places to read.
 - [Page-text search](ocr.md): search text extracted from manga pages.
 - [Backups](backups.md): save and restore supported app data.

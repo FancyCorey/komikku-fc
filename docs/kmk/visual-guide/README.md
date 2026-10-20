@@ -1,5 +1,7 @@
 # Visual guide to Komikku FC
 
+These screenshots were taken before v0.8.24. In particular, the Recommendation Settings, Taste and filters, Management and diagnostics, and Source Evaluation images show the earlier layout. In v0.8.24 these are the Your taste, Speed and data, Linked versions and ratings, Troubleshooting, and Source evaluation pages described in [Recommendation settings](../feature-guides/recommendation-settings.md).
+
 This tour follows Komikku FC's main workflows across supported screen sizes. Each section explains what the screen is for, what its controls do, and where to find more detailed steps. Larger screens may show related navigation beside the current page; smaller screens may place the same controls behind a menu or on a separate page.
 
 ## For You
@@ -52,7 +54,7 @@ Evaluation Mode replaces source, extension, and selected taste labels with neutr
 
 ![Recommendation settings page divided into clear feature sections](recommendation-settings.png)
 
-The settings page groups related controls into For You sources, taste and filters, source evaluation, sources to try, and management and diagnostics. Each row leads to a focused settings page.
+In the screenshot, the settings page groups related controls into For You sources, taste and filters, source evaluation, sources to try, and management and diagnostics. Since v0.8.24, it lists one entry per feature instead: Your taste, For You feed, Focus modes, Find new sources, Source evaluation, Speed and data, Linked versions and ratings, and Troubleshooting. Each row leads to a focused settings page.
 
 ## Taste and filters
 

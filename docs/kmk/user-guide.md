@@ -14,9 +14,11 @@ Use this guide to find and use Komikku FC features. Each section starts with the
 
 *For You in Evaluation Mode. The recommendations stay visible while source names are hidden.*
 
-Before displaying a manga, For You checks your language, blocked genres and tags, source settings, and exclusions. The minimum chapter count hides manga with a known count below your choice; manga with an unknown count can still appear. Personalized matches remain the majority when enough are available. A smaller selection from each source's recent catalogue can add variety, but it must pass the same checks. Repeatedly shown, untouched cards can move lower without being removed. Library manga and rated or tracked manga are not lowered by that repeat-display rule. See [Recommendation settings](feature-guides/recommendation-settings.md) for the display-history window and filters.
+Before displaying a manga, For You checks your language, blocked genres and tags, source settings, and exclusions. The minimum chapter count hides manga with a known count below your choice. After the rows appear, For You checks the chapter lists of up to 20 shown titles whose count is unknown and removes those below your minimum. A title that could not be checked yet can still appear. Personalized matches remain the majority when enough are available. A smaller selection from each source's recent catalogue can add variety, but it must pass the same checks. Repeatedly shown, untouched cards can move lower without being removed. Library manga and rated or tracked manga are not lowered by that repeat-display rule. See [Recommendation settings](feature-guides/recommendation-settings.md) for the display-history window and filters.
 
-If one source fails, results from other sources remain available. When the page is empty or incomplete, read the message on the affected row; the whole app has not necessarily failed.
+If one source fails, results from other sources remain available. When the page is empty or incomplete, read the message on the affected row; the whole app has not necessarily failed. A failed row says what probably went wrong and offers actions such as **Try again**, **Open site**, **Check source**, **Manage extension**, or **Don't use in For You**. A row labelled as looser matches shows a few of the source's manga that do not share a tag with your taste. See [Recommendations](feature-guides/recommendations.md#how-a-refresh-finds-manga).
+
+Use **Focus** at the top of For You to narrow the page to a few tags for now: tap a tag once to include it, again to exclude it, and once more to clear it.
 
 ### Top Picks and bulk actions
 
@@ -43,31 +45,35 @@ Opening a bundle never adds manga automatically. Invalid structure and unresolve
 
 ## Recommendation settings
 
-1. From For You, select the settings icon.
-2. Choose one of the five sections: **For You sources**, **Taste and filters**, **Source Evaluation**, **Sources to try**, or **Management and diagnostics**.
+1. From For You, select the settings icon, or open **Settings > Recommendation Settings**.
+2. Choose an entry: **Your taste**, **For You feed**, **Focus modes**, **Find new sources**, **Source evaluation**, **Speed and data**, **Linked versions and ratings**, or **Troubleshooting**. Each row shows its current value.
 3. Change a setting with the switches, choices, and dialogs used elsewhere in Komikku.
 4. Return to For You and refresh when asked to reload recommendations.
 
-![Recommendation settings divided into five sections](visual-guide/recommendation-settings.png)
+On a wider screen, the list of entries stays beside the page you opened.
 
-*The main settings page keeps related controls together instead of placing every option in one long list.*
+![Recommendation settings before the v0.8.24 rebuild](visual-guide/recommendation-settings.png)
+
+*This screenshot shows the layout used before v0.8.24, which had five sections. The v0.8.24 page lists the eight entries above; the visual guide has not been updated yet.*
 
 You can configure:
 
 - Source order and languages.
-- Blocked genres and tags.
+- Blocked genres and tags, and recent reading.
 - Minimum chapters and result limits.
+- Looser matches and data saving.
+- An automatic source check on a schedule you choose.
 - The share of recent-catalogue results.
 - How long visible cards keep their position.
 - Evaluation, matching, quality checks, cache, and diagnostics.
-- Search across individual settings and use the quick-access row or For You side panel to move between sections.
+- Search across individual settings, and use the For You side panel to open a settings page.
 - Review taste diagnostics, rating-derived tag suggestions, source-quality history, and explicit recovery actions.
 
 Number settings are checked before use so an invalid saved value does not create an unlimited search or result list.
 
-![Management and diagnostics settings with grouped controls](visual-guide/management-diagnostics.png)
+![Management and diagnostics settings before the v0.8.24 rebuild](visual-guide/management-diagnostics.png)
 
-*Management and diagnostics keeps maintenance tools, saved-data controls, and short status summaries in one place.*
+*Before v0.8.24, maintenance tools sat on one Management and diagnostics page. They are now split between Speed and data, Linked versions and ratings, and Troubleshooting.*
 
 ## Manga preferences
 
@@ -92,20 +98,21 @@ When Action History is available in Evaluation Mode, supported changes include t
 
 For example, progress at chapter 15 can mark available chapters through the matching point read on another participating version. A confirmed chapter match takes priority; otherwise the app uses the highest available number at or below 15. This does not download pages, make later chapters unread, or send an outside tracker update. If you mark an earlier chapter unread but leave saved progress farther ahead, loading or refreshing can mark it read again. See [Local tracking](feature-guides/local-tracking.md) for matching limits and separate external-tracker settings.
 
-## Source Evaluation
+## Source evaluation
 
-1. Open **Recommendation Settings** and select **Source Evaluation**.
+1. Open **Recommendation Settings** and select **Source evaluation**, or choose **Source evaluation** from the For You menu.
 2. Choose how many sources to evaluate at once and review any warning.
 3. Select **Start evaluation**.
 4. You can leave the screen while evaluation continues.
 5. Review completed, skipped, failed, or partial outcomes. A source with too little information may need manual review; that does not prove its manga are a poor match.
-6. Use reassessment when installed extensions change or when the app reports stale evaluation data.
+6. Use reassessment when your tastes or installed extensions change, or when the app reports stale evaluation data.
+7. To re-check sources on a schedule, turn on **Check automatically** under **Find new sources > Automatic check**.
 
-![Source Evaluation showing progress, warnings, and reassessment actions](visual-guide/source-evaluation.png)
+![Source evaluation showing progress, warnings, and reassessment actions](visual-guide/source-evaluation.png)
 
-*Source Evaluation can show useful progress and partial results without displaying raw source errors.*
+*Source evaluation can show useful progress and partial results without displaying raw source errors.*
 
-Source Evaluation samples how well a source fits your preferences and separately checks recommendation searches. It is not a complete catalogue inspection or a security guarantee. Copied diagnostics show short error categories and counts, but can include source and extension names when Evaluation Mode is off. Review the text before sharing it. See [Source Evaluation](feature-guides/source-evaluation.md) for sorting, resets, and recovery actions.
+Source evaluation samples how well a source fits your preferences and separately checks recommendation searches. It is not a complete catalogue inspection or a security guarantee. Copied diagnostics show short error categories and counts, but can include source and extension names when Evaluation Mode is off. Review the text before sharing it. See [Source evaluation](feature-guides/source-evaluation.md) for sorting, resets, the automatic check, and recovery actions.
 
 ## Sources to try
 
@@ -115,7 +122,7 @@ See [Sources to try and source priority](feature-guides/sources.md) for suggesti
 
 *Sort source suggestions by fit, name, or language before choosing an installation action.*
 
-1. Open **Recommendation Settings** and select **Sources to try**.
+1. Open **Recommendation Settings > Find new sources** and select **Suggested for you**.
 2. Review compatible non-installed source suggestions based on your taste and source evaluations.
 3. Choose a suggestion to install its extension using your selected installation method. Follow any prompts and check whether installation succeeded.
 4. Return to evaluation or For You after installation if the new source needs assessment.
@@ -180,7 +187,7 @@ The schedule is off by default. If you open the reader during a restricted time,
 
 ### Completion rating
 
-Enable **Ask for a rating after finishing** under **Recommendation settings > Versions and quality** if you want the offer after leaving a newly completed final chapter. Rereads and already-rated manga do not trigger it. Choose a rating or skip the prompt. **Ask about other versions** controls the later offer to rate other versions; dismissing that offer keeps the rating you already saved.
+Enable **Ask for a rating after finishing** under **Recommendation Settings > Linked versions and ratings** if you want the offer after leaving a newly completed final chapter. Rereads and already-rated manga do not trigger it. Choose a rating or skip the prompt. **Ask about other versions** controls the later offer to rate other versions; dismissing that offer keeps the rating you already saved.
 
 ![Reader follow-up for applying the preference to matching versions](visual-guide/reader-linked-version-follow-up.png)
 

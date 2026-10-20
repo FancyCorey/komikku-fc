@@ -6,7 +6,7 @@ Choose the tool you want to use. Each guide explains where to find it, what its 
 
 - [Recommendations](recommendations.md): find manga in For You and Top Picks, adjust filters, get suggestions for a manga group, and share recommendation lists.
 - [Configuring personalized recommendations](recommendation-settings.md): where recommendation controls live, how they are grouped, and which visible results they affect.
-- [Evaluating recommendation source quality](source-evaluation.md): how Source Evaluation checks sources, preserves partial progress, explains failures, supports reassessment, and connects to taste and source-quality diagnostics.
+- [Evaluating recommendation source quality](source-evaluation.md): how Source evaluation checks sources, preserves partial progress, explains failures, supports reassessment and an automatic check, and connects to taste and source-quality diagnostics.
 - [Finding and prioritizing sources](sources.md): how Sources to Try ranks options, hands installation to Android, and lets the reader control source priority.
 
 ## Manga preferences and cross-source tools

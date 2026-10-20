@@ -9,7 +9,7 @@ This page helps contributors move from a visible feature to the code that owns i
 | [Group recommendations](feature-guides/recommendations.md) | Find related manga for a rated or linked group with progressive source rows | `exh/recs/group/`, `exh/recs/GroupPreviewLoadCoordinator.kt` | loading, partial, loaded, row timeout, row error, cancelled |
 | [Ratings and preferences](feature-guides/ratings.md) | Love, Like, Dislike, Not Interested, collections, reversible transitions | `exh/recs/loved/`, `eu/kanade/tachiyomi/ui/manga/MangaScreenModel.kt` | neutral, loved, liked, disliked, not interested |
 | [Local tracking](feature-guides/local-tracking.md) | Save status, chapter, score and dates without an external account; share progress across participating confirmed versions | `eu/kanade/domain/track/interactor/RecordLocalTrackedChapterProgress.kt`, `eu/kanade/domain/track/interactor/SyncLocalTrackingFromExternal.kt`, local tracker repository | untracked, planned, reading, on hold, completed, dropped, shared, opted out |
-| [Source Evaluation](feature-guides/source-evaluation.md) | Evaluate source fit, continue or reassess work, show short explanations | `exh/recs/evaluation/` | ready, running, partial, completed, cancelled, failed |
+| [Source evaluation](feature-guides/source-evaluation.md) | Evaluate source fit, continue or reassess work, re-check on a schedule, show short explanations | `exh/recs/evaluation/` | ready, running, partial, completed, cancelled, failed |
 | [Taste and source-quality diagnostics](feature-guides/source-evaluation.md) | Explain rating-derived tag suggestions, source observations, quality marks, and recovery actions | `exh/recs/settings/RecommendationDiagnosticsSettingsScreen.kt`, `exh/recs/settings/QualitySignalHistoryScreen.kt` | summary, history, limited evidence, marked, cleared |
 | [Sources To Try](feature-guides/sources.md) | Suggest non-installed sources from taste and evaluation signals | `exh/recs/discovery/`, recommendation settings screen models | loading, suggestions, empty, install screen, unavailable |
 | [Cross-source matching](feature-guides/versions.md) | Find related versions, create links and groups, choose a primary version | `exh/recs/matching/` | searching, candidates, selected, linked, no matches, partial failure |
@@ -27,7 +27,7 @@ This page helps contributors move from a visible feature to the code that owns i
 
 ## Settings
 
-Recommendation settings use the app's normal list and section patterns. They are grouped into For You sources, Taste and filters, Source Evaluation, Sources to try, and Management and diagnostics. Ranking and exposure values that users can change are stored as settings and checked before use; they are not hidden in screen code.
+Recommendation settings use the app's normal list and section patterns. The first page lists one entry per feature: Your taste, For You feed, Focus modes, Find new sources, Source evaluation, Speed and data, Linked versions and ratings, and Troubleshooting. Ranking and exposure values that users can change are stored as settings and checked before use; they are not hidden in screen code.
 
 ## Failure behavior
 

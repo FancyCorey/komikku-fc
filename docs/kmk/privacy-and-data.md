@@ -7,11 +7,13 @@ Komikku FC is an Android app, not an online recommendation service. Recommendati
 - Ratings, Not Interested, recently shown recommendation cards, source evaluations, source quality, linked versions, and feature settings are stored locally.
 - OCR recognizes downloaded page images on the device and stores recognized text in the local database. ML Kit does not send the input images or recognized text to Google.
 - OCR text is excluded from backup and sync payloads and can be cleared by chapter, manga, status group, or entire index.
+- For You remembers the chapter counts it checked for recommended titles, for up to two weeks and at most 3,000 titles, so the minimum chapter count can be applied again without reloading their chapter lists.
+- The automatic source check stores its schedule, its network and battery choices, and when it last ran.
 - Action History stores small local undo records for supported actions. It cannot guarantee that a tracker update or Android package action can be reversed.
 
 ## Network boundaries
 
-For You, source evaluation, matching, extra manga details, extension installation, and tracking can make requests through installed extensions or configured services. These are separate from the manga information stored on your device. Error messages and copied diagnostics are not a guarantee that every screen or log hides private details; check them before sharing.
+For You, source evaluation, the automatic source check, matching, extra manga details, chapter-count checks, extension installation, and tracking can make requests through installed extensions or configured services. **Use less data on recommendations** reduces how many requests For You and recommendation searches make; see [Recommendation settings](feature-guides/recommendation-settings.md#speed-and-data). These are separate from the manga information stored on your device. Error messages and copied diagnostics are not a guarantee that every screen or log hides private details; check them before sharing.
 
 OCR processes downloaded page images on the device. The app does not send those images or the recognized text to Google. The bundled ML Kit SDK may still communicate with Google for model or compatibility updates and diagnostics. Google's [ML Kit Android data disclosure](https://developers.google.com/ml-kit/android-data-disclosure) says its latest SDK versions may collect device and app information, per-installation identifiers, performance metrics, API configuration, input and output sizes, feature versions, event types, and error codes. Google says this data is encrypted in transit and not shared with third parties. The disclosure describes the latest SDK versions; the exact network events sent by this app's pinned ML Kit version have not been independently measured.
 
@@ -29,4 +31,4 @@ Exports use Android's document APIs. Cleanup is limited to the exact document cr
 
 Evaluation Mode replaces source and repository names with neutral labels. It does not hide manga artwork, titles, account information, reader pages, notifications, or every part of Android's interface. Before sharing a screenshot, check the whole image and any accompanying XML for private content, identifiers, paths, URLs, and status-bar information.
 
-Source Evaluation's copied diagnostics use a short category instead of raw error text. When Evaluation mode is off, source and extension names can remain in that text. Other logs or exported files may contain additional information. See [Sharing](feature-guides/sharing.md) and [file safety](feature-guides/safety.md) before sending them to someone else.
+Source evaluation's copied diagnostics use a short category instead of raw error text. When Evaluation mode is off, source and extension names can remain in that text. Other logs or exported files may contain additional information. See [Sharing](feature-guides/sharing.md) and [file safety](feature-guides/safety.md) before sending them to someone else.

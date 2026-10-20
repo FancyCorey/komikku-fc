@@ -102,6 +102,8 @@ flowchart TD
     Result -->|A step failed| Failed["Report completed and failed steps"]
 ```
 
+Confirming a Best Version adds it to the confirmed group and also gives it the group's rating; see [Ratings](ratings.md#rate-a-whole-group-at-once).
+
 **Keep current version** finishes the comparison without starting migration. Selecting another version opens a confirmation: **Migrate** replaces your current entry, **Copy** keeps the current entry as well, and **Cancel** returns without applying either choice. Read the warning before proceeding: migration cannot be automatically undone and can affect downloaded chapters or connected tracker accounts.
 
 If a migration step fails, check the result before trying again. Some changes may already have finished; a failure does not mean that everything was put back as it was.

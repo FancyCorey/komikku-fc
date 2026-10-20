@@ -12,7 +12,7 @@ Choose an install or update action to get an extension. The extension installer 
 
 Open **Settings > Advanced > Extensions > Extension installer** to choose the method for ordinary extension installs. Choose from the methods offered by your build; private installation is not offered in public builds. Shizuku requires separate setup, and selecting it without Shizuku installed shows a warning rather than switching the installer.
 
-The installer choice inside **Source Evaluation** applies to that evaluation, not this general preference. Changing either installer choice does not install an extension by itself. See [Source Evaluation](source-evaluation.md) for its installation and cleanup warnings.
+The installer choice inside **Source evaluation** applies to that evaluation, not this general preference. Changing either installer choice does not install an extension by itself. See [Source evaluation](source-evaluation.md) for its installation and cleanup warnings.
 
 | Action | What it means | What to check |
 | --- | --- | --- |
@@ -68,7 +68,7 @@ Export copies an already-installed extension file without modifying or re-signin
 
 Public builds keep successful exports. If your build also offers **Keep** or **Remove** after success, that is a separate choice, not automatic deletion. Cleanup targets only the file created by this export. Failed removal leaves the file in place. See [Sharing](sharing.md) for incomplete files, cancellation, and unknown results.
 
-## Continue to Source Evaluation
+## Continue to Source evaluation
 
 ```mermaid
 flowchart TD
@@ -79,6 +79,6 @@ flowchart TD
     Installed -->|No| Outcome["Cancelled or failed state"]
 ```
 
-Sources To Try lets you choose suggested extensions to install. A suggestion is not a guarantee about its content, availability, or quality. After installation, review its sources and choose [Source Evaluation](source-evaluation.md) separately when you want to check recommendation fit.
+Sources To Try lets you choose suggested extensions to install. A suggestion is not a guarantee about its content, availability, or quality. After installation, review its sources and choose [Source evaluation](source-evaluation.md) separately when you want to check recommendation fit.
 
 Keep your extension list private unless you intend to share it: names and repositories can identify your reading setup.

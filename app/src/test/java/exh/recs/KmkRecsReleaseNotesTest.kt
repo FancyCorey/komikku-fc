@@ -446,8 +446,8 @@ class KmkRecsReleaseNotesTest {
         assertTrue(currentSection.contains("The v0.8.23 feature set, with follow-up fixes for updates, reading, and extension recovery"))
         assertFalse(currentSection.contains("release-readiness"))
         assertFalse(currentSection.contains("Release workflow"))
-        assertTrue(publicReleaseNotes.contains("The next Komikku FC feature version is **v0.8.23.1**"))
-        assertTrue(publicReleaseNotes.contains("The latest published snapshot remains **v0.8.22**"))
+        assertTrue(publicReleaseNotes.contains("The next Komikku FC feature version is **v0.8.24**"))
+        assertTrue(publicReleaseNotes.contains("The latest published snapshot remains **v0.8.23.1**"))
     }
 
     @Test

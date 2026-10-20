@@ -1,14 +1,14 @@
 # Find and choose recommendation sources
 
-A source is a website or service whose manga you can browse through an installed extension. **Sources to Try** suggests extensions you have not installed. **For You Sources** controls which installed sources contribute recommendations and their priority.
+A source is a website or service whose manga you can browse through an installed extension. **Sources to Try** suggests extensions you have not installed. The source list in **For You feed** controls which installed sources contribute recommendations and their priority.
 
-Open **Recommendation settings**, then choose **Sources to Try** or **For You Sources**.
+Open **Recommendation Settings**, then choose **Find new sources > Suggested for you** for Sources to Try, or **For You feed** for the source list.
 
 ## Find a source to try
 
 Suggestions use your recommendation languages, content filters, source preferences, and available information about the source. Already-installed and untrusted extensions are not suggested. Dismissed, disliked, and poor-quality-marked suggestions are also excluded.
 
-A suggestion is not proof that a source works well or is safe. Some suggestions come from similarities to sources you already use and still need testing. Saved Source Evaluation results can help order the list; missing results do not mean that the source passed an evaluation.
+A suggestion is not proof that a source works well or is safe. Some suggestions come from similarities to sources you already use and still need testing. Saved Source evaluation results can help order the list; missing results do not mean that the source passed an evaluation.
 
 ```mermaid
 flowchart TD
@@ -17,7 +17,7 @@ flowchart TD
     Search --> Choice{"What do you want to do?"}
     Choice -->|Try it| Install["Choose Install"]
     Choice -->|Not now| Dismiss["Dismiss the suggestion"]
-    Choice -->|Compare first| Evaluate["Open Source Evaluation"]
+    Choice -->|Compare first| Evaluate["Open Source evaluation"]
 ```
 
 Use the search field to find a name, language, or repository. Search filters the suggestions already available; it does not search every manga website. Sort by **Best fit**, **Name A-Z**, or **Language**. Best fit is a recommendation order, not a security rating.
@@ -43,15 +43,15 @@ flowchart TD
 
 Cancellation does not uninstall extensions that already installed. A failed or cancelled attempt can offer Retry; check the result rather than assuming every selected extension was installed.
 
-After installation, use [Source Evaluation](source-evaluation.md) to check suitability and **For You Sources** to check whether the source is enabled for recommendations. Installation alone does not guarantee useful matches. See [Extensions](extensions.md) for installation methods, trust, and removal.
+After installation, use [Source evaluation](source-evaluation.md) to check suitability and **For You feed** to check whether the source is enabled for recommendations. Installation alone does not guarantee useful matches. See [Extensions](extensions.md) for installation methods, trust, and removal.
 
 ## Set the priority of installed sources
 
-In **For You Sources**, use the source switch to include or exclude it from recommendations. Reorder rows by dragging or using the move actions. You can reset the order, or apply a fit-based suggested order when that action is available.
+In **For You feed**, use the source switch to include or exclude it from recommendations. **Don't use in For You** on a failing For You row turns the same switch off. Reorder rows by dragging or using the move actions. You can reset the order, or apply a fit-based suggested order when that action is available.
 
 ```mermaid
 flowchart TD
-    Sources["Open For You Sources"] --> Enabled["Enable the sources you want"]
+    Sources["Open For You feed"] --> Enabled["Enable the sources you want"]
     Enabled --> Order["Arrange their priority"]
     Order --> Refresh["Refresh For You"]
     Refresh --> Results["See manga that pass your filters"]
@@ -59,7 +59,7 @@ flowchart TD
 
 A higher-priority source is considered earlier. It does not bypass your manga filters or guarantee more results. A source can have a strong fit rating but show few manga after chapter, taste, or other filters. Fit and the number currently shown describe different things.
 
-The page also contains exploration and repeat-display controls. See [Recommendation settings](recommendation-settings.md) and [Recommendations](recommendations.md) for their effects. The For You preview shows a saved recommendation snapshot; it is not a live source check.
+Each row shows one-line tags such as **Boosted**, **Great fit**, and **Top Picks**. Boosted is outlined because it is your own choice; the others describe results. The page also contains looser-match, exploration, and repeat-display controls. See [Recommendation settings](recommendation-settings.md) and [Recommendations](recommendations.md) for their effects. The For You preview shows a saved recommendation snapshot; it is not a live source check.
 
 ## Filter manga within a source
 

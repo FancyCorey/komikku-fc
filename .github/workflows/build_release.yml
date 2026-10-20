@@ -314,25 +314,38 @@ jobs:
       - name: Create draft release
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
-          name: Komikku FC ${{ steps.release.outputs.tag }}
+          name: Komikku FC ${{ steps.release.outputs.tag }} — updated to the latest Komikku
           tag_name: ${{ steps.release.outputs.tag }}
           target_commitish: ${{ steps.identity.outputs.commit }}
           body: |
             Komikku FC is an independently maintained manga reader based on Komikku.
 
-            ### Added in v0.8.23
+            ### Updated to the latest Komikku
 
-            - **OCR search:** search text in downloaded pages, follow indexing progress, recover interrupted indexing, and open results in the Reader.
-            - **Updater recovery:** resume interrupted app updates and extension operations, and clean up incomplete downloads or installs.
+            This release includes every change on Komikku's main branch up to 12 October 2026: everything in Komikku v1.14.1, plus the later changes made before that date. That includes a new database engine with fixes for "database is locked" errors, cleanup of leftover database rows, screen transition and back gesture fixes, and newer libraries. Your library carries over when you update.
 
-            ### Fix one updates in v0.8.23.1
+            ### Added in v0.8.24
 
-            - Retry interrupted app-update work; retrying does not guarantee that a partial download resumes from its previous byte.
-            - Retry a failed alternate-source search or chapter lookup from the Reader.
-            - Apply the selected warning and chapter-end choices when starting the reading timer.
-            - Prevent a second extension-recovery attempt from interrupting an install already in progress.
+            - **Recent-reading recommendations:** For You can give extra weight to the tags of manga you read in the last 1 to 30 days.
+            - **Group rating for linked versions:** rate every confirmed version of a manga at once from Track Other Versions.
+            - **Use less data on recommendations:** choose Automatic, Always, or Never under Speed and data.
+            - **Looser matches:** a source whose results do not match your taste can show up to four labelled looser matches instead of an empty row.
+            - **Help for failing sources:** a failing For You row explains the likely cause and offers Try again, Open site, Check source, Manage extension, and Don't use in For You.
+            - **Automatic source check:** re-check your sources on a schedule you choose. It is off until you turn it on.
+            - **Alternate sources in Reader settings:** choose when reading from another source is offered.
 
-            The v0.8.23.1 release includes the complete v0.8.23 search, tracking, recommendation, reader, recovery, accessibility, and app-identity feature set. See [What's changed](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/release-notes.md) for the complete list.
+            ### Improved and fixed in v0.8.24
+
+            - Recommendation Settings is rebuilt with one entry per feature, and Source evaluation can also be opened from the For You menu.
+            - Focus tags are grouped chips without numbered duplicates.
+            - The minimum chapter count applies to titles you have never opened.
+            - A source far slower than the others ends as an error row with Try again.
+            - A source whose searches found nothing falls back to its Popular page.
+            - One failed image no longer makes the rest of a large download fail.
+            - Tracker progress, privacy, and local tracking stay in step across linked versions.
+            - Trackers are asked for progress at most once every 15 minutes when you open a manga.
+
+            See [What's changed](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/release-notes.md) for the complete list.
 
             Requires Android 8.0 (API 26) or newer. GitHub shows each APK's download size. Choose the universal APK for broad compatibility, or match your device ABI: arm64-v8a (64-bit ARM), armeabi-v7a (32-bit ARM), x86, or x86_64. If you are unsure, choose universal.
 

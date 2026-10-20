@@ -14,7 +14,7 @@ flowchart TD
     Address --> Browse["Find the manga through Browse"]
 ```
 
-A source can be unavailable even when its address is correct. [Source Evaluation](source-evaluation.md) checks how a source works with the app; it is not a security check of that source.
+A source can be unavailable even when its address is correct. [Source evaluation](source-evaluation.md) checks how a source works with the app; it is not a security check of that source.
 
 ## When an action fails
 

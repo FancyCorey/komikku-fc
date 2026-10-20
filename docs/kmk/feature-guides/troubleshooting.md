@@ -19,29 +19,58 @@ flowchart TD
 
 The app temporarily avoids repeated calls to a recently failed source. This does not uninstall or permanently disable the extension. A retry can still fail if the underlying problem has not changed.
 
-Source Evaluation has a separate restriction for extensions associated with a detected crash during evaluation. A normal connection failure and an evaluation crash restriction are not the same thing. Follow the message on the evaluation page rather than repeatedly forcing the source to run.
+Source evaluation has a separate restriction for extensions associated with a detected crash during evaluation. A normal connection failure and an evaluation crash restriction are not the same thing. Follow the message on the evaluation page rather than repeatedly forcing the source to run.
 
 ## For You shows few or no manga
 
-Open **Recommendation settings > For You Sources** and check which sources are enabled. Check recommendation languages under **Management and diagnostics**, then check the filters in **Taste and Filters**, including the minimum chapter count.
+Open **Recommendation Settings > For You feed** and check which sources are enabled. Then open **Your taste** and check the recommendation languages and filters, including the minimum chapter count.
 
 A strong source-fit rating does not guarantee many visible recommendations. Fit describes the source's usefulness; shown results also depend on your manga filters and what the source returned.
 
 ```mermaid
 flowchart TD
-    Empty["For You has few or no results"] --> Enabled["Check enabled sources"]
-    Enabled --> Languages["Check languages in Management and diagnostics"]
-    Languages --> Filters["Check taste and chapter filters"]
-    Filters --> Status["Read the source's current status"]
+    Empty["For You has few or no results"] --> Enabled["Check enabled sources in For You feed"]
+    Enabled --> Languages["Check languages in Your taste"]
+    Languages --> Filters["Check taste and chapter filters in Your taste"]
+    Filters --> Status["Read the source row's message"]
     Status --> Refresh["Refresh For You"]
     Refresh --> Result{"Results available?"}
     Result -->|Yes| Read["Browse the matches"]
-    Result -->|No| Evaluate["Check the source through Source Evaluation"]
+    Result -->|No| Evaluate["Use Check source on the row, or open Source evaluation"]
 ```
 
-Do not assume that an empty list proves the source has no manga. See [Recommendations](recommendations.md), [Recommendation settings](recommendation-settings.md), and [Sources](sources.md) for the controls that affect this list.
+Do not assume that an empty list proves the source has no manga. When none of a source's searches find anything, For You already tries that source's Popular page. When a source returns manga but none share a tag with your taste, **Show looser matches** under **For You feed** can show a few of them instead of an empty row.
+
+**Recommendation Settings > Troubleshooting** lists sources that failed to load, and any sources the automatic check is skipping on For You. See [Recommendations](recommendations.md), [Recommendation settings](recommendation-settings.md), and [Sources](sources.md) for the controls that affect this list.
 
 In Sources to Try, clear a search that finds nothing before changing your settings. Also check dismissed suggestions, dislikes, content filters, languages, and repository availability.
+
+## A For You source keeps failing
+
+Read the message on the failed row first. It names the likely cause: your connection, a browser check the site wants, a problem on the site, or an extension that may need an update.
+
+```mermaid
+flowchart TD
+    Row["A For You row failed"] --> Cause{"What does the row say?"}
+    Cause -->|Connection| Connection["Check your connection, then Try again"]
+    Cause -->|Browser check| Site["Open site, complete the check, then Try again"]
+    Cause -->|Site problem| Later["Try again later"]
+    Cause -->|Extension| Update["Manage extension and update it"]
+    Connection --> Again{"Still failing in most refreshes?"}
+    Site --> Again
+    Later --> Again
+    Update --> Again
+    Again -->|Yes| Check["Check source"]
+    Check --> Works{"Works when browsing?"}
+    Works -->|Yes| Stop["Don't use in For You; keep reading from it in Browse"]
+    Works -->|No| Remove["Update or remove the extension, or don't use it in For You"]
+```
+
+A source that is far slower than the others in the same refresh ends as an error row with **Try again**. The time limit follows how long your other sources took, between 30 seconds and 3 minutes, so a slow connection does not cut sources off. **Don't use in For You** affects recommendations only; it does not uninstall the extension. Turn the source back on under **For You feed**.
+
+## A large download stops partway
+
+One failed image or page list no longer makes the rest of a large download from that source fail. If chapters still fail, check the failed chapter's message in the download queue and retry it. When the extension itself is broken or incompatible, reading and downloading from it are held back until you update or replace the extension. See [Extensions](extensions.md).
 
 ## Preview or reader pages fail
 

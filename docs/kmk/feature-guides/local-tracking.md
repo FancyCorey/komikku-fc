@@ -26,9 +26,15 @@ Sources sometimes number chapters differently or offer several translations of t
 
 When switching sources, the chapter chooser selects the first available chapter with the same number. If there is no exact match, it selects the closest available number; equally close numbers favor the lower chapter. Several translations can share a number. The translation group's name appears when the source supplies it, so you can choose another entry before opening it. The automatic choice is not a judgment of translation quality.
 
+### Versions linked through another version
+
+Versions you confirmed as the same manga through another version share one local-tracking record. For example, if you confirmed A = B and B = C, then A, B, and C share one record even though you never confirmed A = C directly. Opening or refreshing any of them gathers its already-linked versions, so progress does not wait for you to open one particular version.
+
+When local tracking starts, it begins at the chapter you read most recently on any linked version. If chapters are marked read further than that on any linked version, it starts there instead. Chapters can be marked read by hand, from a backup, or from a tracker.
+
 ### Stop sharing with one version
 
-1. Select the manga title in its **Local tracking** entry to open its confirmed linked versions.
+1. Select the manga title in its **Local tracking** entry to open **Track other versions**, which lists its confirmed linked versions. Selecting a version there opens its full manga page.
 2. Find the version you want to keep separate.
 3. Clear **Keep reading progress in sync** for that version. Select it again to rejoin progress sharing.
 
@@ -53,6 +59,20 @@ Open **Settings > Tracking**, or select the settings icon beside the local track
 **Match progress when chapter numbers differ** applies to importing external-tracker progress. It first tries chapter numbers. Reading order is a fallback for whole-number progress when the source's main chapters start above 1 and are consecutive through that position. It does not automatically convert every numbering difference between linked local versions.
 
 Local tracking and external tracker accounts are separate. Sending chapters you read to a connected service is controlled by **Update progress after reading**; sharing local progress does not enable that setting for you.
+
+### Refreshing and opening a tracked manga
+
+Pulling down to refresh a tracked manga always uploads your newer reading progress to connected trackers, even with **Sync reading progress from connected trackers** off. That setting still decides whether the tracker's progress marks your chapters as read. Queued uploads that the tracker already has are dropped instead of being sent again.
+
+Opening a manga asks your trackers for its progress at most once every 15 minutes, and not at all while you are offline. Going back and forth between pages therefore does not repeat the requests, and an offline device does not show a tracker error for each tracker. Pull down to refresh to ask straight away.
+
+### Versions that share a tracker entry
+
+When two versions of a manga are tracked on the same external tracker entry, they share that tracker record. Reading one version, changing it in the tracking sheet, or refreshing it updates the other's tracker progress straight away. Making the entry private or public from one version applies to the other versions too, so a later change from another version does not undo it.
+
+Only the tracker record is shared. No extra tracker requests are made, and no chapters are marked read on other sources until you open them. With **Track linked versions together** on, linking a tracker entry to one version also links it to the other confirmed versions that do not have one yet.
+
+When you add an external tracker, your reading progress and, when there is one, your start date are sent in a single request.
 
 **Update progress when marked as read** is a separate choice for manual read marking. It applies when a connected tracker is available and the selected chapters are farther ahead than saved tracker progress. Marking chapters unread does not send a lower chapter through this action.
 

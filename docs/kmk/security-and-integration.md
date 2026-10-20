@@ -8,9 +8,9 @@ If a manga link is rejected or does not open, check the address and find the man
 
 ## Extensions and unavailable sources
 
-An extension is installed code that can contact its own services. Source Evaluation checks whether a source works with the app; it is not a security certification. Supported source checks can report a failed request while other sources continue, but they cannot prevent every extension failure or make an unavailable chapter load.
+An extension is installed code that can contact its own services. Source evaluation checks whether a source works with the app; it is not a security certification. Supported source checks can report a failed request while other sources continue, but they cannot prevent every extension failure or make an unavailable chapter load.
 
-Check the displayed result before retrying. Cancelling stops the pending task, but does not necessarily reverse work that already finished. See [Extensions](feature-guides/extensions.md), [Source Evaluation](feature-guides/source-evaluation.md), and [Troubleshooting](feature-guides/troubleshooting.md).
+Check the displayed result before retrying. Cancelling stops the pending task, but does not necessarily reverse work that already finished. See [Extensions](feature-guides/extensions.md), [Source evaluation](feature-guides/source-evaluation.md), and [Troubleshooting](feature-guides/troubleshooting.md).
 
 ## Undo and backups
 
@@ -22,6 +22,6 @@ Undo is not a complete backup. Undoing a chapter's read or bookmark change does 
 
 Successful exports are kept. If an incomplete export can be identified, the app can offer **Keep** or **Remove** for that file. Remove targets that file only, not its folder; a failed removal leaves the file in place. If the app cannot identify the file, it cannot offer that cleanup safely.
 
-Source Evaluation's copied diagnostics replace raw error text with a short category. They can still include source and extension names when Evaluation mode is off. Evaluation mode changes those names to neutral labels; it does not hide manga titles, account information, notifications, or everything in a screenshot or export.
+Source evaluation's copied diagnostics replace raw error text with a short category. They can still include source and extension names when Evaluation mode is off. Evaluation mode changes those names to neutral labels; it does not hide manga titles, account information, notifications, or everything in a screenshot or export.
 
 Read any file, screenshot, or log before sharing it. See [Sharing](feature-guides/sharing.md) and [Privacy and data](privacy-and-data.md). Report security concerns through the [security policy](../../SECURITY.md).

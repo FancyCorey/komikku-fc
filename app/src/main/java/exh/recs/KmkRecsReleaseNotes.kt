@@ -23,7 +23,7 @@ object KmkRecsReleaseNotes {
     val MARKDOWN = """
         ## KMK-Recs v0.8.24
 
-        Recommendations that follow what you read lately, ratings that stay in step across linked versions, and more dependable tracker updates.
+        Updated to the latest Komikku. Recommendations that follow what you read lately, ratings that stay in step across linked versions, and more dependable tracker updates.
 
         #### What's Changed
 
@@ -34,7 +34,7 @@ object KmkRecsReleaseNotes {
         - **Use less data on recommendations:** New Automatic, Always and Never choices in Recommendation Settings under Speed and data. When saving data, For You skips the optional extra discovery page and Latest exploration, tries fewer search variations per source, and stops once about half the usual number of rows are ready, so sources further down your list may not be searched. A manga's Recommendations and the library recommendation search look in at most 6 of your sources instead of 20 and fetch fewer details. Automatic saves data on a metered or slow connection. Your filters are unchanged.
         - **Looser matches:** When a source returns manga but none of them match your taste, often because the source tags its manga poorly, For You now shows up to four of them in that source's row, labelled as looser matches, instead of an empty row. Your blocked tags, dislikes and ratings still apply, and Top Picks stays strict. Turn it off in Recommendation Settings under For You feed.
         - **Help for failing sources:** When a source fails on For You, its row now says what probably went wrong and what to try: check your connection, open the site once for a browser check, wait for the site, or update the extension. For a source that keeps failing, Check source tells whether it still works when browsing or is broken altogether, Manage extension opens the extension to update or remove it, and Don't use in For You stops using it for recommendations only. A note also shows when the extension is no longer offered by its repository or has an update.
-        - **Automatic source check:** Find new sources can re-check your sources on a schedule you choose: every 7, 14 or 30 days, or any number of days from 1 to 90. It is off until you turn it on, can wait for Wi-Fi and a charged battery, only re-checks sources whose result is missing or out of date, and never installs or removes a source or changes your source order. With Use results on For You on, For You skips a source only when its latest check found no usable picks and recent For You refreshes showed nothing from it either; Troubleshooting lists any skipped source.
+        - **Automatic source check:** Find new sources can re-check your sources on a schedule you choose: every 7, 14 or 30 days, or any number of days from 1 to 90. It is off until you turn it on, can wait for Wi-Fi and for the battery not to be low, only re-checks sources whose result is missing or out of date, and never installs or removes a source or changes your source order. With Use results on For You on, For You skips a source only when its latest check found no usable picks and recent For You refreshes showed nothing from it either; Troubleshooting lists any skipped source.
         - **Alternate sources in Reader settings:** A new section in Settings, Reader explains how reading from another source works and lets you choose whether to offer it when chapters are missing, when a source has no next chapter, or both. The first time you use it, a short explanation shows what will happen and how to come back.
 
         ##### Improve
@@ -50,7 +50,7 @@ object KmkRecsReleaseNotes {
 
         ##### Fix
 
-        - **Downloads:** One failed image or page list no longer makes the rest of a large download from that source fail. After any ordinary error, such as a timeout or a missing page, Komikku FC used to refuse that source for a minute without trying it, so queued chapters failed one after another and retries could not get through. Now only a broken or incompatible extension is held back.
+        - **Downloads:** One failed image or page list no longer makes the rest of a large download from that source fail. After any ordinary error, such as a timeout or a missing page, Komikku FC used to refuse that source for a minute without trying it, so queued chapters failed one after another and retries could not get through. Reading and downloading are now held back only when the extension itself is broken or incompatible, and a failed image no longer holds back searching.
         - **Hide manga you already know:** Titles remembered from earlier For You refreshes are now checked against what you have since rated, added or read, so a title you liked no longer reappears after Refresh.
         - **Rating linked versions:** Group ratings now save for linked versions you have not opened yet.
         - **Tracker progress on other versions:** When two versions of a manga are tracked on the same tracker entry, reading one, changing it in the tracking sheet, or refreshing it now updates the other's tracker progress straight away. Only the tracker record is shared: no extra tracker requests are made and no chapters are marked on other sources until you open them. With "Track linked versions together" on, linking a tracker entry to one version also links it to the other confirmed versions that do not have one yet.
@@ -64,7 +64,7 @@ object KmkRecsReleaseNotes {
         - **Taste reading:** Your taste profile, taste suggestions and Troubleshooting read your rated manga in a few batches instead of one at a time.
         - **Sources that found nothing:** When none of a source's searches found anything, For You now tries that source's Popular page as intended; before, it gave up with an empty row. An empty earlier result is also no longer reused from the cache, so the source is searched again on the next refresh.
         - **For You after enough rows:** Sources still searching when For You already had enough rows no longer leave a loading row behind, so the refresh finishes properly.
-        - **Automatic source check requirements:** The automatic check now waits for Wi-Fi and a charged battery for the whole check, not only when it starts, and turning the automatic check off also stops a check it already started. A check you start yourself is not affected.
+        - **Automatic source check requirements:** The automatic check now waits for Wi-Fi and for the battery not to be low for the whole check, not only when it starts, and turning the automatic check off also stops a check it already started. A check you start yourself is not affected.
         - **For You feed source list:** Labels such as Boosted, Great fit and Top Picks no longer break across lines. Each is a one-line tag, and Boosted is outlined because it is your own setting rather than a result.
         - **Linked versions list:** Opening a version from the local-tracking versions list shows its full page instead of a cramped view inside the sheet.
 
