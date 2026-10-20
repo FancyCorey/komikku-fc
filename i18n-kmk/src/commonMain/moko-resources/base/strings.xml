@@ -1239,7 +1239,7 @@
     <!-- KMK --> <string name="rec_exposure_clear_summary">For You remembers which titles it has already shown so it can avoid repeating them too soon.</string>
     <!-- KMK --> <string name="rec_exposure_clear_confirm">This clears only For You repeat history. Previously shown titles become eligible for normal ordering again. It does not delete titles or change ratings, library, or tracking.</string>
     <!-- KMK --> <string name="rec_min_chapter_count">Minimum chapter count</string>
-    <!-- KMK --> <string name="rec_min_chapter_count_summary">Only show manga with at least this many chapters in For You.</string>
+    <!-- KMK --> <string name="rec_min_chapter_count_summary">Only show manga with at least this many chapters in For You. Titles you have not opened are checked a few at a time after each refresh, except when saving data.</string>
     <!-- KMK --> <string name="rec_min_chapter_count_off">Off</string>
     <!-- KMK --> <string name="rec_data_saving_title">Use less data on recommendations</string>
     <!-- KMK --> <string name="rec_data_saving_summary">For You skips optional extra searches, tries fewer search variations per source, and stops earlier once enough rows are ready. A manga\'s Recommendations and the library recommendation search look in fewer sources and fetch fewer details. Your filters are unchanged.</string>

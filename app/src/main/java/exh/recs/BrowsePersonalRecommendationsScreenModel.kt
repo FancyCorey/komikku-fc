@@ -8,6 +8,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.produceState
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import eu.kanade.domain.manga.model.toSManga
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.source.Source
@@ -51,6 +52,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.SharingStarted
@@ -1311,6 +1313,10 @@ class BrowsePersonalRecommendationsScreenModel(
                         state
                     }
                 }
+                // KMK v0.8.24: after the page is shown, check the chapter counts of a few shown picks (not when saving data)
+                if (minChapterCount > 0 && !dataSaving) {
+                    launch { checkShownChapterCounts(refreshGeneration, minChapterCount) }
+                }
                 ForYouRefreshTelemetry.finish(
                     generation = refreshGeneration,
                     evaluatedCandidates = allStatuses.values.sumOf { it.evaluatedCount },
@@ -1407,7 +1413,7 @@ class BrowsePersonalRecommendationsScreenModel(
                 val chapterCountsForFilter = if (minChapterCount > 0 && (cached.isNotEmpty() || resolvedMemory.isNotEmpty())) {
                     val allMangaIds = (cached.map { it.manga.id } + resolvedMemory.map { it.first.id }).distinct()
                     try {
-                        getChapterCounts.await(allMangaIds)
+                        knownChapterCounts(allMangaIds)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
@@ -2483,7 +2489,7 @@ class BrowsePersonalRecommendationsScreenModel(
         val rawLocalized = networkToLocalManga(raw)
         val chapterCounts = if (minChapterCount > 0 && rawLocalized.isNotEmpty()) {
             try {
-                getChapterCounts.await(rawLocalized.map { it.id })
+                knownChapterCounts(rawLocalized.map { it.id })
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -2572,7 +2578,7 @@ class BrowsePersonalRecommendationsScreenModel(
         val chapterCountsForMerge = if (minChapterCount > 0 && (newResults.isNotEmpty() || resolvedMemory.isNotEmpty())) {
             val allMangaIds = (newResults.map { it.manga.id } + resolvedMemory.map { it.first.id }).distinct()
             try {
-                getChapterCounts.await(allMangaIds)
+                knownChapterCounts(allMangaIds)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -2993,7 +2999,7 @@ class BrowsePersonalRecommendationsScreenModel(
         // KMK --> v0.7.41: batched chapter counts only when the minimum is active; fail open on error
         val chapterCounts = if (minChapterCount > 0) {
             try {
-                getChapterCounts.await(resolved.map { it.first.id })
+                knownChapterCounts(resolved.map { it.first.id })
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -3398,7 +3404,7 @@ class BrowsePersonalRecommendationsScreenModel(
                 val allLocalized = networkToLocalManga(raw)
                 val chapterCounts = if (minChapterCount > 0 && allLocalized.isNotEmpty()) {
                     try {
-                        getChapterCounts.await(allLocalized.map { it.id })
+                        knownChapterCounts(allLocalized.map { it.id })
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
@@ -3653,6 +3659,92 @@ class BrowsePersonalRecommendationsScreenModel(
     // KMK <--
 
     // KMK --> v0.8.24
+    /** Chapter counts known for [ids]: the local chapter rows first, then counts For You checked earlier. */
+    private suspend fun knownChapterCounts(ids: Collection<Long>): Map<Long, Long> {
+        val local = getChapterCounts.await(ids)
+        val checked = try {
+            ForYouChapterCountCheck.fresh(
+                ForYouChapterCountCheck.parse(sourcePreferences.recommendationCheckedChapterCounts().get()),
+                System.currentTimeMillis(),
+            )
+        } catch (_: Exception) {
+            emptyMap()
+        }
+        if (checked.isEmpty()) return local
+        return ids.mapNotNull { id -> (local[id] ?: checked[id])?.let { id to it } }.toMap()
+    }
+
+    /**
+     * Loads the chapter lists of a few shown picks whose chapter count is unknown (see [ForYouChapterCountCheck]),
+     * remembers the counts and removes picks below [minChapterCount] from this refresh's rows and Top Picks. Only touches
+     * the refresh that showed them; any failure leaves the pick as it is.
+     */
+    private suspend fun checkShownChapterCounts(refreshGeneration: Long, minChapterCount: Int) {
+        val shown = mutableState.value
+        if (shown.resultGeneration != refreshGeneration) return
+        val rows = shown.sourceOrder.mapNotNull { source ->
+            (shown.items[source] as? PersonalRecommendationResult.Success)?.result?.map { it.manga }
+        }
+        val mangaById = rows.flatten().associateBy { it.id }
+        val known = knownChapterCounts(mangaById.keys).keys
+        val toCheck = ForYouChapterCountCheck.pick(rows.map { row -> row.map { it.id } }, known)
+        if (toCheck.isEmpty()) return
+
+        val slots = Semaphore(ForYouChapterCountCheck.CONCURRENT_CHECKS)
+        val counts = coroutineScope {
+            toCheck.map { id ->
+                async {
+                    slots.withPermit {
+                        val manga = mangaById[id] ?: return@withPermit null
+                        val source = sourceManager.get(manga.source) ?: return@withPermit null
+                        val count = try {
+                            withTimeoutOrNull(ForYouChapterCountCheck.CHECK_TIMEOUT_MS) {
+                                SourceRuntime.run(source, SourceRuntimeOperation.MangaUpdate, coroutineDispatcher) {
+                                    getMangaUpdate(manga.toSManga(), emptyList(), fetchDetails = false, fetchChapters = true)
+                                        .chapters.size.toLong()
+                                }.getOrThrowSourceRuntimeException()
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Throwable) {
+                            null
+                        }
+                        // An empty list more likely means the source could not read its chapters: treat as unknown.
+                        count?.takeIf { it > 0 }?.let { id to it }
+                    }
+                }
+            }.map { it.await() }.filterNotNull().toMap()
+        }
+        if (counts.isEmpty()) return
+
+        val now = System.currentTimeMillis()
+        try {
+            val preference = sourcePreferences.recommendationCheckedChapterCounts()
+            val merged = ForYouChapterCountCheck.parse(preference.get()) +
+                counts.mapValues { ForYouChapterCountCheck.Checked(it.value, now) }
+            preference.set(ForYouChapterCountCheck.serialize(merged, now))
+        } catch (_: Exception) {
+        }
+
+        val tooShort = counts.filterValues { it < minChapterCount }.keys
+        if (tooShort.isEmpty()) return
+        fun PersonalRecommendationResult?.without(): PersonalRecommendationResult? =
+            if (this is PersonalRecommendationResult.Success) copy(result = result.filterNot { it.manga.id in tooShort }) else this
+        mutableState.update { state ->
+            if (state.resultGeneration != refreshGeneration) return@update state
+            state.copy(
+                items = state.items.mutate { map ->
+                    val affected = map.filterValues { value ->
+                        value is PersonalRecommendationResult.Success && value.result.any { it.manga.id in tooShort }
+                    }.keys
+                    affected.forEach { source -> map[source] = map[source].without()!! }
+                },
+                combinedResult = state.combinedResult.without(),
+                combinedDetailResult = state.combinedDetailResult.without(),
+            )
+        }
+    }
+
     /** A source past its limit (see [ForYouSourceDeadlinePolicy]) ends as an error row; its late result is dropped. */
     private object ForYouSourceDeadline {
         fun timedOut(

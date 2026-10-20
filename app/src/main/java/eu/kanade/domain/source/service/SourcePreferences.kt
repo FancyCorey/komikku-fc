@@ -197,6 +197,9 @@ class SourcePreferences(
     // value, so a corrupt/legacy/out-of-contract number can never reach the visibility policy or the
     // cache fingerprint as an unsupported threshold.
     /** Minimum locally-known chapter count for a manga to appear in For You. Supported: 0/5/10/20/50. 0 = no filter. */
+    // KMK v0.8.24: chapter counts For You checked for picks (exh.recs.ForYouChapterCountCheck)
+    fun recommendationCheckedChapterCounts() = preferenceStore.getString("recommendation_checked_chapter_counts", "")
+
     fun recommendationMinChapterCount() =
         preferenceStore.getInt("recommendation_min_chapter_count", exh.recs.RecommendationMinChapterCountPolicy.DEFAULT)
     // KMK <--

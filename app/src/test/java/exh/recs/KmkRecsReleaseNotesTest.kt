@@ -308,7 +308,7 @@ class KmkRecsReleaseNotesTest {
             "**Use less data on recommendations:**", "Automatic, Always and Never", "tries fewer search variations per source",
             "sources further down your list may not be searched", "at most 6 of your sources instead of 20", "Your filters are unchanged",
             "under Your taste", "beyond anything you read", "**Tracker privacy on linked versions:**",
-            "**For You after enough rows:**", "**Slow sources:**", "a slow connection does not cut sources off", "**Focus tags:**", "**Taste reading:**", "**Help for failing sources:**", "Check source", "Don't use in For You", "**Sources that found nothing:**", "tries that source's Popular page", "**Looser matches:**", "Top Picks stays strict", "**For You feed source list:**", "**Automatic source check requirements:**", "A check you start yourself is not affected",
+            "**For You after enough rows:**", "**Minimum chapter count:**", "titles you have never opened", "**Slow sources:**", "a slow connection does not cut sources off", "**Focus tags:**", "**Taste reading:**", "**Help for failing sources:**", "Check source", "Don't use in For You", "**Sources that found nothing:**", "tries that source's Popular page", "**Looser matches:**", "Top Picks stays strict", "**For You feed source list:**", "**Automatic source check requirements:**", "A check you start yourself is not affected",
             "**Trackers when opening a manga:**", "at most once every 15 minutes", "Pull down to refresh to ask right away",
             // tracker updates
             "**Tracker refresh:**", "even with \"Sync reading progress from connected trackers\" off", "**Tracker retries:**",

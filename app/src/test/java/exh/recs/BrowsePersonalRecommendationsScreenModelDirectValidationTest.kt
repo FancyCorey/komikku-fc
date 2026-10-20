@@ -1246,6 +1246,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         autoCheck: Boolean = false,
         applyResults: Boolean = true,
         looserMatches: Boolean? = null,
+        minChapterCount: Int? = null,
     ): BrowsePersonalRecommendationsScreenModel.State {
         val profile = mockk<GetTasteProfile>()
         coEvery { profile.await() } returns longTermActionProfile()
@@ -1255,6 +1256,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         coEvery { tastes.awaitAll() } returns emptyList()
         val manager = mockk<SourceManager>(relaxed = true)
         every { manager.getVisibleSources() } returns fixture.sources
+        every { manager.get(any()) } answers { fixture.sources.firstOrNull { it.id == firstArg<Long>() } }
         val localize = mockk<NetworkToLocalManga>()
         var nextId = 1_000L
         coEvery { localize.invoke(any<List<Manga>>(), any()) } answers {
@@ -1263,6 +1265,7 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
         val preferences = SourcePreferences(FakePreferenceStore())
         dataSaving?.let { preferences.recommendationDataSaving().set(it) }
         looserMatches?.let { preferences.recommendationLooserMatches().set(it) }
+        minChapterCount?.let { preferences.recommendationMinChapterCount().set(it) }
         preferences.recommendationAutoRecheckEnabled().set(autoCheck)
         preferences.recommendationAutoRecheckApplyToForYou().set(applyResults)
         // For You's own history: every fixture source tried several times recently with nothing shown, so only the check
@@ -1413,6 +1416,37 @@ class BrowsePersonalRecommendationsScreenModelDirectValidationTest {
 
         assertTrue(state.items.values.all { it is PersonalRecommendationResult.Success }, "every slow source still delivered")
         assertFalse(state.isLoading)
+    }
+
+    // KMK v0.8.24: the minimum chapter count applies to picks whose chapter list was never loaded
+    @Test
+    fun `picks below the minimum chapter count are removed after their chapter lists are checked`() = runTest {
+        val fixture = queueFixture(count = 2)
+        fixture.sources.forEach { source ->
+            coEvery { source.getMangaUpdate(any(), any(), eq(false), eq(true)) } answers {
+                // source 1's pick has 2 chapters, source 2's has 40
+                val chapters = List(if (source.id == 1L) 2 else 40) { eu.kanade.tachiyomi.source.model.SChapter.create() }
+                eu.kanade.tachiyomi.source.model.SMangaUpdate(firstArg(), chapters)
+            }
+        }
+
+        val state = refreshQueue(fixture, minChapterCount = 5)
+
+        val row1 = state.items.entries.single { it.key.id == 1L }.value as PersonalRecommendationResult.Success
+        val row2 = state.items.entries.single { it.key.id == 2L }.value as PersonalRecommendationResult.Success
+        assertTrue(row1.result.isEmpty(), "the 2-chapter pick is gone")
+        assertTrue(row2.result.isNotEmpty(), "the 40-chapter pick stays")
+        val topPicks = (state.combinedResult as? PersonalRecommendationResult.Success)?.result.orEmpty()
+        assertTrue(topPicks.none { it.manga.source == 1L }, "and it left Top Picks too")
+    }
+
+    @Test
+    fun `no chapter lists are loaded when the minimum is off`() = runTest {
+        val fixture = queueFixture(count = 2)
+        refreshQueue(fixture)
+        fixture.sources.forEach { source ->
+            io.mockk.coVerify(exactly = 0) { source.getMangaUpdate(any(), any(), false, true) }
+        }
     }
 
     // KMK v0.8.24: "Check source" on a failing row tells a source that only fails in For You from a broken one
