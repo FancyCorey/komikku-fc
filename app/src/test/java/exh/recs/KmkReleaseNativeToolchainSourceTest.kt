@@ -77,8 +77,14 @@ class KmkReleaseNativeToolchainSourceTest {
                 "sed -n 's/^private val defaultAndroidVersionName = \"\\([^\"]*\\)\"/\\1/p' app/build.gradle.kts",
             ),
         )
-        assertTrue(File("../app/build.gradle.kts").readText().contains("private val defaultAndroidVersionName = \"1.14.1\""))
-        assertTrue(File("../app/build.gradle.kts").readText().contains("private val defaultAndroidVersionCode = 96"))
+        val appBuild = File("../app/build.gradle.kts").readText()
+        assertTrue(appBuild.contains("private val defaultAndroidVersionName = \"1.14.1\""))
+        // The release code must be allowed to increase; the workflow above enforces predecessor continuity.
+        val defaultVersionCode = appBuild.lineSequence()
+            .single { it.startsWith("private val defaultAndroidVersionCode = ") }
+            .substringAfter(" = ").trim().toInt()
+        assertTrue(defaultVersionCode > 0)
+        assertTrue(appBuild.contains("?: defaultAndroidVersionCode"))
         assertFalse(workflow.contains("sed -n 's/^[[:space:]]*versionName ="))
         assertTrue(workflow.contains("package: name='app.komikku.kmk'"))
         assertTrue(workflow.contains("test \"${'$'}{kmk_feature_version}\" = \"${'$'}{RELEASE_TAG}\""))
