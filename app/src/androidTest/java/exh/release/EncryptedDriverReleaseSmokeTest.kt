@@ -61,11 +61,14 @@ class EncryptedDriverReleaseSmokeTest {
                 assertEquals(1L, driver.scalar("SELECT count(*) FROM history WHERE _id = 900001"))
                 assertEquals(75L, driver.scalar("PRAGMA user_version"))
             }
-            assertFalse("Database must be encrypted on disk", file.inputStream().use {
-                val header = ByteArray(16)
-                assertEquals(16, it.read(header))
-                String(header, Charsets.US_ASCII).startsWith("SQLite format 3")
-            })
+            assertFalse(
+                "Database must be encrypted on disk",
+                file.inputStream().use {
+                    val header = ByteArray(16)
+                    assertEquals(16, it.read(header))
+                    String(header, Charsets.US_ASCII).startsWith("SQLite format 3")
+                },
+            )
             open(Database.Schema, true).use { driver ->
                 assertEquals(76L, driver.scalar("PRAGMA user_version"))
                 assertEquals(0L, driver.scalar("SELECT count(*) FROM history WHERE _id = 900001"))
