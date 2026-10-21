@@ -113,28 +113,35 @@ internal fun rememberSourceHealthIssues(): State<List<SourceRuntimeHealthIssue>>
  * and "Use results on For You" are both on. Read once when the page opens; failures read as "none".
  */
 @Composable
-internal fun rememberAutoCheckSkippedSourceNames(): State<List<String>> =
-    produceState(initialValue = emptyList<String>()) {
-        val preferences = Injekt.get<eu.kanade.domain.source.service.SourcePreferences>()
-        value = if (
-            preferences.recommendationAutoRecheckEnabled().get() &&
-            preferences.recommendationAutoRecheckApplyToForYou().get()
-        ) {
-            try {
-                val fits = Injekt.get<GetSourceRecommendationFit>().awaitAll()
-                val skipped = exh.recs.evaluation.SourceAutoRecheckPolicy.skippedSourceIds(
-                    fits,
-                    exh.recs.SourceFitStatsStore.parse(preferences.recommendationSourceFitStats().get()),
-                    System.currentTimeMillis(),
-                )
-                fits.filter { it.sourceId in skipped }.map { it.sourceName }.distinct().sorted()
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
+internal fun rememberAutoCheckSkippedSourceNames(): State<List<String>> {
+    val hideSourceNames = exh.util.rememberEvaluationModeEnabled()
+    return androidx.compose.runtime.key(hideSourceNames) {
+        produceState(initialValue = emptyList<String>()) {
+            val preferences = Injekt.get<eu.kanade.domain.source.service.SourcePreferences>()
+            value = if (
+                preferences.recommendationAutoRecheckEnabled().get() &&
+                preferences.recommendationAutoRecheckApplyToForYou().get()
+            ) {
+                try {
+                    val fits = Injekt.get<GetSourceRecommendationFit>().awaitAll()
+                    val skipped = exh.recs.evaluation.SourceAutoRecheckPolicy.skippedSourceIds(
+                        fits,
+                        exh.recs.SourceFitStatsStore.parse(preferences.recommendationSourceFitStats().get()),
+                        System.currentTimeMillis(),
+                    )
+                    fits.filter { it.sourceId in skipped }.mapNotNull { fit ->
+                        val sourceId = fit.sourceId ?: return@mapNotNull null
+                        if (hideSourceNames) exh.util.EvaluationModeFormatter.sourceLabel(sourceId) else fit.sourceName
+                    }.distinct().sorted()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            } else {
                 emptyList()
             }
-        } else {
-            emptyList()
         }
     }
+}
 // KMK <--

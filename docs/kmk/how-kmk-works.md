@@ -5,7 +5,7 @@ This page explains how recommendations, reading, sources, and saved data fit tog
 ## System boundary
 
 ```mermaid
-flowchart LR
+flowchart TD
     User["Reader"] --> App["Komikku FC"]
     App --> Library["Library, history, and reader"]
     App --> Discovery["Recommendations and manga preferences"]
@@ -36,23 +36,12 @@ Some tools use saved data; catalogue searches also contact installed source exte
 ## Recommendation flow
 
 ```mermaid
-sequenceDiagram
-    actor Reader
-    participant Screen as For You
-    participant App as Recommendations
-    participant Rules as Filters and ordering
-    participant Source as Installed sources
-    participant Data as Saved settings and display history
-
-    Reader->>Screen: Open or refresh
-    Screen->>App: Request manga rows
-    App->>Data: Read settings, ratings, and display history
-    App->>Source: Search or request recent manga
-    Source-->>App: Each source's results or failure
-    App->>Rules: Filter and order available manga
-    Rules-->>App: Limited selection to display
-    App->>Data: Record displayed manga
-    App-->>Screen: Results, partial results, empty, or error
+flowchart TD
+    Open["Open or refresh For You"] --> Read["Read saved preferences<br/>and display history"]
+    Read --> Sources["Request manga from<br/>your enabled sources"]
+    Sources --> Rules["Filter and order<br/>available results"]
+    Rules --> Show["Show results, partial results,<br/>empty state, or an error"]
+    Show --> Save["Record displayed manga<br/>for repeat rotation"]
 ```
 
 Personalized matches remain the majority when enough suitable results exist. Recent catalogue entries can add variety but use the same For You filters. The minimum chapter setting hides manga below your choice when a count is known; an unknown count can still appear. Passing filters does not guarantee a displayed place because each row has a result limit.
@@ -74,6 +63,10 @@ flowchart TD
     NotInterested --> Saved
     Saved --> Change["Choose another preference or clear the rating"]
     Change --> Current
+    %% Stack independent choices vertically for narrow screens.
+    Love ~~~ Like
+    Like ~~~ Dislike
+    Dislike ~~~ NotInterested
 ```
 
 Love, Like, Dislike, and Not interested are choices you can change or clear. Each has a marker and collection. Supported successful changes can appear in Action History with an Undo action. Undo checks the current value before restoring the previous one; it is not a backup or a way to undo every outside tracker update. See [Ratings](feature-guides/ratings.md).
@@ -115,6 +108,10 @@ flowchart TD
     App --> Sources["Request online manga through installed extensions"]
     App --> Sharing["Name hiding replaces selected visible labels"]
     App --> Files["Choose exports and backups through Android's file chooser"]
+    %% Stack independent choices vertically for narrow screens.
+    Local ~~~ Sources
+    Sources ~~~ Sharing
+    Sharing ~~~ Files
 ```
 
 Komikku FC does not add a separate recommendation account or server. Installed extensions still handle their online catalogue requests, and connected external trackers have separate update settings.

@@ -231,6 +231,7 @@ private fun LinkedVersionRowCard(
     onSetPrimary: () -> Unit,
     onRemove: () -> Unit,
 ) {
+    val hideSourceNames = exh.util.rememberEvaluationModeEnabled()
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -258,7 +259,14 @@ private fun LinkedVersionRowCard(
                 }
                 Text(
                     text = buildString {
-                        append(row.sourceName ?: stringResource(KMR.strings.source_evaluation_unknown_source))
+                        append(
+                            if (hideSourceNames) {
+                                exh.util.EvaluationModeFormatter.sourceLabel(row.key.source)
+                            } else {
+                                row.sourceName
+                                    ?: stringResource(KMR.strings.source_evaluation_unknown_source)
+                            },
+                        )
                         if (row.lang.isNotBlank()) append(" (${row.lang.uppercase(Locale.ROOT)})")
                         append(" · ")
                         append(

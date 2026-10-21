@@ -119,6 +119,7 @@ import tachiyomi.core.common.i18n.stringResource as contextStringResource
 fun Screen.personalRecommendationsTab(): TabContent {
     val navigator = LocalNavigator.currentOrThrow
     val context = LocalContext.current
+    val hideSourceNamesForExport = rememberEvaluationModeEnabled()
     // KMK v0.8.24: the recent-reading interactor is passed explicitly (see the screen model's constructor).
     val screenModel = rememberScreenModel {
         BrowsePersonalRecommendationsScreenModel(
@@ -767,7 +768,9 @@ fun Screen.personalRecommendationsTab(): TabContent {
                             pendingExportIsTopPicks = false
                             exportInputSnapshot = screenModel.state.value
                             exportPendingOperationId = operationId
-                            exportLauncher.launch("kmk_${source.name.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]"), "_")}.json")
+                            exportLauncher.launch(
+                                if (hideSourceNamesForExport) "kmk_recommendations.json" else "kmk_${source.name.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]"), "_")}.json",
+                            )
                         }
                     },
                     // KMK <--
@@ -1522,6 +1525,7 @@ internal fun ForYouSourceFailureActions(
     onManageExtension: (() -> Unit)?,
 ) {
     val context = LocalContext.current
+    val displaySourceName = if (rememberEvaluationModeEnabled()) EvaluationModeFormatter.sourceLabel(source.id) else source.name
     val hint = when (advice.cause) {
         ForYouSourceFailurePolicy.Cause.CONNECTION -> KMR.strings.rec_source_failure_hint_connection
         ForYouSourceFailurePolicy.Cause.SITE_CHECK -> KMR.strings.rec_source_failure_hint_site_check
@@ -1559,7 +1563,7 @@ internal fun ForYouSourceFailureActions(
                 TextButton(
                     onClick = {
                         context.startActivity(
-                            eu.kanade.tachiyomi.ui.webview.WebViewActivity.newIntent(context, siteUrl, source.id, source.name),
+                            eu.kanade.tachiyomi.ui.webview.WebViewActivity.newIntent(context, siteUrl, source.id, displaySourceName),
                         )
                     },
                 ) { Text(text = stringResource(KMR.strings.rec_source_failure_open_site)) }
@@ -1576,7 +1580,7 @@ internal fun ForYouSourceFailureActions(
                 TextButton(
                     onClick = {
                         onStopUsing()
-                        context.toast(context.contextStringResource(KMR.strings.rec_source_failure_stopped, source.name))
+                        context.toast(context.contextStringResource(KMR.strings.rec_source_failure_stopped, displaySourceName))
                     },
                 ) { Text(text = stringResource(KMR.strings.rec_source_failure_stop_using)) }
             }

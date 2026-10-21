@@ -12,7 +12,7 @@ Open **Settings > Advanced** and, under **Developer tools**, turn on **Hide tech
 <p align="center"><img src="../visual-guide/recommendation-bundle-export.png" width="260" alt="Exporting a recommendation bundle"></p>
 <p align="center"><em>Exporting Top Picks as a recommendation bundle.</em></p>
 
-This changes only supported labels on screen. Your saved manga, source connections, and actions stay the same. Manga titles, artwork, reader pages, ratings, reading history, account names, notifications, and Android controls are not hidden automatically.
+This changes supported labels on screen and the suggested filename for For You source exports. It does not change saved data or the contents of exported files. Your saved manga and source connections stay the same. Manga titles, artwork, reader pages, ratings, reading history, account names, notifications, and Android controls are not hidden automatically.
 
 ```mermaid
 flowchart TD

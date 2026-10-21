@@ -74,12 +74,16 @@ See [Backups](backups.md) for sensitive-data options, merge behavior, and restor
 Recommendations do not require a separate Komikku FC recommendation account. That does not make all app activity offline: installed sources receive requests for manga and pages, connected trackers can receive updates, and exports or backups can contain personal reading information.
 
 ```mermaid
-flowchart LR
+flowchart TD
     App["Komikku FC"] --> Local["Stores supported settings, ratings, history, and local progress"]
     App --> Sources["Contacts sources to load manga and pages"]
     App --> Trackers["Can update connected tracker accounts"]
     App --> Files["Creates exports or backups you choose to save"]
     Files --> Check["Check file contents before sharing"]
+    %% Stack independent choices vertically for narrow screens.
+    Local ~~~ Sources
+    Sources ~~~ Trackers
+    Trackers ~~~ Files
 ```
 
 **Name hiding** replaces supported identifying labels on screen only. It does not hide manga titles or artwork, sanitize exported files, or change the source an action uses. Check screenshots and files yourself before sharing them.

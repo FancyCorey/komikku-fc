@@ -32,7 +32,7 @@ Open the Loved, Liked, Disliked, or Not interested collection from For You to re
 
 The recommendation settings contain the linked-version, prompt, action-placement, and automatic-primary controls. **Start tracking when you rate a manga** is in Tracking settings. See [Recommendation settings](recommendation-settings.md) and [Local tracking](local-tracking.md) for the related controls.
 
-These choices work separately. When you set or clear a rating, **Rate linked versions together** includes confirmed linked versions that are already tracked locally at that point. A version you newly confirm as the same manga, for example through Best Version, receives the group's rating while this setting is on, unless you have already rated that version yourself. A version that only has a similar title is not given the rating.
+These choices work separately. When you set or clear a rating, **Rate linked versions together** includes confirmed linked versions that are already tracked locally at that point. A locally tracked version you newly confirm as the same manga, for example through Best Version, receives the group's rating while this setting is on, unless you have already rated that version yourself. A version that only has a similar title is not given the rating.
 
 After you save Love, Like, or Dislike, **Start tracking when you rate a manga** can create local tracking. **Track linked versions together** can then attach other confirmed versions to that tracking. Attaching them does not, by itself, give them the rating you just saved; a later rating action can include them once they are tracked, or you can explicitly choose them through **Find other versions**. Turning off linked tracking prevents those automatic attachments, but it does not stop your current version from starting tracking when the separate start-tracking setting is on. Turning off automatic creation also does not stop sharing an existing tracker when linked tracking is on.
 
@@ -46,11 +46,11 @@ Open a manga's **Trackers**, then choose **Track other versions** in its **Local
 <p align="center"><em>Track other versions, with Group rating above the Track button.</em></p>
 
 <p align="center"><img src="../visual-guide/v0.8.24/group-rating-menu.png" width="260" alt="Group rating choices"></p>
-<p align="center"><em>Choose a rating, or Not rated, for every confirmed version.</em></p>
+<p align="center"><em>Choose a rating, or Not rated, for every locally tracked confirmed version.</em></p>
 
-Select it to choose Love, Like, Dislike, or Not interested, or **Not rated** to clear the rating, for every confirmed version at once. The usual rating choices apply, and the change is saved even for confirmed versions you have not opened yet. If the rating cannot be loaded or saved, the button says so and you can try again.
+Select it to choose Love, Like, Dislike, or Not interested, or **Not rated** to clear the rating, for every locally tracked confirmed version at once. The usual rating choices apply, and the change is saved even for confirmed versions you have not opened yet. If the rating cannot be loaded or saved, the button says so and you can try again.
 
-Confirming a version through **Best Version** also gives the chosen version the confirmed group's rating.
+Confirming a version through **Best Version** also gives the chosen version the confirmed group's rating when it is locally tracked and **Rate linked versions together** is on, without replacing a rating you set yourself.
 
 ## What Action History can restore
 

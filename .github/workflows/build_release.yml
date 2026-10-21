@@ -327,7 +327,7 @@ jobs:
             ### Added in v0.8.24
 
             - **Recent-reading recommendations:** For You can give extra weight to the tags of manga you read in the last 1 to 30 days.
-            - **Group rating for linked versions:** rate every confirmed version of a manga at once from Track Other Versions.
+            - **Group rating for linked versions:** rate every locally tracked confirmed version of a manga at once from Track Other Versions.
             - **Use less data on recommendations:** choose Automatic, Always, or Never under Speed and data.
             - **Looser matches:** a source whose results do not match your taste can show up to four labelled looser matches instead of an empty row.
             - **Help for failing sources:** a failing For You row explains the likely cause and offers Try again, Open site, Check source, Manage extension, and Don't use in For You.
@@ -346,6 +346,10 @@ jobs:
             - Trackers are asked for progress at most once every 15 minutes when you open a manga.
 
             See [What's changed](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/release-notes.md) for the complete list.
+
+            ### Known limitations
+
+            Encrypted-database upgrades and external-tracker updates on a signed-in device are not yet confirmed for this candidate. Keep a current backup and check progress on your tracker. MangaBaka sign-in is unavailable. Name hiding covers supported labels, not every screen; the download queue can still show source names. Confirmed versions descriptions can show Markdown markers, and the timer's 60 min button can wrap on narrow screens.
 
             Requires Android 8.0 (API 26) or newer. GitHub shows each APK's download size. Choose the universal APK for broad compatibility, or match your device ABI: arm64-v8a (64-bit ARM), armeabi-v7a (32-bit ARM), x86, or x86_64. If you are unsure, choose universal.
 

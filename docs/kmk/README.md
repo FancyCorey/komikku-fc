@@ -40,7 +40,7 @@ Feature pages have short filenames, such as `ratings.md`, `versions.md`, and `ba
 - Cancelling work stops pending operations where supported. It does not reverse completed file writes, installations, or outside tracker updates.
 - Name hiding changes visible names in screenshots; it does not change saved identifiers, user data, source requests, or the item an action affects.
 - Reversible actions record the previous value before a change and keep that record only when the change succeeds.
-- The public fork uses its own package name, launcher name, update source, release page, and issue tracker while keeping the original Komikku artwork.
+- The public fork uses its own package name, launcher name, logo, update source, release page, and issue tracker while keeping Komikku's familiar navigation.
 
 ## Screenshots and privacy
 

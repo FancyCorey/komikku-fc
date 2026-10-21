@@ -48,14 +48,13 @@ Komikku FC data uses the existing backup format and appears as clear backup opti
 ## Restore and check the result
 
 ```mermaid
-flowchart LR
-    File["Choose a trusted backup file<br/>and what to restore"] --> Result{"How did the<br/>restore finish?"}
-    Result -->|Finished| Check["Check your library,<br/>ratings and progress"]
-    Result -->|Some failed| Errors["Read the error report and<br/>check what is missing"]
-    Result -->|Stopped| Partial["Check what already returned<br/>before retrying"]
+flowchart TD
+    File["Choose a trusted backup<br/>and what to restore"] --> Result["Read the restore result"]
+    Result --> Check["Check restored items<br/>and any reported errors"]
+    Check --> Retry["Before retrying, check<br/>what already returned"]
 ```
 
-The restore result includes the selected Komikku FC data. An error report means you should check the affected entries before trying again.
+The restore result includes the selected Komikku FC data. If it finished, check your library, ratings, and progress. If some items failed, read the error report and check what is missing. If it stopped, check what already returned before trying again.
 
 ## Preferred versions after restoring
 
@@ -75,11 +74,15 @@ For a linked group, a newer preferred-version choice already on your device is k
 ## What a backup does not save
 
 ```mermaid
-flowchart LR
+flowchart TD
     Backup["Backup limitations"] --> OCR["Recognized text from downloaded pages is not included"]
     Backup --> History["Temporary undo history is not included"]
     Backup --> Credentials["Sensitive settings are omitted unless you include them"]
     Backup --> Remote["Restoring cannot undo changes on tracker services"]
+    %% Stack independent choices vertically for narrow screens.
+    OCR ~~~ History
+    History ~~~ Credentials
+    Credentials ~~~ Remote
 ```
 
 You can rebuild recognized page text from your downloads. You may need to sign in to outside services again after restoring.

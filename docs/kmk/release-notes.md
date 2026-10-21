@@ -19,7 +19,7 @@ When published, download [Komikku FC v0.8.24](https://github.com/FancyCorey/komi
 ### Added in v0.8.24
 
 - **Recent-reading recommendations:** For You can give extra weight to the tags of manga you read in the last 1 to 30 days. Older ratings still count. Blocked and disliked tags are never boosted, and titles rated Dislike or Not interested are ignored.
-- **Group rating for linked versions:** Track Other Versions shows the confirmed group's current rating, or Not rated, and changes it for every confirmed version at once. A newly confirmed version receives the group's rating when automatic rating sync is on, without overwriting a rating you set yourself.
+- **Group rating for linked versions:** Track Other Versions shows the confirmed group's current rating, or Not rated, and changes it for every locally tracked confirmed version at once. A newly confirmed, locally tracked version receives the group's rating when automatic rating sync is on, without overwriting a rating you set yourself.
 - **Use less data on recommendations:** Automatic, Always, and Never choices under **Speed and data**. Saving data has three effects:
   - it skips optional discovery pages;
   - it tries fewer searches per source;
@@ -131,7 +131,7 @@ The overview below covers capabilities across releases; it is not a list of feat
 - Best Version empty results now clearly offer **Keep current version** when no alternate match is found.
 - Installed extensions cannot replace the built-in Local source used by on-device manga.
 - Local OCR indexing and search for downloaded pages can be cancelled; indexed pages can be removed by manga or chapter. Recognized text is not included in backups or sync.
-- Komikku FC backup and restore support for ratings, recommendation settings, linked manga and preferred versions, source quality, and Local Tracking. Source Evaluation results and run history are not included in exported backups and are not rebuilt by restore. Taste profile and Local tracking are separate backup choices; include both for linked reading progress.
+- Komikku FC backup and restore support for ratings, recommendation settings, linked manga and preferred versions, source quality, and Local Tracking. Source evaluation results and run history are not included in exported backups and are not rebuilt by restore. Taste profile and Local tracking are separate backup choices; include both for linked reading progress.
 - Android document-based recommendation and extension export with exact-created-file cleanup, plus supported package install and removal operations.
 - Name hiding, diagnostics with limited identifying details, Action History entries that distinguish supported undo from events you cannot reverse locally, navigation warnings, and recovery information for extension failures. Fatal crashes are not guaranteed to be contained.
 - A grouped in-app Komikku FC change history that remains separate from Komikku's own release notes.
@@ -149,6 +149,12 @@ Komikku FC v0.8.24 is up to date with Komikku's main branch as of 12 October 202
 Komikku FC is an independent fork. It has its own app logo, uses the package name `app.komikku.kmk`, and uses this fork's releases for its own updates. Supported launchers can use the monochrome logo for themed icons. The repository is now `FancyCorey/komikku-fc`; links using the former `komikku-KMK` name redirect to it. Official Komikku releases and support channels remain separate.
 
 ## Known limitations
+
+Name hiding covers supported labels, not every screen. The download queue can still show source names. Check the whole image before sharing a screenshot; manga artwork and reader pages are not hidden.
+
+Descriptions in **Confirmed versions** can show Markdown markers as plain text. The reading timer's **60 min** button can wrap onto two lines on narrow screens.
+
+Encrypted-database upgrades on the new database engine and external-tracker updates on a signed-in device are not yet confirmed for this candidate. Keep a current backup before updating, and check progress on your tracker after using it.
 
 Bulk preference actions made directly from For You are recorded in Action History, but the immediate completion message does not provide an inline **Undo** action. Reversal remains available through Action History when its conflict checks allow it.
 

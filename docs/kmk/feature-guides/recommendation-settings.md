@@ -26,7 +26,7 @@ On a phone, choose an entry to open its page, then press Back to return to the l
 
 Each page groups related controls under short headings. Settings search finds a setting by its name or summary and opens the page that contains it. Longer explanations appear beside the control when they are useful.
 
-Number settings are checked before the app uses them. A stored value outside a setting's range falls back to its default; it is not passed to the recommendation features unchanged.
+Number settings are checked before the app uses them. A stored value outside a setting's range is replaced by its default or adjusted to the allowed range, depending on the setting; it is not passed to the recommendation features unchanged.
 
 ## Your taste
 
@@ -101,7 +101,7 @@ This page contains three things:
 | --- | --- |
 | Check automatically | Off by default. When on, it re-checks sources whose evaluation result is missing or out of date. It never installs or removes a source and never changes your source order. |
 | How often | Every 7, 14, or 30 days, or a custom number of days from 1 to 90. Every 14 days is the default and suits most libraries. Shorter intervals use more data. |
-| Only on unmetered networks | Waits for Wi-Fi, so mobile data is not used. It is on by default. |
+| Only on unmetered networks | Waits for a connection Android reports as unmetered, usually Wi-Fi. It is on by default. |
 | Only when battery is not low | Skips the check while the battery is low. It is on by default. |
 | Use results on For You | For You skips a source only when its latest check found no usable picks and For You has shown nothing from it in at least three recent refreshes. Your source order and choices are never changed. |
 
@@ -155,12 +155,12 @@ A linked version is the same manga available from another source. It is not a so
 
 | Setting | What it lets you choose |
 | --- | --- |
-| Results per source, under Versions and quality | Show 1 to 10 possible matches from each source when finding other versions of a manga. This is separate from the For You result limit and does not change normal search. |
+| Results per source | Show 1 to 10 possible matches from each source when finding other versions of a manga. This is separate from the For You result limit and does not change normal search. |
 | Select matches by default | Start with all possible matches selected, none selected, or exact title matches selected. Check the results yourself before confirming; similar titles are not proof that the manga is the same. |
 | Use top-right rating actions | Put rating actions in the top-right menu instead of directly on each rated manga card. This changes where you act, not the saved rating. |
 | Ask for a rating after finishing | Offer to rate the manga after you finish its latest available chapter. Declining does not change your rating. |
 | Ask about other versions | After rating a manga, offer to apply the rating to versions on other sources. Cancelling the follow-up keeps the original rating you saved. |
-| Rate linked versions together | Also give your rating to linked versions from other sources that you track. A newly confirmed version receives the group's rating, unless you have already rated that version yourself. Leave this off to rate versions separately. |
+| Rate linked versions together | Also give your rating to linked versions from other sources that you track. A newly confirmed, locally tracked version receives the group's rating, unless you have already rated that version yourself. Leave this off to rate versions separately. |
 | Track linked versions together | Starting local tracking on one version can also start it on linked versions, and linking an external tracker entry to one version also links it to confirmed versions that do not have one yet. |
 | Choose reading status automatically | Use chapter progress to choose Plan to read, Reading, or Completed. On hold and Dropped remain choices you can make yourself. |
 | Choose a primary version automatically | When you have not chosen a version yourself, use the most-read linked version for the group's cover and title; equal read counts prefer the earlier rating. Your explicit choice takes precedence. |
@@ -197,18 +197,9 @@ When you change a setting, it is saved automatically. Return to For You and refr
 ## Navigation map
 
 ```mermaid
-flowchart LR
-    Entry["Recommendation Settings"] --> Taste["Your taste"]
-    Entry --> Feed["For You feed"]
-    Entry --> Focus["Focus modes"]
-    Entry --> Find["Find new sources"]
-    Entry --> Evaluation["Source evaluation"]
-    Entry --> Speed["Speed and data"]
-    Entry --> Linked["Linked versions and ratings"]
-    Entry --> Trouble["Troubleshooting"]
-    Find --> Evaluation
-    Find --> Try["Suggested for you<br/>(Sources to Try)"]
-    ForYou["For You menu"] --> Evaluation
+flowchart TD
+    Entry["Recommendation Settings"] --> Choose["Choose a feature<br/>from the list above"]
+    Choose --> Page["Open that feature\'s page"]
 ```
 
 Each entry opens one page, and Find new sources also links to Source evaluation and Sources to Try. **Search settings** is a separate way to jump directly to a control; it is not another entry.
@@ -216,13 +207,8 @@ Each entry opens one page, and Find new sources also links to Source evaluation 
 ## Settings affect features
 
 ```mermaid
-flowchart LR
-    Settings["Your saved choices"] --> ForYou["Which manga For You suggests"]
-    Settings --> Data["How much data recommendations use"]
-    Settings --> Evaluation["Source evaluation and the automatic check"]
-    Settings --> Suggestions["Sources to Try"]
-    Settings --> Matching["Finding the same manga on other sources"]
-    Settings --> Diagnostics["Troubleshooting"]
+flowchart TD
+    Settings["Your saved settings"] --> Apply["Recommendations and data use<br/>Source checks and suggestions<br/>Matching and troubleshooting"]
 ```
 
 Values are checked before use. Invalid stored numbers fall back to safe limits instead of reaching the recommendation features unchanged.

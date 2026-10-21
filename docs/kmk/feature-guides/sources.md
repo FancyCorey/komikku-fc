@@ -34,12 +34,16 @@ Use a suggestion's **Install** action, **Install visible**, or **Select** follow
 Installation follows your configured extension installation method. Complete any permission or confirmation steps it requires. The app reports success only after the installation flow reports the extension installed.
 
 ```mermaid
-flowchart LR
+flowchart TD
     Choose["Choose suggestions, start installation,<br/>and complete any prompts"] --> Result{"Result"}
     Result -->|Installed| Use["Check the source in Browse"]
     Result -->|Failed| Retry["Read the result and<br/>retry if offered"]
     Result -->|Cancelled| Stop["Installation stopped"]
     Result -->|Some installed| Partial["Check what installed<br/>before retrying failures"]
+    %% Stack independent choices vertically for narrow screens.
+    Use ~~~ Retry
+    Retry ~~~ Stop
+    Stop ~~~ Partial
 ```
 
 Cancellation does not uninstall extensions that already installed. A failed or cancelled attempt can offer Retry; check the result rather than assuming every selected extension was installed.
@@ -76,12 +80,16 @@ Recommendation searches use a source's selector only when its label identifies a
 **Like** and **Dislike** describe whether you want recommendations from a source. Quality marks describe a problem with that source's catalogue, such as poor quality or explicit content. They are separate choices; clearing one does not necessarily clear the other.
 
 ```mermaid
-flowchart LR
+flowchart TD
     Row["Open a source's<br/>actions"] --> Choice{"What are you<br/>changing?"}
     Choice -->|Preference| Preference["Like, Dislike, or<br/>return to neutral"]
     Choice -->|Concern| Quality["Mark poor quality<br/>or explicit content"]
     Choice -->|Clear| Clear["Clear the quality mark"]
     Choice -->|Hide| Dismiss["Dismiss it from<br/>Sources to Try"]
+    %% Stack independent choices vertically for narrow screens.
+    Preference ~~~ Quality
+    Quality ~~~ Clear
+    Clear ~~~ Dismiss
 ```
 
 In Sources to Try, **Clear dismissed suggestions** makes dismissed items eligible to appear again if their other conditions still allow them. It does not install them. **Clear all quality marks**, when offered, clears saved quality marks; it does not clear every dislike, dismissal, or disabled-source choice.

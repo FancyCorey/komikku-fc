@@ -99,12 +99,16 @@ For downloaded-page text searches, check that the pages are still downloaded and
 A recoverable source error may leave other results available, but not every crash can be caught. If the app closes, reopen it and inspect the current state before repeating a restore, migration, or bulk installation. Some work may already have completed.
 
 ```mermaid
-flowchart LR
+flowchart TD
     Stop["The app closed or an action stopped:<br/>reopen it and check what changed"] --> Choice{"What needs<br/>attention?"}
     Choice -->|Reading| Chapter["Check the current<br/>chapter and tracker"]
     Choice -->|Restore or migration| Backup["Check restored items<br/>before retrying"]
     Choice -->|Bulk install| Installed["Check installed extensions<br/>before retrying"]
     Choice -->|Keeps closing| Report["Record the steps<br/>and app version"]
+    %% Stack independent choices vertically for narrow screens.
+    Chapter ~~~ Backup
+    Backup ~~~ Installed
+    Installed ~~~ Report
 ```
 
 For a repeatable problem, include the app version from **More > About > Version**, the steps taken, the expected result, and what happened. A screenshot or crash log can help, but a crash report may not be available for every closure.

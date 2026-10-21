@@ -100,7 +100,7 @@ flowchart TD
     Result -->|A step failed| Failed["Report completed and failed steps"]
 ```
 
-Confirming a Best Version adds it to the confirmed group and also gives it the group's rating; see [Ratings](ratings.md#rate-a-whole-group-at-once).
+Confirming a Best Version adds it to the confirmed group. It also receives the group's rating when it is locally tracked and **Rate linked versions together** is on, without replacing a rating you set yourself; see [Ratings](ratings.md#rate-a-whole-group-at-once).
 
 **Keep current version** finishes the comparison without starting migration. Selecting another version opens a confirmation: **Migrate** replaces your current entry, **Copy** keeps the current entry as well, and **Cancel** returns without applying either choice. Read the warning before proceeding: migration cannot be automatically undone and can affect downloaded chapters or connected tracker accounts.
 

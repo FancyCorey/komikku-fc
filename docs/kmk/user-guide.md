@@ -145,9 +145,11 @@ See [Finding and comparing manga versions](feature-guides/versions.md) for searc
 6. Review page previews. A missing preview affects only that version. **View in Reader** is available even when a preview fails; press Back to return to the comparison page.
 7. Keep the current version or continue to Komikku's migration confirmation.
 
-| Choose chapter samples | Compare previews |
-| --- | --- |
-| ![Best Version chapter selection with hidden source names](visual-guide/best-version-chapter-selection.png) | ![Best Version page previews with hidden source names](visual-guide/best-version-preview-comparison.png) |
+<p align="center"><img src="visual-guide/best-version-chapter-selection.png" width="300" alt="Best Version chapter selection with hidden source names"></p>
+<p align="center"><em>Choose comparable chapter samples.</em></p>
+
+<p align="center"><img src="visual-guide/best-version-preview-comparison.png" width="300" alt="Best Version page previews with hidden source names"></p>
+<p align="center"><em>Compare page previews from the selected chapters.</em></p>
 
 Comparison does not alter the library. A library change begins only after you select another version and confirm the established migration flow.
 
@@ -165,9 +167,11 @@ Open the reader's alternate-source chooser and select another source offering th
 
 While that reading pair is active, **Switch source** lets you choose a chapter from the other source in either direction. Returning to the source you started from does not end the pair. If the pair is unavailable after the session ends, open the alternate-source chooser again. Switching does not add manga to your library or bypass reading-time restrictions. See [Switch between sources](feature-guides/reading.md#switch-between-sources) for the complete steps.
 
-| Reading schedule | Completion preference |
-| --- | --- |
-| ![Reading schedule with recurring time windows](visual-guide/reading-schedule.png) | ![Reader completion prompt with all four manga preferences](visual-guide/reader-completion-preference.png) |
+<p align="center"><img src="visual-guide/reading-schedule.png" width="260" alt="Reading schedule with recurring time windows"></p>
+<p align="center"><em>Choose recurring reading windows.</em></p>
+
+<p align="center"><img src="visual-guide/reader-completion-preference.png" width="260" alt="Reader completion prompt with all four manga preferences"></p>
+<p align="center"><em>Choose a preference after completing the latest chapter.</em></p>
 
 ### Jump to last read
 
@@ -190,6 +194,7 @@ The schedule is off by default. If you open the reader during a restricted time,
 Enable **Ask for a rating after finishing** under **Recommendation Settings > Linked versions and ratings** if you want the offer after leaving a newly completed final chapter. Rereads and already-rated manga do not trigger it. Choose a rating or skip the prompt. **Ask about other versions** controls the later offer to rate other versions; dismissing that offer keeps the rating you already saved.
 
 <p align="center"><img src="visual-guide/reader-linked-version-follow-up.png" width="260" alt="Reader follow-up for applying the preference to matching versions"></p>
+<p align="center"><em>Reader follow-up for applying the preference to matching versions.</em></p>
 
 ## Name hiding and Action History
 
@@ -204,6 +209,7 @@ Name hiding (**Settings > Advanced > Developer tools > Hide technical names in s
 Open **Action History** to review supported reversible actions. If the same value changed again after the original action, the app refuses to undo it instead of overwriting newer data. Some outside actions, such as updates sent to a tracking service, can be listed but cannot be reversed locally.
 
 <p align="center"><img src="visual-guide/action-history-undo.png" width="360" alt="Action History with a completed local preference change and its Undo action"></p>
+<p align="center"><em>Action History with a completed local preference change and its Undo action.</em></p>
 
 ## Export and cleanup
 
@@ -212,6 +218,7 @@ See [Name hiding and exports](feature-guides/sharing.md) for chooser, cancellati
 Extension, recommendation, and library exports use Android's document picker. Choose the destination through the system UI. Public builds keep successful exports. If cleanup is offered for an incomplete, failed, or cancelled export, Keep or Remove applies only to the document that export created. A removal failure can leave it in place. Cancellation does not mean that an already-created file was removed, and cleanup does not scan unrelated storage.
 
 <p align="center"><img src="visual-guide/recommendation-bundle-export.png" width="260" alt="For You with the Export Top Picks action open"></p>
+<p align="center"><em>For You with the Export Top Picks action open.</em></p>
 
 ## OCR search for downloads
 
@@ -226,24 +233,27 @@ See [Searching downloaded pages with OCR](feature-guides/ocr.md) for indexing, c
 Recognition runs on the device. The extracted text stays on the device, is excluded from backup and sync, and can be removed without deleting downloaded pages. It works best with Latin-script text; stylized or non-Latin pages may produce incomplete results.
 
 <p align="center"><img src="visual-guide/ocr-search-downloads.png" width="260" alt="OCR Search Downloads with a real indexed summary and indexing controls"></p>
+<p align="center"><em>OCR Search Downloads with a real indexed summary and indexing controls.</em></p>
 
 ## Backup and restore
 
 See [Backup and restore](feature-guides/backups.md) for choosing what to save, protecting your file, and checking partial restore results.
 
-Backups can include your ratings, recommendation choices, source evaluations, linked manga versions, preferred versions, source-quality information, and Local Tracking. **Taste profile** and **Local tracking** are separate choices: include both to save linked reading progress. Select **App settings** for recommendation controls stored as preferences. Sensitive settings, which can include tracker sign-in details, are optional and off by default. A partial restore reports what could not be restored instead of treating the entire operation as successful.
+Backups can include your ratings, recommendation choices, linked manga versions, preferred versions, source-quality information, and Local Tracking. Source evaluation results and run history are not included. **Taste profile** and **Local tracking** are separate choices: include both to save linked reading progress. Select **App settings** for recommendation controls stored as preferences. Sensitive settings, which can include tracker sign-in details, are optional and off by default. A partial restore reports what could not be restored instead of treating the entire operation as successful.
 
 OCR text is excluded from backup because it can be regenerated from local downloads. Action History also cannot roll back changes made by outside services or installed packages.
 
 <p align="center"><img src="visual-guide/backup-and-restore.png" width="260" alt="Data and storage settings with backup, restore, scheduling, and privacy guidance"></p>
+<p align="center"><em>Data and storage settings with backup, restore, scheduling, and privacy guidance.</em></p>
 
 ## Extension operations
 
 See [Extension management](feature-guides/extensions.md) for isolation, consent, installation, removal, export, and cleanup.
 
-Choose the ordinary installer under **Settings > Advanced > Extensions > Extension installer**. Available methods depend on your build; private installation is not offered in public builds. Android prompts depend on the method and permissions. Source Evaluation has a separate installer choice for its checks. A failing extension does not necessarily affect unrelated sources, but a source failure is not a guarantee that every crash will be contained. Extension export uses Android's document picker and acts only on extensions you select. Cleanup is limited to the document created by that export.
+Choose the ordinary installer under **Settings > Advanced > Extensions > Extension installer**. Available methods depend on your build; private installation is not offered in public builds. Android prompts depend on the method and permissions. Source evaluation has a separate installer choice for its checks. A failing extension does not necessarily affect unrelated sources, but a source failure is not a guarantee that every crash will be contained. Extension export uses Android's document picker and acts only on extensions you select. Cleanup is limited to the document created by that export.
 
 <p align="center"><img src="visual-guide/extension-export-confirmation.png" width="260" alt="Extension export confirmation explaining the executable package boundary"></p>
+<p align="center"><em>Extension export confirmation explaining the executable package boundary.</em></p>
 
 ## Privacy and troubleshooting
 

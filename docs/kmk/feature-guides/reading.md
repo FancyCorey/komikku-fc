@@ -10,12 +10,6 @@ Open the timer from the reader's timer action. Manage the reading schedule from 
 
 These are optional controls around the normal reader. When they are disabled, ordinary reader behavior stays the same. Schedule and timer messages can be dismissed and do not change chapter progress on their own.
 
-<p align="center"><img src="../visual-guide/v0.8.24/reading-timer.png" width="260" alt="Reading timer with How long and warnings"></p>
-<p align="center"><em>The reading timer: how long, and when to warn you.</em></p>
-
-<p align="center"><img src="../visual-guide/v0.8.24/reading-timer-end.png" width="260" alt="Reading timer When time is up section"></p>
-<p align="center"><em>When time is up: finish the chapter, and optionally one more.</em></p>
-
 The schedule entry in the reader opens the same choices found under **Settings > Reader**, so there is only one place to manage the schedule. Changes are saved with the app's other settings.
 
 **Reading schedule** lets you choose days and time windows, then either block reading during those windows or allow reading only during them. Enable the schedule to apply it. It affects this app's reader only, not other apps. If an allowed period ends while you are already reading, you can finish that chapter; a new chapter waits until reading is allowed again.
@@ -216,9 +210,6 @@ When either applies, **Continue from another source** appears at the end of the 
 2. In **Choose the matching chapter**, review the suggested chapter. The first chapter with the same number is selected when available. Otherwise, the closest available number is suggested; if two are equally close, the lower number wins. For example, if you are on chapter 5 and the other source has only 4 and 6, it suggests 4.
 3. Check the chapter name and translation-group label when supplied by the source. Several translations may have the same chapter number. You can select a different entry, then choose **Read this chapter**, or **Stay on this source** to cancel.
 4. While you read from the other source, **Return to primary source** in the top bar brings you back. While that source pair is active, use **Switch source** in the reader to choose a chapter from the other source. After returning to the primary source, the same action lets you switch back to the alternate source; returning is not the end of the pair.
-
-<p align="center"><img src="../visual-guide/v0.8.24/alternate-source-chooser.png" width="260" alt="Choose an alternate source dialog"></p>
-<p align="center"><em>The chooser shows the current source first, then Search another title and Search more sources.</em></p>
 
 The suggested chapter number is not a guarantee that the contents match. Some sources split chapters or start numbering at a different point. If the app warns that the match is uncertain, check the pages before continuing. **Correct chapter mapping** lets you change which chapters correspond; **This chapter is not the match** keeps the current chapter open while you choose another match. If you have read ahead and the other source lacks that chapter, choose a suitable chapter from its list instead.
 

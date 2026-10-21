@@ -17,6 +17,16 @@ import java.io.File
  */
 class KmkRecsReleaseNotesTest {
 
+    @Test
+    fun `current notes cover name hiding on linked screens without promising pause-free loading`() {
+        val current = KmkRecsReleaseNotes.MARKDOWN.substringBefore("## KMK-Recs v0.8.23.1")
+        assertTrue(current.contains("group management, the linked-version list and skipped-source diagnostics hide source names"))
+        assertFalse(current.contains("opens without a pause"))
+        assertTrue(current.contains("every locally tracked confirmed version"))
+        assertFalse(current.contains("every confirmed version at once"))
+        assertTrue(publicReleaseNotes.contains("every locally tracked confirmed version"))
+    }
+
     private val recommendationStrings = File("../i18n-kmk/src/commonMain/moko-resources/base/strings.xml").readText()
     private val publicReleaseNotes = File("../docs/kmk/release-notes.md").readText()
 
@@ -323,7 +333,7 @@ class KmkRecsReleaseNotesTest {
             "**Automatic source check:**", "off until you turn it on", "never installs or removes a source or changes your source order", "Use results on For You",
             "**Recommendation Settings:**", "one entry per major feature", "Every setting is still there",
             // documentation capture pass
-            "titled Confirmed versions", "hides source names", "**Focus picker:**", "Clear focus always clears it",
+            "titled Confirmed versions", "hide source names", "**Focus picker:**", "Clear focus always clears it",
             "**Failing source counts:**", "same recent refreshes", "**Wording:**", "recent reading is used",
         ).forEach { phrase -> assertTrue(section.contains(phrase), "v0.8.24 What's New is missing: $phrase") }
     }

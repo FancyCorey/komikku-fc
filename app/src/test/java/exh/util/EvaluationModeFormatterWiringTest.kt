@@ -9,6 +9,38 @@ import javax.xml.parsers.DocumentBuilderFactory
 class EvaluationModeFormatterWiringTest {
 
     @Test
+    fun `for you source actions hide confirmation labels and suggested export filenames`() {
+        val source = File("src/main/java/exh/recs/BrowsePersonalRecommendationsTab.kt").readText()
+        assertTrue(source.contains("val hideSourceNamesForExport = rememberEvaluationModeEnabled()"))
+        assertTrue(source.contains("if (hideSourceNamesForExport) \"kmk_recommendations.json\""))
+        assertTrue(source.contains("val displaySourceName = if (rememberEvaluationModeEnabled()) EvaluationModeFormatter.sourceLabel(source.id) else source.name"))
+        assertTrue(source.contains("rec_source_failure_stopped, displaySourceName"))
+        assertTrue(source.contains("newIntent(context, siteUrl, source.id, displaySourceName)"))
+    }
+
+    @Test
+    fun `linked version management renders opaque source ids when name hiding is enabled`() {
+        val group = File("src/main/java/exh/recs/links/LinkGroupManagementScreen.kt").readText()
+        assertTrue(group.contains("EvaluationModeFormatter.sourceLabel(candidate.manga.source) else candidate.sourceName"))
+        assertTrue(group.contains("EvaluationModeFormatter.sourceLabel(member.link.source) else member.sourceName"))
+        val list = File("src/main/java/exh/recs/links/LinkedVersionListScreen.kt").readText()
+        assertTrue(list.contains("val hideSourceNames = exh.util.rememberEvaluationModeEnabled()"))
+        assertTrue(list.contains("if (hideSourceNames) {"))
+        assertTrue(list.contains("EvaluationModeFormatter.sourceLabel(row.key.source)"))
+        assertTrue(list.contains("row.sourceName"))
+    }
+
+    @Test
+    fun `skipped source diagnostics restart with empty display state when name hiding changes`() {
+        val source = File("src/main/java/exh/recs/settings/RecommendationDiagnosticsSection.kt").readText()
+        assertTrue(source.contains("rememberEvaluationModeEnabled()"))
+        assertTrue(source.contains("key(hideSourceNames)"))
+        assertTrue(source.contains("produceState(initialValue = emptyList<String>())"))
+        assertTrue(source.contains("val sourceId = fit.sourceId ?: return@mapNotNull null"))
+        assertTrue(source.contains("if (hideSourceNames) exh.util.EvaluationModeFormatter.sourceLabel(sourceId) else fit.sourceName"))
+    }
+
+    @Test
     fun `application startup installs the Android label resolver before dependency setup`() {
         val source = File("src/main/java/eu/kanade/tachiyomi/App.kt").readText()
         val superCall = source.indexOf("super<Application>.onCreate()")

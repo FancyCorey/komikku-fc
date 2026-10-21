@@ -139,21 +139,6 @@
     <state>both-offers-on</state>
     <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
   </artifact>
-  <artifact id="reading-timer-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/reading-timer.png" sha256="9A6CEC3F866CB6E314579446C27DD576991FDD18482985691A7BAAB7F4376468" width="720" height="1154">
-    <route>reader/reading-timer</route>
-    <state>length-and-warnings</state>
-    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
-  </artifact>
-  <artifact id="reading-timer-end-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/reading-timer-end.png" sha256="ACECE87F8B095CCB9A1A8708096D9AD28F14DE3BCF4CAA86CE72F20C630C08B9" width="720" height="1154">
-    <route>reader/reading-timer</route>
-    <state>when-time-is-up</state>
-    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
-  </artifact>
-  <artifact id="alternate-source-chooser-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/alternate-source-chooser.png" sha256="62D60DF4C1D083E9F1739B5C42A58C204C22516490727A8438557B76659ABF5E" width="720" height="1154">
-    <route>reader/alternate-source-chooser</route>
-    <state>current-source-and-two-matches</state>
-    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
-  </artifact>
   <artifact id="hide-names-setting-v0.8.24" type="screenshot" path="../visual-guide/v0.8.24/hide-names-setting.png" sha256="0CCBA3AB84668AAD82AE6EA0D2B56294B51E300A0FF2E6CB2CA0E8418AE438C1" width="720" height="427">
     <route>settings/advanced/developer-tools</route>
     <state>hide-technical-names-on</state>

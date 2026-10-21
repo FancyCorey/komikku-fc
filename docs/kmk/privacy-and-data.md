@@ -23,12 +23,12 @@ A release maintainer must provide this fork's own Google Drive OAuth configurati
 
 ## Backups and exports
 
-Backups include supported Komikku FC state that is difficult to recreate, such as ratings, recommendation preferences, links, and source evaluation. They do not erase remote side effects, uninstall extensions, restore the clipboard, or replace a device backup.
+Backups include supported Komikku FC state that is difficult to recreate, such as ratings, recommendation preferences, links, and source-quality choices. Source evaluation results and run history are not included. Backups do not erase remote side effects, uninstall extensions, restore the clipboard, or replace a device backup.
 
 Exports use Android's document APIs. Cleanup is limited to the exact document created by the operation and never scans an arbitrary folder for similarly named files.
 
 ## Screenshots and diagnostics
 
-Name hiding replaces source and repository names with neutral labels. It does not hide manga artwork, titles, account information, reader pages, notifications, or every part of Android's interface. Before sharing a screenshot, check the whole image and any accompanying XML for private content, identifiers, paths, URLs, and status-bar information.
+Name hiding replaces supported source and repository labels with neutral labels. Some screens, including the download queue, can still show source names. It does not hide manga artwork, titles, account information, reader pages, notifications, or every part of Android's interface. Before sharing a screenshot, check the whole image and any accompanying XML for private content, identifiers, paths, URLs, and status-bar information.
 
 Source evaluation's copied diagnostics use a short category instead of raw error text. When name hiding is off, source and extension names can remain in that text. Other logs or exported files may contain additional information. See [Sharing](feature-guides/sharing.md) and [file safety](feature-guides/safety.md) before sending them to someone else.

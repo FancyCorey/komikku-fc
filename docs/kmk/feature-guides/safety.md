@@ -21,12 +21,16 @@ A source can be unavailable even when its address is correct. [Source evaluation
 Read the message for the action that failed. A temporary connection problem may be worth retrying. A rejected link, missing manga, or conflicting Undo needs a different next step.
 
 ```mermaid
-flowchart LR
+flowchart TD
     Problem["An action did<br/>not finish"] --> Kind{"What<br/>happened?"}
     Kind -->|Connection| Retry["Check the connection,<br/>then retry"]
     Kind -->|Missing item| Find["Find the manga or<br/>chapter again"]
     Kind -->|Undo conflict| Current["Check your current choice"]
     Kind -->|Cancelled| Stop["Leave the action stopped"]
+    %% Stack independent choices vertically for narrow screens.
+    Retry ~~~ Find
+    Find ~~~ Current
+    Current ~~~ Stop
 ```
 
 Cancelling does not necessarily reverse work already completed. For example, an interrupted restore may have restored some items. See [Backups](backups.md) and [Troubleshooting](troubleshooting.md) for the relevant recovery steps.

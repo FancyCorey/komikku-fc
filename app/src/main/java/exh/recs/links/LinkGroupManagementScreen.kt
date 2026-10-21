@@ -149,7 +149,11 @@ class LinkGroupManagementScreen(private val focusedGroupId: String? = null) : Sc
             MangaCover.Book(data = candidate.manga.asMangaCover(), modifier = Modifier.width(32.dp).height(46.dp))
             Column(Modifier.weight(1f).padding(start = MaterialTheme.padding.small)) {
                 Text(candidate.manga.title)
-                Text(candidate.sourceName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    if (exh.util.rememberEvaluationModeEnabled()) exh.util.EvaluationModeFormatter.sourceLabel(candidate.manga.source) else candidate.sourceName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -190,7 +194,10 @@ class LinkGroupManagementScreen(private val focusedGroupId: String? = null) : Sc
                             member.manga?.let { MangaCover.Book(data = it.asMangaCover(), modifier = Modifier.width(36.dp).height(52.dp)) }
                             Column(Modifier.weight(1f).padding(start = MaterialTheme.padding.small)) {
                                 Text(member.manga?.title ?: member.link.title)
-                                Text(member.sourceName, style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    if (exh.util.rememberEvaluationModeEnabled()) exh.util.EvaluationModeFormatter.sourceLabel(member.link.source) else member.sourceName,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
                             }
                             TextButton(onClick = { onMove(member) }) { Text(stringResource(KMR.strings.link_group_management_move_member)) }
                             TextButton(onClick = { onRemove(member) }) { Text(stringResource(KMR.strings.link_group_management_remove_link)) }
