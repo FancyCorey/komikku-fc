@@ -1,16 +1,16 @@
 # Komikku FC public release notes
 
-This page separates the latest published release from the next candidate. **v0.8.23.1** is the latest published version; **v0.8.24** remains an unreleased candidate. The in-app **Komikku FC What's new** screen keeps the detailed history of changes.
+This page describes the latest published release. **v0.8.24** is the latest published version; the previous release was **v0.8.23.1**. The in-app **Komikku FC What's new** screen keeps the detailed history of changes.
 
 ## Release status
 
-The next Komikku FC feature version is **v0.8.24**, titled **Komikku FC v0.8.24 — updated to the latest Komikku**. The latest published snapshot remains **v0.8.23.1** until the candidate is released.
+The latest published Komikku FC feature version is **v0.8.24**, titled **Komikku FC v0.8.24 — updated to the latest Komikku**. It replaces **v0.8.23.1**.
 
 v0.8.24 includes every change on Komikku's main branch up to 12 October 2026: everything in Komikku v1.14.1, plus the later changes made before that date. The Komikku FC additions listed below are separate from those Komikku changes.
 
 ## App Updates
 
-When published, download [Komikku FC v0.8.24](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.24) from this fork's Releases page. Until then, use the latest published [v0.8.23.1](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.23.1) release. Choose the APK for your device and read its installation notes. Future updates are distributed through the same Releases page.
+Download [Komikku FC v0.8.24](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.24) from this fork's Releases page. The previous release, [v0.8.23.1](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.23.1), remains available there. Choose the APK for your device and read its installation notes. Future updates are distributed through the same Releases page.
 
 ### Updated to the latest Komikku in v0.8.24
 
@@ -67,7 +67,7 @@ Some older releases compare Komikku's version rather than the Komikku FC feature
 
 ## Komikku FC feature overview
 
-The overview below covers capabilities across releases; it is not a list of features shipped in v0.8.23.1. The v0.8.24 candidate adds the v0.8.24 changes listed above, which remain unavailable from this fork's published v0.8.23.1 until v0.8.24 is published.
+The overview below covers capabilities across releases; it is not a list of features shipped only in v0.8.24. The v0.8.24 changes listed above are available from the published v0.8.24 release.
 
 - Personalized For You and Top Picks views with your manga filters, results from sources that remain available, optional recent-catalogue discoveries, repeat-display reordering, bulk rating actions, and status explanations for each source.
 - For You can:
@@ -154,7 +154,7 @@ Name hiding covers supported labels, not every screen. The download queue can st
 
 Descriptions in **Confirmed versions** can show Markdown markers as plain text. The reading timer's **60 min** button can wrap onto two lines on narrow screens.
 
-Encrypted-database upgrades on the new database engine and external-tracker updates on a signed-in device are not yet confirmed for this candidate. Keep a current backup before updating, and check progress on your tracker after using it.
+Encrypted-database upgrades on the new database engine and external-tracker updates on a signed-in device were not confirmed before this release. Keep a current backup before updating, and check progress on your tracker after using it.
 
 Bulk preference actions made directly from For You are recorded in Action History, but the immediate completion message does not provide an inline **Undo** action. Reversal remains available through Action History when its conflict checks allow it.
 
