@@ -35,5 +35,6 @@ For a genuinely private development history, keep the development branch in a se
 6. Review the workflow artifact, `SHA256SUMS.txt`, `CERTIFICATE_SHA256.txt`, and `RELEASE_MANIFEST.json`.
 7. Install the signed APK over an earlier public build and confirm Android accepts the update.
 8. Publish the reviewed draft release. A draft is not visible to the in-app updater.
+9. On `master`, update [release notes](release-notes.md) so the new version is described as published rather than as a candidate, and merge the release commits into `master` so the default branch matches the latest release.
 
 The release workflow also supports a manual run for an existing `v*` tag. Use that only to rebuild a reviewed tag after the required signing secrets are in place; do not move an already published tag.
