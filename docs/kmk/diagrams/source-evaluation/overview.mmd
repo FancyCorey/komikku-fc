@@ -1,0 +1,8 @@
+flowchart TD
+    Open["Open Source evaluation"] --> Size["Choose how many<br/>sources to check"]
+    Size --> Start["Select Start"]
+    Start --> Results["Read the results"]
+    Results --> More{"More sources<br/>waiting?"}
+    More -->|Yes| Continue["Select Continue"]
+    Continue --> Results
+    More -->|No| End["Check finished"]

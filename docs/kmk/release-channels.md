@@ -1,40 +1,50 @@
 # Release channels
 
-Komikku FC has public releases and separate development builds. Choose a public release for everyday reading.
+Use a **public release** for everyday reading. **Development builds** are separate apps for testing changes; they are not updates to the public app.
 
 ## Public releases
 
-Public releases use the `kmkPublicTest` build variant and package name `app.komikku.kmk`. The release workflow enables the updater and signs the APKs with the public release key. A local build of this variant uses a debug key instead and cannot replace an installed public release.
+Public Komikku FC uses the package ID `app.komikku.kmk`. Published releases are signed with the project's public release key and have the updater enabled. See [Update compatibility](release-notes.md#app-updates) if you have an older installation.
 
-Create a public release from a tag matching the Komikku FC feature version, such as `v0.8.23`. The workflow checks that tag, runs formatting and unit tests, builds and signs the APKs, verifies their package, version code, and signing identity, then creates a draft with checksums and a release manifest. Publishing the reviewed draft makes it available to the updater. See [update compatibility](release-notes.md#app-updates) for older installations.
-
-Android accepts an update only when the package name matches, the new version code is higher, and the APK is signed with the same release key. Keep the public keystore and its passwords outside the repository and preserve them for every future public release.
-
-The public workflow needs these repository secrets:
-
-- `SIGNING_KEY`: Base64-encoded public release keystore.
-- `ALIAS`: key alias inside that keystore.
-- `KEY_STORE_PASSWORD`: keystore password.
-- `KEY_PASSWORD`: key password.
-
-Google Drive sync is independent of the updater. Supplying `GOOGLE_CLIENT_SECRETS_JSON` includes the fork-owned Google Drive client in that build. Leaving it unset still creates a valid public release, but the Google Drive option is not included.
+A new public release must keep that package ID and signing identity and use a higher Android `versionCode`. The feature version, such as **0.8.24**, is a separate label. For the Android versioning rules, see [Version your app](https://developer.android.com/studio/publish/versioning).
 
 ## Development builds
 
-Debug development builds use `app.komikku.dev`. They install beside the public app, use the Android debug key, and do not enable the in-app updater. The push CI and manual development workflows create downloadable debug APKs, not public updates. The inherited pull-request workflow instead builds preview APKs and can enable the updater and signing for same-repository pull requests; those artifacts are not the public `app.komikku.kmk` channel. See [Build and verification](build-and-verify.md#repository-automation) for the differences.
+Debug builds use `app.komikku.dev` and the Android debug key. They install beside the public app, have their own data, and do not enable the public in-app updater. Installing one does not update the public app or copy its library.
 
-For a genuinely private development history, keep the development branch in a separate private repository or private clone. Branches inside a public repository are public. A private GitHub release cannot be used as an anonymous in-app update feed, so private development builds are intentionally distributed through authenticated artifacts or direct testing rather than the public updater.
+The push CI and manual development workflows produce debug APKs for testing, not public releases. The inherited pull-request workflow builds preview APKs; it can use signing and an updater for pull requests from this repository, but those APKs are not the public `app.komikku.kmk` release. See [Build and verification](build-and-verify.md#repository-automation).
 
-## Release checklist
+Keep unpublished development history locally or in a private repository if it must remain private. A branch in a public repository is public. Private release files require authenticated access and cannot serve as this app's anonymous public update feed.
 
-1. Run the development build and test the intended changes on a device.
-2. Merge or copy the approved code to the public release branch.
-3. Increase Android's `versionCode` and update the Komikku FC feature version and release notes. Android's `versionName` is separate.
-4. Run the public verification commands in [Build and verification](build-and-verify.md).
-5. Create a new tag that matches the Komikku FC feature version, for example `v0.8.23`. Never move a published tag.
-6. Review the workflow artifact, `SHA256SUMS.txt`, `CERTIFICATE_SHA256.txt`, and `RELEASE_MANIFEST.json`.
-7. Install the signed APK over an earlier public build and confirm Android accepts the update.
-8. Publish the reviewed draft release. A draft is not visible to the in-app updater.
-9. On `master`, update [release notes](release-notes.md) so the new version is described as published rather than as a candidate, and merge the release commits into `master` so the default branch matches the latest release.
+## For release maintainers
 
-The release workflow also supports a manual run for an existing `v*` tag. Use that only to rebuild a reviewed tag after the required signing secrets are in place; do not move an already published tag.
+The [Release build workflow](../../.github/workflows/build_release.yml) builds the `kmkPublicTest` variant, enables the updater, and signs the APKs with the public key. Despite its name, this is the variant used for public releases. A local build uses a debug key unless re-signed; it cannot replace the installed public app.
+
+The workflow checks the tag against the feature version, runs formatting and unit tests, builds the APKs, verifies their package/version/signing identity, and creates a **draft release** with checksums and a release manifest. A draft is not visible to the updater; publishing the reviewed draft makes it available.
+
+### Signing and optional Google Drive support
+
+Keep the release keystore and its passwords outside the repository. Preserve the same signing identity for future public updates.
+
+Set these GitHub repository secrets:
+
+- `SIGNING_KEY`: the release keystore encoded as Base64.
+- `ALIAS`: the key's name inside the keystore.
+- `KEY_STORE_PASSWORD`: the keystore password.
+- `KEY_PASSWORD`: the key password.
+
+Google Drive sync is separate from updates. Supplying `GOOGLE_CLIENT_SECRETS_JSON` configures this fork's Google Drive sign-in. Without it, Drive sync is unavailable in that build, but the public updater can still work. Never put secret values in source files, issues, or documentation.
+
+### Release checklist
+
+1. Build a development APK and check the intended changes on a device.
+2. Integrate the approved code into the public release branch.
+3. Increase Android's `versionCode`, then update the Komikku FC feature version and release notes. Android's `versionName` is separate.
+4. Run the verification commands in [Build and verification](build-and-verify.md).
+5. Create a new, unused tag matching the feature version. For example, `v0.8.24` identifies feature version 0.8.24; do not reuse it for a later version or move a published tag.
+6. Review the workflow APKs, `SHA256SUMS.txt`, `CERTIFICATE_SHA256.txt`, and `RELEASE_MANIFEST.json`.
+7. Install the signed APK over an earlier public build and confirm that it updates successfully, preserving app data.
+8. Publish the reviewed draft release.
+9. Integrate the release commits into `master` and update its [release notes](release-notes.md) from candidate wording to published wording. The default branch should describe the latest public release.
+
+The workflow can also be started manually for an existing `v*` tag. Use that to rebuild a reviewed tag only after the signing secrets are configured. Do not move a published tag or treat a rebuild as permission to replace published assets.

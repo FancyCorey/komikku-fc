@@ -1,0 +1,5 @@
+flowchart TD
+    Restore["Restore linked versions<br/>and preferred choices"] --> Choose["Use backup choice<br/>if current is missing<br/>or older"]
+    Choose --> Available{"Chosen version<br/>still in the group?"}
+    Available -->|Yes| Preferred["Show the<br/>preferred version"]
+    Available -->|No| Other["Show another<br/>available member"]

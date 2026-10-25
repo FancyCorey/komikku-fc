@@ -1,0 +1,4 @@
+flowchart TD
+    Open["Open or refresh<br/>a participating version"] --> Match{"Confirmed match<br/>available here?"}
+    Match -->|Yes| Mark["Mark read through<br/>that chapter"]
+    Match -->|No| Number["Use highest chapter<br/>at or below progress"]

@@ -1,0 +1,5 @@
+flowchart TD
+    Remove["Choose Remove for<br/>the identified file"] --> Attempt["Try deleting that file only"]
+    Attempt --> Result{"Removal<br/>succeeded?"}
+    Result -->|Yes| Gone["File removed"]
+    Result -->|No| Keep["File stays in place"]

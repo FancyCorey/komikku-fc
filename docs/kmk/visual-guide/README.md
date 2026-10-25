@@ -1,11 +1,11 @@
 # Visual guide to Komikku FC
 
-This tour follows Komikku FC's main workflows across supported screen sizes. Each section explains what the screen is for, what its controls do, and where to find more detailed steps. Larger screens may show related navigation beside the current page; smaller screens may place the same controls behind a menu or on a separate page.
+Use this tour to recognize Komikku FC's screens and find the detailed instructions. On tablets, navigation may appear beside the open page; on phones, it may be on a separate page or in a menu. These are existing illustrations, not a complete set of current screens.
 
 ## For You
 
-<p align="center"><img src="for-you-evaluation-mode.png" width="260" alt="For You page with personalized manga rows, matching tags, and anonymized source labels"></p>
-<p align="center"><em>For You page with personalized manga rows, matching tags, and anonymized source labels.</em></p>
+<p align="center"><img src="for-you-evaluation-mode.png" width="260" alt="For You page with personalized manga rows, matching tags, and neutral source labels"></p>
+<p align="center"><em>For You page with personalized manga rows, matching tags, and neutral source labels.</em></p>
 
 At the top of For You, you can see topic shortcuts, personalized rows, matching tags, and manga cards. Name hiding replaces source names, while the covers and titles remain visible so the recommendations are still meaningful.
 
@@ -21,7 +21,7 @@ Long-pressing a card starts selection mode. Love, Like, and Dislike remain direc
 <p align="center"><img src="not-interested-other-versions.png" width="260" alt="Manga preference actions with Not Interested selected for another version"></p>
 <p align="center"><em>Manga preference actions with Not Interested selected for another version.</em></p>
 
-Love, Like, Dislike, and Not Interested are peer preferences. The selected state is shown on the manga action surface, and each preference has a matching collection or filter. Clearing Not Interested is an explicit reversible action; it is not treated as an absence of a rating. The Top Picks image above shows the bulk-action surface, while this detail image shows the state on a manga-related screen.
+Love, Like, Dislike, and Not Interested are four rating choices, each with a matching collection or filter. Not Interested is a saved choice, not the same as no rating. Clear it to remove that choice. Top Picks lets you rate several selected manga; the image here shows one selected rating.
 
 ## Related manga
 
@@ -35,7 +35,7 @@ Related-manga results load in separate source rows. A short or unavailable row d
 <p align="center"><img src="group-recommendations.png" width="260" alt="Group recommendations built from a confirmed multi-version manga group with neutral source labels"></p>
 <p align="center"><em>Group recommendations built from a confirmed multi-version manga group with neutral source labels.</em></p>
 
-A confirmed linked group can seed its own recommendation search. Community suggestions and extension searches remain separated into source lanes, so a sparse or unavailable lane does not erase the useful results from other group members.
+A confirmed group of linked versions can be used to find related manga. Results load separately by source, so a failed source does not remove useful results from the others.
 
 ## Share recommendation bundles
 
@@ -141,7 +141,7 @@ Best Version starts from versions the reader has already confirmed as related. T
 <p align="center"><img src="reading-schedule.png" width="260" alt="Reading schedule dialog with recurring time windows"></p>
 <p align="center"><em>Reading schedule dialog with recurring time windows.</em></p>
 
-The schedule can block reading during selected windows or allow reading only inside them. Existing windows have explicit edit and remove controls, and changes are not applied until the reader saves the dialog.
+The schedule can block reading during selected times or allow reading only inside them. Save your changes and check that **Enable reading schedule** is on in **Settings > Reader**; saved times alone do not turn it on. See the [reading guide](../feature-guides/reading.md#reading-schedule).
 
 Reader controls also include the optional timer and the completion handoff. The timer can stop or restrict reading without changing chapter progress. The reader's clock or schedule action opens the same schedule configuration described above, so the setting is discoverable from the place where it matters.
 
@@ -164,7 +164,7 @@ After the final chapter, the reader may choose Love, Like, Dislike, or Not Inter
 <p align="center"><img src="ocr-search-downloads.png" width="260" alt="OCR Search Downloads showing an indexed local library and its indexing controls"></p>
 <p align="center"><em>OCR Search Downloads showing an indexed local library and its indexing controls.</em></p>
 
-The index summary shows how many downloaded pages have been processed and how much space the local text index uses. Readers can index all downloads, force a fresh pass, or clear index records without deleting the downloaded pages themselves. Search results open the matching reading context.
+OCR reads text from downloaded pages of manga in your library. The summary shows how many pages have been processed and how much space the text index uses. You can start indexing, force a fresh pass, or clear index records without deleting downloaded pages. Each run has a page limit; see the [OCR guide](../feature-guides/ocr.md) for coverage and search limits.
 
 ## Undo a supported local action
 
@@ -182,7 +182,7 @@ The confirmation explains that an extension package is executable code and that 
 
 ## Extension operations and failure isolation
 
-Extension operations cover loading, install consent, cancellation, removal, export, and cleanup confirmation. Android shows the confirmation screens for installing extensions and choosing export files; Komikku FC does not install an extension silently or delete an unrelated file. If one extension fails or is cancelled, the remaining source work keeps its own result and can be retried. The complete operational flow is in [Managing and isolating extensions](../feature-guides/extensions.md) and [Handling source and extension failures](../feature-guides/troubleshooting.md).
+Extensions can be installed, updated, removed, or exported. Installation prompts depend on your selected installer and its permissions; Android's file picker chooses export destinations. Check each result after a failure or cancellation rather than assuming completed changes were reversed. See [Managing extensions](../feature-guides/extensions.md) and [Troubleshooting](../feature-guides/troubleshooting.md).
 
 ## Back up and restore app data
 
@@ -255,74 +255,48 @@ Selecting the title in the Local tracking entry opens **Confirmed versions**, wh
 
 Source and link handling keeps supported extension failures, cancellation, and retry separate from successful results. Check unfamiliar links and extension packages before opening or installing them. Evaluation diagnostics summarize failures, but copied diagnostics can still include names when name hiding is off. Check logs and exported files before sharing them. See [Validating links, actions, and file cleanup](../feature-guides/safety.md) for the checks and their limits.
 
-## Complete feature-family coverage
-
-The visual guide follows the full Komikku FC feature contract. A family is listed here even when its safest public representation is a written flow rather than a screenshot.
-
-| Contract family | Coverage in this guide |
-| --- | --- |
-| For You | [For You](#for-you) |
-| Top Picks and recommendation bundles | [Top Picks and preference actions](#top-picks-and-preference-actions) and [Share recommendation bundles](#share-recommendation-bundles) |
-| Group recommendations | [Recommendations from a confirmed group](#recommendations-from-a-confirmed-group) |
-| Recommendation settings | [Recommendation settings](#recommendation-settings) |
-| Source evaluation | [Source evaluation](#source-evaluation) |
-| Taste and source-quality diagnostics | [Your taste](#your-taste), [Troubleshooting](#troubleshooting), and [Source-quality diagnostics](#source-quality-diagnostics) |
-| Sources to try | [Sources to try](#sources-to-try) |
-| Manga preferences | [Manga preferences and collections](#manga-preferences-and-collections) and [Top Picks and preference actions](#top-picks-and-preference-actions) |
-| Cross-source matching | [Linked versions](#linked-versions) |
-| Best Version | [Compare versions before migrating](#compare-versions-before-migrating) |
-| Reader controls | [Reading schedule](#reading-schedule) and [Completion preference](#completion-preference) |
-| Jump to last read | [Jump to last read](#jump-to-last-read), written flow only because chapter history is private |
-| Name hiding | [Name hiding and sharing](#name-hiding-and-sharing) |
-| Action History | [Undo a supported local action](#undo-a-supported-local-action) |
-| Extension export | [Extension export](#extension-export) |
-| OCR search | [Search downloaded pages with OCR](#search-downloaded-pages-with-ocr) |
-| Backup portability | [Back up and restore app data](#back-up-and-restore-app-data) |
-| Extension operations | [Extension operations and failure isolation](#extension-operations-and-failure-isolation) |
-| Security and integration | [When sources or links fail](#when-sources-or-links-fail), written flow only |
-| Komikku FC change history | [Review Komikku FC changes in the app](#review-komikku-fc-changes-in-the-app) |
-
-Name hiding replaces source identities with neutral labels, but it is not a way to hide everything about your reading. Manga artwork, titles, page text, reading context, genre suggestions, and aggregate counts may remain visible.
-
 ## Screenshot coverage
 
-Use this table to find a screen or the written steps for each feature area.
+Expand the list to find a screen or written instructions.
 
-| Feature area | Where to look | What it shows |
-| --- | --- | --- |
-| For You | [Screenshot](for-you-evaluation-mode.png) | Name hiding replaces source names while keeping the recommendations visible. |
-| Top Picks and bulk preference selection | [Screenshot](top-picks-preference-actions.png) | Selection mode shows the complete preference action surface. |
-| Recommendation bundle sharing | [Screenshot](recommendation-bundle-export.png) | The Top Picks export entry point. The feature guide separately explains import review and the explicit library-add step. |
-| Related and group-seeded recommendations | [Related-manga screenshot](related-manga-results.png) and [group-seeded screenshot](group-recommendations.png) | The difference between ordinary related results and recommendations seeded by a confirmed multi-version group. |
-| Recommendation settings | [Screenshot](v0.8.24/recommendation-settings.png) | The first page contains no account, manga, source, or storage details. |
-| Speed and data | [Screenshot](v0.8.24/speed-and-data.png) | Only settings and their current values are shown. |
-| Your taste | [Screenshot](v0.8.24/your-taste.png) | Settings and their current values; tag names appear as placeholders further down the page. |
-| Source-quality diagnostics | [Screenshot](source-quality-diagnostics.png) | The expanded view shows aggregate evidence and per-source detail with neutral labels. |
-| Source evaluation | [Screenshot](v0.8.24/source-evaluation.png) | Run options and readiness only. |
-| Browse with name hiding on | [Screenshot](browse-evaluation-mode.png) | Source labels are neutralized without changing the normal Browse layout. |
-| Love, Like, Dislike, and Not Interested | [Top Picks selection](top-picks-preference-actions.png) | The shared action surface shows Love, Like, Dislike, Not Interested, and Clear rating together. |
-| Sources to try | [Screenshot](sources-to-try-evaluation-mode.png) and [feature explanation](../feature-guides/sources.md) | Name hiding replaces the populated list's source identities with neutral labels. |
-| Find other versions | [Screenshot](linked-versions-evaluation-mode.png) and [feature explanation](../feature-guides/versions.md) | Manga matches with source names replaced by neutral labels. |
-| Best Version comparison | [Chapter selection](best-version-chapter-selection.png), [preview comparison](best-version-preview-comparison.png), and [feature guide](../feature-guides/versions.md) | Chapter and page comparisons with neutral source labels. |
-| Reading schedule | [Screenshot](reading-schedule.png) | The configuration dialog shows recurrence, editing, deletion, cancellation, and save controls. |
-| Reader completion rating and linked-version follow-up | [Preference prompt](reader-completion-preference.png) and [matching-version follow-up](reader-linked-version-follow-up.png) | The two prompts keep the local preference decision separate from the cross-source continuation. |
-| Reader timer and Jump to last read | [Reader guide](../feature-guides/reading.md) | The Reader tools family is represented visually by schedule and completion screens; the guide gives the timer and chapter-jump steps. |
-| Action History | [Screenshot](action-history-undo.png) | A completed local preference change and its Undo action. |
-| Extension export | [Screenshot](extension-export-confirmation.png) | The executable-file boundary and the app data excluded from the export. |
-| Exact-file cleanup | [Export guide](../feature-guides/sharing.md) | The export family is represented visually by its consent screen; the guide explains the exact-document cleanup result and its limits. |
-| OCR Search Downloads | [Screenshot](ocr-search-downloads.png) and [feature guide](../feature-guides/ocr.md) | Indexed-page totals, storage use, indexing options, and cleanup controls. |
-| Backup and restore | [Screenshot](backup-and-restore.png) | Backup and restore controls, scheduling, status, warnings, and progress settings. |
-| Local Tracking progress and refresh | [Decimal progress](v0.8.23/local-tracking-decimal-progress.png) and [refreshed chapter list](v0.8.23/local-tracking-refresh-read-markers.png) | A saved decimal chapter, then read markers that agree with it after the sheet is reopened; synthetic test content. |
-| Switch source in the Reader | [Reader settings](v0.8.24/reader-alternate-sources.png) | Controls for offering alternate sources. |
-| Komikku FC What's New | [Screenshot](v0.8.24/whats-new.png) | The v0.8.24 notes; no personal content. |
-| Extension operations | [Export confirmation](extension-export-confirmation.png) | The package boundary and the app data excluded from an export. |
-| When sources or links fail | [Feature explanation](../feature-guides/safety.md) | Written explanations of checking, rejection, cancellation, and cleanup behavior. |
+<details>
+<summary>Find a screenshot or written guide</summary>
+
+- **For You:** [Screenshot](for-you-evaluation-mode.png) — Name hiding replaces source names while keeping the recommendations visible.
+- **Top Picks and rating several manga:** [Screenshot](top-picks-preference-actions.png) — Select manga, then choose a rating.
+- **Recommendation bundle sharing:** [Screenshot](recommendation-bundle-export.png) — The Top Picks export entry point. The feature guide separately explains import review and the explicit library-add step.
+- **Related and group-seeded recommendations:** [Related-manga screenshot](related-manga-results.png) and [group-seeded screenshot](group-recommendations.png) — The difference between ordinary related results and recommendations seeded by a confirmed multi-version group.
+- **Recommendation settings:** [Screenshot](v0.8.24/recommendation-settings.png) — The first page contains no account, manga, source, or storage details.
+- **Speed and data:** [Screenshot](v0.8.24/speed-and-data.png) — Only settings and their current values are shown.
+- **Your taste:** [Screenshot](v0.8.24/your-taste.png) — Settings and their current values; tag names appear as placeholders further down the page.
+- **Source-quality diagnostics:** [Screenshot](source-quality-diagnostics.png) — The expanded view shows aggregate evidence and per-source detail with neutral labels.
+- **Source evaluation:** [Screenshot](v0.8.24/source-evaluation.png) — Run options and readiness only.
+- **Browse with name hiding on:** [Screenshot](browse-evaluation-mode.png) — Source labels are neutralized without changing the normal Browse layout.
+- **Love, Like, Dislike, and Not Interested:** [Top Picks selection](top-picks-preference-actions.png) — Shows the four ratings and Clear rating.
+- **Sources to try:** [Screenshot](sources-to-try-evaluation-mode.png) and [feature explanation](../feature-guides/sources.md) — Name hiding replaces the populated list's source identities with neutral labels.
+- **Find other versions:** [Screenshot](linked-versions-evaluation-mode.png) and [feature explanation](../feature-guides/versions.md) — Manga matches with source names replaced by neutral labels.
+- **Best Version comparison:** [Chapter selection](best-version-chapter-selection.png), [preview comparison](best-version-preview-comparison.png), and [feature guide](../feature-guides/versions.md) — Chapter and page comparisons with neutral source labels.
+- **Reading schedule:** [Screenshot](reading-schedule.png) — The configuration dialog shows recurrence, editing, deletion, cancellation, and save controls.
+- **Reader completion rating and linked-version follow-up:** [Preference prompt](reader-completion-preference.png) and [matching-version follow-up](reader-linked-version-follow-up.png) — The two prompts keep the local preference decision separate from the cross-source continuation.
+- **Reader timer and Jump to last read:** [Reader guide](../feature-guides/reading.md) — Written timer and chapter-jump instructions.
+- **Action History:** [Screenshot](action-history-undo.png) — A completed local preference change and its Undo action.
+- **Extension export:** [Screenshot](extension-export-confirmation.png) — The executable-file boundary and the app data excluded from the export.
+- **Incomplete export cleanup:** [Export guide](../feature-guides/sharing.md) — When an incomplete export can be removed, and when the file stays.
+- **OCR Search Downloads:** [Screenshot](ocr-search-downloads.png) and [feature guide](../feature-guides/ocr.md) — Indexed-page totals, storage use, indexing options, and cleanup controls.
+- **Backup and restore:** [Screenshot](backup-and-restore.png) — Backup and restore controls, scheduling, status, warnings, and progress settings.
+- **Local Tracking progress and refresh:** [Decimal progress](v0.8.23/local-tracking-decimal-progress.png) and [refreshed chapter list](v0.8.23/local-tracking-refresh-read-markers.png) — A saved decimal chapter, then read markers that agree with it after the sheet is reopened; synthetic test content.
+- **Switch source in the Reader:** [Reader settings](v0.8.24/reader-alternate-sources.png) — Controls for offering alternate sources.
+- **Komikku FC What's New:** [Screenshot](v0.8.24/whats-new.png) — The v0.8.24 notes; no personal content.
+- **Extension operations:** [Export confirmation](extension-export-confirmation.png) — The package boundary and the app data excluded from an export.
+- **When sources or links fail:** [Feature explanation](../feature-guides/safety.md) — Written explanations of checking, rejection, cancellation, and cleanup behavior.
+
+</details>
 
 Screenshots illustrate the workflows described above, including partial results and unavailable previews. Some controls have changed since these images were captured. The Best Version images show chapter selection and preview comparison but do not show the newer **View in Reader** action; see the [versions guide](../feature-guides/versions.md) for its current controls.
 
 ## Technical reference
 
-The XML files in [`technical-reference/`](../technical-reference/) list each feature's screens, possible states, related code, privacy rules, and screenshot hashes. They are written references, not raw Android screen dumps, and they do not contain coordinates, device identifiers, manga titles, source names, URLs, account data, or local paths.
+The [technical reference](../technical-reference/README.md) links features to code and records existing screenshot files and hashes. It is not a collection of raw Android screen dumps or proof that every current screen is safe to share.
 
 ## Maintenance rule
 

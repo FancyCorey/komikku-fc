@@ -1,0 +1,8 @@
+flowchart TD
+    Finish["Finish the latest<br/>available chapter"] --> Allowed{"Rating offer<br/>allowed?"}
+    Allowed -->|No| End["No rating change"]
+    Allowed -->|Yes| Exit["Leave the reader"]
+    Exit --> Choose{"Choose a rating?"}
+    Choose -->|Skip| End
+    Choose -->|Save| Keep["Save rating"]
+    Keep --> Offer["Optional offer:<br/>find other versions"]

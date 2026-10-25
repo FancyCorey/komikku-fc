@@ -17,7 +17,12 @@ Only downloaded pages for manga currently in your library are processed. Downloa
 
 ## Choose how much to process
 
-Use normal indexing to process missing pages and retry empty or failed results while skipping pages already processed successfully. Forced reindexing processes pages again, including successful ones. Both all-download actions ask for confirmation.
+Indexing means reading the page images and saving their recognized text for search. Choose the action you need:
+
+- **Index all downloaded manga:** process missing pages and retry empty or failed results. Unchanged pages with usable text already saved are skipped.
+- **Force re-index all:** process successful pages again too, within your chosen page limit.
+
+Both actions ask for confirmation before starting.
 
 Choose **Unlimited**, 50, 100, 250, or 500 pages. The limit applies to the downloaded pages considered before already-successful pages are skipped, not just new recognition attempts. It is not a per-manga allowance. Repeating a limited run does not necessarily advance to the next set of pages; increase the limit or choose Unlimited to include more downloads. A limited or cancelled run can leave some downloads unprocessed.
 
@@ -33,54 +38,35 @@ Result cards can show recognized page text, manga and chapter titles, source nam
 
 ## Entry and indexing
 
-```mermaid
-flowchart TD
-    Open["Open More > OCR Search Downloads"] --> Limit["Choose a page limit if needed"]
-    Limit --> Mode{"How do you want to process downloads?"}
-    Mode -->|Normal indexing| Normal["Skip successes; retry missing, empty, or failed pages"]
-    Mode -->|Forced reindexing| Force["Process successful pages again too"]
-    Normal --> Confirm["Read and confirm the all-download warning"]
-    Force --> Confirm
-    Confirm --> Notice["Follow progress; cancel if needed"]
-```
+1. Open **More > OCR Search Downloads**.
+2. Choose a page limit. For a short first run, use 50.
+3. Choose **Index all downloaded manga**, or **Force re-index all** to replace previously recognized text too.
+4. Read the warning and confirm. Watch the progress on screen or in the notification.
+5. Use **Cancel indexing** if you want to stop. Already saved text remains searchable.
 
 Leaving the screen does not itself cancel the background run. Android can still stop work; do not assume every download was processed just because you left it running.
 
 ## Page processing
 
-```mermaid
-flowchart TD
-    Run["Process downloaded pages"] --> Words{"Was searchable text recognized?"}
-    Words -->|Yes| Search["Saved words can appear in search results"]
-    Words -->|No| Empty["The page cannot supply a text match yet"]
-    Empty --> Retry["Retry processing or inspect the page in the reader"]
-```
-
-Empty or failed results do not prove the page has no words. Check the image and recognition limits before retrying a large run.
+Only recognized text can supply a search match. An empty or failed result does not prove the page has no words. Inspect its image and consider the recognition limits before retrying a large run.
 
 ## Search and navigation
 
-```mermaid
-flowchart TD
-    Query["Enter words or a phrase"] --> Results["Review matching text and manga details"]
-    Results --> Select["Select a result"]
-    Select --> Reader["Open the reader at the saved chapter and page"]
-    Reader --> Available{"Is that reading context still available?"}
-    Available -->|Yes| Read["Inspect the page"]
-    Available -->|No| Refresh["Check downloads and process the downloaded pages again"]
-```
+<img src="../diagrams/ocr/search-result.svg" width="420" alt="Search recognized words, select a result and open its saved page. If it is no longer available, check your downloads and process them again.">
 
 Stronger word matches appear higher in the results. A result is a saved reference, not a guarantee that its page is still available.
 
 ## Privacy and cleanup
 
-```mermaid
-flowchart TD
-    Text["Recognized page text"] --> Local["Saved only on this device"]
-    Local --> Search["On-device search"]
-    Local --> Clear["Clear it by chapter, by manga,<br/>empty or failed entries,<br/>entries from an older text reader,<br/>or the entire index"]
-```
+The search index is the saved text, not the downloaded page images. You can clear:
 
-The index is local and can be rebuilt. Cleanup changes only the search index and does not delete downloaded page files. Deleting a manga or chapter from the library does not automatically remove its OCR rows; use the chapter or manga cleanup action from an OCR result when you want to remove them. When **Clear database** removes non-library manga from selected sources, it also removes those manga's OCR rows but leaves downloaded page files in place. Restoring library entries removes OCR rows that no longer match a chapter or manga. None of these cleanup actions deletes downloaded page files.
+- One chapter or manga from an OCR result's menu.
+- Empty or failed entries.
+- Entries made by an older OCR version, when that option appears.
+- All recognized text with **Clear OCR index**.
 
-Recognized text remains on the device and is excluded from Komikku FC backup and sync. Cleanup removes the search index, not manga pages or downloaded files.
+These actions do not delete your downloaded pages. You can recognize the text again later.
+
+Removing a manga from your library does not automatically clear its saved OCR text. Use the chapter or manga cleanup action when you want to remove it. **Clear database** also removes OCR entries for non-library manga it deletes, and restoring library entries cleans up OCR entries that no longer match a manga or chapter. Neither action deletes the downloaded page files through OCR cleanup.
+
+Recognized text stays on the device and is excluded from Komikku FC backup and sync. The recognition SDK can still send technical usage information; see [Privacy and data](../privacy-and-data.md#ocr-and-google-ml-kit).

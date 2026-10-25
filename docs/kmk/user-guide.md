@@ -1,12 +1,19 @@
 # Komikku FC user guide
 
-Use this guide to find and use Komikku FC features. Each section starts with the actions to take, then explains the result and any important limitation. The [visual guide](visual-guide/README.md) shows the main screens, while the linked feature guides cover workflows that depend on manga, chapter, source, account, or storage details.
+Use this guide for the main steps, then follow a feature link when you need more detail. The [visual guide](visual-guide/README.md) shows the main screens.
+
+Jump to:
+
+- **Discover:** [For You](#for-you), [recommendation settings](#recommendation-settings), [source evaluation](#source-evaluation), [sources to try](#sources-to-try).
+- **Rate and track:** [manga preferences](#manga-preferences), [local tracking](#local-tracking), [other versions and Best Version](#find-other-versions-and-best-version).
+- **Read:** [reader controls](#reader-controls), [OCR search](#ocr-search-for-downloads).
+- **Manage and recover:** [name hiding and Action History](#name-hiding-and-action-history), [exports](#export-and-cleanup), [backups](#backup-and-restore), [extensions](#extension-operations), [troubleshooting](#privacy-and-troubleshooting).
 
 ## For You
 
 1. Open **Browse**.
 2. Select the **For You** tab.
-3. Wait for the recommendations to finish loading. Each row comes from a source that passed your settings and shows its strongest matching tags.
+3. Recommendations appear in rows by source, with their strongest matching tags. You can use the rows already shown while others load.
 4. Select a manga card to open its details, or select the arrow at the end of a row to see more results from that source.
 5. Use refresh after changing ratings, filters, source order, or discovery settings.
 
@@ -14,9 +21,18 @@ Use this guide to find and use Komikku FC features. Each section starts with the
 
 *For You with name hiding on. The recommendations stay visible while source names are hidden.*
 
-Before displaying a manga, For You checks your language, blocked genres and tags, source settings, and exclusions. The minimum chapter count hides manga with a known count below your choice. After the rows appear, For You checks the chapter lists of up to 20 shown titles whose count is unknown and removes those below your minimum. A title that could not be checked yet can still appear. Personalized matches remain the majority when enough are available. A smaller selection from each source's recent catalogue can add variety, but it must pass the same checks. Repeatedly shown, untouched cards can move lower without being removed. Library manga and rated or tracked manga are not lowered by that repeat-display rule. See [Recommendation settings](feature-guides/recommendation-settings.md) for the display-history window and filters.
+What affects the results:
 
-If one source fails, results from other sources remain available. When the page is empty or incomplete, read the message on the affected row; the whole app has not necessarily failed. A failed row says what probably went wrong and offers actions such as **Try again**, **Open site**, **Check source**, **Manage extension**, or **Don't use in For You**. A row labelled as looser matches shows a few of the source's manga that do not share a tag with your taste. See [Recommendations](feature-guides/recommendations.md#how-a-refresh-finds-manga).
+- **Your filters:** language, blocked genres and tags, source choices, and exclusions apply before a manga is shown.
+- **Minimum chapters:** a known count below your minimum hides the manga. After loading, For You checks up to 20 displayed titles with unknown counts and removes those below the minimum. This extra check is skipped while data saving is active; unchecked titles can remain visible.
+- **Variety:** personalized matches remain the majority when enough are available. A smaller selection from each source's recent catalogue can add variety, but must pass the same filters.
+- **Repeat display:** untouched cards you have seen repeatedly can move lower, not disappear. Library manga and rated or tracked manga are not lowered by this rule.
+
+See [Recommendation settings](feature-guides/recommendation-settings.md) to change these choices and how long repeat display is remembered.
+
+If one source fails, other rows remain available. Read the affected row's message and choose an offered action, such as **Try again**, **Open site**, **Check source**, **Manage extension**, or **Don't use in For You**.
+
+A row labelled as looser matches shows a few manga that do not share a tag with your taste. See [Recommendations](feature-guides/recommendations.md#how-a-refresh-finds-manga).
 
 Use **Focus** at the top of For You to narrow the page to a few tags for now: tap a tag once to include it, again to exclude it, and once more to clear it.
 
@@ -87,7 +103,9 @@ See [Ratings and linked versions](feature-guides/ratings.md) to manage your choi
 4. Use **Clear rating** or **Undo not interested** to return to neutral.
 5. Open the corresponding Loved, Liked, Disliked, or Not Interested collection from the For You menu to review those entries.
 
-When Action History is available with name hiding on, supported changes include the value that existed before the change. You can reverse bulk For You actions from Action History. The short confirmation message shown after a bulk action does not currently include its own **Undo** button.
+Supported changes can be reversed from **Settings > Advanced > Action history**, including bulk For You ratings. Name hiding does not need to be on. The short confirmation message after a bulk action does not currently have its own **Undo** button.
+
+Action History keeps a limited record in memory, not a permanent backup. Undo is available only while its entry remains, and can refuse to overwrite a newer choice.
 
 ## Local tracking
 
@@ -101,12 +119,12 @@ For example, progress at chapter 15 can mark available chapters through the matc
 ## Source evaluation
 
 1. Open **Recommendation Settings** and select **Source evaluation**, or choose **Source evaluation** from the For You menu.
-2. Choose how many sources to evaluate at once and review any warning.
-3. Select **Start evaluation**.
-4. You can leave the screen while evaluation continues.
-5. Review completed, skipped, failed, or partial outcomes. A source with too little information may need manual review; that does not prove its manga are a poor match.
-6. Use reassessment when your tastes or installed extensions change, or when the app reports stale evaluation data.
-7. To re-check sources on a schedule, turn on **Check automatically** under **Find new sources > Automatic check**.
+2. Under **Sources to check at once**, choose 10 for a short first check, or 25, 50, or 100. The app checks up to that many before pausing for **Continue**.
+3. Open **More setup options** to decide whether to skip already checked sources or include explicit sources. Read [Source evaluation](feature-guides/source-evaluation.md#before-starting-a-check) for these choices and any installer setup.
+4. Select **Start** when the page says it is ready. You can leave this screen while the check runs.
+5. Review completed, skipped, failed, or partial outcomes. Too little information does not prove a source's manga are a poor match. Select **Continue** if more sources are waiting.
+6. Reassess when your tastes or installed extensions change, or when saved results are out of date.
+7. For scheduled checks, turn on **Check automatically** under **Find new sources > Automatic check**.
 
 <p align="center"><img src="visual-guide/v0.8.24/source-evaluation.png" width="260" alt="Source evaluation with run options and the reason Start is unavailable"></p>
 
@@ -151,7 +169,7 @@ See [Finding and comparing manga versions](feature-guides/versions.md) for searc
 <p align="center"><img src="visual-guide/best-version-preview-comparison.png" width="300" alt="Best Version page previews with hidden source names"></p>
 <p align="center"><em>Compare page previews from the selected chapters.</em></p>
 
-Comparison does not alter the library. A library change begins only after you select another version and confirm the established migration flow.
+Viewing the comparison does not move your library entry. To switch it, select another version and confirm Komikku's migration steps.
 
 The images above are older captures and do not show **View in Reader**. Opening the full reader can update reading progress through ordinary reading; returning to the comparison does not undo that progress.
 
@@ -191,7 +209,7 @@ The schedule is off by default. If you open the reader during a restricted time,
 
 ### Completion rating
 
-Enable **Ask for a rating after finishing** under **Recommendation Settings > Linked versions and ratings** if you want the offer after leaving a newly completed final chapter. Rereads and already-rated manga do not trigger it. Choose a rating or skip the prompt. **Ask about other versions** controls the later offer to rate other versions; dismissing that offer keeps the rating you already saved.
+Enable **Ask for a rating after finishing** under **Recommendation Settings > Linked versions and ratings** for an offer when you leave after reaching the end of the latest chapter. Already-rated manga do not trigger it; reading that chapter again can still qualify if the manga remains unrated. Choose a rating or skip the prompt. **Ask about other versions** controls the later offer to rate other versions; dismissing that offer keeps the rating you already saved.
 
 <p align="center"><img src="visual-guide/reader-linked-version-follow-up.png" width="260" alt="Reader follow-up for applying the preference to matching versions"></p>
 <p align="center"><em>Reader follow-up for applying the preference to matching versions.</em></p>
@@ -200,7 +218,7 @@ Enable **Ask for a rating after finishing** under **Recommendation Settings > Li
 
 See [Name hiding and exports](feature-guides/sharing.md) for presentation privacy and [Ratings and linked versions](feature-guides/ratings.md) for reversible actions.
 
-Name hiding (**Settings > Advanced > Developer tools > Hide technical names in screenshots**) replaces source names and other identifying labels with neutral text for review and screenshots. It does not change saved data, actions, source requests, or network behavior.
+Name hiding (**Settings > Advanced > Developer tools > Hide technical names in screenshots**) replaces supported source names and other labels with neutral text. It does not change saved data, actions, source requests, or network behavior. It does not hide everything: the download queue can still show source names even with this switch on. Review the whole screenshot before sharing it.
 
 <p align="center"><img src="visual-guide/browse-evaluation-mode.png" width="260" alt="Browse with source names replaced by name hiding"></p>
 
@@ -215,7 +233,9 @@ Open **Action History** to review supported reversible actions. If the same valu
 
 See [Name hiding and exports](feature-guides/sharing.md) for chooser, cancellation, success, and exact-file cleanup states.
 
-Extension, recommendation, and library exports use Android's document picker. Choose the destination through the system UI. Public builds keep successful exports. If cleanup is offered for an incomplete, failed, or cancelled export, Keep or Remove applies only to the document that export created. A removal failure can leave it in place. Cancellation does not mean that an already-created file was removed, and cleanup does not scan unrelated storage.
+Extension, recommendation, and library exports use Android's document picker. Choose where to save the file there. Public builds keep successful exports.
+
+If an export is incomplete, fails, or is cancelled, the app can offer **Keep** or **Remove** for the file it identified. Remove affects only that file; it does not scan other storage. A failed removal leaves the file in place. Cancelling an export does not by itself remove an already-created file.
 
 <p align="center"><img src="visual-guide/recommendation-bundle-export.png" width="260" alt="For You with the Export Top Picks action open"></p>
 <p align="center"><em>For You with the Export Top Picks action open.</em></p>
@@ -239,7 +259,15 @@ Recognition runs on the device. The extracted text stays on the device, is exclu
 
 See [Backup and restore](feature-guides/backups.md) for choosing what to save, protecting your file, and checking partial restore results.
 
-Backups can include your ratings, recommendation choices, linked manga versions, preferred versions, source-quality information, and Local Tracking. Source evaluation results and run history are not included. **Taste profile** and **Local tracking** are separate choices: include both to save linked reading progress. Select **App settings** for recommendation controls stored as preferences. Sensitive settings, which can include tracker sign-in details, are optional and off by default. A partial restore reports what could not be restored instead of treating the entire operation as successful.
+Backups can include ratings, recommendation choices, linked and preferred versions, source-quality information, and Local Tracking. Source evaluation results and run history are not included.
+
+Choose the data you need:
+
+- **Taste profile** and **Local tracking** are separate choices. Include both to save linked reading progress.
+- **App settings** saves recommendation controls stored as preferences.
+- **Sensitive settings** can include tracker sign-in details. This option is off by default; protect any backup that includes it.
+
+A partial restore reports what could not be restored instead of calling the entire operation successful.
 
 OCR text is excluded from backup because it can be regenerated from local downloads. Action History also cannot roll back changes made by outside services or installed packages.
 

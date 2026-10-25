@@ -1,0 +1,5 @@
+flowchart TD
+    Ratings["Your manga ratings"] --> ForYou["For You recommendations"]
+    Recent["Recent reading<br/>when enabled"] --> ForYou
+    ForYou ~~~ Progress
+    Progress["Tracked chapter progress"] --> Resume["Resume reading"]

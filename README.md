@@ -29,7 +29,7 @@ manage compatible source extensions themselves.
 
 ## What Komikku FC Adds
 
-- **For You:** personal recommendations based on your ratings, filters, and
+- **For You:** personal recommendations based on your ratings, recent reading, filters, and
   selected sources.
 - **Ratings and versions:** Love, Like, Dislike, or mark a manga Not
   interested, then manage matching versions from other sources.
@@ -48,9 +48,17 @@ categories, themes, backups, updates, and supported external trackers.
 The [visual guide](./docs/kmk/visual-guide/README.md) includes more screenshots
 and walkthroughs. These examples introduce three main Komikku FC workflows:
 
-| For You recommendations | Compare manga versions | Reading schedule |
-| --- | --- | --- |
-| <img src="./docs/kmk/visual-guide/for-you-evaluation-mode.png" width="240" alt="For You recommendations"/> | <img src="./docs/kmk/visual-guide/best-version-preview-comparison.png" width="240" alt="Best Version comparison"/> | <img src="./docs/kmk/visual-guide/reading-schedule.png" width="240" alt="Reading schedule"/> |
+### For You recommendations
+
+<img src="./docs/kmk/visual-guide/for-you-evaluation-mode.png" width="240" alt="For You recommendations"/>
+
+### Compare manga versions
+
+<img src="./docs/kmk/visual-guide/best-version-preview-comparison.png" width="240" alt="Best Version comparison"/>
+
+### Reading schedule
+
+<img src="./docs/kmk/visual-guide/reading-schedule.png" width="240" alt="Reading schedule"/>
 
 ## Get Started
 

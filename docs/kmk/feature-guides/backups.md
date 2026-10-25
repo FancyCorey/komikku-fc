@@ -25,68 +25,35 @@ Check these options before creating the file:
 
 For a backup of linked reading progress, include **Taste profile** and **Local tracking**, along with the library and chapter data you want to keep. These are separate choices: saving ratings does not automatically save local tracking. A backup does not undo changes on a tracker website or other outside service.
 
-## How to interpret a restore result
+## Restore and check the result
 
-Choose your backup file, then select the categories you want to restore. Read the completion message and any error report before assuming everything returned. A restore can finish with some entries missing or unsuccessful. Cancelling stops the remaining work; it does not undo entries already restored.
+1. Create a fresh backup of your current data before restoring over it.
+2. Choose a backup you trust, then select what to restore.
+3. Read the completion message and any error report. Some entries may be missing even when the restore finishes.
+4. Check your library, ratings, linked and preferred versions, and local chapter progress before retrying anything.
 
-Older backups cannot restore fields that they never saved. After restoring, check your ratings, linked versions, preferred version, and local chapter progress. You may also need to reinstall a source extension or sign in again.
+Cancelling stops the remaining work; it does not undo entries already restored. Older backups cannot restore fields they never saved. You may need to reinstall a source extension or sign in again.
 
 ## Protect your backup
 
-Keep the backup somewhere you trust. It can reveal your library, ratings, reading preferences, and any sensitive settings you chose to include. Hiding the saved location in a settings summary does not encrypt the file or make it safe to share publicly. Restore only backups you trust, and create a fresh backup before restoring over your current data.
-
-## Backup selection
-
-```mermaid
-flowchart TD
-    Start["Create backup"] --> Options["Choose what to include:<br/>Library, App settings, Taste profile,<br/>Local tracking, Source settings,<br/>and optional sensitive settings (off by default)"]
-    Options --> Encode["Create the backup file"]
-```
-
-Komikku FC data uses the existing backup format and appears as clear backup options. It does not create a second kind of archive.
-
-## Restore and check the result
-
-```mermaid
-flowchart TD
-    File["Choose a trusted backup<br/>and what to restore"] --> Result["Read the restore result"]
-    Result --> Check["Check restored items<br/>and any reported errors"]
-    Check --> Retry["Before retrying, check<br/>what already returned"]
-```
-
-The restore result includes the selected Komikku FC data. If it finished, check your library, ratings, and progress. If some items failed, read the error report and check what is missing. If it stopped, check what already returned before trying again.
+Keep the backup somewhere you trust. It can reveal your library, ratings, reading preferences, and any sensitive settings you included. Hiding its location in a settings summary does not encrypt the file or make it safe to share publicly.
 
 ## Preferred versions after restoring
 
-```mermaid
-flowchart TD
-    Group["Restore linked versions and preferred choices"] --> Newer{"Already have a newer preferred choice?"}
-    Newer -->|Yes| Keep["Keep your newer choice"]
-    Newer -->|No| Saved["Use the saved preferred choice when valid"]
-    Keep --> Available{"Preferred version available in the group?"}
-    Saved --> Available
-    Available -->|Yes| Preferred["Show the preferred version"]
-    Available -->|No| Other["Show another available version in the group"]
-```
+![Restore valid saved preferences without replacing a newer or equally recent current choice; if the chosen version is unavailable, show another group member.](../diagrams/backups/preferred-version.svg)
 
-For a linked group, a newer preferred-version choice already on your device is kept instead of being replaced by an older backup choice. Invalid saved choices can be ignored. If the preferred version is missing from the group, the app can show another available version; that does not migrate your manga to another source.
+The preferred version is the copy shown for a linked group. A valid saved choice replaces your current choice only if it is newer, or if you have no choice saved. A tie keeps the current choice. Invalid backup choices can be ignored.
+
+If the preferred version is no longer in the group, the app can show another available member. This does not migrate your manga to another source.
 
 ## What a backup does not save
 
-```mermaid
-flowchart TD
-    Backup["Backup limitations"] --> OCR["Recognized text from downloaded pages is not included"]
-    Backup --> History["Temporary undo history is not included"]
-    Backup --> Credentials["Sensitive settings are omitted unless you include them"]
-    Backup --> Remote["Restoring cannot undo changes on tracker services"]
-    %% Stack independent choices vertically for narrow screens.
-    OCR ~~~ History
-    History ~~~ Credentials
-    Credentials ~~~ Remote
-```
+- **Downloaded pages:** copy your download folder separately to keep those files.
+- **OCR text:** rebuild recognized text from the downloaded pages when needed.
+- **Action History:** temporary Undo entries are not included.
+- **Source evaluation:** results and run history are not included, unlike the saved source-quality choices listed above.
+- **Outside-service changes:** restoring does not undo tracker updates or reinstall extension packages.
 
-You can rebuild recognized page text from your downloads. You may need to sign in to outside services again after restoring.
-
-Downloaded page images, recognized page text, and temporary Action History entries are not included. Back up your download folder separately if you want to keep its files. Outside-service changes are not restored or undone. Sign-in details depend on the sensitive-settings option, so do not assume every backup excludes them.
+Sign-in details depend on the sensitive-settings option. You may need to sign in again after restoring; do not assume every backup excludes those details.
 
 See [Local tracking](local-tracking.md) for shared chapter progress and [Ratings](ratings.md) for linked groups and preferred versions.

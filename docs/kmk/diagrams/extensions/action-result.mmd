@@ -1,0 +1,6 @@
+flowchart TD
+    Choose["Choose Install,<br/>Update, or Remove"] --> Prompt{"Confirmation<br/>requested?"}
+    Prompt -->|Yes| Decide["Read the prompt;<br/>confirm or cancel"]
+    Prompt -->|No| Wait["Wait for the result"]
+    Decide --> Wait
+    Wait --> Result["Check: succeeded,<br/>failed, or cancelled"]

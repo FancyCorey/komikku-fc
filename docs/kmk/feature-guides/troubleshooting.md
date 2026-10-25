@@ -6,16 +6,7 @@ Start with the action that failed and the message on that page. A source is the 
 
 Check your connection, then check whether the source's website is available. If an extension update is available, read its details before updating. Retry the failed action when the page offers it.
 
-```mermaid
-flowchart TD
-    Failed["A source cannot load"] --> Connection["Check your connection"]
-    Connection --> Website["Check whether the source website is available"]
-    Website --> Update["Check for an extension update"]
-    Update --> Retry["Retry the failed action if offered"]
-    Retry --> Works{"Does it work now?"}
-    Works -->|Yes| Continue["Continue browsing or reading"]
-    Works -->|No| Other["Try another source or report the problem"]
-```
+If it still fails, try another source or report the problem with the steps below.
 
 The app temporarily avoids repeated calls to a recently failed source. This does not uninstall or permanently disable the extension. A retry can still fail if the underlying problem has not changed.
 
@@ -23,26 +14,17 @@ Source evaluation has a separate restriction for extensions associated with a de
 
 ## For You shows few or no manga
 
-Open **Recommendation Settings > For You feed** and check which sources are enabled. Then open **Your taste** and check the recommendation languages and filters, including the minimum chapter count.
+1. Open **Recommendation Settings > For You feed** and check enabled sources.
+2. In **Your taste**, check recommendation languages, tag filters, and minimum chapter count.
+3. Read each source row's message, then refresh For You after changing a setting.
+4. If results are still missing, use **Check source** when offered or open [Source evaluation](source-evaluation.md).
 
 <p align="center"><img src="../visual-guide/v0.8.24/for-you-feed-sources.png" width="260" alt="For You feed source list with enabled switches"></p>
 <p align="center"><em>Check which sources are enabled under For You feed.</em></p>
 
 A strong source-fit rating does not guarantee many visible recommendations. Fit describes the source's usefulness; shown results also depend on your manga filters and what the source returned.
 
-```mermaid
-flowchart TD
-    Empty["For You has few or no results"] --> Enabled["Check enabled sources in For You feed"]
-    Enabled --> Languages["Check languages in Your taste"]
-    Languages --> Filters["Check taste and chapter filters in Your taste"]
-    Filters --> Status["Read the source row's message"]
-    Status --> Refresh["Refresh For You"]
-    Refresh --> Result{"Results available?"}
-    Result -->|Yes| Read["Browse the matches"]
-    Result -->|No| Evaluate["Use Check source on the row, or open Source evaluation"]
-```
-
-Do not assume that an empty list proves the source has no manga. When none of a source's searches find anything, For You already tries that source's Popular page. When a source returns manga but none share a tag with your taste, **Show looser matches** under **For You feed** can show a few of them instead of an empty row.
+An empty list does not prove the source has no manga. If its searches return no manga without an error, For You tries its Popular page, still using your filters. If manga return but none share a tag with your taste, **Show looser matches** under **For You feed** can show a few eligible ones instead of an empty row.
 
 **Recommendation Settings > Troubleshooting** lists sources that failed to load, and any sources the automatic check is skipping on For You. See [Recommendations](recommendations.md), [Recommendation settings](recommendation-settings.md), and [Sources](sources.md) for the controls that affect this list.
 
@@ -55,38 +37,24 @@ Read the message on the failed row first. It names the likely cause: your connec
 <p align="center"><img src="../visual-guide/v0.8.24/for-you-failed-source.png" width="260" alt="Failed For You rows with Try again, Check source, Manage extension and Don't use in For You"></p>
 <p align="center"><em>A row that keeps failing offers Check source and Don't use in For You.</em></p>
 
-```mermaid
-flowchart TD
-    Row["A For You row failed"] --> Cause["Follow the row's hint: check the connection,<br/>open the site for a browser check,<br/>wait for the site, or update the extension"]
-    Cause --> Again{"Still failing in most refreshes?"}
-    Again -->|No| Done["Browse the row"]
-    Again -->|Yes| Check["Check source"]
-    Check --> Works{"Works when browsing?"}
-    Works -->|Yes| Stop["Don't use in For You;<br/>keep reading from it in Browse"]
-    Works -->|No| Remove["Update or remove the extension,<br/>or don't use it in For You"]
-```
+<img src="../diagrams/recommendations/failed-source.svg" width="460" alt="Read the failed row's hint and use Check source when offered. Keep a source that works for reading, manage a broken extension, or disable the source only in For You.">
 
-A source that is far slower than the others in the same refresh ends as an error row with **Try again**. The time limit follows how long your other sources took, between 30 seconds and 3 minutes, so a slow connection does not cut sources off. **Don't use in For You** affects recommendations only; it does not uninstall the extension. Turn the source back on under **For You feed**.
+A source that takes too long ends as an error row with **Try again**. The limit adapts to other sources in that refresh, between 30 seconds and 3 minutes. It can still time out on a slow connection; it is not an unlimited wait.
+
+**Don't use in For You** affects recommendations only; it does not uninstall the extension. Turn the source back on under **For You feed**.
 
 ## A large download stops partway
 
-One failed image or page list no longer makes the rest of a large download from that source fail. If chapters still fail, check the failed chapter's message in the download queue and retry it. When the extension itself is broken or incompatible, reading and downloading from it are held back until you update or replace the extension. See [Extensions](extensions.md).
+An ordinary image or page-list failure does not automatically suppress every later download from that source. Check the failed chapter's message in the download queue and retry it when appropriate. A broken or incompatible extension can still hold back reading and downloading; it may need an update or replacement. See [Extensions](extensions.md).
 
 ## Preview or reader pages fail
 
 In **Find Best Version**, use **Retry** when a preview fails. **View in Reader** provides another way to open the selected chapter even if preview images failed; it still needs the chapter to be available. Press Back to return to the comparison page.
 
 <p align="center"><img src="../visual-guide/best-version-preview-comparison.png" width="260" alt="Best Version preview comparison"></p>
-<p align="center"><em>Preview samples with Retry and View in Reader.</em></p>
+<p align="center"><em>Preview samples in an older capture; current builds also offer Retry and View in Reader.</em></p>
 
-```mermaid
-flowchart TD
-    Preview["A comparison preview failed"] --> Retry["Try Retry"]
-    Retry --> Reader["Use View in Reader to check the chapter"]
-    Reader --> Loaded{"Pages load?"}
-    Loaded -->|Yes| Back["Press Back to return to comparison"]
-    Loaded -->|No| Source["Check the source or another linked version"]
-```
+If the chapter cannot load in the reader either, check the source or another linked version before retrying the preview.
 
 A working preview does not guarantee that every chapter will load, and View in Reader cannot repair a missing chapter or unavailable source. Reading there can update normal reading progress.
 
@@ -98,18 +66,12 @@ For downloaded-page text searches, check that the pages are still downloaded and
 
 A recoverable source error may leave other results available, but not every crash can be caught. If the app closes, reopen it and inspect the current state before repeating a restore, migration, or bulk installation. Some work may already have completed.
 
-```mermaid
-flowchart TD
-    Stop["The app closed or an action stopped:<br/>reopen it and check what changed"] --> Choice{"What needs<br/>attention?"}
-    Choice -->|Reading| Chapter["Check the current<br/>chapter and tracker"]
-    Choice -->|Restore or migration| Backup["Check restored items<br/>before retrying"]
-    Choice -->|Bulk install| Installed["Check installed extensions<br/>before retrying"]
-    Choice -->|Keeps closing| Report["Record the steps<br/>and app version"]
-    %% Stack independent choices vertically for narrow screens.
-    Chapter ~~~ Backup
-    Backup ~~~ Installed
-    Installed ~~~ Report
-```
+| Interrupted action | Check before continuing |
+| --- | --- |
+| Reading | Current chapter and tracker progress. |
+| Restore or migration | Which items returned or moved, and any reported failures. |
+| Bulk installation | Which extensions actually installed. |
+| App keeps closing | Record the app version and the steps that reproduce it. |
 
 For a repeatable problem, include the app version from **More > About > Version**, the steps taken, the expected result, and what happened. A screenshot or crash log can help, but a crash report may not be available for every closure.
 

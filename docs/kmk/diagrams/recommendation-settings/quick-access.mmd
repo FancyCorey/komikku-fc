@@ -1,0 +1,5 @@
+flowchart TD
+    Edge["Tap the edge handle<br/>on For You or Rated Manga"] --> Panel["Settings shortcuts open"]
+    Panel --> Choice{"Choose a shortcut?"}
+    Choice -->|Yes| Page["Panel closes;<br/>settings page opens"]
+    Choice -->|No| Close["Press Back or<br/>tap the handle to close"]

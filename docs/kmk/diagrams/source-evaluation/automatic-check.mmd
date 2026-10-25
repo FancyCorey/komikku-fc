@@ -1,0 +1,4 @@
+flowchart TD
+    Due["When scheduled,<br/>enabled and ready"] --> Run["Check sources with<br/>missing or old results"]
+    Run --> Save["Save finished results"]
+    Save --> Use["If Use results is on,<br/>For You may skip sources<br/>under the rule above"]

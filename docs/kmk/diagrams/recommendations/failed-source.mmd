@@ -1,0 +1,7 @@
+flowchart TD
+    Failed["Read the failed row's hint;<br/>retry when appropriate"] --> Check["If failures persist, use<br/>Check source when offered"]
+    Check --> Works{"Normal browsing<br/>works?"}
+    Works -->|Yes| Keep["Keep source for reading"]
+    Works -->|No| Manage["Manage extension:<br/>update or remove"]
+    Keep --> Stop["Or disable this source<br/>only in For You"]
+    Manage --> Stop

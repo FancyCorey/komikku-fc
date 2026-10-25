@@ -20,71 +20,35 @@ Komikku FC is an independent Android manga reader based on Komikku. It keeps the
 
 An extension connects the app to a manga source. That source supplies its own titles, chapter lists, and pages. What is available can differ between sources, and a source can be temporarily unavailable.
 
-```mermaid
-flowchart TD
-    Browse["Browse or search a source"] --> Manga["Open a manga"]
-    Manga --> Library["Add it to your library if you want to keep it"]
-    Manga --> Reader["Choose a chapter and read"]
-    Reader --> Progress["Keep track of what you have read"]
-```
+Browse or search a source, open a manga, then choose a chapter to read. Add it to your library if you want to keep it there; adding it is not required just to read it.
 
 ## Ratings and progress are different
 
-A rating tells the app what you think of a manga. Tracking remembers your chapter progress. Settings can start local tracking when you rate a manga or share progress across confirmed linked versions, but these are separate choices. Linking versions does not mean copying all library data or changing external tracker accounts.
+A rating tells the app what you think of a manga. Tracking remembers your chapter progress. For You can use both ratings and recent reading to suggest manga; the recent-reading setting decides whether that extra signal is used.
 
-```mermaid
-flowchart LR
-    Manga["Open a manga"] --> Rating["Rate it to express<br/>your preference"]
-    Manga --> Track["Use tracking to<br/>remember your progress"]
-    Rating --> Recommendations["Ratings can influence<br/>recommendations"]
-    Track --> Reading["Progress helps you<br/>resume reading"]
-    Link["Link confirmed versions<br/>of the same manga"] --> Settings["Choose whether they share<br/>ratings or local progress"]
-```
+<img src="../diagrams/overview/ratings-and-reading.svg" width="500" alt="Ratings and optional recent reading influence For You; tracked chapter progress helps you resume reading.">
+
+Settings can start local tracking when you rate a manga, or share ratings and progress across confirmed versions. Those remain separate choices. Linking versions is not a copy of all library data; external tracker linking has its own setting. See [Local tracking](local-tracking.md) and [Ratings](ratings.md).
 
 ## Compare before changing versions
 
 Different sources can offer different translations, chapter numbering, or image quality. Comparing previews or opening a candidate in the reader does not automatically migrate your library entry. Read the confirmation choices before copying or migrating data.
 
-```mermaid
-flowchart TD
-    Current["Open your current manga"] --> Compare["Compare available versions"]
-    Compare --> Preview["Inspect previews or View in Reader"]
-    Preview --> Decide{"Do you want a different version?"}
-    Decide -->|No| Keep["Keep your current version"]
-    Decide -->|Yes| Confirm["Review the copy or migration choices"]
-    Confirm --> Choice["Apply only the choice you confirm"]
-```
+Keep your current version if you prefer it. To change versions, choose the other one and review the copy or migration confirmation. Opening **View in Reader** can update ordinary reading progress; Back does not undo that reading. See [Versions](versions.md).
 
 ## Save data before making large changes
 
 A backup contains the data selected in the backup options, not every file or account detail on your device. Downloaded chapter images need separate handling. Restoring is not an undo button for everything you have done, including changes on external services.
 
-```mermaid
-flowchart TD
-    Backup["Open backup settings"] --> Options["Choose which supported data to include"]
-    Options --> File["Save the backup file"]
-    File --> Safe["Keep it somewhere you can access later"]
-    Safe --> Restore["Review restore choices when you need the data"]
-```
-
-See [Backups](backups.md) for sensitive-data options, merge behavior, and restore limits. Before installing an update, read its release notes and use the correct build for your installed app. Older installations can discover a release automatically only when a compatible bridge release is provided; otherwise, use the [manual update path](../release-notes.md).
+Save the backup somewhere you can access later and trust. See [Backups](backups.md) for sensitive-data options and what a restore keeps or replaces. Before installing an update, read its release notes and use the correct build for your installed app. If the app cannot find the update, follow the [manual update instructions](../release-notes.md).
 
 ## Know what is shared
 
 Recommendations do not require a separate Komikku FC recommendation account. That does not make all app activity offline: installed sources receive requests for manga and pages, connected trackers can receive updates, and exports or backups can contain personal reading information.
 
-```mermaid
-flowchart TD
-    App["Komikku FC"] --> Local["Stores supported settings, ratings, history, and local progress"]
-    App --> Sources["Contacts sources to load manga and pages"]
-    App --> Trackers["Can update connected tracker accounts"]
-    App --> Files["Creates exports or backups you choose to save"]
-    Files --> Check["Check file contents before sharing"]
-    %% Stack independent choices vertically for narrow screens.
-    Local ~~~ Sources
-    Sources ~~~ Trackers
-    Trackers ~~~ Files
-```
+- **Saved on your device:** settings, ratings, reading history, and local progress.
+- **Network activity:** requests to manga sources and connected trackers; some SDKs and optional services also use the network. See [Privacy and data](../privacy-and-data.md).
+- **Files you save:** exports and backups can contain reading preferences or account information, depending on their options. Check their contents before sharing.
 
 **Name hiding** replaces supported identifying labels on screen only. It does not hide manga titles or artwork, sanitize exported files, or change the source an action uses. Check screenshots and files yourself before sharing them.
 

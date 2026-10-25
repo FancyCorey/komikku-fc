@@ -1,0 +1,11 @@
+flowchart TD
+    Start["Select Start<br/>or Continue"] --> Match{"Saved work matches<br/>current settings<br/>and extensions?"}
+    Match -->|Yes| Resume["Resume saved work"]
+    Match -->|No| New["Begin a new check"]
+    Resume --> Group["Check the next group"]
+    New --> Group
+    Group --> Save["Save results<br/>and progress"]
+    Save --> More{"More sources<br/>waiting?"}
+    More -->|Yes| Continue["Select Continue"]
+    Continue --> Group
+    More -->|No| Done["Check finished"]

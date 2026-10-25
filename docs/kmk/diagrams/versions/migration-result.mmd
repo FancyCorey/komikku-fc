@@ -1,0 +1,6 @@
+flowchart TD
+    Confirm["Confirm Migrate or Copy"] --> Link["Save confirmed link"]
+    Link --> Apply["Apply chosen<br/>migration steps"]
+    Apply --> Result{"All steps<br/>finished?"}
+    Result -->|Yes| Done["Open chosen version"]
+    Result -->|No| Check["Read completed and<br/>failed results first"]

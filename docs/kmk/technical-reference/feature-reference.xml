@@ -31,7 +31,7 @@
     <documentation>docs/kmk/feature-guides/recommendation-settings.md</documentation>
     <owner>app/src/main/java/exh/recs/settings/RecommendationSettingsIndexScreen.kt</owner>
     <states>loaded search filtered</states>
-    <sections>for-you-sources taste-and-filters source-evaluation sources-to-try management-and-diagnostics</sections>
+    <sections>your-taste for-you-feed focus-modes find-new-sources source-evaluation speed-and-data linked-versions-and-ratings troubleshooting</sections>
     <privacy screenshot="approved">Settings can reveal source choices and taste preferences. Check the visible values before sharing.</privacy>
   </feature>
   <feature id="source-evaluation" route="settings/recommendations/source-evaluation">

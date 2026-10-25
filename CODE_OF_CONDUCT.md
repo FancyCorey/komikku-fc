@@ -58,10 +58,14 @@ representative at an online or offline event.
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community moderators responsible for enforcement at
-the [Discord server](https://discord.gg/85jB7V5AJR).
-All complaints will be reviewed and investigated promptly and fairly.
+For incidents involving Komikku FC, use the contact options listed by the
+[fork maintainer](https://github.com/FancyCorey). If no private contact is listed,
+ask the maintainer for a private reporting channel without posting incident
+details or personal information publicly. The original Komikku community does
+not handle reports on behalf of this fork.
+
+Reports received by this fork's moderators will be reviewed and investigated
+promptly and fairly.
 
 All community moderators are obligated to respect the privacy and security of the
 reporter of any incident.

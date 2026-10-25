@@ -1,0 +1,6 @@
+flowchart TD
+    Refresh["Refresh For You"] --> Choices["Use preferences,<br/>recent reading and<br/>display history"]
+    Choices --> Request["Search your<br/>enabled sources"]
+    Request --> Filter["Apply filters<br/>and order matches"]
+    Filter --> Show["Show results or<br/>explain what failed"]
+    Show --> Remember["Remember shown manga<br/>to reduce repeats"]

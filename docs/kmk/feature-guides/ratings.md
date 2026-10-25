@@ -32,9 +32,14 @@ Open the Loved, Liked, Disliked, or Not interested collection from For You to re
 
 The recommendation settings contain the linked-version, prompt, action-placement, and automatic-primary controls. **Start tracking when you rate a manga** is in Tracking settings. See [Recommendation settings](recommendation-settings.md) and [Local tracking](local-tracking.md) for the related controls.
 
-These choices work separately. When you set or clear a rating, **Rate linked versions together** includes confirmed linked versions that are already tracked locally at that point. A locally tracked version you newly confirm as the same manga, for example through Best Version, receives the group's rating while this setting is on, unless you have already rated that version yourself. A version that only has a similar title is not given the rating.
+These settings do different jobs:
 
-After you save Love, Like, or Dislike, **Start tracking when you rate a manga** can create local tracking. **Track linked versions together** can then attach other confirmed versions to that tracking. Attaching them does not, by itself, give them the rating you just saved; a later rating action can include them once they are tracked, or you can explicitly choose them through **Find other versions**. Turning off linked tracking prevents those automatic attachments, but it does not stop your current version from starting tracking when the separate start-tracking setting is on. Turning off automatic creation also does not stop sharing an existing tracker when linked tracking is on.
+- **Rating sharing:** setting or clearing a rating includes confirmed versions already tracked locally when **Rate linked versions together** is on.
+- **New confirmations:** a locally tracked version you newly confirm, including through Best Version, can receive the group's rating with rating sharing on. An existing rating you gave that version is kept. A similar title alone is not confirmation.
+- **Starting tracking:** saving Love, Like, or Dislike can create local tracking when **Start tracking when you rate a manga** is on.
+- **Linking tracking:** **Track linked versions together** can attach other confirmed versions to that record. This attachment alone does not give them the rating you just saved. A later rating action can include them, or you can select them explicitly through **Find other versions**.
+
+Turning off linked tracking does not stop the current version from starting local tracking under its separate setting. Turning off automatic creation does not stop an existing tracking record from being shared when linked tracking is on.
 
 Clearing a rating removes the selected rating, including from the eligible tracked linked versions when rating sharing is on. It does not delete local tracking or erase chapter progress. Versions that have not been confirmed as the same manga still need your explicit selection.
 
@@ -48,7 +53,7 @@ Open a manga's **Trackers**, then choose **Track other versions** in its **Local
 <p align="center"><img src="../visual-guide/v0.8.24/group-rating-menu.png" width="260" alt="Group rating choices"></p>
 <p align="center"><em>Choose a rating, or Not rated, for every locally tracked confirmed version.</em></p>
 
-Select it to choose Love, Like, Dislike, or Not interested, or **Not rated** to clear the rating, for every locally tracked confirmed version at once. The usual rating choices apply, and the change is saved even for confirmed versions you have not opened yet. If the rating cannot be loaded or saved, the button says so and you can try again.
+Select it to choose Love, Like, Dislike, or Not interested, or **Not rated** to clear the rating, for every locally tracked confirmed version at once. This includes eligible versions you have not opened yet. If existing versions have different ratings, the button uses the most recently updated rating. Loading or saving errors appear on the screen so you can try again.
 
 Confirming a version through **Best Version** also gives the chosen version the confirmed group's rating when it is locally tracked and **Rate linked versions together** is on, without replacing a rating you set yourself.
 
@@ -84,73 +89,41 @@ To manage chapter progress separately, see [Local tracking](local-tracking.md). 
 
 ## Preference states
 
-```mermaid
-flowchart TD
-    Current["Current preference or none"] --> Action{"Choose Love, Like, Dislike,<br/>Not interested, or Clear rating"}
-    Action --> Save["Save the new preference,<br/>or no preference after Clear rating"]
-    Save --> Updated["The manga appears in the matching collection"]
-    Updated --> Current
-```
-
-Every choice replaces the previous preference in one action. Not Interested is saved in the same way as Love, Like, and Dislike, and clearing a preference returns the manga to no preference.
+Every rating replaces the previous choice in one action and moves the manga to the corresponding collection. **Clear rating** returns it to unrated; it does not put the manga in another rating collection.
 
 ## Change a rating and revisit it
 
-```mermaid
-flowchart TD
-    Choose["Choose or clear a rating"] --> Check["Check the saved rating and collection"]
-    Check --> History["Open Action history for supported changes"]
-    History --> Undo{"Undo offered?"}
-    Undo -->|No| Keep["Keep the current choice or change it yourself"]
-    Undo -->|Yes| Matches{"Rating still matches the change you want to undo?"}
-    Matches -->|No| Conflict["Check the conflict message; current choice is not overwritten"]
-    Matches -->|Yes| Restore["Restore the earlier rating"]
-```
+1. Choose or clear a rating and check its saved value and collection.
+2. To reverse a supported change, open **Settings > Advanced > Action history** and select **Undo** if offered.
+3. Read the result. If Undo reports a conflict or is unavailable, check the current rating and change it directly if needed.
 
 Only supported saved changes can have an Undo action. Read any failure or conflict message; a message about one action does not mean every related setting or progress change was reversed.
 
 ## Create or merge a group
 
-```mermaid
-flowchart TD
-    Select["Select two or more matching manga versions"] --> Action["Choose the merge-into-group action"]
-    Action --> Confirm{"Are these the same manga?"}
-    Confirm -->|No| Cancel["Cancel and correct the selection"]
-    Confirm -->|Yes| Save["Confirm grouping"]
-    Save --> Result{"Did the group save?"}
-    Result -->|Yes| Display["Review the linked versions"]
-    Result -->|No| Explain["Read the message and check your selection"]
-```
+1. In a rated collection, select at least two versions of the same manga.
+2. Choose the merge-into-group action and check the confirmation. Cancel to correct a wrong selection.
+3. Confirm, then review the linked versions. If saving fails, read the message and check the selection before retrying.
 
-The app asks for confirmation before combining separate versions or existing groups.
+The confirmation also applies when combining existing groups.
 
 ## Maintain a group
 
-```mermaid
-flowchart TD
-    Group["Linked manga group"] --> Action{"What do you change?"}
-    Action -->|Primary version or merge| Same["The group stays together"]
-    Action -->|Remove one version| Valid{"At least two versions remain?"}
-    Action -->|Ungroup| Separate["Versions return to separate manga"]
-    Valid -->|Yes| Same
-    Valid -->|No| Separate
-```
+Changing the primary version or merging groups keeps a group together. **Ungroup** separates its members. Removing one version affects the grouped display as follows:
+
+<img src="../diagrams/ratings/remove-member.svg" width="440" alt="After removing a version, keep a multi-version group if at least two members remain; otherwise show a separate entry. Ratings are kept.">
 
 With fewer than two versions, the rated collection no longer shows a multi-version group. Removing a version or ungrouping does not clear its rating.
 
 ## Grouped display
 
-```mermaid
-flowchart TD
-    Group["Linked versions in<br/>a rated collection"] --> Manual{"Your chosen primary<br/>is available?"}
-    Manual -->|Yes| Chosen["Show your chosen version"]
-    Manual -->|No| Auto{"Automatic primary<br/>selection on?"}
-    Auto -->|Yes| Read["Show the most-read version;<br/>the earliest rating breaks ties"]
-    Auto -->|No| Default["Use the collection's default group choice"]
-    Chosen --> Sort["Use your collection and sort settings"]
-    Read --> Sort
-    Default --> Sort
-```
+The displayed version is chosen in this order:
+
+1. Your chosen primary, if available in the collection.
+2. The most-read eligible version if automatic selection is on, with the earliest rating breaking ties.
+3. Otherwise, the collection's default group choice.
+
+Your collection and sort settings still apply.
 
 Collections come from the saved preferences and linked versions, so they stay consistent across screens.
 

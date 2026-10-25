@@ -6,13 +6,7 @@ Komikku FC can open manga links, undo supported local changes, and help remove a
 
 Only open links and install extensions from places you trust. If a link is rejected or cannot open, check the address and try finding the manga through Browse instead. Do not keep retrying an unfamiliar address just to make it open.
 
-```mermaid
-flowchart TD
-    Link["Open a manga link"] --> Result{"Did the manga open?"}
-    Result -->|Yes| Check["Check the title and source"]
-    Result -->|No| Address["Check the address"]
-    Address --> Browse["Find the manga through Browse"]
-```
+After a link opens, check that the manga and source are the ones you expected.
 
 A source can be unavailable even when its address is correct. [Source evaluation](source-evaluation.md) checks how a source works with the app; it is not a security check of that source.
 
@@ -20,18 +14,12 @@ A source can be unavailable even when its address is correct. [Source evaluation
 
 Read the message for the action that failed. A temporary connection problem may be worth retrying. A rejected link, missing manga, or conflicting Undo needs a different next step.
 
-```mermaid
-flowchart TD
-    Problem["An action did<br/>not finish"] --> Kind{"What<br/>happened?"}
-    Kind -->|Connection| Retry["Check the connection,<br/>then retry"]
-    Kind -->|Missing item| Find["Find the manga or<br/>chapter again"]
-    Kind -->|Undo conflict| Current["Check your current choice"]
-    Kind -->|Cancelled| Stop["Leave the action stopped"]
-    %% Stack independent choices vertically for narrow screens.
-    Retry ~~~ Find
-    Find ~~~ Current
-    Current ~~~ Stop
-```
+| Problem | Next step |
+| --- | --- |
+| Connection failed | Check the connection, then retry if appropriate. |
+| Manga or chapter is missing | Find it again; retrying the old reference may not help. |
+| Undo reports a conflict | Check the current choice before changing it directly. |
+| You cancelled | Leave the action stopped unless you choose to start it again. |
 
 Cancelling does not necessarily reverse work already completed. For example, an interrupted restore may have restored some items. See [Backups](backups.md) and [Troubleshooting](troubleshooting.md) for the relevant recovery steps.
 
@@ -44,16 +32,13 @@ Open **More > Settings > Advanced > Action history** to review recorded actions.
 
 Undo checks the value affected by that action before restoring it. If that value no longer matches what the action saved, Undo can report a conflict instead of replacing your current choice. Check the current setting or manga state and make the change directly if needed.
 
-```mermaid
-flowchart TD
-    History["Open Action history"] --> Offered{"Undo offered for this action?"}
-    Offered -->|No| Direct["Change the item directly if needed"]
-    Offered -->|Yes| Undo["Choose Undo"]
-    Undo --> Result{"Result"}
-    Result -->|Restored| Done["Previous value restored"]
-    Result -->|Conflict or unavailable| Check["Check the current item"]
-    Result -->|Failed| Retry["Check the item before retrying"]
-```
+| Undo result | What to do |
+| --- | --- |
+| Restored | The supported value was put back. Check the item if you expected other changes too. |
+| Conflict or unavailable | The app has not replaced the current choice. Check it and change it directly if needed. |
+| Failed | Check the item and message before retrying. Do not assume it was restored. |
+
+If no Undo action is offered, change the item directly when appropriate. Action History is temporary, not a permanent recovery record.
 
 Undoing a chapter's read or bookmark change does not undo reading history or tracker progress. Keep a [backup](backups.md) for recovery across installations; do not rely on Action history as a complete record of your library.
 
@@ -61,18 +46,9 @@ Undoing a chapter's read or bookmark change does not undo reading history or tra
 
 A successful export is kept. If an export fails or is interrupted after the app has identified the file it created, it can offer **Keep** or **Remove** for that file. Remove targets that file only, not its folder.
 
-```mermaid
-flowchart TD
-    Export["Export a file"] --> Outcome{"What happened?"}
-    Outcome -->|Succeeded| Saved["Keep the completed file"]
-    Outcome -->|Incomplete file identified| Choice{"Keep or Remove?"}
-    Choice -->|Keep| Keep["Leave the incomplete file"]
-    Choice -->|Remove| Delete["Try removing that file only"]
-    Delete --> Removed{"Removal succeeded?"}
-    Removed -->|Yes| Gone["File removed"]
-    Removed -->|No| Remains["File remains"]
-    Outcome -->|File cannot be identified| Unknown["No Remove action offered"]
-```
+Choose **Keep** to leave the incomplete file. If you choose **Remove**, check whether removal succeeds:
+
+<img src="../diagrams/safety/remove-file.svg" width="420" alt="Remove targets only the identified file. Check the result: success removes it; failure leaves it in place.">
 
 The app cannot safely remove an export it cannot identify. A failed removal leaves the file in place. Development builds can also offer removal of a successful extension export for testing; that is not the normal public-build behavior.
 

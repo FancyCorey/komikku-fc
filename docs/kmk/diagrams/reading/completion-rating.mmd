@@ -1,0 +1,8 @@
+flowchart TD
+    Exit["Leave reader after<br/>an eligible completion"] --> Choice{"Choose<br/>a rating?"}
+    Choice -->|Not now or Back| None["No rating change"]
+    Choice -->|Yes| Save["Save the rating"]
+    Save --> Follow{"Other-version<br/>offer enabled?"}
+    Follow -->|No| Done["Keep saved rating"]
+    Follow -->|Yes| Offer["Offer to find<br/>other versions"]
+    Offer --> Done

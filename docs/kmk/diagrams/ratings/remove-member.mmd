@@ -1,0 +1,6 @@
+flowchart TD
+    Remove["Remove a version<br/>from the group"] --> Count{"At least two<br/>members remain?"}
+    Count -->|Yes| Group["Keep the<br/>multi-version group"]
+    Count -->|No| Separate["Show a<br/>separate entry"]
+    Group --> Keep["Ratings are kept"]
+    Separate --> Keep

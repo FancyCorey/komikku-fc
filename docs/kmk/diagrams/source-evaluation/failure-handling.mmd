@@ -1,0 +1,6 @@
+flowchart TD
+    Problem["Check interrupted"] --> Cancel{"You cancelled?"}
+    Cancel -->|Yes| Unfinished["Stop; unchecked<br/>sources stay<br/>unfinished"]
+    Cancel -->|No| Kind{"Only one<br/>source failed?"}
+    Kind -->|Yes| Local["Save its reason;<br/>try other sources"]
+    Kind -->|No| Stop["Stop; show what<br/>needs fixing"]

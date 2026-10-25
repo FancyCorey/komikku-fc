@@ -13,11 +13,11 @@ Open **Browse**, then select **For You**. The page shows topic shortcuts and a *
 
 For You is not a single popularity list. It gathers manga from your chosen sources, applies your filters, and combines matches for your taste with newer discoveries. Personalized results remain the majority when enough are available. Newer discoveries still use your blocked genres, languages, and source rules.
 
-Your taste comes from your ratings and your preferred and blocked tags. With **Use recent reading** on, which is the default, it also comes from what you read lately: tags of manga read within the chosen window count more than your older ratings, which still contribute. Blocked and disliked tags are never boosted.
+Your taste comes from ratings and preferred and blocked tags. **Use recent reading**, on by default, also boosts tags from manga read within your chosen window. The boost depends on how much and how recently you read; it does not always outweigh an older rating. Your long-term ratings still contribute, and blocked or disliked tags are not boosted.
 
 When repeat rotation is enabled, the page remembers manga shown in recent results. A manga shown more than once within your chosen time window can move lower instead of disappearing. That effect fades as the last showing gets older and ends when it falls outside the window. Manga saved in your library, rated, tracked, or with another recorded interaction are exempt. The app does not treat a lack of interaction as a dislike.
 
-**Hide manga you already know** applies to the current refresh and to titles remembered from earlier refreshes. A title you have since rated, added to your library, or started reading does not reappear after Refresh.
+With **Hide manga you already know** on, each refresh filters out titles you have since rated, added to your library, or started reading, including titles remembered from earlier refreshes.
 
 ## What you see on the page
 
@@ -33,7 +33,7 @@ The order can change as new results arrive and previously shown manga move lower
 
 For You searches your enabled sources in your chosen order, a few at a time. The next source starts as soon as a search slot is free. Once enough rows are ready, sources still searching are stopped, and they do not leave a loading row behind.
 
-For each source, For You first searches for your taste. When none of those searches find anything, it uses the source's Popular page instead of leaving the row empty. An empty result is not reused from the cache, so the source is searched again on the next refresh.
+For each source, For You first searches for your taste. If those searches return no manga and did not fail, it tries the source's Popular page. Your filters still apply to those results; this does not guarantee a full row. Empty results are not reused from the cache, so the next refresh searches again.
 
 ### When a source's manga don't match your taste
 
@@ -65,13 +65,13 @@ A failed row says what probably went wrong and what to try:
 
 The row offers these actions when they apply:
 
-| Action | When it appears | What it does |
-| --- | --- | --- |
-| Try again | Always | Searches that source again. |
-| Open site | The site asked for a browser check | Opens the site so you can complete the check, then return and try again. |
-| Check source | The source failed in most recent refreshes | Loads the source's Popular page once, outside For You's searches, and says whether it still works when browsing. |
-| Manage extension | The extension has an update, is no longer offered by its repository, or Check source found it broken | Opens the extension so you can update or remove it. |
-| Don't use in For You | The source failed in most recent refreshes, or Check source found it broken | Turns the source off for recommendations only. It stays installed and usable in Browse. Turn it back on under **For You feed**. |
+| Action | When to use it |
+| --- | --- |
+| Try again | Available on failed rows; searches that source again. |
+| Open site | Offered for a browser check. Complete it in the in-app browser, return, then try again. |
+| Check source | Offered after failures in most recent refreshes. Tests the source's Popular page once to see whether normal browsing works. |
+| Manage extension | Offered when an update is available, the repository no longer offers the extension, or Check source finds it broken. Open its page to update or remove it. |
+| Don't use in For You | Offered after repeated failures or a failed Check source. Disables recommendations from it without uninstalling it or hiding it in Browse. Turn it back on under **For You feed**. |
 
 **Check source** distinguishes two situations:
 
@@ -80,22 +80,11 @@ The row offers these actions when they apply:
 
 A note also appears when the extension has an update available or is no longer offered by its repository, which can mean the source stopped working. For a source that failed in most of its recent refreshes, the row also says how often, for example "This source failed in 17 of its last 17 refreshes".
 
-```mermaid
-flowchart TD
-    Failed["A For You row failed"] --> Hint["Read the likely cause"]
-    Hint --> Retry["Try again"]
-    Retry --> Fixed{"Does it work now?"}
-    Fixed -->|Yes| Done["Browse the row"]
-    Fixed -->|No, and it keeps failing| Check["Check source"]
-    Check --> Works{"Works when browsing?"}
-    Works -->|Yes| Stop["Don't use in For You, keep it for reading"]
-    Works -->|No| Manage["Manage extension: update or remove it"]
-    Manage --> Stop2["Or don't use it in For You"]
-```
+<img src="../diagrams/recommendations/failed-source.svg" width="460" alt="Read a failed source's hint. If it keeps failing, use Check source when offered: keep browsing a working source, or manage a broken extension. Either can be disabled in For You separately.">
 
 ## Minimum chapter count
 
-**Minimum chapter count** under **Your taste** hides manga with fewer chapters than your choice. A newly found manga's chapter count is usually unknown until its chapter list has been loaded. After a refresh shows its rows, For You loads the chapter lists of up to 20 shown titles whose count is unknown, a few at a time. Titles below your minimum disappear from the page a few seconds later, and their counts are remembered for two weeks, so later refreshes filter them straight away.
+**Minimum chapter count** under **Your taste** hides manga with a known count below your choice. A new result's count is usually unknown until its chapter list loads. After showing its rows, For You checks up to 20 displayed titles with unknown counts, a few at a time. Once checked, titles below your minimum are removed. Counts are remembered for two weeks so later refreshes can filter them straight away.
 
 <p align="center"><img src="../visual-guide/v0.8.24/your-taste.png" width="260" alt="Minimum chapter count set to 40 under Your taste"></p>
 <p align="center"><em>Minimum chapter count under Your taste.</em></p>
@@ -104,10 +93,12 @@ Titles that could not be checked yet stay visible; an unknown count is not treat
 
 ## Saving data
 
-**Use less data on recommendations** under **Speed and data** can be Automatic, Always, or Never. Automatic saves data on a metered or slow connection. While saving data, For You:
+**Use less data on recommendations** under **Speed and data** can be Automatic, Always, or Never. Automatic saves data on a metered connection, such as a network marked as limited, or one Android reports as slow. Never keeps your normal configured limits; it does not make searches unlimited.
 
 <p align="center"><img src="../visual-guide/v0.8.24/speed-and-data.png" width="260" alt="Use less data on recommendations set to Automatic"></p>
 <p align="center"><em>Use less data on recommendations under Speed and data.</em></p>
+
+While saving data, For You:
 
 - skips the optional extra discovery page and new-release exploration;
 - tries fewer search variations per source;
@@ -162,88 +153,33 @@ Rated and linked-version groups can start a recommendation search using the whol
 <p align="center"><img src="../visual-guide/group-recommendations.png" width="260" alt="Group recommendations loading source by source"></p>
 <p align="center"><em>Recommendations for a confirmed group arrive source by source.</em></p>
 
-## Feature overview
-
-```mermaid
-flowchart TD
-    Screen["Open For You"] --> Retrieval["Find manga from your chosen sources"]
-    Retrieval --> Eligibility["Apply your filters"]
-    Eligibility --> Ranking["Order taste matches and newer discoveries"]
-    Ranking --> Rows["Show results and each source's status"]
-    Rows --> Check["Check chapter counts of shown titles"]
-```
-
-One unavailable source does not prevent other sources from showing results.
-
-## Retrieval and display
-
-```mermaid
-sequenceDiagram
-    actor Reader
-    participant Screen as For You
-    Reader->>Screen: Open or refresh
-    Screen-->>Reader: Results and status for each source
-    Screen-->>Reader: Remove shown titles below the minimum chapter count
-    Reader->>Screen: Open a manga card
-    Screen-->>Reader: Manga page
-    Reader->>Screen: Return to For You
-    Screen-->>Reader: Continue browsing recommendations
-```
-
-Each source is handled independently. One failing source can produce a row-level explanation without discarding successful rows.
-
 ## One source's row
 
-```mermaid
-flowchart TD
-    Start["Search the source for your taste"] --> Finished{"Finished within<br/>the time limit?"}
-    Finished -->|Failed or too slow| Error["Error row with the<br/>likely cause and Try again"]
-    Finished -->|Yes| Found{"Did the searches<br/>find anything?"}
-    Found -->|No| Popular["Use the source's Popular page"]
-    Found -->|Yes| Match{"Any manga match<br/>your taste?"}
-    Popular --> Match
-    Match -->|Yes| Row["Show matching manga"]
-    Match -->|No| Looser{"Show looser<br/>matches on?"}
-    Looser -->|Yes| LooserRow["Show up to four,<br/>labelled as looser matches"]
-    Looser -->|No| Empty["Explain that nothing matched"]
-```
+| Outcome | What the row can show |
+| --- | --- |
+| Search fails or takes too long | An error hint and **Try again**. |
+| Searches return no manga without an error | A Popular-page attempt, still subject to your filters. |
+| Eligible manga match your taste | Matching manga. |
+| No taste matches, but eligible looser matches exist and are enabled | Up to four looser matches, labelled as such. |
+| Nothing is left to show | An explanation instead of invented results. |
 
 Every path still applies your blocked tags, dislikes, ratings, and known-manga choices first.
 
-## Candidate eligibility
+## Which manga can appear
 
-```mermaid
-flowchart TD
-    Candidate["Manga found for For You"] --> Rules{"Allowed by your other filters?"}
-    Rules -->|No| Exclude["Hide this manga"]
-    Rules -->|Yes| Minimum{"Minimum chapter count enabled?"}
-    Minimum -->|No| Rank["Consider for the results"]
-    Minimum -->|Yes| Known{"Chapter count known or checked?"}
-    Known -->|No| Rank
-    Known -->|Yes| Enough{"At least your chosen number of chapters?"}
-    Enough -->|No| Exclude
-    Enough -->|Yes| Rank
-    Rank --> Order["Order taste matches and newer discoveries"]
-    Order --> Visible["Show the selected results"]
-    Visible --> CheckShown["Check unknown counts of up to 20 shown titles"]
-    CheckShown -->|Below the minimum| Exclude
-```
+Before ranking, a manga must pass your language, source, rating, known-manga, and blocked-tag choices. With a minimum chapter count enabled:
 
-This diagram describes **For You**, not every recommendation search. A count that is still unknown does not hide a manga. Being considered does not guarantee a visible place, because only a limited number of results are shown. Newer discoveries use the same For You filters.
+- A known count below the minimum hides the manga.
+- An unknown count can remain visible. Up to 20 displayed titles can be checked later, unless data saving is active.
+- Passing the filters does not guarantee a visible place; result limits still apply.
 
-## Exposure-aware refresh
+These are **For You** rules, not a promise about every recommendation search. Newer discoveries use the same For You filters.
 
-```mermaid
-flowchart TD
-    Visible["Manga shown in For You"] --> Enabled{"Repeat rotation enabled?"}
-    Enabled -->|No| Keep["Keep normal rank"]
-    Enabled -->|Yes| Window{"Shown more than once, with last showing inside your chosen window?"}
-    Window -->|No| Keep["Keep normal rank"]
-    Window -->|Yes| Exempt{"Saved, rated, tracked, or another recorded interaction?"}
-    Exempt -->|Yes| Keep
-    Exempt -->|No| Lower["Can move lower; effect fades over time"]
-    Lower --> Refresh["Give other matching manga a higher place"]
-```
+## Why repeated cards can move lower
+
+With repeat rotation enabled:
+
+<img src="../diagrams/recommendations/repeat-display.svg" width="460" alt="Only repeatedly shown, untouched manga within the chosen window can move lower. Other manga keep normal ranking, and the effect fades over time.">
 
 Moving a manga lower changes its position only. It does not delete the manga or remove your library entry, rating, or tracking.
 

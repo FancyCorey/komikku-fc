@@ -9,37 +9,24 @@ Open **Settings > Advanced** and, under **Developer tools**, turn on **Hide tech
 <p align="center"><img src="../visual-guide/v0.8.24/hide-names-setting.png" width="360" alt="Hide technical names in screenshots switch turned on"></p>
 <p align="center"><em>Settings, Advanced, Developer tools: Hide technical names in screenshots.</em></p>
 
-<p align="center"><img src="../visual-guide/recommendation-bundle-export.png" width="260" alt="Exporting a recommendation bundle"></p>
-<p align="center"><em>Exporting Top Picks as a recommendation bundle.</em></p>
+This changes supported screen labels and the suggested filename for For You source exports, not saved data or file contents. Manga titles, artwork, reader pages, ratings, history, account names, notifications, and Android controls are not hidden automatically. **The download queue can still show source names even with name hiding on.**
 
-This changes supported labels on screen and the suggested filename for For You source exports. It does not change saved data or the contents of exported files. Your saved manga and source connections stay the same. Manga titles, artwork, reader pages, ratings, reading history, account names, notifications, and Android controls are not hidden automatically.
-
-```mermaid
-flowchart TD
-    Settings["Open Settings > Advanced"] --> Enable["Turn on Hide technical names in screenshots"]
-    Enable --> Labels["Supported identifying labels become neutral"]
-    Labels --> Check["Check the rest of the screen for private details"]
-    Check --> Capture["Take your screenshot"]
-```
+Before taking a screenshot, check the whole screen and cover or crop anything you do not want to share.
 
 ## Share a recommendation list
 
-Use the export action in **For You** or **Top Picks**, then choose where Android should save the file. Someone importing it can review the recommendations; opening the file alone does not add its manga to their library.
+1. Use the export action in **For You** or **Top Picks**.
+2. Choose where to save the file in Android's document picker. Cancelling before choosing a destination does not create an export file through this action.
+3. Read the result, then check the completed file before sharing it. A failed or uncertain result needs checking before you retry.
+
+Someone importing the file sees a review screen. Opening it alone does not add its manga to their library.
+
+<p align="center"><img src="../visual-guide/recommendation-bundle-export.png" width="260" alt="Exporting a recommendation bundle"></p>
+<p align="center"><em>Exporting Top Picks as a recommendation bundle.</em></p>
 
 **Name hiding does not hide information inside exported files.** Recommendation files can contain real manga titles and links, source and extension names, repository names, cover links, descriptions, genres, recommendation scores, and the preference groups that matched. These details can reveal your reading interests, even without account information.
 
 An extension export contains the selected installed extension package, or an archive of selected packages. It is not a backup of your library, ratings, reading history, or tracker accounts. Share only extensions you trust and have permission to distribute.
-
-```mermaid
-flowchart TD
-    Choose["Choose a recommendation or extension export"] --> Picker["Choose a file location in Android"]
-    Picker --> Destination{"Did you choose a location?"}
-    Destination -->|No| Cancel["Return without creating an export"]
-    Destination -->|Yes| Write["Wait for the export result"]
-    Write --> Success{"Did the export finish successfully?"}
-    Success -->|Yes| Review["Check the saved file before sharing"]
-    Success -->|No or uncertain| Message["Read the result before trying again"]
-```
 
 ## If an export fails
 
@@ -49,30 +36,17 @@ Android can create the destination file before the export finishes. If the app k
 
 If the app cannot confirm whether the export finished, it leaves the file as it is and explains that the result is unknown. Check it yourself before sharing or retrying. If removal fails, the file remains; you can retry removal or keep it.
 
-```mermaid
-flowchart TD
-    Result{"Export result"} -->|Successful| Saved["Saved file is kept"]
-    Result -->|Known incomplete, cancelled, or failed write| Choice{"Keep or Remove?"}
-    Result -->|Result unknown| Unknown["File is left as it is; check it yourself"]
-    Choice -->|Keep| Kept["File is left as it is"]
-    Choice -->|Remove| Remove["Remove only this export's file"]
-    Remove --> Removed{"Was removal successful?"}
-    Removed -->|Yes| Gone["Created file is removed"]
-    Removed -->|No| Retry["File remains; retry removal or keep it"]
-```
+**Keep** leaves the file in place. **Remove** attempts to delete that identified file only. See [Incomplete exports](safety.md#incomplete-exports) for the removal steps and limits.
 
 ## Check before sending
 
 For screenshots, inspect the whole image, including the status bar and notifications. Crop or cover information you do not want to share. For exported files, check their contents separately: neutral screen labels do not make the files anonymous.
 
-```mermaid
-flowchart TD
-    Item{"What are you sharing?"} -->|Screenshot| Image["Check titles, artwork, accounts, history, and notifications"]
-    Item -->|Exported file| File["Check real names, links, and reading-interest details"]
-    Image --> Private{"Anything you want to keep private?"}
-    File --> Private
-    Private -->|Yes| Withhold["Cover or crop the image, or do not send the file"]
-    Private -->|No| Share["Send only to your intended recipient"]
-```
+| Sharing | Check first |
+| --- | --- |
+| Screenshot | Manga titles and artwork, page text, ratings, accounts, reading history, notifications, and any source names still visible. |
+| Exported file | Real names, links, and reading-interest details inside the file, not just its name or the screen used to create it. |
+
+If you cannot remove details you want to keep private, do not send the image or file. Send checked material only to your intended recipient.
 
 Name hiding is a screenshot aid, not a privacy guarantee. Check each image or file yourself.

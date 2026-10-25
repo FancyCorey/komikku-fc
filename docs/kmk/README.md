@@ -1,47 +1,50 @@
 # Komikku FC documentation
 
-Komikku FC helps you find manga, compare sources, keep track of reading, and manage your library. Start with the user guide, or choose a feature below.
+Komikku FC helps you find manga, compare sources, track reading, and manage your library.
 
-## Choose what you need
+## Start here
 
-| Goal | Start here | What it contains |
-| --- | --- | --- |
-| Use Komikku FC | [User guide](user-guide.md) | Step-by-step routes, expected results, limitations, and troubleshooting. |
-| Understand a feature | [Feature guides](feature-guides/README.md) | Instructions, settings, limitations, and troubleshooting for individual tools. |
-| Tour the main screens | [Visual feature guide](visual-guide/README.md) | App screens arranged by workflow, with captions that explain the controls and results shown. |
-| Understand the whole system | [How Komikku FC works](how-kmk-works.md) | How recommendations, sources, reading tools, and saved data fit together. |
-| Find a feature owner | [Feature and code map](feature-and-code-map.md) | A compact map from each feature family to its screens, states, and implementation files. |
-| Build or contribute | [Build and verification](build-and-verify.md) and [CONTRIBUTING.md](../../CONTRIBUTING.md) | Local build requirements, validation commands, issue guidance, and contribution expectations. |
-| Prepare a release | [Release channels](release-channels.md) | Public release and private development-build boundaries, signing, updater behavior, and publication checks. |
+- **New to the app?** Follow the [User guide](user-guide.md) for step-by-step instructions.
+- **Looking for one feature?** Choose a [Feature guide](feature-guides/README.md) for its controls, limits, and troubleshooting.
+- **Want to see the screens?** Open the [Visual feature guide](visual-guide/README.md).
+- **Want the bigger picture?** Read [How Komikku FC works](how-kmk-works.md) to see how recommendations, sources, reading, and saved data fit together.
+- **Looking for changes?** See the [Release notes](release-notes.md).
 
-## Policies and reference material
+## Privacy and help
 
-- [Privacy and data](privacy-and-data.md) explains local storage, network access, exports, backups, and screenshot sharing.
-- [Links, extensions, and recovery](security-and-integration.md) explains trust decisions, supported failure handling, cancellation, and local recovery limits.
-- [Third-party components](third-party-components.md) records additional Komikku FC dependencies and their terms.
-- [Release notes](release-notes.md) summarizes the current public feature set and compatibility boundary.
-- [Technical reference](technical-reference/README.md) explains the XML files used to map features and screenshots.
-- [Feature reference (XML)](technical-reference/feature-reference.xml) lists routes, states, privacy rules, and implementation owners in a machine-readable form.
-- [v0.8.24 screenshot manifest (XML)](technical-reference/screenshot-manifest-v0.8.24.xml) lists the v0.8.24 illustrations and their SHA-256 hashes.
-- [v0.8.23 screenshot manifest (XML)](technical-reference/screenshot-manifest-v0.8.23.xml) lists the v0.8.23 What's New illustration and its SHA-256 hash. This partial collection does not illustrate every v0.8.23 workflow.
-- [Historical screenshot manifest (XML)](technical-reference/screenshot-manifest.xml) lists the earlier illustrations' routes, states, visible-content limits, and SHA-256 hashes.
-- [Security policy](../../SECURITY.md) explains how to report a vulnerability without publishing sensitive information.
+- [Privacy and data](privacy-and-data.md): what is stored on your device, what uses the network, and what to check before sharing.
+- [Links, extensions, and recovery](security-and-integration.md): trust choices, failed operations, cancellation, and recovery limits.
+- [Security policy](../../SECURITY.md): how to report a vulnerability without posting sensitive details publicly.
+- [Third-party components](third-party-components.md): additional libraries and their terms.
 
-## How the documentation is organized
+## For contributors
 
-The `feature-guides/` directory contains task-oriented explanations of Komikku FC's user-facing capabilities. Each page explains the problem being solved, the normal workflow, important states and limits, privacy behavior, and the source files that implement it. The `visual-guide/` directory provides a guided tour of the main screens. The `technical-reference/` directory contains XML indexes for maintainers and automated checks.
+- [Feature and code map](feature-and-code-map.md): find the code behind a feature and the states to preserve when changing it.
+- [Build and verification](build-and-verify.md): prepare your tools, build a development APK, and run automated checks.
+- [Contributing](../../CONTRIBUTING.md): report issues, propose changes, and submit code.
+- [Release channels](release-channels.md): development versus public builds, signing, updates, and release checks.
+- [Diagram sources](diagrams/README.md): edit and render the guide diagrams.
 
-Feature pages have short filenames, such as `ratings.md`, `versions.md`, and `backups.md`.
+<details>
+<summary>Feature and screenshot reference files</summary>
 
-## Design principles
+The [Technical reference](technical-reference/README.md) explains these XML indexes:
 
-- Library, Browse, Reader, Settings, backup, tracking, and extension features continue to use Komikku's familiar screens and navigation.
-- Komikku FC saves data through Komikku's existing database and settings. Supported source failures keep their own results so other sources can still be useful; this does not guarantee that every extension crash can be contained.
-- Cancelling work stops pending operations where supported. It does not reverse completed file writes, installations, or outside tracker updates.
-- Name hiding changes visible names in screenshots; it does not change saved identifiers, user data, source requests, or the item an action affects.
-- Reversible actions record the previous value before a change and keep that record only when the change succeeds.
-- The public fork uses its own package name, launcher name, logo, update source, release page, and issue tracker while keeping Komikku's familiar navigation.
+- [Feature reference](technical-reference/feature-reference.xml): feature routes, states, privacy rules, and code locations.
+- [v0.8.24 screenshot index](technical-reference/screenshot-manifest-v0.8.24.xml): illustrations and their SHA-256 file hashes.
+- [v0.8.23 screenshot index](technical-reference/screenshot-manifest-v0.8.23.xml): the What's New illustration, not every workflow in that version.
+- [Earlier screenshot index](technical-reference/screenshot-manifest.xml): older illustrations, their locations, and their limits.
 
-## Screenshots and privacy
+</details>
 
-The visual guide includes discovery, settings, source-quality, cross-source matching, and Best Version workflows. Name hiding replaces source names with neutral labels while leaving the manga artwork and feature result understandable. Feature guides provide written steps for workflows that depend on personal preferences, reading history, account information, page content, or device configuration.
+## How the guides are organized
+
+**Feature guides** explain individual tools, such as [Ratings](feature-guides/ratings.md), [Comparing versions](feature-guides/versions.md), and [Backups](feature-guides/backups.md). The **Visual guide** shows the main screens. Use the **Feature and code map** for implementation files; the **Technical reference** is for maintainers and automated checks.
+
+## Important limits
+
+Komikku FC keeps Komikku's familiar Library, Browse, Reader, Settings, backup, tracking, and extension screens. Its added tools use the app's existing saved data and settings.
+
+A failed source does not necessarily stop every other source, but some extension crashes can still stop the app. Cancelling pending work does not undo files already written, extensions already installed, or tracker updates already sent.
+
+**Name hiding** changes supported labels—not saved data or file contents—and it does not hide manga artwork or every name on every screen. Check screenshots and files before sharing. See [Privacy and data](privacy-and-data.md).

@@ -2,13 +2,18 @@
 
 Read chapters, switch between sources, manage optional reading times, and find your last-read position.
 
+Jump to [timer and schedule basics](#what-changes-and-what-stays-familiar), [reader settings](#page-layout-and-controls), [completion ratings](#completion-and-rating-behavior), [last-read position](#jump-to-last-read), or [switching sources](#switch-between-sources).
+
 ## Where you find it
 
-Open the timer from the reader's timer action. Manage the reading schedule from that dialog or **Settings > Reader > Reading schedule**. Completion-rating options are under **Recommendation Settings > Linked versions and ratings**; the rating offer appears after leaving the final available chapter when enabled. **Jump to last read** appears in the manga toolbar when the chapter list contains a valid read-position target.
+- **Timer:** open the timer action inside the reader.
+- **Schedule:** open it from the timer dialog or **Settings > Reader > Reading schedule**. Turn it on to apply your chosen times.
+- **Completion rating:** configure **Recommendation Settings > Linked versions and ratings**. An eligible rating offer appears after you leave the reader.
+- **Jump to last read:** look in the manga toolbar when a valid reading position exists in the displayed chapter list.
 
 ## What changes and what stays familiar
 
-These are optional controls around the normal reader. When they are disabled, ordinary reader behavior stays the same. Schedule and timer messages can be dismissed and do not change chapter progress on their own.
+These controls are optional. When disabled, they do not restrict ordinary reading. Dismissing a timer or schedule message does not change chapter progress or bypass an active restriction.
 
 The schedule entry in the reader opens the same choices found under **Settings > Reader**, so there is only one place to manage the schedule. Changes are saved with the app's other settings.
 
@@ -25,6 +30,12 @@ These choices apply from the moment you start the timer. The extra allowance, wh
 ## Page layout and controls
 
 Open **Settings > Reader** to change the default reading mode and its controls. Paged, Webtoon, and Vertical+ sections have their own options; changing a Webtoon gesture does not change the paged reader's gesture setting. Some options are unavailable until a related setting is enabled.
+
+Expand the reference when you want to look up a particular control.
+
+<details>
+<summary>Reader settings reference</summary>
+
 
 | Setting | What it changes |
 | --- | --- |
@@ -173,6 +184,8 @@ The additional reader-options section under **Settings > Reader** contains these
 | Center margin | Adds space at the center of the selected wide or paired-page layouts, useful when the display has a hinge or an area you want to leave clear. It does not add pages to the chapter. |
 | Archive reader mode | Chooses how pages inside chapter archives such as CBZ or CBR are loaded: directly from the file, through memory, or through a temporary disk cache. Memory and storage limits can cause the reader to use a fallback; the chapter contents are not changed. |
 
+</details>
+
 ## Completion and rating behavior
 
 Under **Recommendation Settings > Linked versions and ratings**, **Ask for a rating after finishing** controls the completion offer. **Ask about other versions** controls the later offer to rate other versions after saving a rating. Neither setting chooses a rating for you.
@@ -180,7 +193,11 @@ Under **Recommendation Settings > Linked versions and ratings**, **Ask for a rat
 <p align="center"><img src="../visual-guide/reader-completion-preference.png" width="260" alt="Completion rating offer after the final chapter"></p>
 <p align="center"><em>The rating offer after finishing the latest chapter.</em></p>
 
-After the final available chapter, the optional completion prompt is offered when the reader is not schedule-blocked and you are in a regular reader session, not an active alternate-source session. Choose **Not now** or press Back to leave without changing your rating. Accepting the offer lets you choose Love, Like, Dislike, or Not interested. After you save a rating, the app can offer to help you rate other versions when **Ask about other versions** is enabled, including versions it finds when no linked group is already confirmed. Your rating changes only when you select one. If you then decline the offer to rate other versions, the rating you already saved stays in place; those other versions are not rated by that dismissal.
+The offer is for an unrated manga after reaching the end of its latest available chapter, in a regular reader session that is not schedule-blocked or using an active alternate-source pair. Reading that chapter again can still qualify if the manga remains unrated.
+
+1. Leave the reader after that completion. The offer does not cover the final page while you are reading.
+2. Choose a rating, or **Not now**/Back to leave without changing one. Love, Like, Dislike, and Not interested are available.
+3. After saving, **Ask about other versions** can offer to find versions to rate, even without a confirmed group. Review and select those versions if you accept. Dismissing this later offer keeps your first rating and does not rate other versions.
 
 ## Jump to last read
 
@@ -217,90 +234,24 @@ This shortcut depends on an active reading pair and available chapters. If the s
 
 ## Chapter reading sequence
 
-```mermaid
-sequenceDiagram
-    actor Reader
-    participant Viewer as Reader screen
-    Reader->>Viewer: Open a chapter
-    Viewer-->>Reader: Load and show pages
-    Reader->>Viewer: Move through pages
-    Viewer-->>Reader: Show the current page and reading progress
-    Reader->>Viewer: Continue to another chapter or go back
-```
-
 If a page does not load, check its error message. Opening an alternate source is a separate choice, not an automatic replacement for every failed page.
 
 ## Completion preference
 
-```mermaid
-flowchart TD
-    Progress["Finish the final page"] --> Eligible{"Completion rating on, the latest available<br/>chapter finished in the primary version,<br/>and the schedule permits?"}
-    Eligible -->|No| Normal["Continue or exit normally"]
-    Eligible -->|Yes| Prompt["Leave the reader:<br/>the app offers a rating"]
-    Prompt -->|Not now, Cancel or Back| Return["Return without a rating change"]
-    Prompt -->|Choose a rating| Save["Save your rating"]
-    Save --> Ask{"Ask about other<br/>versions on?"}
-    Ask -->|No| Rated["Return with your rating saved"]
-    Ask -->|Yes| Offer["Offer to find and rate other versions"]
-    Offer -->|Accept| Other["Review and select other versions to rate"]
-    Offer -->|Cancel or Back| Rated
-    Other --> Rated
-```
+<img src="../diagrams/reading/completion-rating.svg" width="460" alt="After an eligible completion, leaving the reader can offer a rating. Skipping changes nothing; saving keeps the rating even if you dismiss the later other-versions offer.">
 
 The prompt appears after leaving the reader, not over the final page. Declining the offer does not change your rating; selecting a rating does.
 
-## Reader settings flow
-
-```mermaid
-flowchart TD
-    Settings["Open Reader settings"] --> Preferences["Choose how pages and controls behave"]
-    Preferences --> Viewer["Read with your saved choices"]
-    Viewer --> Change["Return to settings when you want to change them"]
-```
-
-These optional controls add to the existing reader settings and viewer without replacing them.
-
 ## Reading schedule
 
-```mermaid
-flowchart TD
-    Request["Want to read a chapter"] --> Allowed{"Schedule allows reading, or schedule is off?"}
-    Allowed -->|No| Block["Show schedule message; reopen after an allowed period"]
-    Allowed -->|Yes| Open["Read the chapter"]
-    Open --> Ends{"Allowed period ends while reading?"}
-    Ends -->|No| Continue["Continue under your schedule"]
-    Ends -->|Yes| Finish["Finish the current chapter"]
-    Finish --> Boundary["Do not start another chapter while restricted"]
-```
+| Situation | What happens |
+| --- | --- |
+| Schedule is off, or reading is allowed | Open and read normally. |
+| You open the reader while restricted | Reading is blocked immediately. Wait until reading is allowed, then reopen it. |
+| A restriction begins while you are already reading | You may finish the current chapter, but cannot start another while restricted. |
 
 Switching sources does not bypass a schedule restriction. The schedule is off by default; the manual timer has its own separate choices.
 
-## Jump to last read
-
-```mermaid
-flowchart TD
-    Manga["Open manga details"] --> Target{"Saved reading position visible in your chapter list?"}
-    Target -->|No| Unavailable["Hide or disable jump action"]
-    Target -->|Yes| Action["Show Jump to last read"]
-    Action --> Scroll["Scroll chapter list to target"]
-    Scroll --> Preserve["Only the list position changes"]
-```
-
-Jump to last read changes only the list position. It does not open a chapter or modify reading history.
-
-The schedule and timer remain optional. **Jump to last read** appears only when a valid last-read position exists, and using it only moves the chapter list.
-
 ## Switching a source pair
 
-```mermaid
-flowchart TD
-    Current["Reading either source in an active pair"] --> Switch["Choose Switch source"]
-    Switch --> List["Show chapters from the other source"]
-    List --> Suggested["Suggest the same number, or closest available number"]
-    Suggested --> Review["Review the chapter and translation-group label"]
-    Review -->|Cancel| Stay["Keep reading the current source"]
-    Review -->|Confirm an available chapter| Open["Read the other source"]
-    Open --> Again["Use Switch source to switch back when needed"]
-```
-
-If the pages do not correspond, correct the chapter match rather than assuming matching numbers mean matching content.
+**Switch source** opens the other source's chapter list while a pair is active. Review the suggested number and translation-group label, then choose **Read this chapter** or **Stay on this source**. You can switch back the same way. If the pages do not correspond, correct the chapter match rather than trusting the number alone.

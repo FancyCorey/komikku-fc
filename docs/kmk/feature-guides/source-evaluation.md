@@ -1,6 +1,6 @@
 # Evaluating recommendation source quality
 
-Source evaluation checks whether a source can provide useful recommendations. It saves a short result and explanation instead of showing raw errors. Some checks temporarily install an extension and attempt to remove it afterwards, so read the installation and cleanup warnings before starting.
+Source evaluation helps you decide which manga sources are worth using for recommendations. It checks a sample of manga and saves a result with a short explanation. A source is a manga website or service accessed through an extension. Some checks temporarily install an extension, then try to remove it, so read the installation and cleanup warning before starting.
 
 ## Where you find it
 
@@ -39,11 +39,15 @@ An evaluation samples a source's popular and recent manga and compares their ava
 
 ## Before starting a check
 
-Choose how many sources to check in one batch. Expand the setup options to decide whether to skip already evaluated sources and whether to include explicit sources. Including explicit sources in a check does not mean you want every explicit manga recommended.
+1. Under **Sources to check at once**, choose 10, 25, 50, or 100. This is the maximum number of sources checked before the app pauses for you to select **Continue**. For a short first check, choose 10.
+2. Open **More setup options** if you want to change which sources are checked:
+   - **Skip already-evaluated sources** leaves sources with saved results out of this check. To update old results, use **Check older results again** below.
+   - **Include explicit/hentai candidates** lets this check consider sources marked as sexually explicit, even if your usual explicit-content filter excludes them. Leave it off to follow that filter. This option does not change what For You is allowed to show.
+3. Review **Installer and cleanup**. Follow any setup instructions or warning before selecting **Start**.
 
-Review the installer and cleanup section. The installer selected here applies to this evaluation, not your general extension-installation preference. Some installation methods require Android confirmation prompts or additional setup. If the installer is unavailable, resolve the screen's warning before starting.
+The installer chosen here applies only to source evaluation, not ordinary extension installation. Some methods need Android confirmation prompts or extra setup. If **Start** is unavailable, follow the reason shown beneath it.
 
-Read and accept the pre-run warning when requested. A check can install, contact, and attempt to uninstall extensions. Cleanup can require confirmation or fail; review any remaining-extension message rather than assuming everything was removed. Do not start another extension-checking job while this one is running.
+Read the warning before confirming. A check may install an extension, contact its source, and then try to uninstall the extension. Removal may need your confirmation or fail; check any message about extensions left installed. Wait for this check to finish before starting another extension check.
 
 The saved result shows how well the source fits, how much information supports that result, when it was checked, and a short explanation. A source providing too little information needs your review; that alone does not mean its manga are a poor match.
 
@@ -76,35 +80,24 @@ With **Use results on For You** on, For You skips a source only when two things 
 - its latest check found no usable picks;
 - For You has shown nothing from it in at least three recent refreshes.
 
-**Recommendation Settings > Troubleshooting** lists any skipped source. Turn **Use results on For You** off to include skipped sources again.
+**Recommendation Settings > Troubleshooting** lists sources skipped by this setting. Turn **Use results on For You** off to stop this automatic skipping. Your other source choices and content filters still apply. If skipping would leave no sources at all, the app keeps them available.
 
-```mermaid
-flowchart TD
-    Schedule["Scheduled time arrives"] --> Ready{"Check automatically on, and the<br/>network and battery requirements met?"}
-    Ready -->|No| Wait["Nothing runs yet"]
-    Ready -->|Yes| Run["Check sources with a missing or outdated result"]
-    Run --> Still{"Requirements still met?"}
-    Still -->|No| Stop["Stop; a later check continues"]
-    Still -->|Yes| Save["Save the results"]
-    Save --> Apply{"Use results on For You on?"}
-    Apply -->|Yes| Skip["Skip sources with no usable picks<br/>here and in recent For You refreshes"]
-    Apply -->|No| Keep["For You uses every enabled source"]
-```
+![Automatic check: wait for requirements, check sources, then decide whether For You may skip a source.](../diagrams/source-evaluation/automatic-check.svg)
 
 ## Progress and result states
 
 | State | Meaning | Available action |
 | --- | --- | --- |
 | Ready | Available sources have not yet been checked with these settings. | Start a check. |
-| Running | The current queue is being processed and progress is saved. | Leave the screen or cancel. |
-| Cancelling | The current queue is finishing its cancellation request. | Wait for the result before starting another check. |
-| Completed | The selected queue reached a result. | Reassess when inputs change. |
-| Cancelled | You stopped the queue before all selected sources were checked. | Review the saved results and continue the remaining work when appropriate. |
+| Running | The app is checking sources and saving progress. | You can leave the page or cancel. |
+| Cancelling | The app is stopping the check. | Wait before starting another check. |
+| Completed | The selected sources have been checked. | Check again if your preferences or sources change. |
+| Cancelled | You stopped before all selected sources were checked. | Review the results and continue any remaining checks. |
 | Failed | The operation itself could not continue. | Retry after the stated condition changes. |
 | Connectivity lost | The queue stopped because the required connection was lost. | Restore the connection, then use the retry action shown by the screen. |
 | No actionable work | The queue had no source it could process with the current inputs. | Review the setup and available sources before starting again. |
 
-Leaving the screen does not mark unfinished checks as complete. Continue uses saved progress when it still matches your current settings and installed extensions.
+Leaving the page does not mark unchecked sources as complete. **Continue** uses saved progress if your settings and installed extensions still match that check.
 
 ## Why Great fit can show only a few manga
 
@@ -181,69 +174,30 @@ Check the lists after a clear or allow action. If a previously crashing extensio
 
 ## Evaluation overview
 
-```mermaid
-flowchart TD
-    Settings["Open Source evaluation"] --> Queue["Review available sources and choose the batch size"]
-    Queue --> Probes["Start the check and follow its progress"]
-    Probes --> Evidence["Read each source's result and explanation"]
-    Evidence --> Verdict["Decide which sources to keep using"]
-```
+![Check a group of sources, read its results, then Continue if more remain.](../diagrams/source-evaluation/overview.svg)
 
-The app checks the selected batch size at a time. Leaving the screen does not cancel a running batch, but checking another batch requires the continue action. This is not a guarantee that Android will keep the job alive after the app or device is stopped.
+After each group, select **Continue** if more sources are waiting. You can leave the page while a check runs, but closing the app or restarting the device may interrupt it.
 
-## Evaluate one source
+## Read one source's result
 
-```mermaid
-flowchart TD
-    Load["Find an available source in the results"] --> Open["Check its result"]
-    Open --> Catalogue["Review how well its sampled manga match your preferences"]
-    Catalogue --> Search["Check the separate search-compatibility information"]
-    Search --> Metadata["Look for missing information or an explanation of failure"]
-    Metadata --> Score["Keep using the source, adjust filters, or reassess"]
-```
+![Read a source's match, search result and warnings before choosing what to do.](../diagrams/source-evaluation/read-a-result.svg)
 
 Catalogue quality and recommendation-search compatibility are separate signals. A source can succeed at one and fail at the other.
 
 ## Continue or reassess
 
-```mermaid
-flowchart TD
-    Build["Choose Start or Continue"] --> Fingerprint["The app compares current settings and extensions"]
-    Fingerprint --> Mode{"Is saved work still current?"}
-    Mode -->|Yes| Cursor["Resume saved evaluation"]
-    Mode -->|No| Restart["Start a new evaluation"]
-    Cursor --> Batch["Take the next group"]
-    Restart --> Batch
-    Batch --> Persist["Review the saved results and progress"]
-    Persist --> Remaining{"Sources still waiting to be checked?"}
-    Remaining -->|Yes| Continue["Choose Continue to check another batch"]
-    Continue --> Batch
-    Remaining -->|No| Complete["Show completed results"]
-```
+![Continue saved work when settings match, or start a new check; repeat until no sources remain.](../diagrams/source-evaluation/continue-or-reassess.svg)
 
-Changing filters or installed extensions does not silently mix old and new evaluation assumptions.
+If you change settings or extensions, the app starts a fresh check rather than mixing results from different setups.
 
 ## Failure isolation
 
-```mermaid
-flowchart LR
-    Operation["A source check<br/>hits a problem"] --> Kind{"What<br/>happened?"}
-    Kind -->|Cancelled| Stop["The check stops;<br/>unfinished sources<br/>are not complete"]
-    Kind -->|One source failed| Record["Read its explanation;<br/>other sources can<br/>still be checked"]
-    Kind -->|Cannot continue| Failed["The check stops; resolve<br/>the problem before retrying"]
-```
+![One source failure can leave other checks running; stopping or cancelling leaves unfinished work.](../diagrams/source-evaluation/failure-handling.svg)
 
-Recoverable failures remain local to one source. Cancellation is never converted into a successful result.
+A problem with one source does not necessarily stop the others. Cancelling never marks unchecked sources as completed.
 
 ## From checks to a result
 
-```mermaid
-flowchart TD
-    Samples["Sampled popular and recent manga"] --> Fit["How well do these manga match your preferences?"]
-    Fit --> Confidence{"Enough manga information to judge?"}
-    Confidence -->|Yes| Verdict["Read the source-fit result and explanation"]
-    Confidence -->|No| Partial["Review the source yourself; missing information is not proof of a poor fit"]
-    Search["Separate search-compatibility check"] --> SearchResult["Read whether recommendation searches work"]
-```
+![Manga match and recommendation-search reliability are checked separately.](../diagrams/source-evaluation/understand-results.svg)
 
 Catalogue fit and search compatibility answer different questions. A source can offer manga you like even when its searches are unreliable. Neither result guarantees that every manga will appear after your current filters are applied.

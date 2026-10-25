@@ -1,6 +1,6 @@
 # Configuring personalized recommendations
 
-Recommendation Settings uses the same lists, switches, search, and navigation as the rest of Komikku's Settings.
+Use Recommendation Settings to choose what For You recommends, which sources it searches, and how much data it uses. You can also manage linked manga versions and rating prompts here.
 
 ## Where you find it
 
@@ -26,8 +26,6 @@ On a phone, choose an entry to open its page, then press Back to return to the l
 
 Each page groups related controls under short headings. Settings search finds a setting by its name or summary and opens the page that contains it. Longer explanations appear beside the control when they are useful.
 
-Number settings are checked before the app uses them. A stored value outside a setting's range is replaced by its default or adjusted to the allowed range, depending on the setting; it is not passed to the recommendation features unchanged.
-
 ## Your taste
 
 ### Choose how much there is to read
@@ -37,15 +35,15 @@ Set **Minimum chapter count** to a number from 0 to 50. **0** means **Off**, whi
 <p align="center"><img src="../visual-guide/v0.8.24/your-taste.png" width="260" alt="Your taste page with known-manga choices, minimum chapter count and recent reading"></p>
 <p align="center"><em>Your taste: known manga, minimum chapter count, and recent reading.</em></p>
 
-A newly discovered manga's chapter count is usually unknown until its chapter list has been loaded. After For You shows its rows, it loads the chapter lists of up to 20 shown titles whose count is unknown, a few at a time. It removes titles below your minimum and remembers each count for two weeks, so later refreshes can filter those titles straight away. Only titles whose count could not be checked yet remain unfiltered. The check does not run while For You is saving data.
+Some sources do not give a chapter count with their search results. For You checks the chapter lists of up to 20 displayed titles after loading, removes those below your minimum, and remembers their counts for two weeks. Titles whose counts are still unknown may remain visible. This extra check is skipped while data saving is active.
 
 The setting does not guarantee that every suggested manga has the requested number of chapters. Lower the number or turn it off if too few results remain.
 
 ### Use recent reading
 
-**Use recent reading** is on by default. For You then gives more weight to the tags of manga you read within the chosen window, from 1 to 30 days (7 by default). Your ratings still count, but recent reading counts more. Blocked and disliked tags are never boosted, and titles you rated Dislike or Not interested are ignored.
+**Use recent reading** is on by default. It favors tags from manga you read recently, alongside your saved ratings. Choose a **Recent reading window** from 1 to 30 days (7 by default). How much you read and how recently you read it affect the boost. Blocked and disliked tags are not boosted, and manga rated Dislike or Not interested are ignored.
 
-**Minimum chapters counted** (1 to 50, 3 by default) treats a manga as at least that many chapters long when measuring how much of it you read. This setting stops one chapter of a short manga from counting as much as a long reading session. It is separate from **Minimum chapter count**, which filters recommendations.
+**Minimum chapters counted** controls how strongly very short manga affect recent-reading suggestions. It ranges from 1 to 50 (3 by default). For example, at 3, reading a one-chapter manga counts as one third of a full read for this calculation, rather than a full read. It does not change your reading progress or hide short manga; **Minimum chapter count** above is the separate filter for that.
 
 ### Control familiar manga and tags
 
@@ -88,7 +86,7 @@ Saved **Focus modes** can be renamed, deleted, and moved up or down here. They a
 
 This page contains three things:
 
-- **Source evaluation** checks how well each installed source works with For You. See [Source evaluation](source-evaluation.md).
+- **Source evaluation** checks whether sources can give useful recommendations. Some checks temporarily install extensions; see [Source evaluation](source-evaluation.md) before starting.
 - **Suggested for you** opens Sources to Try, which suggests extensions to install. See [Sources](sources.md).
 - **Automatic check** re-checks your installed sources on a schedule.
 
@@ -100,14 +98,14 @@ This page contains three things:
 | Setting | What it changes |
 | --- | --- |
 | Check automatically | Off by default. When on, it re-checks sources whose evaluation result is missing or out of date. It never installs or removes a source and never changes your source order. |
-| How often | Every 7, 14, or 30 days, or a custom number of days from 1 to 90. Every 14 days is the default and suits most libraries. Shorter intervals use more data. |
+| How often | Every 7, 14, or 30 days, or a custom number of days from 1 to 90. The default is 14 days. Checking more often can use more data. |
 | Only on unmetered networks | Waits for a connection Android reports as unmetered, usually Wi-Fi. It is on by default. |
 | Only when battery is not low | Skips the check while the battery is low. It is on by default. |
 | Use results on For You | For You skips a source only when its latest check found no usable picks and For You has shown nothing from it in at least three recent refreshes. Your source order and choices are never changed. |
 
 The network and battery requirements apply for the whole check, not only when it starts. If they stop being met partway through, the check stops, and a later scheduled check picks up the sources that are still out of date. Turning **Check automatically** off also stops a check it has already started. A check you start yourself from Source evaluation is not affected by these settings.
 
-Sources that **Use results on For You** is skipping are listed under **Troubleshooting**. To include them again, turn **Use results on For You** off.
+Look under **Troubleshooting** to see sources skipped by **Use results on For You**. Turn that switch off to stop automatic skipping; your other source choices and content filters still apply. The app also avoids skipping every available source at once.
 
 ## Speed and data
 
@@ -115,9 +113,9 @@ Sources that **Use results on For You** is skipping are listed under **Troublesh
 
 | Choice | What it does |
 | --- | --- |
-| Automatic | Saves data on a metered or slow connection, and uses the normal amount otherwise. This is the default. |
-| Always | Always saves data. |
-| Never | Never saves data. |
+| Automatic | Uses less data when Android reports a metered or slow connection. A metered connection is one marked as having a data limit or usage charge. This is the default. |
+| Always | Reduces optional searching on every connection. |
+| Never | Uses your normal search settings, without these extra reductions. Other search limits still apply. |
 
 <p align="center"><img src="../visual-guide/v0.8.24/speed-and-data.png" width="260" alt="Speed and data page with Use less data on recommendations set to Automatic"></p>
 <p align="center"><em>Use less data on recommendations, set to Automatic.</em></p>
@@ -128,7 +126,7 @@ While saving data, For You:
 - tries fewer search variations per source;
 - stops once about half the usual number of rows are ready, so sources further down your list may not be searched.
 
-A manga's Recommendations and the library recommendation search look in at most 6 of your sources instead of 20 and fetch fewer details. The minimum chapter check described above does not run. Your filters are unchanged.
+A manga's Recommendations and the library recommendation search look in at most 6 sources instead of 20 and fetch fewer manga details. Your filters stay on, but For You does not make the extra chapter-count requests described above. Titles with unknown chapter counts may therefore remain visible.
 
 ### Choose result and search limits
 
@@ -188,55 +186,26 @@ These settings change the small comparison samples, not the chapter itself. **Vi
 <p align="center"><img src="../visual-guide/v0.8.24/troubleshooting.png" width="260" alt="Troubleshooting page listing sources with problems, then taste diagnostics"></p>
 <p align="center"><em>Troubleshooting after four sources failed to load: Sources with problems leads to Source evaluation.</em></p>
 
-These sections help explain the information the app has collected. They are not proof that every title has complete or correct metadata.
+These sections explain what the app knows about your sources and preferences. Details supplied by a source can still be missing or wrong.
 
-## Expected interaction behavior
+## Apply a change
 
-When you change a setting, it is saved automatically. Return to For You and refresh when prompted so the page can use the new choice. Back navigation, themes, languages, and accessibility work the same way as in the rest of the app.
+Settings are saved automatically; there is no Save button. Return to For You and refresh when prompted to use your new choices.
 
 ## Navigation map
 
-```mermaid
-flowchart TD
-    Entry["Recommendation Settings"] --> Choose["Choose a feature<br/>from the list above"]
-    Choose --> Page["Open that feature\'s page"]
-```
+![Open Recommendation Settings, choose a feature, then open its page.](../diagrams/recommendation-settings/navigation.svg)
 
 Each entry opens one page, and Find new sources also links to Source evaluation and Sources to Try. **Search settings** is a separate way to jump directly to a control; it is not another entry.
 
-## Settings affect features
-
-```mermaid
-flowchart TD
-    Settings["Your saved settings"] --> Apply["Recommendations and data use<br/>Source checks and suggestions<br/>Matching and troubleshooting"]
-```
-
-Values are checked before use. Invalid stored numbers fall back to safe limits instead of reaching the recommendation features unchanged.
-
 ## Search for a setting
 
-```mermaid
-sequenceDiagram
-    actor User
-    participant Search as Settings search
-    participant Page as Settings page
-    User->>Search: Enter setting terms
-    Search-->>User: Show matching settings
-    User->>Search: Choose a match
-    Search->>Page: Open the page at that setting
-    Page-->>User: Show your current choice
-```
+![Search for a setting, choose a result, then review or change its value.](../diagrams/recommendation-settings/search.svg)
 
 Search results explain both the setting and the page that contains it.
 
 ## Quick-access panel
 
-```mermaid
-flowchart LR
-    Closed([Closed]) -->|Open panel| Open([Open])
-    Open -->|Choose shortcut| Destination([Destination])
-    Destination -->|Open destination| Closed
-    Open -->|Close or Back| Closed
-```
+![Open the edge panel, choose a settings shortcut, or close it with Back or the handle.](../diagrams/recommendation-settings/quick-access.svg)
 
 For You and Rated Manga offer a quick-access panel from a handle at the screen edge. It lists the same entries as the first Recommendation Settings page, so you can open a settings page without going through Settings first. Close it with **Back** or by choosing an entry.

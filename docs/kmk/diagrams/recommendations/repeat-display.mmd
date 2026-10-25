@@ -1,0 +1,5 @@
+flowchart TD
+    Shown["Manga shown in For You"] --> Check{"Repeated in window<br/>and still untouched?"}
+    Check -->|No| Keep["Keep normal ranking"]
+    Check -->|Yes| Lower["Can move lower"]
+    Lower --> Fade["Effect fades as<br/>last showing gets older"]

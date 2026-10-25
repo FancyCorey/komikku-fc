@@ -1,0 +1,6 @@
+flowchart TD
+    Query["Search words<br/>or a phrase"] --> Select["Select a matching result"]
+    Select --> Open["Open its saved<br/>chapter and page"]
+    Open --> Available{"Page still<br/>available?"}
+    Available -->|Yes| Read["Read the page"]
+    Available -->|No| Check["Check downloads;<br/>process pages again"]

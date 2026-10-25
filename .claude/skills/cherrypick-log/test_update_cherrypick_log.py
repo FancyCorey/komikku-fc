@@ -159,5 +159,36 @@ class CarryOverTest(unittest.TestCase):
         self.assertEqual(m.carry_over("X", "Omitted (script): x [was: empty]", "?"), ("?", ""))
 
 
+class PublicPresentationTest(unittest.TestCase):
+    def test_neutral_note_keeps_reviewed_verdict(self):
+        note = "Review recorded 2026-10-03: not found - x"
+        self.assertTrue(m.has_review_note(note))
+        self.assertEqual(m.carry_over("?", note, ""), ("?", note))
+        self.assertEqual(m.carry_over("?", note, "O"), ("O", note))
+
+    def test_neutral_review_blocks_revert_chain_reclassification(self):
+        original = commit("c", "Feature", "2026-01-01")
+        revert = revert_of("d", original, "2026-01-02")
+        rows = render([original, revert], [("", "Review recorded 2026-10-03: not found - x"), ("", "")])
+        m.flag_revert_chains(rows)
+        self.assertEqual(statuses(rows), ["", ""])
+
+    def test_presentation_changes_only_the_note_marker(self):
+        cells = ["?", "commit-link", "upstream", "2026-01-01", "Title", "Original Author", "Details", "AI checked 2026-10-03: partial - evidence"]
+        output = m.format_row(cells)
+        self.assertIn("Review recorded 2026-10-03: partial - evidence", output)
+        self.assertNotIn("AI checked", output)
+        self.assertEqual(m.split_cells(output)[:-1], cells[:-1])
+        self.assertEqual(cells[-1], "AI checked 2026-10-03: partial - evidence")
+
+    def test_neutral_review_is_not_released_as_script_owned(self):
+        note = "Cancels out (script): reverts x [was: empty]; Review recorded 2026-10-03: not found"
+        self.assertEqual(m.release_script_flag("?", note), ("?", note))
+
+    def test_maintenance_notice_has_no_agent_attribution(self):
+        self.assertNotIn("claude", m.PUBLIC_MAINTENANCE_NOTE.lower())
+        self.assertNotIn("AI", m.PUBLIC_MAINTENANCE_NOTE)
+
+
 if __name__ == "__main__":
     unittest.main()
