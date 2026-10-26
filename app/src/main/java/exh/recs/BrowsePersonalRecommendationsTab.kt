@@ -122,10 +122,13 @@ fun Screen.personalRecommendationsTab(): TabContent {
     val hideSourceNamesForExport = rememberEvaluationModeEnabled()
     // KMK v0.8.24: the recent-reading interactor is passed explicitly (see the screen model's constructor).
     val screenModel = rememberScreenModel {
+        ForYouStartupTrace.begin("model_construct_start")
         BrowsePersonalRecommendationsScreenModel(
             getRecentReadingTagWeights = Injekt.get(),
             isNetworkConstrained = { ForYouDataSavingPolicy.isConstrained(context) },
             getSourceRecommendationFit = Injekt.get(),
+            // KMK v0.8.25: the load does its own work off the main thread; see the constructor
+            loadDispatcher = kotlinx.coroutines.Dispatchers.Default,
         )
     }
     val state by screenModel.state.collectAsState()
@@ -722,6 +725,11 @@ fun Screen.personalRecommendationsTab(): TabContent {
             // KMK <--
         ),
         content = { contentPadding, _ ->
+            // KMK v0.8.25: debug-only start-up stage trace; see ForYouStartupTrace
+            LaunchedEffect(Unit) { ForYouStartupTrace.mark("tab_content_composed") }
+            LaunchedEffect(state.items.isNotEmpty()) {
+                if (state.items.isNotEmpty()) ForYouStartupTrace.mark("rows_visible")
+            }
             // KMK v0.8.18-fix1: right-edge quick-access panel overlay -- the v0.8.18-fix1 replacement
             // placement for the panel formerly on Recommendation Settings detail screens. This tab's
             // content is rendered inside BrowseTab's own shared Scaffold (TabContent, not a

@@ -35,6 +35,7 @@ object KmkRecsReleaseNotes {
 
         - **About page:** Links are grouped by project. Komikku FC has What's new, Komikku FC privacy and this app's GitHub page. Original Komikku has its What's new, Help translate, privacy policy, sponsor link, website, Discord and GitHub. The original project's privacy policy is labelled as written for the original app.
         - **What's new:** Komikku FC's history shows each version as its own card. The newest is open and older versions show one line until you open them, so the page no longer builds the whole history at once.
+        - **For You loading:** For You now prepares its first results in the background instead of on the main thread, while Browse is still opening.
         - **Sponsorship:** The sponsor button on the More screen now says "Sponsor the original developer". The sponsorship page belongs to the original Komikku developer, not to the maintainer of Komikku FC. The page it opens is unchanged.
 
         ##### Fix

@@ -256,6 +256,10 @@ class BrowsePersonalRecommendationsScreenModel(
     private val clock: () -> Long = System::currentTimeMillis,
     private val searchDispatcher: kotlinx.coroutines.CoroutineDispatcher =
         kotlinx.coroutines.Dispatchers.IO.limitedParallelism(5),
+    // KMK v0.8.25: where [load] itself runs. The production tab passes a background dispatcher so the taste profile, the
+    // per-title lookups and the source selection no longer run on the main thread while Browse is composing; null keeps the
+    // screen scope's own dispatcher, which host tests rely on for deterministic scheduling.
+    private val loadDispatcher: kotlinx.coroutines.CoroutineDispatcher? = null,
     private val isLowRamDevice: Boolean = DeviceUtil.isLowRamDevice(context),
     // Tests can construct the real
     // ScreenModel without starting the Android/network load before collaborators are ready.
@@ -469,6 +473,8 @@ class BrowsePersonalRecommendationsScreenModel(
     )
 
     init {
+        // KMK v0.8.25: debug-only start-up stage trace; see ForYouStartupTrace
+        ForYouStartupTrace.mark("model_created")
         if (autoLoad) {
             requestLoad(forceRefresh = false)
         }
@@ -640,7 +646,7 @@ class BrowsePersonalRecommendationsScreenModel(
             activeRefreshGeneration.updateAndGet { currentGeneration ->
                 RecommendationRefreshGenerationPolicy.activate(currentGeneration, refreshGeneration)
             }
-            loadJob = screenModelScope.launch {
+            loadJob = screenModelScope.launch(loadDispatcher ?: kotlin.coroutines.EmptyCoroutineContext) {
                 load(
                     forceRefresh = forceRefresh,
                     retrySourceIds = retrySourceIds,
@@ -741,6 +747,7 @@ class BrowsePersonalRecommendationsScreenModel(
             preferenceValue = sourcePreferences.forYouFixtureMode().get(),
         )
         ForYouRefreshTelemetry.begin(fixtureMode, refreshGeneration)
+        ForYouStartupTrace.mark("load_start")
         // KMK --> v0.7.25: reset offline state when starting a new load
         mutableState.update {
             if (it.resultGeneration != refreshGeneration) return@update it
@@ -763,6 +770,7 @@ class BrowsePersonalRecommendationsScreenModel(
         }
         // KMK <--
 
+        ForYouStartupTrace.mark("online_checked")
         clearRecommendationCache.awaitExpired()
         // Prune exposure rows older
         // than the configured window plus its grace period on every refresh -- ordering history only,
@@ -777,11 +785,14 @@ class BrowsePersonalRecommendationsScreenModel(
         } catch (e: Exception) {
         }
 
+        ForYouStartupTrace.mark("cache_and_exposure_done")
         val baseProfile = ForYouDebugFixture.profile(fixtureMode) { getTasteProfile.await() }
+        ForYouStartupTrace.mark("taste_profile_loaded")
         currentCoroutineContext().ensureActive()
         // KMK --> v0.8.24: aliases load before the empty check so recent reading can count as taste evidence on
         // its own; the recent weights are skipped for debug fixtures and fail open inside the interactor.
         val tagAliases = getTagAliases.awaitAll()
+        ForYouStartupTrace.mark("tag_aliases_loaded")
         currentCoroutineContext().ensureActive()
         val aliasMap = tagAliases.associate { it.normalizedAlias to it.groupKey }
         val recentReading = getRecentReadingTagWeights
@@ -790,6 +801,7 @@ class BrowsePersonalRecommendationsScreenModel(
         } else {
             baseProfile
         }
+        ForYouStartupTrace.mark("recent_reading_loaded")
         currentCoroutineContext().ensureActive()
         // KMK <--
         if (profile.isEmpty()) {
@@ -876,6 +888,7 @@ class BrowsePersonalRecommendationsScreenModel(
         )
         // KMK <--
 
+        ForYouStartupTrace.mark("sources_selected")
         // Boosted sources are fixed: always the top BOOSTED_SOURCE_COUNT eligible sources
         val boostedSourceIds = orderedEnabledSources.take(BOOSTED_SOURCE_COUNT).map { it.id }.toSet()
 
@@ -1324,6 +1337,7 @@ class BrowsePersonalRecommendationsScreenModel(
                 if (minChapterCount > 0 && !dataSaving) {
                     launch { checkShownChapterCounts(refreshGeneration, minChapterCount) }
                 }
+                ForYouStartupTrace.mark("refresh_finished")
                 ForYouRefreshTelemetry.finish(
                     generation = refreshGeneration,
                     evaluatedCandidates = allStatuses.values.sumOf { it.evaluatedCount },
@@ -3867,6 +3881,7 @@ class BrowsePersonalRecommendationsScreenModel(
                         ForYouRefreshTelemetry.resultPublished(refreshGeneration, source.id, retained.size)
                         if (result is PersonalRecommendationResult.Success && result.result.isNotEmpty()) {
                             ForYouRefreshTelemetry.firstResult(refreshGeneration, result.result.size)
+                            ForYouStartupTrace.mark("first_row_published")
                         }
                         return
                     }
