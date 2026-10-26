@@ -41,6 +41,30 @@ object KmkRecsReleaseNotesGroupingPolicy {
         }
     }
 
+    /** v0.8.25: a version card's notes without the "## KMK-Recs vX" heading line, which the card shows as its title. */
+    fun contentOf(section: Section): String =
+        section.body.trimIndent().lines().drop(1).joinToString("\n").trim()
+
+    /**
+     * v0.8.25: a one-line summary for a collapsed version card: the first paragraph of [markdown] outside headings and
+     * lists, or the first list item when there is no paragraph. Markdown marks are removed and long text is shortened.
+     */
+    fun summaryOf(markdown: String, maxLength: Int = 140): String {
+        val lines = markdown.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
+        val paragraph = lines.firstOrNull { line ->
+            !line.startsWith("#") && !line.startsWith("-") && !line.startsWith("*") && !line.startsWith("<") &&
+                !line.startsWith(">") && !line.startsWith("|") && !line.startsWith("```")
+        }
+        val text = paragraph ?: lines.firstOrNull { it.startsWith("- ") || it.startsWith("* ") }?.drop(2) ?: return ""
+        val plain = text
+            .replace(Regex("\\[([^\\]]*)]\\([^)]*\\)"), "$1")
+            .replace("**", "")
+            .replace("`", "")
+            .replace("KMK-Recs", "Komikku FC")
+            .trim()
+        return if (plain.length <= maxLength) plain else plain.take(maxLength - 1).trimEnd() + "…"
+    }
+
     /** "v0.8.16" / "v0.8.15-fix1" -> "v0.8"; anything unparsable falls back to the raw version string. */
     fun familyOf(version: String): String {
         val core = version.removePrefix("v").substringBefore("-")

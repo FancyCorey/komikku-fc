@@ -23,12 +23,18 @@ object KmkRecsReleaseNotes {
     val MARKDOWN = """
         ## KMK-Recs v0.8.25
 
-        Clearer sponsorship wording and a reading schedule you can turn on from the reader.
+        Clearer sponsorship wording, an About page that separates Komikku FC from the original Komikku, and a reading schedule you can turn on from the reader.
 
         #### What's Changed
 
+        ##### New
+
+        - **Original Komikku release notes:** About now has an Original Komikku section with Komikku's own What's new. It shows one card per release, newest open, loads when you open it, and offers Retry if it cannot load.
+
         ##### Improve
 
+        - **About page:** Links are grouped by project. Komikku FC has What's new, Komikku FC privacy and this app's GitHub page. Original Komikku has its What's new, Help translate, privacy policy, sponsor link, website, Discord and GitHub. The original project's privacy policy is labelled as written for the original app.
+        - **What's new:** Komikku FC's history shows each version as its own card. The newest is open and older versions show one line until you open them, so the page no longer builds the whole history at once.
         - **Sponsorship:** The sponsor button on the More screen now says "Sponsor the original developer". The sponsorship page belongs to the original Komikku developer, not to the maintainer of Komikku FC. The page it opens is unchanged.
 
         ##### Fix

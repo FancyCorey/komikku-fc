@@ -78,5 +78,63 @@ class KmkRecsReleaseNotesGroupingPolicyTest {
         assertEquals(2, v08.sections.size)
         assertEquals(listOf("v0.8.16", "v0.8.15-fix1"), v08.sections.map { it.version })
     }
+
+    // KMK v0.8.25 -->
+    @Test
+    fun `a version card shows its notes without the heading line`() {
+        val section = KmkRecsReleaseNotesGroupingPolicy.parseSections(
+            """
+            ## KMK-Recs v0.8.25
+
+            One-line summary.
+
+            #### What's Changed
+
+            - **Thing:** done
+            """,
+        ).single()
+
+        val content = KmkRecsReleaseNotesGroupingPolicy.contentOf(section)
+
+        assertFalse(content.contains("## KMK-Recs"))
+        assertTrue(content.startsWith("One-line summary."))
+        assertTrue(content.contains("- **Thing:** done"))
+    }
+
+    @Test
+    fun `a summary is the first paragraph without markdown marks`() {
+        assertEquals(
+            "Reads the link and bold",
+            KmkRecsReleaseNotesGroupingPolicy.summaryOf("## v1\n\nReads the [link](https://x.y) and **bold**\n\n- item"),
+        )
+    }
+
+    @Test
+    fun `without a paragraph the summary is the first list item`() {
+        assertEquals(
+            "Fix a crash (author)",
+            KmkRecsReleaseNotesGroupingPolicy.summaryOf("#### What's Changed\n##### Fix\n\n- Fix a crash (author)\n- Another"),
+        )
+    }
+
+    @Test
+    fun `a long summary is shortened and the retired product name is replaced`() {
+        val summary = KmkRecsReleaseNotesGroupingPolicy.summaryOf("KMK-Recs " + "word ".repeat(60), maxLength = 40)
+
+        assertEquals(40, summary.length)
+        assertTrue(summary.startsWith("Komikku FC word"))
+        assertTrue(summary.endsWith("…"))
+        assertEquals("", KmkRecsReleaseNotesGroupingPolicy.summaryOf("## only a heading"))
+    }
+
+    @Test
+    fun `every shipped entry has a card summary`() {
+        KmkRecsReleaseNotesGroupingPolicy.parseSections(KmkRecsReleaseNotes.MARKDOWN).forEach { section ->
+            val summary = KmkRecsReleaseNotesGroupingPolicy.summaryOf(KmkRecsReleaseNotesGroupingPolicy.contentOf(section))
+            assertTrue(summary.isNotBlank(), "${section.version} has no summary")
+            assertFalse(summary.contains("KMK-Recs"))
+        }
+    }
+    // KMK <--
 }
 // KMK <--

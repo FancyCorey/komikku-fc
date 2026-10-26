@@ -25,16 +25,19 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.more.LogoHeader
+import eu.kanade.presentation.more.settings.widget.PreferenceGroupHeader
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.util.LocalBackPress
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.formattedMessage
 import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.data.updater.AppUpdateChecker
+import eu.kanade.tachiyomi.data.updater.ORIGINAL_KOMIKKU_REPOSITORY
+import eu.kanade.tachiyomi.data.updater.getGithubRepo
 import eu.kanade.tachiyomi.ui.more.ComingUpdatesScreen
 import eu.kanade.tachiyomi.ui.more.KmkRecsWhatsNewScreen
 import eu.kanade.tachiyomi.ui.more.NewUpdateScreen
-import eu.kanade.tachiyomi.ui.more.WhatsNewScreen
+import eu.kanade.tachiyomi.ui.more.OriginalKomikkuWhatsNewScreen
 import eu.kanade.tachiyomi.util.CrashLogUtil
 import eu.kanade.tachiyomi.util.lang.toDateTimestampString
 import eu.kanade.tachiyomi.util.system.copyToClipboard
@@ -47,6 +50,7 @@ import exh.recs.KmkRecsReleaseNotes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import logcat.LogPriority
+import tachiyomi.core.common.Constants
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.logcat
@@ -66,6 +70,9 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 
+// KMK v0.8.25: this fork's repository, for the Komikku FC links
+private val FORK_REPOSITORY_URL = "https://github.com/${getGithubRepo()}"
+
 class AboutScreen : Screen() {
     @Composable
     override fun Content() {
@@ -77,7 +84,6 @@ class AboutScreen : Screen() {
         var isCheckingUpdates by remember { mutableStateOf(false) }
 
         // KMK -->
-        var isCheckingWhatsNew by remember { mutableStateOf(false) }
         var isCheckingWhatsComing by remember { mutableStateOf(false) }
         // KMK <--
 
@@ -147,53 +153,16 @@ class AboutScreen : Screen() {
                     }
                 }
 
-                // KMK -->
+                // KMK v0.8.25 -->
+                item { PreferenceGroupHeader(title = stringResource(KMR.strings.about_section_komikku_fc)) }
+
                 item {
                     TextPreferenceWidget(
                         title = stringResource(MR.strings.whats_new),
-                        widget = {
-                            AnimatedVisibility(visible = isCheckingWhatsNew) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(28.dp),
-                                    strokeWidth = 3.dp,
-                                )
-                            }
-                        },
-                        onPreferenceClick = {
-                            if (!isCheckingWhatsNew) {
-                                scope.launch {
-                                    isCheckingWhatsNew = true
-
-                                    getReleaseNotes(
-                                        context = context,
-                                        onAvailableUpdate = { result ->
-                                            val whatsNewScreen = WhatsNewScreen(
-                                                currentVersion = BuildConfig.VERSION_NAME,
-                                                versionName = result.release.version,
-                                                changelogInfo = result.release.info,
-                                                releaseLink = result.release.releaseLink,
-                                            )
-                                            navigator.push(whatsNewScreen)
-                                        },
-                                        onFinish = {
-                                            isCheckingWhatsNew = false
-                                        },
-                                    )
-                                }
-                            }
-                        },
-                    )
-                }
-
-                // KMK -->
-                item {
-                    TextPreferenceWidget(
-                        title = stringResource(KMR.strings.kmk_recs_whats_new),
                         subtitle = KmkRecsReleaseNotes.DISPLAY_VERSION_NAME,
                         onPreferenceClick = { navigator.push(KmkRecsWhatsNewScreen()) },
                     )
                 }
-                // KMK <--
 
                 if (isReleaseBuildType || isDebugBuildType) {
                     item {
@@ -234,7 +203,45 @@ class AboutScreen : Screen() {
                         )
                     }
                 }
-                // KMK <--
+                item {
+                    TextPreferenceWidget(
+                        title = stringResource(KMR.strings.about_komikku_fc_privacy),
+                        subtitle = stringResource(KMR.strings.about_komikku_fc_privacy_subtitle),
+                        onPreferenceClick = { uriHandler.openUri("$FORK_REPOSITORY_URL/blob/master/docs/kmk/privacy-and-data.md") },
+                    )
+                }
+
+                item {
+                    TextPreferenceWidget(
+                        title = stringResource(MR.strings.licenses),
+                        onPreferenceClick = { navigator.push(OpenSourceLicensesScreen()) },
+                    )
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        LinkIcon(
+                            label = "GitHub",
+                            icon = CustomIcons.Github,
+                            url = FORK_REPOSITORY_URL,
+                        )
+                    }
+                }
+
+                item { PreferenceGroupHeader(title = stringResource(KMR.strings.about_section_original_komikku)) }
+
+                item {
+                    TextPreferenceWidget(
+                        title = stringResource(MR.strings.whats_new),
+                        subtitle = stringResource(KMR.strings.about_original_whats_new_subtitle),
+                        onPreferenceClick = { navigator.push(OriginalKomikkuWhatsNewScreen()) },
+                    )
+                }
 
                 item {
                     TextPreferenceWidget(
@@ -249,15 +256,16 @@ class AboutScreen : Screen() {
 
                 item {
                     TextPreferenceWidget(
-                        title = stringResource(MR.strings.licenses),
-                        onPreferenceClick = { navigator.push(OpenSourceLicensesScreen()) },
+                        title = stringResource(MR.strings.privacy_policy),
+                        subtitle = stringResource(KMR.strings.about_original_privacy_subtitle),
+                        onPreferenceClick = { uriHandler.openUri("https://komikku-app.github.io/privacy/") },
                     )
                 }
 
                 item {
                     TextPreferenceWidget(
-                        title = stringResource(MR.strings.privacy_policy),
-                        onPreferenceClick = { uriHandler.openUri("https://komikku-app.github.io/privacy/") },
+                        title = stringResource(KMR.strings.sponsor_original_developer),
+                        onPreferenceClick = { uriHandler.openUri(Constants.SPONSOR) },
                     )
                 }
 
@@ -278,28 +286,14 @@ class AboutScreen : Screen() {
                             icon = CustomIcons.Discord,
                             url = "https://discord.gg/85jB7V5AJR",
                         )
-                        // LinkIcon(
-                        //     label = "X",
-                        //     icon = CustomIcons.X,
-                        //     url = "https://x.com/mihonapp",
-                        // )
-                        // LinkIcon(
-                        //     label = "Facebook",
-                        //     icon = CustomIcons.Facebook,
-                        //     url = "https://facebook.com/mihonapp",
-                        // )
-                        // LinkIcon(
-                        //     label = "Reddit",
-                        //     icon = CustomIcons.Reddit,
-                        //     url = "https://www.reddit.com/r/mihonapp",
-                        // )
                         LinkIcon(
                             label = "GitHub",
                             icon = CustomIcons.Github,
-                            url = "https://github.com/komikku-app",
+                            url = "https://github.com/$ORIGINAL_KOMIKKU_REPOSITORY",
                         )
                     }
                 }
+                // KMK <--
             }
         }
     }

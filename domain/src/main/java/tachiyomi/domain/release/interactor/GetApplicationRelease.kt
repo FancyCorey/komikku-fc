@@ -62,6 +62,10 @@ class GetApplicationRelease(
         val latest = releases.getLatest() ?: return Result.NoNewUpdate
         return Result.NewUpdate(latest)
     }
+
+    /** v0.8.25: every published stable release of [Arguments.repository], newest first, for one card per release. */
+    suspend fun awaitReleaseList(arguments: Arguments): List<Release> =
+        service.releaseNotes(arguments).filter { !it.preRelease && !it.draft }
     // KMK <--
 
     /**

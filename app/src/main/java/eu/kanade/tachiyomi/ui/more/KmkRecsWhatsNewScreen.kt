@@ -24,12 +24,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import eu.kanade.presentation.manga.components.MarkdownRender
 import eu.kanade.presentation.more.settings.screen.about.KmkRecsWhatsNewPolicy
+import eu.kanade.presentation.more.settings.screen.about.WhatsNewVersionCard
 import eu.kanade.presentation.util.Screen
 import exh.recs.KmkRecsReleaseNotes
 import exh.recs.KmkRecsReleaseNotesGroupingPolicy
-import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.i18n.MR
@@ -121,11 +120,17 @@ private fun KmkRecsWhatsNewFamilySection(group: KmkRecsReleaseNotesGroupingPolic
             )
         }
         if (expanded) {
-            val combinedBody = group.sections.joinToString(separator = "\n\n-----\n") { it.body }
-            MarkdownRender(
-                content = combinedBody.trimIndent().replace("KMK-Recs", "Komikku FC"),
-                flavour = GFMFlavourDescriptor(),
-            )
+            // KMK v0.8.25: one card per version. The newest version is open; older ones show a one-line summary and
+            // compose their notes only when opened, instead of one render of the whole family.
+            group.sections.forEachIndexed { index, section ->
+                WhatsNewVersionCard(
+                    stateKey = "kmk-fc-${section.version}",
+                    title = section.version,
+                    summary = KmkRecsReleaseNotesGroupingPolicy.summaryOf(KmkRecsReleaseNotesGroupingPolicy.contentOf(section)),
+                    markdown = KmkRecsReleaseNotesGroupingPolicy.contentOf(section).replace("KMK-Recs", "Komikku FC"),
+                    expandedByDefault = group.expandedByDefault && index == 0,
+                )
+            }
         }
     }
 }

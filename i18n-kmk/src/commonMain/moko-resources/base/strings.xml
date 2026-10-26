@@ -227,6 +227,17 @@
     <!-- KMK v0.8.25: the sponsorship page belongs to the original Komikku developer, not this fork's maintainer. New key so
          translations of "Sponsor me" are not shown with the wrong meaning; other languages fall back to English. -->
     <string name="sponsor_original_developer">Sponsor the original developer</string>
+    <!-- KMK v0.8.25 About: Komikku FC and Original Komikku sections -->
+    <string name="about_section_komikku_fc">Komikku FC</string>
+    <string name="about_section_original_komikku">Original Komikku</string>
+    <string name="about_komikku_fc_privacy">Komikku FC privacy</string>
+    <string name="about_komikku_fc_privacy_subtitle">How this app handles your data</string>
+    <string name="about_original_whats_new_subtitle">Release notes from the original Komikku project</string>
+    <string name="about_original_whats_new_title">What\'s new in Komikku</string>
+    <string name="about_original_whats_new_error">Couldn\'t load the original Komikku release notes.</string>
+    <string name="about_original_whats_new_open_release">Open release on GitHub</string>
+    <string name="about_original_whats_new_open_releases">Open releases on GitHub</string>
+    <string name="about_original_privacy_subtitle">Written for the original Komikku app</string>
     <string name="batch_add_description">Support: MangaDex, E-H, ExH, nH, 8Muses</string>
     <!-- Connections section -->
     <string name="special_services">Special Services</string>

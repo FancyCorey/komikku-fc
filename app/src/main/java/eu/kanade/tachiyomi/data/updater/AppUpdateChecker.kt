@@ -8,6 +8,7 @@ import exh.recs.KmkRecsReleaseNotes
 import exh.source.ExhPreferences
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.release.interactor.GetApplicationRelease
+import tachiyomi.domain.release.model.Release
 import tachiyomi.domain.release.service.AppUpdatePolicy
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -88,10 +89,31 @@ class AppUpdateChecker(
             )
         }
     }
+
+    /**
+     * v0.8.25: the original Komikku project's published releases, for the About page's Original Komikku section. Read-only:
+     * update checks, downloads and the release channel stay on [getGithubRepo].
+     */
+    suspend fun getOriginalKomikkuReleases(): List<Release> {
+        return withIOContext {
+            getApplicationRelease.awaitReleaseList(
+                GetApplicationRelease.Arguments(
+                    isFoss = isFossBuildType,
+                    isPreview = false,
+                    commitCount = BuildConfig.COMMIT_COUNT.toInt(),
+                    versionName = getUpdateVersionName(),
+                    repository = ORIGINAL_KOMIKKU_REPOSITORY,
+                ),
+            )
+        }
+    }
     // KMK <--
 }
 
 val GITHUB_REPO: String by lazy { getGithubRepo() }
+
+// KMK v0.8.25: the project Komikku FC is based on; only its release notes and links are shown, never its updates
+const val ORIGINAL_KOMIKKU_REPOSITORY = "komikku-app/komikku"
 
 fun getGithubRepo(peekIntoPreview: Boolean = false): String = "FancyCorey/komikku-fc"
 
