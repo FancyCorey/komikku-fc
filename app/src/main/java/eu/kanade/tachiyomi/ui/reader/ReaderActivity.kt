@@ -467,6 +467,7 @@ class ReaderActivity : BaseActivity() {
                     onDismiss = viewModel::dismissAlternateSourcePresentation,
                     onSearchMore = viewModel::searchAlternateSourceCandidates,
                     onSearchInApp = ::searchAlternateSourceInApp,
+                    onCompareVersions = ::compareAlternateSourceVersions,
                     onSelectSource = viewModel::toggleAlternateSourceCandidate,
                     onConfirmSource = viewModel::confirmAlternateSourceCandidate,
                     onSelectChapter = viewModel::selectAlternateSourceChapter,
@@ -1450,6 +1451,19 @@ class ReaderActivity : BaseActivity() {
             Intent(this@ReaderActivity, MainActivity::class.java).apply {
                 action = MainActivity.INTENT_SEARCH
                 putExtra(MainActivity.INTENT_SEARCH_QUERY, manga.title)
+                putExtra(MainActivity.EXTRA_ALTERNATE_SOURCE_RETURN_SELECTION, true)
+            },
+        )
+    }
+
+    // KMK v0.8.25: Best Version, opened above the reader to pick the version to read from; the pick comes back through the
+    // same result as the in-app search, so the reader goes on to choose a chapter on that source.
+    private fun compareAlternateSourceVersions() {
+        val manga = viewModel.state.value.manga ?: return
+        alternateSourceSearchLauncher.launch(
+            Intent(this@ReaderActivity, MainActivity::class.java).apply {
+                action = MainActivity.INTENT_BEST_VERSION
+                putExtra(Constants.MANGA_EXTRA, manga.id)
                 putExtra(MainActivity.EXTRA_ALTERNATE_SOURCE_RETURN_SELECTION, true)
             },
         )

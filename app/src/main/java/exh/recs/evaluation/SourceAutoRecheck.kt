@@ -74,7 +74,29 @@ class SourceAutoRecheckWorker(
             val evaluations = Injekt.get<GetSourceEvaluations>().awaitAll()
             val fits = Injekt.get<GetSourceRecommendationFit>().awaitAll().associateBy { it.evaluationKey }
             val queue = SourceRecommendationQualityQueue.compute(evaluations, fits)
-            val targets = SourceAutoRecheckPolicy.targets(queue.missingPromising, queue.outdatedPromising)
+            // KMK v0.8.25: also re-check sources with a current result when the taste changed a lot or the installed
+            // extension was updated since it was evaluated; the check itself still never installs anything
+            val ratedNow = Injekt.get<tachiyomi.domain.taste.interactor.GetMangaTaste>().awaitAll().size
+            val tasteChanged = SourceAutoRecheckPolicy.tasteChanged(
+                ratedNow = ratedNow,
+                ratedAtLastCheck = preferences.recommendationAutoRecheckRatedCount().get(),
+            )
+            val installed = Injekt.get<eu.kanade.tachiyomi.extension.ExtensionManager>().installedExtensionsFlow.value
+                .map { Triple(it.pkgName, it.signatureHash, it.versionCode) }
+            val targets = SourceAutoRecheckPolicy.targets(
+                missing = queue.missingPromising,
+                outdated = queue.outdatedPromising,
+                checked = queue.checkedPromising,
+                tasteChanged = tasteChanged,
+                updated = { evaluation ->
+                    SourceAutoRecheckPolicy.extensionUpdated(
+                        evaluatedVersionCode = evaluation.extensionVersionCode,
+                        evaluatedPkgName = evaluation.extensionPkgName,
+                        evaluatedSignatureHash = evaluation.signatureHash,
+                        installed = installed,
+                    )
+                },
+            )
             val skip = SourceAutoRecheckPolicy.skipReason(
                 targetCount = targets.size,
                 evaluationRunning = SourceEvaluationJob.isRunning(context),
@@ -95,6 +117,7 @@ class SourceAutoRecheckWorker(
             }
             // A skipped run still counts as checked: nothing needed doing, or another check was already doing it.
             preferences.recommendationAutoRecheckLastRunMillis().set(System.currentTimeMillis())
+            preferences.recommendationAutoRecheckRatedCount().set(ratedNow)
             Result.success()
         } catch (e: CancellationException) {
             throw e

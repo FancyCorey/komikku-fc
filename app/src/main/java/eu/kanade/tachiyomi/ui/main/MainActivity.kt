@@ -829,6 +829,20 @@ class MainActivity : BaseActivity() {
                 }
                 null
             }
+            // KMK v0.8.25: Best Version for a manga being read, to pick the version to read from
+            INTENT_BEST_VERSION -> {
+                val mangaId = intent.getLongExtra(Constants.MANGA_EXTRA, -1L)
+                if (mangaId > 0L) {
+                    navigator.popUntilRoot()
+                    navigator.push(
+                        exh.recs.bestversion.BestVersionCompareScreen(
+                            originMangaId = mangaId,
+                            returnSelection = intent.getBooleanExtra(EXTRA_ALTERNATE_SOURCE_RETURN_SELECTION, false),
+                        ),
+                    )
+                }
+                null
+            }
             INTENT_SEARCH -> {
                 val query = intent.getStringExtra(INTENT_SEARCH_QUERY)
                 if (!query.isNullOrEmpty()) {
@@ -875,6 +889,7 @@ class MainActivity : BaseActivity() {
 
     companion object {
         const val INTENT_SEARCH = "eu.kanade.tachiyomi.SEARCH"
+        const val INTENT_BEST_VERSION = "eu.kanade.tachiyomi.BEST_VERSION"
         const val INTENT_SEARCH_QUERY = "query"
         const val INTENT_SEARCH_FILTER = "filter"
         const val EXTRA_ALTERNATE_SOURCE_RETURN_SELECTION = "alternate_source_return_selection"

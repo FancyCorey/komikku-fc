@@ -231,6 +231,16 @@
     <string name="rec_arrange_sources">Arrange sources</string>
     <string name="rec_arrange_sources_hint">Drag sources to change their order. Done refreshes For You if the order changed.</string>
     <string name="rec_arrange_sources_done">Done</string>
+    <!-- KMK v0.8.25 Source evaluation: two pages and what each check is for -->
+    <string name="source_evaluation_page_check">Check sources</string>
+    <!-- KMK v0.8.25 Best Version from the reader -->
+    <string name="alternate_source_reader_compare_versions">Compare versions</string>
+    <string name="best_version_read_from_here_action">Read from this version</string>
+    <string name="best_version_pick_for_reader_hint">Compare the versions, then choose the one to continue reading from. Nothing is migrated and your library is not changed.</string>
+    <string name="source_evaluation_two_checks_try_title">Try sources before installing</string>
+    <string name="source_evaluation_two_checks_try_body">Run evaluation temporarily installs sources you have not installed yet, to see how their manga fit your taste. Nothing stays installed. Use Check older results again after your ratings or an extension change.</string>
+    <string name="source_evaluation_two_checks_installed_title">Check the sources you use</string>
+    <string name="source_evaluation_two_checks_installed_body">The For You search check tests whether For You\'s searches work on the sources you already have installed. The automatic check, under Find new sources, does this part and never installs anything.</string>
     <!-- KMK v0.8.25 About: Komikku FC and Original Komikku sections -->
     <string name="about_section_komikku_fc">Komikku FC</string>
     <string name="about_section_original_komikku">Original Komikku</string>
@@ -1856,7 +1866,7 @@
     <string name="rec_hub_suggested_sources_summary">Install sources that match your taste</string>
     <string name="rec_auto_recheck_header">Automatic check</string>
     <string name="rec_auto_recheck">Check automatically</string>
-    <string name="rec_auto_recheck_summary">Re-check sources whose results are missing or out of date. Never installs or removes anything.</string>
+    <string name="rec_auto_recheck_summary">Re-check the sources you have installed when their results are missing or out of date, when your ratings have changed a lot, or when an extension was updated. Never installs or removes anything.</string>
     <string name="rec_auto_recheck_interval">How often</string>
     <string name="rec_auto_recheck_interval_next">%1$s. Next check around %2$s</string>
     <string name="rec_auto_recheck_interval_first">%1$s. The first check runs soon</string>

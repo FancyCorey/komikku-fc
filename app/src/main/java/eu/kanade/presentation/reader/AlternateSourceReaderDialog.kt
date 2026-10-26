@@ -46,6 +46,8 @@ fun AlternateSourceReaderDialog(
     onDismiss: () -> Unit,
     onSearchMore: () -> Unit,
     onSearchInApp: () -> Unit,
+    // KMK v0.8.25: compare the versions (Best Version) and pick one to read from; null hides the button
+    onCompareVersions: (() -> Unit)? = null,
     onSelectSource: (AlternateSourceReaderOpaqueToken) -> Unit,
     onConfirmSource: () -> Unit,
     onSelectChapter: (AlternateSourceReaderOpaqueToken) -> Unit,
@@ -69,6 +71,7 @@ fun AlternateSourceReaderDialog(
             onConfirm = onConfirmSource,
             extraAction = onSearchMore,
             inAppAction = onSearchInApp,
+            compareAction = onCompareVersions,
             retryAction = onRetry,
         )
         is AlternateSourceReaderPresentation.ChoosingChapter -> SelectionDialog(
@@ -155,6 +158,7 @@ private fun SelectionDialog(
     onConfirm: (() -> Unit)? = null,
     extraAction: (() -> Unit)? = null,
     inAppAction: (() -> Unit)? = null,
+    compareAction: (() -> Unit)? = null,
     retryAction: (() -> Unit)? = null,
     bringSelectedIntoView: Boolean = false,
     confirmLabel: String? = null,
@@ -195,6 +199,11 @@ private fun SelectionDialog(
                 horizontalArrangement = Arrangement.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                compareAction?.let {
+                    TextButton(onClick = it, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
+                        Text(stringResource(KMR.strings.alternate_source_reader_compare_versions))
+                    }
+                }
                 inAppAction?.let {
                     TextButton(onClick = it, modifier = Modifier.defaultMinSize(minHeight = 48.dp)) {
                         Text(stringResource(KMR.strings.alternate_source_reader_search_in_app))

@@ -36,6 +36,7 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -48,14 +49,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -108,6 +113,10 @@ import kotlin.math.roundToInt
 // KMK -->
 // KMK --> v0.6.20: threshold for reassessment recommendation
 private const val REASSESSMENT_THRESHOLD = 100
+
+// KMK v0.8.25: the two pages of the Source evaluation screen
+private const val PAGE_CHECK = 0
+private const val PAGE_DIAGNOSTICS = 1
 // KMK <--
 
 // KMK --> v0.7.18: map typed ScreenErrorKey to localized strings for display
@@ -509,13 +518,19 @@ class SourceEvaluationScreen(
         // precede an anchor target -- see exh.recs.settings.ScrollToAnchorEffect. Items after the
         // last anchorable key (the past-evaluations list) are not needed for anchor resolution.
         val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
-        val itemKeysInOrder = remember(state, queueState, recQualityQueue, ratingsSinceBaseline, visiblePastEvaluations, sortedEvaluations.size, pastEvaluationsVisibleCount) {
+        // KMK v0.8.25: two pages, so Diagnostics and recovery is one tap away instead of at the bottom of a long page.
+        // A search result that targets the diagnostics header opens that page.
+        var pageIndex by rememberSaveable { mutableIntStateOf(if (anchor == "diagnostics_header") PAGE_DIAGNOSTICS else PAGE_CHECK) }
+        LaunchedEffect(pageIndex) { lazyListState.scrollToItem(0) }
+        val itemKeysInOrder = remember(state, queueState, recQualityQueue, ratingsSinceBaseline, visiblePastEvaluations, sortedEvaluations.size, pastEvaluationsVisibleCount, pageIndex) {
+            if (pageIndex == PAGE_DIAGNOSTICS) return@remember listOf("diagnostics_header")
             buildList {
                 if (state.screenError != null) add("screen_error")
                 if (state.leftoverPkgName != null) add("leftover_ext_warning")
                 if (state.repoUnavailableWarning) add("repo_unavailable")
                 if (queueState.isRunning) add("progress")
                 if (!queueState.isRunning && queueState.status != SourceEvaluationQueueState.Status.Idle) add("summary")
+                add("two_checks")
                 if (queueState.isIdle) {
                     add("run_header")
                     add("batch_size")
@@ -573,7 +588,6 @@ class SourceEvaluationScreen(
                     if (state.staleCandidates.isNotEmpty() && !state.queueState.isRunning) add("stale_reassess_button")
                 }
                 if (recQualityQueue.totalPromising > 0) add("rec_quality_section")
-                add("diagnostics_header")
             }
         }
         exh.recs.settings.ScrollToAnchorEffect(lazyListState, itemKeysInOrder, anchor)
@@ -607,6 +621,27 @@ class SourceEvaluationScreen(
                 bottom = contentPadding.calculateBottomPadding(),
             )
             Column(modifier = Modifier.fillMaxSize().padding(top = contentPadding.calculateTopPadding())) {
+                // KMK v0.8.25 -->
+                val diagnosticsIssueCount = state.runtimeHealthIssues.size + state.unsafeSources.size + state.blockedPackages.size
+                PrimaryTabRow(selectedTabIndex = pageIndex) {
+                    Tab(
+                        selected = pageIndex == PAGE_CHECK,
+                        onClick = { pageIndex = PAGE_CHECK },
+                        text = { Text(stringResource(KMR.strings.source_evaluation_page_check)) },
+                    )
+                    Tab(
+                        selected = pageIndex == PAGE_DIAGNOSTICS,
+                        onClick = { pageIndex = PAGE_DIAGNOSTICS },
+                        text = {
+                            BadgedBox(
+                                badge = { if (diagnosticsIssueCount > 0) Badge { Text(diagnosticsIssueCount.toString()) } },
+                            ) {
+                                Text(stringResource(KMR.strings.source_evaluation_section_diagnostics))
+                            }
+                        },
+                    )
+                }
+                // KMK <--
                 LazyColumn(
                     state = lazyListState,
                     contentPadding = listContentPadding,
@@ -682,593 +717,590 @@ class SourceEvaluationScreen(
                         }
                     }
 
-                    // Options section (only when not running)
-                    // KMK v0.8.11: reorganized into named sections -- Run evaluation, Installer and
-                    // cleanup, Reassessment -- so the first screen reads as distinct groups instead of
-                    // one long mixed options list. Every control is unchanged; only order and section
-                    // headers moved. Keep the key list in `itemKeysInOrder` above in sync.
-                    if (queueState.isIdle) {
-                        item(key = "run_header") {
-                            SectionHeader(stringResource(KMR.strings.source_evaluation_section_run))
-                        }
-
-                        item(key = "batch_size") {
-                            BatchSizeSelector(
-                                selected = state.options.batchSize,
-                                onSelect = screenModel::setBatchSize,
-                            )
-                        }
-
-                        // KMK v0.8.14: Phase E -- skip/explicit toggles and candidate diagnostics are
-                        // secondary setup detail (not needed to decide whether to press Start), collapsed
-                        // behind a disclosure by default. Neither is a search anchor, so hiding them by
-                        // default doesn't affect ScrollToAnchorEffect.
-                        item(key = "setup_options_toggle") {
-                            DisclosureToggleRow(
-                                label = stringResource(KMR.strings.source_evaluation_setup_options_toggle),
-                                expanded = state.showSetupOptions,
-                                onToggle = screenModel::toggleSetupOptions,
-                            )
-                        }
-                        if (state.showSetupOptions) {
-                            item(key = "option_skip") {
-                                OptionToggleRow(
-                                    label = stringResource(KMR.strings.source_evaluation_skip_evaluated),
-                                    checked = state.options.skipAlreadyEvaluated,
-                                    onToggle = { screenModel.setSkipAlreadyEvaluated(!state.options.skipAlreadyEvaluated) },
-                                )
-                            }
-
-                            item(key = "option_explicit") {
-                                OptionToggleRow(
-                                    label = stringResource(KMR.strings.source_evaluation_include_explicit),
-                                    checked = state.options.includeExplicitCandidates,
-                                    onToggle = { screenModel.setIncludeExplicit(!state.options.includeExplicitCandidates) },
-                                )
-                            }
-
-                            // KMK --> v0.6.12: candidate diagnostics
-                            item(key = "candidate_diagnostics") {
-                                CandidateDiagnosticsRow(
-                                    diagnostics = state.candidateDiagnostics,
-                                    isLoading = state.isLoadingCandidates,
-                                    visibleCount = state.candidates.size,
-                                    batchSize = state.options.batchSize,
-                                    // KMK --> v0.6.19 follow-up
-                                    skipAlreadyEvaluated = state.options.skipAlreadyEvaluated,
-                                    // KMK <--
-                                )
-                            }
-                            // KMK <--
-                        }
-
-                        // KMK v0.8.11: the safety-diagnostics and runtime-health rows moved from here
-                        // to the "Diagnostics and recovery" section further down -- see diagnostics_header.
-
-                        // KMK --> v0.6.19: low-confidence taste profile warning near start button
-                        if (!state.tasteConfidence.isSufficientForPersonalizedEvaluation) {
-                            item(key = "taste_confidence_warning") {
-                                InfoCard(
-                                    message = stringResource(KMR.strings.source_evaluation_low_confidence_warning),
-                                    isError = false,
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
-                        }
-                        // KMK <--
-
-                        // KMK --> v0.7.31: C3 — profile changed since last eval run
-                        if (state.profileChangedSinceLastEval && state.evaluations.isNotEmpty()) {
-                            item(key = "profile_changed_prompt") {
-                                InfoCard(
-                                    message = stringResource(KMR.strings.source_evaluation_profile_changed_since_last_run),
-                                    isError = false,
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
-                        }
-                        // KMK <--
-
-                        item(key = "start_button") {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(MaterialTheme.padding.medium),
-                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                            ) {
-                                val canStart = state.installerPolicy?.readiness ==
-                                    SourceEvaluationInstallerPolicy.InstallerReadiness.READY &&
-                                    state.candidates.isNotEmpty()
-                                Button(
-                                    onClick = screenModel::startEvaluation,
-                                    enabled = canStart,
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Icon(Icons.Outlined.PlayArrow, contentDescription = null)
-                                    Text(
-                                        pluralStringResource(KMR.plurals.source_evaluation_start, count = state.candidates.size.coerceAtMost(state.options.batchSize), state.candidates.size.coerceAtMost(state.options.batchSize)),
-                                        modifier = Modifier.padding(start = MaterialTheme.padding.extraSmall),
-                                    )
-                                }
-                            }
-                        }
-
-                        // KMK v0.8.24: a disabled Start button always says why
-                        item(key = "start_button_reason") {
-                            val ready = state.installerPolicy?.readiness ==
-                                SourceEvaluationInstallerPolicy.InstallerReadiness.READY
-                            val reason = when {
-                                !ready -> KMR.strings.source_evaluation_start_reason_installer
-                                state.candidates.isEmpty() && state.repoUnavailableWarning ->
-                                    KMR.strings.source_evaluation_start_reason_no_repo
-                                state.candidates.isEmpty() && state.evaluations.isEmpty() ->
-                                    KMR.strings.source_evaluation_start_reason_nothing_matches
-                                state.candidates.isEmpty() -> KMR.strings.source_evaluation_start_reason_no_candidates
-                                else -> null
-                            }
-                            if (reason != null) {
-                                Text(
-                                    text = stringResource(reason),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
-                        }
-
-                        // KMK --> v0.7.6: continue next batch button
-                        if (state.canContinue && !state.queueState.isRunning) {
-                            item(key = "continue_button") {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = MaterialTheme.padding.medium),
-                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                                ) {
-                                    val canContinue = state.installerPolicy?.readiness ==
-                                        SourceEvaluationInstallerPolicy.InstallerReadiness.READY
-                                    OutlinedButton(
-                                        onClick = screenModel::continueEvaluation,
-                                        enabled = canContinue,
-                                        modifier = Modifier.weight(1f),
-                                    ) {
-                                        Text(
-                                            pluralStringResource(KMR.plurals.source_evaluation_continue_next_batch, count = state.remainingCandidateCount, state.remainingCandidateCount),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        // KMK <--
-                    }
-
-                    // Past evaluations
-                    // The empty illustration belongs only to Past evaluations. Setup controls,
-                    // diagnostics, warnings, and running/summary states remain visible elsewhere.
-                    if (state.evaluations.isEmpty() && queueState.isIdle) {
-                        item(key = "past_evaluations_empty") {
+                    // KMK v0.8.25 -->
+                    if (pageIndex == PAGE_CHECK) {
+                        item(key = "two_checks") {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(MaterialTheme.padding.medium),
-                                horizontalAlignment = Alignment.CenterHorizontally,
+                                    .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
+                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.extraSmall),
                             ) {
-                                KmkEmptyStateIllustration(
-                                    artwork = KmkEmptyStateArtwork.SOURCE_EVALUATION,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(96.dp),
+                                Text(
+                                    text = stringResource(KMR.strings.source_evaluation_two_checks_try_title),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
                                 )
                                 Text(
-                                    text = stringResource(KMR.strings.source_evaluation_empty),
+                                    text = stringResource(KMR.strings.source_evaluation_two_checks_try_body),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = MaterialTheme.padding.small),
                                 )
-                            }
-                        }
-                    }
-
-                    if (state.evaluations.isNotEmpty()) {
-                        item(key = "eval_header") {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Box(modifier = Modifier.weight(1f)) {
-                                    SectionHeader(stringResource(KMR.strings.source_evaluation_past_results))
-                                }
-                                // KMK --> v0.6.15: request confirmation before clearing
-                                TextButton(
-                                    onClick = screenModel::requestClearAllEvaluations,
-                                    modifier = Modifier.padding(end = MaterialTheme.padding.medium),
-                                ) {
-                                    Text(stringResource(KMR.strings.source_evaluation_clear_all))
-                                }
-                                // KMK <--
-                            }
-                        }
-
-                        // KMK --> v0.7.6: show installed toggle + hidden count
-                        // KMK --> v0.7.7: condition fixed — also show when showInstalled=true so user can toggle back
-                        if (state.hiddenInstalledCount > 0 || state.showInstalled) {
-                            item(key = "show_installed_row") {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.extraSmall),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                                ) {
-                                    FilterChip(
-                                        selected = state.showInstalled,
-                                        onClick = { screenModel.setShowInstalled(!state.showInstalled) },
-                                        label = {
-                                            Text(
-                                                if (state.showInstalled) {
-                                                    stringResource(KMR.strings.source_evaluation_hide_installed)
-                                                } else {
-                                                    stringResource(KMR.strings.source_evaluation_show_installed)
-                                                },
-                                            )
-                                        },
-                                    )
-                                    if (state.hiddenInstalledCount > 0 && !state.showInstalled) {
-                                        Text(
-                                            text = stringResource(KMR.strings.source_evaluation_hidden_installed, state.hiddenInstalledCount),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        // KMK <-- v0.7.7
-                        // KMK <-- v0.7.6
-
-                        // KMK v0.8.1-fix4: show/hide source-quality-disliked rows toggle + hidden count
-                        if (state.hiddenSourceQualityCount > 0 || state.showSourceQualityDisliked) {
-                            item(key = "show_quality_disliked_row") {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.extraSmall),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                                ) {
-                                    FilterChip(
-                                        selected = state.showSourceQualityDisliked,
-                                        onClick = { screenModel.setShowSourceQualityDisliked(!state.showSourceQualityDisliked) },
-                                        label = {
-                                            Text(
-                                                if (state.showSourceQualityDisliked) {
-                                                    stringResource(KMR.strings.source_quality_hide_disliked_sources)
-                                                } else {
-                                                    stringResource(KMR.strings.source_quality_show_disliked_sources)
-                                                },
-                                            )
-                                        },
-                                    )
-                                    if (state.hiddenSourceQualityCount > 0 && !state.showSourceQualityDisliked) {
-                                        Text(
-                                            text = pluralStringResource(
-                                                KMR.plurals.source_quality_hidden_mark_count,
-                                                count = state.hiddenSourceQualityCount,
-                                                state.hiddenSourceQualityCount,
-                                            ),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
+                                Text(
+                                    text = stringResource(KMR.strings.source_evaluation_two_checks_installed_title),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = MaterialTheme.padding.extraSmall),
+                                )
+                                Text(
+                                    text = stringResource(KMR.strings.source_evaluation_two_checks_installed_body),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                         // KMK <--
 
-                        // KMK v0.8.11: the recommendation-quality ("For You search compatibility")
-                        // section moved out of this past-evaluations block -- see rec_quality_section
-                        // above the diagnostics_header.
+                        // Options section (only when not running)
+                        // KMK v0.8.11: reorganized into named sections -- Run evaluation, Installer and
+                        // cleanup, Reassessment -- so the first screen reads as distinct groups instead of
+                        // one long mixed options list. Every control is unchanged; only order and section
+                        // headers moved. Keep the key list in `itemKeysInOrder` above in sync.
+                        if (queueState.isIdle) {
+                            item(key = "run_header") {
+                                SectionHeader(stringResource(KMR.strings.source_evaluation_section_run))
+                            }
 
-                        // KMK --> v0.6.15: sort controls for past evaluation results
-                        item(key = "eval_sort") {
-                            var sortExpanded by remember { mutableStateOf(false) }
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.extraSmall),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                            ) {
-                                Text(
-                                    text = stringResource(KMR.strings.source_evaluation_sort_label),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            item(key = "batch_size") {
+                                BatchSizeSelector(
+                                    selected = state.options.batchSize,
+                                    onSelect = screenModel::setBatchSize,
                                 )
-                                Box {
-                                    TextButton(onClick = { sortExpanded = true }) {
-                                        Text(
-                                            text = when (state.resultSortMode) {
-                                                SourceEvaluationResultList.SortMode.BEST_FIT -> stringResource(KMR.strings.source_evaluation_sort_best_fit)
-                                                SourceEvaluationResultList.SortMode.NEWEST -> stringResource(KMR.strings.source_evaluation_sort_newest)
-                                                SourceEvaluationResultList.SortMode.SOURCE_NAME -> stringResource(KMR.strings.source_evaluation_sort_source_name)
-                                                SourceEvaluationResultList.SortMode.EXTENSION_NAME -> stringResource(KMR.strings.source_evaluation_sort_extension_name)
-                                                SourceEvaluationResultList.SortMode.FOR_YOU_COMPATIBILITY -> stringResource(KMR.strings.source_evaluation_sort_for_you_compatibility)
-                                                SourceEvaluationResultList.SortMode.EXPLICIT_RISK -> stringResource(KMR.strings.source_evaluation_sort_explicit_risk)
-                                            },
-                                        )
-                                        Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
-                                    }
-                                    DropdownMenu(
-                                        expanded = sortExpanded,
-                                        onDismissRequest = { sortExpanded = false },
+                            }
+
+                            // KMK v0.8.14: Phase E -- skip/explicit toggles and candidate diagnostics are
+                            // secondary setup detail (not needed to decide whether to press Start), collapsed
+                            // behind a disclosure by default. Neither is a search anchor, so hiding them by
+                            // default doesn't affect ScrollToAnchorEffect.
+                            item(key = "setup_options_toggle") {
+                                DisclosureToggleRow(
+                                    label = stringResource(KMR.strings.source_evaluation_setup_options_toggle),
+                                    expanded = state.showSetupOptions,
+                                    onToggle = screenModel::toggleSetupOptions,
+                                )
+                            }
+                            if (state.showSetupOptions) {
+                                item(key = "option_skip") {
+                                    OptionToggleRow(
+                                        label = stringResource(KMR.strings.source_evaluation_skip_evaluated),
+                                        checked = state.options.skipAlreadyEvaluated,
+                                        onToggle = { screenModel.setSkipAlreadyEvaluated(!state.options.skipAlreadyEvaluated) },
+                                    )
+                                }
+
+                                item(key = "option_explicit") {
+                                    OptionToggleRow(
+                                        label = stringResource(KMR.strings.source_evaluation_include_explicit),
+                                        checked = state.options.includeExplicitCandidates,
+                                        onToggle = { screenModel.setIncludeExplicit(!state.options.includeExplicitCandidates) },
+                                    )
+                                }
+
+                                // KMK --> v0.6.12: candidate diagnostics
+                                item(key = "candidate_diagnostics") {
+                                    CandidateDiagnosticsRow(
+                                        diagnostics = state.candidateDiagnostics,
+                                        isLoading = state.isLoadingCandidates,
+                                        visibleCount = state.candidates.size,
+                                        batchSize = state.options.batchSize,
+                                        // KMK --> v0.6.19 follow-up
+                                        skipAlreadyEvaluated = state.options.skipAlreadyEvaluated,
+                                        // KMK <--
+                                    )
+                                }
+                                // KMK <--
+                            }
+
+                            // KMK v0.8.11: the safety-diagnostics and runtime-health rows moved from here
+                            // to the "Diagnostics and recovery" section further down -- see diagnostics_header.
+
+                            // KMK --> v0.6.19: low-confidence taste profile warning near start button
+                            if (!state.tasteConfidence.isSufficientForPersonalizedEvaluation) {
+                                item(key = "taste_confidence_warning") {
+                                    InfoCard(
+                                        message = stringResource(KMR.strings.source_evaluation_low_confidence_warning),
+                                        isError = false,
+                                        modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                                    )
+                                }
+                            }
+                            // KMK <--
+
+                            // KMK --> v0.7.31: C3 — profile changed since last eval run
+                            if (state.profileChangedSinceLastEval && state.evaluations.isNotEmpty()) {
+                                item(key = "profile_changed_prompt") {
+                                    InfoCard(
+                                        message = stringResource(KMR.strings.source_evaluation_profile_changed_since_last_run),
+                                        isError = false,
+                                        modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                                    )
+                                }
+                            }
+                            // KMK <--
+
+                            item(key = "start_button") {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(MaterialTheme.padding.medium),
+                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                                ) {
+                                    val canStart = state.installerPolicy?.readiness ==
+                                        SourceEvaluationInstallerPolicy.InstallerReadiness.READY &&
+                                        state.candidates.isNotEmpty()
+                                    Button(
+                                        onClick = screenModel::startEvaluation,
+                                        enabled = canStart,
+                                        modifier = Modifier.weight(1f),
                                     ) {
-                                        SourceEvaluationResultList.SortMode.entries.forEach { mode ->
-                                            DropdownMenuItem(
-                                                text = {
-                                                    Text(
-                                                        when (mode) {
-                                                            SourceEvaluationResultList.SortMode.BEST_FIT -> stringResource(KMR.strings.source_evaluation_sort_best_fit)
-                                                            SourceEvaluationResultList.SortMode.NEWEST -> stringResource(KMR.strings.source_evaluation_sort_newest)
-                                                            SourceEvaluationResultList.SortMode.SOURCE_NAME -> stringResource(KMR.strings.source_evaluation_sort_source_name)
-                                                            SourceEvaluationResultList.SortMode.EXTENSION_NAME -> stringResource(KMR.strings.source_evaluation_sort_extension_name)
-                                                            SourceEvaluationResultList.SortMode.FOR_YOU_COMPATIBILITY -> stringResource(KMR.strings.source_evaluation_sort_for_you_compatibility)
-                                                            SourceEvaluationResultList.SortMode.EXPLICIT_RISK -> stringResource(KMR.strings.source_evaluation_sort_explicit_risk)
-                                                        },
-                                                    )
-                                                },
-                                                onClick = {
-                                                    screenModel.setResultSortMode(mode)
-                                                    sortExpanded = false
-                                                },
+                                        Icon(Icons.Outlined.PlayArrow, contentDescription = null)
+                                        Text(
+                                            pluralStringResource(KMR.plurals.source_evaluation_start, count = state.candidates.size.coerceAtMost(state.options.batchSize), state.candidates.size.coerceAtMost(state.options.batchSize)),
+                                            modifier = Modifier.padding(start = MaterialTheme.padding.extraSmall),
+                                        )
+                                    }
+                                }
+                            }
+
+                            // KMK v0.8.24: a disabled Start button always says why
+                            item(key = "start_button_reason") {
+                                val ready = state.installerPolicy?.readiness ==
+                                    SourceEvaluationInstallerPolicy.InstallerReadiness.READY
+                                val reason = when {
+                                    !ready -> KMR.strings.source_evaluation_start_reason_installer
+                                    state.candidates.isEmpty() && state.repoUnavailableWarning ->
+                                        KMR.strings.source_evaluation_start_reason_no_repo
+                                    state.candidates.isEmpty() && state.evaluations.isEmpty() ->
+                                        KMR.strings.source_evaluation_start_reason_nothing_matches
+                                    state.candidates.isEmpty() -> KMR.strings.source_evaluation_start_reason_no_candidates
+                                    else -> null
+                                }
+                                if (reason != null) {
+                                    Text(
+                                        text = stringResource(reason),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                                    )
+                                }
+                            }
+
+                            // KMK --> v0.7.6: continue next batch button
+                            if (state.canContinue && !state.queueState.isRunning) {
+                                item(key = "continue_button") {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = MaterialTheme.padding.medium),
+                                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                                    ) {
+                                        val canContinue = state.installerPolicy?.readiness ==
+                                            SourceEvaluationInstallerPolicy.InstallerReadiness.READY
+                                        OutlinedButton(
+                                            onClick = screenModel::continueEvaluation,
+                                            enabled = canContinue,
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            Text(
+                                                pluralStringResource(KMR.plurals.source_evaluation_continue_next_batch, count = state.remainingCandidateCount, state.remainingCandidateCount),
                                             )
                                         }
                                     }
                                 }
                             }
-                        }
-                        // KMK <--
-
-                        // KMK --> v0.6.15: itemsIndexed with stable keys; no animateItem() (reorder stability)
-                        itemsIndexed(
-                            items = visiblePastEvaluations,
-                            key = { index, evaluation -> SourceEvaluationResultList.stableUiKey(evaluation, index) },
-                        ) { _, evaluation ->
-                            // KMK --> v0.7.6: pass rec-quality fit for display
-                            // KMK v0.8.1-fix4: source/library-quality key is extension-level ("a|sig|pkg")
-                            val evalQualityKey = "a|${evaluation.extensionKey}"
-                            // KMK v0.8.15-fix1: per-row Install eligibility -- see
-                            // SourceEvaluationRowActionPolicy and SourceEvaluationScreenModel
-                            // .installEvaluatedSource().
-                            val isBlocked = evaluation.extensionKey in state.unsafeSources.map { "${it.signatureHash}|${it.extensionPkgName}" } ||
-                                state.blockedPackages.any { it.pkgName == evaluation.extensionPkgName }
-                            val installEligibility = SourceEvaluationRowActionPolicy.installEligibility(
-                                isInstalled = evaluation.extensionKey in state.installedExtensionKeys,
-                                isBlocked = isBlocked,
-                                isAvailable = evaluation.extensionKey in state.availableExtensionKeys,
-                            )
-                            EvaluationResultRow(
-                                evaluation = evaluation,
-                                recFit = state.recommendationFitsByEvalKey[evaluation.evaluationKey],
-                                // KMK --> v0.7.42-fix2: shared `now` so row labels agree with the queue/sort
-                                now = now,
-                                // KMK <--
-                                isQualityDisliked = evalQualityKey in state.qualityDislikedSourceKeys,
-                                isQualityExplicit = evalQualityKey in state.qualityExplicitSourceKeys,
-                                onMarkQualityPoor = { screenModel.markSourceQualityPoor(evaluation) },
-                                onMarkQualityExplicit = { screenModel.markSourceQualityExplicit(evaluation) },
-                                onClearQualityMark = { screenModel.clearSourceQualityMark(evaluation) },
-                                // KMK v0.8.14: row label policy -- only claim "reassess needed" for rows the
-                                // reassessment queue can actually reach this run.
-                                isActionableOutdated = evaluation.extensionKey in state.outdatedReconciliation.workableOutdatedExtensionKeys,
-                                // KMK v0.8.15-fix1
-                                installEligibility = installEligibility,
-                                isInstalling = evaluation.extensionPkgName in state.installingPkgNames,
-                                onInstall = { screenModel.installEvaluatedSource(evaluation.extensionPkgName, evaluation.signatureHash) },
-                            )
                             // KMK <--
                         }
-                        // KMK <--
 
-                        if (TasteSuggestionVisibilityPolicy.canShowMore(sortedEvaluations.size, pastEvaluationsVisibleCount) ||
-                            TasteSuggestionVisibilityPolicy.canShowFewer(pastEvaluationsVisibleCount)
-                        ) {
-                            item(key = "eval_reveal") {
-                                Row(
+                        // Past evaluations
+                        // The empty illustration belongs only to Past evaluations. Setup controls,
+                        // diagnostics, warnings, and running/summary states remain visible elsewhere.
+                        if (state.evaluations.isEmpty() && queueState.isIdle) {
+                            item(key = "past_evaluations_empty") {
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = MaterialTheme.padding.medium),
-                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                                        .padding(MaterialTheme.padding.medium),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
-                                    if (TasteSuggestionVisibilityPolicy.canShowMore(sortedEvaluations.size, pastEvaluationsVisibleCount)) {
-                                        TextButton(
-                                            onClick = {
-                                                pastEvaluationsVisibleCount = TasteSuggestionVisibilityPolicy.nextVisibleCount(
-                                                    sortedEvaluations.size,
-                                                    pastEvaluationsVisibleCount,
-                                                )
-                                            },
-                                        ) {
-                                            Text(
-                                                pluralStringResource(
-                                                    KMR.plurals.taste_settings_tag_group_show_n_more,
-                                                    count = TasteSuggestionVisibilityPolicy.nextVisibleCount(
-                                                        sortedEvaluations.size,
-                                                        pastEvaluationsVisibleCount,
-                                                    ) - pastEvaluationsVisibleCount,
-                                                    TasteSuggestionVisibilityPolicy.nextVisibleCount(
-                                                        sortedEvaluations.size,
-                                                        pastEvaluationsVisibleCount,
-                                                    ) - pastEvaluationsVisibleCount,
-                                                ),
-                                            )
-                                        }
-                                    }
-                                    if (TasteSuggestionVisibilityPolicy.canShowFewer(pastEvaluationsVisibleCount)) {
-                                        TextButton(
-                                            onClick = {
-                                                pastEvaluationsVisibleCount = TasteSuggestionVisibilityPolicy.DEFAULT_VISIBLE
-                                            },
-                                        ) {
-                                            Text(stringResource(KMR.strings.taste_settings_tag_group_show_fewer))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // KMK v0.8.24: setup, installer and keeping results current come after the results
-                    if (queueState.isIdle) {
-                        // KMK v0.8.11: "Installer and cleanup" section -- installer mode, Shizuku setup,
-                        // and installer-related warnings, grouped instead of interleaved with run options.
-                        item(key = "installer_header") {
-                            SectionHeader(stringResource(KMR.strings.source_evaluation_section_installer))
-                        }
-
-                        // KMK v0.8.14: Phase E -- the installer-mode selector is secondary setup detail once
-                        // the installer is already ready; force it visible (not collapsible) whenever it
-                        // isn't ready, since that's exactly the critical-setup case the plan says must stay
-                        // visible. "installer_header" remains the search anchor either way.
-                        val installerReady = state.installerPolicy?.readiness ==
-                            SourceEvaluationInstallerPolicy.InstallerReadiness.READY
-                        val showInstallerModeSelector = state.showInstallerDetails || !installerReady
-                        if (installerReady) {
-                            item(key = "installer_details_toggle") {
-                                DisclosureToggleRow(
-                                    label = stringResource(KMR.strings.source_evaluation_installer_details_toggle),
-                                    expanded = state.showInstallerDetails,
-                                    onToggle = screenModel::toggleInstallerDetails,
-                                )
-                            }
-                        }
-                        if (showInstallerModeSelector) {
-                            item(key = "installer_mode") {
-                                InstallerModeSelector(
-                                    selected = state.options.installerMode,
-                                    policy = state.installerPolicy,
-                                    onSelect = screenModel::setInstallerMode,
-                                )
-                            }
-                        }
-
-                        // KMK --> v0.6.11: Shizuku setup card
-                        // KMK --> v0.6.19: only show when Shizuku is selected/relevant or user expanded it
-                        if (state.showShizukuSetup) {
-                            item(key = "shizuku_setup") {
-                                ShizukuSetupCard(
-                                    shizukuState = state.shizukuState,
-                                    installerMode = state.options.installerMode,
-                                    isEvaluationRunning = state.queueState.isRunning,
-                                    onInstallShizuku = screenModel::openShizukuSetup,
-                                    onOpenShizuku = screenModel::openShizukuApp,
-                                    onUseForRun = screenModel::useShizukuForEvaluation,
-                                    onStopUsing = screenModel::stopUsingShizukuForEvaluation,
-                                    onUninstall = screenModel::uninstallShizuku,
-                                    onRefresh = screenModel::refreshShizukuState,
-                                    // KMK --> v0.6.13: show "Use Private instead" when Shizuku is selected
-                                    privateAvailable = state.privateAvailable,
-                                    onUsePrivateInstead = screenModel::switchToPrivate,
-                                    // KMK <--
-                                )
-                            }
-                        } else {
-                            item(key = "shizuku_setup_toggle") {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = MaterialTheme.padding.medium),
-                                ) {
-                                    TextButton(onClick = screenModel::showShizukuSetup) {
-                                        Text(
-                                            stringResource(KMR.strings.source_evaluation_shizuku_setup_toggle),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        // KMK <-- v0.6.19
-                        // KMK <-- v0.6.11
-
-                        val currentPolicy = state.installerPolicy
-                        if (currentPolicy?.requiresPromptWarning == true) {
-                            item(key = "prompt_warning") {
-                                InfoCard(
-                                    message = currentPolicy.messageKey?.toLocalString()
-                                        ?: stringResource(KMR.strings.source_evaluation_installer_warning),
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
-                        }
-
-                        if (currentPolicy?.readiness == SourceEvaluationInstallerPolicy.InstallerReadiness.UNAVAILABLE) {
-                            item(key = "unavailable_warning") {
-                                InfoCard(
-                                    message = currentPolicy.messageKey?.toLocalString()
-                                        ?: stringResource(KMR.strings.source_evaluation_installer_unavailable),
-                                    isError = true,
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
-                        }
-
-                        // KMK v0.8.11: "Reassessment" section -- every reassess flavor (current tastes,
-                        // updated extensions, stale/outdated) in one place.
-                        item(key = "reassess_header") {
-                            SectionHeader(stringResource(KMR.strings.source_evaluation_section_reassessment))
-                        }
-
-                        // KMK --> v0.6.20: reassessment prompt
-                        if (ratingsSinceBaseline >= REASSESSMENT_THRESHOLD) {
-                            item(key = "reassessment_prompt") {
-                                InfoCard(
-                                    message = pluralStringResource(KMR.plurals.source_evaluation_reassessment_recommended, count = ratingsSinceBaseline, ratingsSinceBaseline),
-                                    isError = false,
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
-                        }
-
-                        item(key = "reassess_button") {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = MaterialTheme.padding.medium),
-                                horizontalArrangement = Arrangement.Start,
-                            ) {
-                                OutlinedButton(
-                                    onClick = {
-                                        screenModel.setSkipAlreadyEvaluated(false)
-                                        screenModel.startEvaluation()
-                                    },
-                                    enabled = state.installerPolicy?.readiness ==
-                                        SourceEvaluationInstallerPolicy.InstallerReadiness.READY &&
-                                        !state.queueState.isRunning,
-                                ) {
+                                    KmkEmptyStateIllustration(
+                                        artwork = KmkEmptyStateArtwork.SOURCE_EVALUATION,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(96.dp),
+                                    )
                                     Text(
-                                        if (ratingsSinceBaseline >= REASSESSMENT_THRESHOLD) {
-                                            stringResource(KMR.strings.source_evaluation_reassess_button)
-                                        } else {
-                                            stringResource(KMR.strings.source_evaluation_reassess_current_tastes)
-                                        },
+                                        text = stringResource(KMR.strings.source_evaluation_empty),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = MaterialTheme.padding.small),
                                     )
                                 }
                             }
                         }
-                        // KMK <--
 
-                        // KMK --> v0.7.4: updated evaluated extensions notice + reassess button
-                        if (state.updatedEvaluatedExtensionCount > 0) {
-                            item(key = "updated_evaluated_notice") {
-                                InfoCard(
-                                    message = pluralStringResource(KMR.plurals.source_evaluation_updated_extensions_notice, count = state.updatedEvaluatedExtensionCount, state.updatedEvaluatedExtensionCount),
-                                    isError = false,
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
+                        if (state.evaluations.isNotEmpty()) {
+                            item(key = "eval_header") {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        SectionHeader(stringResource(KMR.strings.source_evaluation_past_results))
+                                    }
+                                    // KMK --> v0.6.15: request confirmation before clearing
+                                    TextButton(
+                                        onClick = screenModel::requestClearAllEvaluations,
+                                        modifier = Modifier.padding(end = MaterialTheme.padding.medium),
+                                    ) {
+                                        Text(stringResource(KMR.strings.source_evaluation_clear_all))
+                                    }
+                                    // KMK <--
+                                }
                             }
-                            item(key = "reassess_updated_button") {
+
+                            // KMK --> v0.7.6: show installed toggle + hidden count
+                            // KMK --> v0.7.7: condition fixed — also show when showInstalled=true so user can toggle back
+                            if (state.hiddenInstalledCount > 0 || state.showInstalled) {
+                                item(key = "show_installed_row") {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.extraSmall),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                                    ) {
+                                        FilterChip(
+                                            selected = state.showInstalled,
+                                            onClick = { screenModel.setShowInstalled(!state.showInstalled) },
+                                            label = {
+                                                Text(
+                                                    if (state.showInstalled) {
+                                                        stringResource(KMR.strings.source_evaluation_hide_installed)
+                                                    } else {
+                                                        stringResource(KMR.strings.source_evaluation_show_installed)
+                                                    },
+                                                )
+                                            },
+                                        )
+                                        if (state.hiddenInstalledCount > 0 && !state.showInstalled) {
+                                            Text(
+                                                text = stringResource(KMR.strings.source_evaluation_hidden_installed, state.hiddenInstalledCount),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            // KMK <-- v0.7.7
+                            // KMK <-- v0.7.6
+
+                            // KMK v0.8.1-fix4: show/hide source-quality-disliked rows toggle + hidden count
+                            if (state.hiddenSourceQualityCount > 0 || state.showSourceQualityDisliked) {
+                                item(key = "show_quality_disliked_row") {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.extraSmall),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                                    ) {
+                                        FilterChip(
+                                            selected = state.showSourceQualityDisliked,
+                                            onClick = { screenModel.setShowSourceQualityDisliked(!state.showSourceQualityDisliked) },
+                                            label = {
+                                                Text(
+                                                    if (state.showSourceQualityDisliked) {
+                                                        stringResource(KMR.strings.source_quality_hide_disliked_sources)
+                                                    } else {
+                                                        stringResource(KMR.strings.source_quality_show_disliked_sources)
+                                                    },
+                                                )
+                                            },
+                                        )
+                                        if (state.hiddenSourceQualityCount > 0 && !state.showSourceQualityDisliked) {
+                                            Text(
+                                                text = pluralStringResource(
+                                                    KMR.plurals.source_quality_hidden_mark_count,
+                                                    count = state.hiddenSourceQualityCount,
+                                                    state.hiddenSourceQualityCount,
+                                                ),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            // KMK <--
+
+                            // KMK v0.8.11: the recommendation-quality ("For You search compatibility")
+                            // section moved out of this past-evaluations block -- see rec_quality_section
+                            // above the diagnostics_header.
+
+                            // KMK --> v0.6.15: sort controls for past evaluation results
+                            item(key = "eval_sort") {
+                                var sortExpanded by remember { mutableStateOf(false) }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.extraSmall),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                                ) {
+                                    Text(
+                                        text = stringResource(KMR.strings.source_evaluation_sort_label),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Box {
+                                        TextButton(onClick = { sortExpanded = true }) {
+                                            Text(
+                                                text = when (state.resultSortMode) {
+                                                    SourceEvaluationResultList.SortMode.BEST_FIT -> stringResource(KMR.strings.source_evaluation_sort_best_fit)
+                                                    SourceEvaluationResultList.SortMode.NEWEST -> stringResource(KMR.strings.source_evaluation_sort_newest)
+                                                    SourceEvaluationResultList.SortMode.SOURCE_NAME -> stringResource(KMR.strings.source_evaluation_sort_source_name)
+                                                    SourceEvaluationResultList.SortMode.EXTENSION_NAME -> stringResource(KMR.strings.source_evaluation_sort_extension_name)
+                                                    SourceEvaluationResultList.SortMode.FOR_YOU_COMPATIBILITY -> stringResource(KMR.strings.source_evaluation_sort_for_you_compatibility)
+                                                    SourceEvaluationResultList.SortMode.EXPLICIT_RISK -> stringResource(KMR.strings.source_evaluation_sort_explicit_risk)
+                                                },
+                                            )
+                                            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+                                        }
+                                        DropdownMenu(
+                                            expanded = sortExpanded,
+                                            onDismissRequest = { sortExpanded = false },
+                                        ) {
+                                            SourceEvaluationResultList.SortMode.entries.forEach { mode ->
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            when (mode) {
+                                                                SourceEvaluationResultList.SortMode.BEST_FIT -> stringResource(KMR.strings.source_evaluation_sort_best_fit)
+                                                                SourceEvaluationResultList.SortMode.NEWEST -> stringResource(KMR.strings.source_evaluation_sort_newest)
+                                                                SourceEvaluationResultList.SortMode.SOURCE_NAME -> stringResource(KMR.strings.source_evaluation_sort_source_name)
+                                                                SourceEvaluationResultList.SortMode.EXTENSION_NAME -> stringResource(KMR.strings.source_evaluation_sort_extension_name)
+                                                                SourceEvaluationResultList.SortMode.FOR_YOU_COMPATIBILITY -> stringResource(KMR.strings.source_evaluation_sort_for_you_compatibility)
+                                                                SourceEvaluationResultList.SortMode.EXPLICIT_RISK -> stringResource(KMR.strings.source_evaluation_sort_explicit_risk)
+                                                            },
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        screenModel.setResultSortMode(mode)
+                                                        sortExpanded = false
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            // KMK <--
+
+                            // KMK --> v0.6.15: itemsIndexed with stable keys; no animateItem() (reorder stability)
+                            itemsIndexed(
+                                items = visiblePastEvaluations,
+                                key = { index, evaluation -> SourceEvaluationResultList.stableUiKey(evaluation, index) },
+                            ) { _, evaluation ->
+                                // KMK --> v0.7.6: pass rec-quality fit for display
+                                // KMK v0.8.1-fix4: source/library-quality key is extension-level ("a|sig|pkg")
+                                val evalQualityKey = "a|${evaluation.extensionKey}"
+                                // KMK v0.8.15-fix1: per-row Install eligibility -- see
+                                // SourceEvaluationRowActionPolicy and SourceEvaluationScreenModel
+                                // .installEvaluatedSource().
+                                val isBlocked = evaluation.extensionKey in state.unsafeSources.map { "${it.signatureHash}|${it.extensionPkgName}" } ||
+                                    state.blockedPackages.any { it.pkgName == evaluation.extensionPkgName }
+                                val installEligibility = SourceEvaluationRowActionPolicy.installEligibility(
+                                    isInstalled = evaluation.extensionKey in state.installedExtensionKeys,
+                                    isBlocked = isBlocked,
+                                    isAvailable = evaluation.extensionKey in state.availableExtensionKeys,
+                                )
+                                EvaluationResultRow(
+                                    evaluation = evaluation,
+                                    recFit = state.recommendationFitsByEvalKey[evaluation.evaluationKey],
+                                    // KMK --> v0.7.42-fix2: shared `now` so row labels agree with the queue/sort
+                                    now = now,
+                                    // KMK <--
+                                    isQualityDisliked = evalQualityKey in state.qualityDislikedSourceKeys,
+                                    isQualityExplicit = evalQualityKey in state.qualityExplicitSourceKeys,
+                                    onMarkQualityPoor = { screenModel.markSourceQualityPoor(evaluation) },
+                                    onMarkQualityExplicit = { screenModel.markSourceQualityExplicit(evaluation) },
+                                    onClearQualityMark = { screenModel.clearSourceQualityMark(evaluation) },
+                                    // KMK v0.8.14: row label policy -- only claim "reassess needed" for rows the
+                                    // reassessment queue can actually reach this run.
+                                    isActionableOutdated = evaluation.extensionKey in state.outdatedReconciliation.workableOutdatedExtensionKeys,
+                                    // KMK v0.8.15-fix1
+                                    installEligibility = installEligibility,
+                                    isInstalling = evaluation.extensionPkgName in state.installingPkgNames,
+                                    onInstall = { screenModel.installEvaluatedSource(evaluation.extensionPkgName, evaluation.signatureHash) },
+                                )
+                                // KMK <--
+                            }
+                            // KMK <--
+
+                            if (TasteSuggestionVisibilityPolicy.canShowMore(sortedEvaluations.size, pastEvaluationsVisibleCount) ||
+                                TasteSuggestionVisibilityPolicy.canShowFewer(pastEvaluationsVisibleCount)
+                            ) {
+                                item(key = "eval_reveal") {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = MaterialTheme.padding.medium),
+                                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                                    ) {
+                                        if (TasteSuggestionVisibilityPolicy.canShowMore(sortedEvaluations.size, pastEvaluationsVisibleCount)) {
+                                            TextButton(
+                                                onClick = {
+                                                    pastEvaluationsVisibleCount = TasteSuggestionVisibilityPolicy.nextVisibleCount(
+                                                        sortedEvaluations.size,
+                                                        pastEvaluationsVisibleCount,
+                                                    )
+                                                },
+                                            ) {
+                                                Text(
+                                                    pluralStringResource(
+                                                        KMR.plurals.taste_settings_tag_group_show_n_more,
+                                                        count = TasteSuggestionVisibilityPolicy.nextVisibleCount(
+                                                            sortedEvaluations.size,
+                                                            pastEvaluationsVisibleCount,
+                                                        ) - pastEvaluationsVisibleCount,
+                                                        TasteSuggestionVisibilityPolicy.nextVisibleCount(
+                                                            sortedEvaluations.size,
+                                                            pastEvaluationsVisibleCount,
+                                                        ) - pastEvaluationsVisibleCount,
+                                                    ),
+                                                )
+                                            }
+                                        }
+                                        if (TasteSuggestionVisibilityPolicy.canShowFewer(pastEvaluationsVisibleCount)) {
+                                            TextButton(
+                                                onClick = {
+                                                    pastEvaluationsVisibleCount = TasteSuggestionVisibilityPolicy.DEFAULT_VISIBLE
+                                                },
+                                            ) {
+                                                Text(stringResource(KMR.strings.taste_settings_tag_group_show_fewer))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // KMK v0.8.24: setup, installer and keeping results current come after the results
+                        if (queueState.isIdle) {
+                            // KMK v0.8.11: "Installer and cleanup" section -- installer mode, Shizuku setup,
+                            // and installer-related warnings, grouped instead of interleaved with run options.
+                            item(key = "installer_header") {
+                                SectionHeader(stringResource(KMR.strings.source_evaluation_section_installer))
+                            }
+
+                            // KMK v0.8.14: Phase E -- the installer-mode selector is secondary setup detail once
+                            // the installer is already ready; force it visible (not collapsible) whenever it
+                            // isn't ready, since that's exactly the critical-setup case the plan says must stay
+                            // visible. "installer_header" remains the search anchor either way.
+                            val installerReady = state.installerPolicy?.readiness ==
+                                SourceEvaluationInstallerPolicy.InstallerReadiness.READY
+                            val showInstallerModeSelector = state.showInstallerDetails || !installerReady
+                            if (installerReady) {
+                                item(key = "installer_details_toggle") {
+                                    DisclosureToggleRow(
+                                        label = stringResource(KMR.strings.source_evaluation_installer_details_toggle),
+                                        expanded = state.showInstallerDetails,
+                                        onToggle = screenModel::toggleInstallerDetails,
+                                    )
+                                }
+                            }
+                            if (showInstallerModeSelector) {
+                                item(key = "installer_mode") {
+                                    InstallerModeSelector(
+                                        selected = state.options.installerMode,
+                                        policy = state.installerPolicy,
+                                        onSelect = screenModel::setInstallerMode,
+                                    )
+                                }
+                            }
+
+                            // KMK --> v0.6.11: Shizuku setup card
+                            // KMK --> v0.6.19: only show when Shizuku is selected/relevant or user expanded it
+                            if (state.showShizukuSetup) {
+                                item(key = "shizuku_setup") {
+                                    ShizukuSetupCard(
+                                        shizukuState = state.shizukuState,
+                                        installerMode = state.options.installerMode,
+                                        isEvaluationRunning = state.queueState.isRunning,
+                                        onInstallShizuku = screenModel::openShizukuSetup,
+                                        onOpenShizuku = screenModel::openShizukuApp,
+                                        onUseForRun = screenModel::useShizukuForEvaluation,
+                                        onStopUsing = screenModel::stopUsingShizukuForEvaluation,
+                                        onUninstall = screenModel::uninstallShizuku,
+                                        onRefresh = screenModel::refreshShizukuState,
+                                        // KMK --> v0.6.13: show "Use Private instead" when Shizuku is selected
+                                        privateAvailable = state.privateAvailable,
+                                        onUsePrivateInstead = screenModel::switchToPrivate,
+                                        // KMK <--
+                                    )
+                                }
+                            } else {
+                                item(key = "shizuku_setup_toggle") {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = MaterialTheme.padding.medium),
+                                    ) {
+                                        TextButton(onClick = screenModel::showShizukuSetup) {
+                                            Text(
+                                                stringResource(KMR.strings.source_evaluation_shizuku_setup_toggle),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            // KMK <-- v0.6.19
+                            // KMK <-- v0.6.11
+
+                            val currentPolicy = state.installerPolicy
+                            if (currentPolicy?.requiresPromptWarning == true) {
+                                item(key = "prompt_warning") {
+                                    InfoCard(
+                                        message = currentPolicy.messageKey?.toLocalString()
+                                            ?: stringResource(KMR.strings.source_evaluation_installer_warning),
+                                        modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                                    )
+                                }
+                            }
+
+                            if (currentPolicy?.readiness == SourceEvaluationInstallerPolicy.InstallerReadiness.UNAVAILABLE) {
+                                item(key = "unavailable_warning") {
+                                    InfoCard(
+                                        message = currentPolicy.messageKey?.toLocalString()
+                                            ?: stringResource(KMR.strings.source_evaluation_installer_unavailable),
+                                        isError = true,
+                                        modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                                    )
+                                }
+                            }
+
+                            // KMK v0.8.11: "Reassessment" section -- every reassess flavor (current tastes,
+                            // updated extensions, stale/outdated) in one place.
+                            item(key = "reassess_header") {
+                                SectionHeader(stringResource(KMR.strings.source_evaluation_section_reassessment))
+                            }
+
+                            // KMK --> v0.6.20: reassessment prompt
+                            if (ratingsSinceBaseline >= REASSESSMENT_THRESHOLD) {
+                                item(key = "reassessment_prompt") {
+                                    InfoCard(
+                                        message = pluralStringResource(KMR.plurals.source_evaluation_reassessment_recommended, count = ratingsSinceBaseline, ratingsSinceBaseline),
+                                        isError = false,
+                                        modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                                    )
+                                }
+                            }
+
+                            item(key = "reassess_button") {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1276,405 +1308,449 @@ class SourceEvaluationScreen(
                                     horizontalArrangement = Arrangement.Start,
                                 ) {
                                     OutlinedButton(
-                                        onClick = screenModel::startReassessUpdated,
+                                        onClick = {
+                                            screenModel.setSkipAlreadyEvaluated(false)
+                                            screenModel.startEvaluation()
+                                        },
                                         enabled = state.installerPolicy?.readiness ==
                                             SourceEvaluationInstallerPolicy.InstallerReadiness.READY &&
                                             !state.queueState.isRunning,
                                     ) {
-                                        Text(stringResource(KMR.strings.source_evaluation_reassess_updated_button))
-                                    }
-                                }
-                            }
-                        }
-                        // KMK <--
-
-                        // KMK v0.8.1-fix4: state-derived completion feedback -- shown only once a stale
-                        // reassessment run has actually happened (continuationCursorStale != null) and
-                        // nothing remains, so it naturally disappears again once new stale work appears.
-                        if (staleCompletionState != SourceEvaluationStaleCompletionDisplayPolicy.DisplayState.Hidden) {
-                            item(key = "stale_reassess_complete") {
-                                InfoCard(
-                                    // KMK v0.8.13-fix1: distinguish "everything actionable reassessed,
-                                    // nothing excluded" from "everything actionable reassessed, but N
-                                    // outdated rows remain excluded" -- a generic "complete" message next
-                                    // to an "N of M outdated can't be reassessed" note previously read as
-                                    // if the excluded rows had also been processed.
-                                    message = if (staleCompletionState == SourceEvaluationStaleCompletionDisplayPolicy.DisplayState.CompletedWithUnreachableRemaining) {
-                                        pluralStringResource(KMR.plurals.source_evaluation_stale_reassess_complete_partial, count = state.outdatedReconciliation.unreachableOutdatedCount, state.outdatedReconciliation.unreachableOutdatedCount)
-                                    } else {
-                                        stringResource(KMR.strings.source_evaluation_stale_reassess_complete)
-                                    },
-                                    isError = false,
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
-                        }
-                        // KMK <--
-
-                        // KMK --> v0.8.1-fix3: stale/outdated reassessment queue — a first-class,
-                        // independently continuable action, distinct from the unassessed queue's
-                        // start/continue buttons above. Only shown when there is something actionable.
-                        // KMK v0.8.14-fix1: the count here (state.staleCandidates.size) was already
-                        // actionable-only -- "Reassess outdated (N)" has never included excluded/
-                        // unreachable sources in its count. This pass moves the primary action ahead of
-                        // the excluded-sources note below (previously the note appeared first and read as
-                        // if it were blocking the action) and demotes that note to a collapsed disclosure.
-                        if (state.staleCandidates.isNotEmpty() && !state.queueState.isRunning) {
-                            item(key = "stale_reassess_button") {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = MaterialTheme.padding.medium),
-                                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                                ) {
-                                    val ready = state.installerPolicy?.readiness ==
-                                        SourceEvaluationInstallerPolicy.InstallerReadiness.READY
-                                    OutlinedButton(
-                                        onClick = screenModel::startOrContinueStaleReassessment,
-                                        enabled = ready,
-                                        modifier = Modifier.weight(1f),
-                                    ) {
                                         Text(
-                                            if (state.canContinueStale) {
-                                                pluralStringResource(KMR.plurals.source_evaluation_stale_reassess_continue, count = state.remainingStaleCandidateCount, state.remainingStaleCandidateCount)
+                                            if (ratingsSinceBaseline >= REASSESSMENT_THRESHOLD) {
+                                                stringResource(KMR.strings.source_evaluation_reassess_button)
                                             } else {
-                                                pluralStringResource(KMR.plurals.source_evaluation_stale_reassess_start, count = state.staleCandidates.size, state.staleCandidates.size)
+                                                stringResource(KMR.strings.source_evaluation_reassess_current_tastes)
                                             },
                                         )
                                     }
-                                    if (state.canContinueStale) {
-                                        TextButton(onClick = screenModel::restartStaleReassessment, enabled = ready) {
-                                            Text(
-                                                stringResource(KMR.strings.source_evaluation_stale_reassess_restart),
-                                                style = MaterialTheme.typography.bodySmall,
-                                            )
+                                }
+                            }
+                            // KMK <--
+
+                            // KMK --> v0.7.4: updated evaluated extensions notice + reassess button
+                            if (state.updatedEvaluatedExtensionCount > 0) {
+                                item(key = "updated_evaluated_notice") {
+                                    InfoCard(
+                                        message = pluralStringResource(KMR.plurals.source_evaluation_updated_extensions_notice, count = state.updatedEvaluatedExtensionCount, state.updatedEvaluatedExtensionCount),
+                                        isError = false,
+                                        modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                                    )
+                                }
+                                item(key = "reassess_updated_button") {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = MaterialTheme.padding.medium),
+                                        horizontalArrangement = Arrangement.Start,
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = screenModel::startReassessUpdated,
+                                            enabled = state.installerPolicy?.readiness ==
+                                                SourceEvaluationInstallerPolicy.InstallerReadiness.READY &&
+                                                !state.queueState.isRunning,
+                                        ) {
+                                            Text(stringResource(KMR.strings.source_evaluation_reassess_updated_button))
                                         }
                                     }
                                 }
                             }
-                        }
-                        // KMK <--
+                            // KMK <--
 
-                        // KMK v0.8.20-fix1: the excluded-outdated disclosure (a collapsed "N skipped
-                        // source(s)" toggle plus an explanatory "can't be reassessed here"/"none can be
-                        // reassessed" note) was removed from this primary workflow. The reassessment
-                        // queue and its button already use only actionable candidates
-                        // (state.staleCandidates, itself built from the eligible pool -- see
-                        // SourceEvaluationCandidateQueuePolicy.staleCandidates), so excluded sources never
-                        // inflated the action count in the first place; this disclosure only ever
-                        // described sources the action was never going to touch, which read as a warning
-                        // or blocker even though nothing was actually blocked. The underlying
-                        // eligibility/reconciliation logic (SourceEvaluationOutdatedReconciliation) is
-                        // preserved -- it still powers the honest post-run completion message just below
-                        // (which must keep distinguishing "complete" from "complete, N still excluded")
-                        // and each row's neutral isActionableOutdated label -- only this pre-run warning
-                        // surface was removed.
-                        // KMK <--
-                    }
-
-                    // KMK v0.8.11: "For You search compatibility" section -- moved out of the
-                    // past-evaluations block so it reads as its own concept, with an explainer that
-                    // distinguishes it from catalogue Source Evaluation. Content/actions unchanged.
-                    if (recQualityQueue.totalPromising > 0) {
-                        item(key = "rec_quality_section") {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.extraSmall),
-                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.extraSmall),
-                            ) {
-                                Text(
-                                    text = stringResource(KMR.strings.source_evaluation_rec_quality_section_title),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                // KMK v0.8.11: plain-language boundary between this check and the
-                                // catalogue evaluation above.
-                                Text(
-                                    text = stringResource(KMR.strings.source_evaluation_rec_quality_explainer),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                // KMK --> v0.7.45: public-safety cleanup fix — non-installed probes
-                                // are refused (not silently temp-installed via Shizuku/Current) when
-                                // Private is unavailable; make that visible instead of only showing
-                                // per-source errors.
-                                if (state.recQualityNonInstalledSkippedCount > 0) {
-                                    Text(
-                                        text = pluralStringResource(KMR.plurals.source_evaluation_rec_quality_private_required_message, count = state.recQualityNonInstalledSkippedCount, state.recQualityNonInstalledSkippedCount),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.error,
+                            // KMK v0.8.1-fix4: state-derived completion feedback -- shown only once a stale
+                            // reassessment run has actually happened (continuationCursorStale != null) and
+                            // nothing remains, so it naturally disappears again once new stale work appears.
+                            if (staleCompletionState != SourceEvaluationStaleCompletionDisplayPolicy.DisplayState.Hidden) {
+                                item(key = "stale_reassess_complete") {
+                                    InfoCard(
+                                        // KMK v0.8.13-fix1: distinguish "everything actionable reassessed,
+                                        // nothing excluded" from "everything actionable reassessed, but N
+                                        // outdated rows remain excluded" -- a generic "complete" message next
+                                        // to an "N of M outdated can't be reassessed" note previously read as
+                                        // if the excluded rows had also been processed.
+                                        message = if (staleCompletionState == SourceEvaluationStaleCompletionDisplayPolicy.DisplayState.CompletedWithUnreachableRemaining) {
+                                            pluralStringResource(KMR.plurals.source_evaluation_stale_reassess_complete_partial, count = state.outdatedReconciliation.unreachableOutdatedCount, state.outdatedReconciliation.unreachableOutdatedCount)
+                                        } else {
+                                            stringResource(KMR.strings.source_evaluation_stale_reassess_complete)
+                                        },
+                                        isError = false,
+                                        modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
                                     )
                                 }
-                                // KMK <--
-                                if (state.recQualityRunning) {
-                                    // KMK --> v0.7.43: background job — keep running after leaving screen
-                                    Text(
-                                        text = stringResource(
-                                            KMR.strings.source_evaluation_rec_quality_running,
-                                            state.recQualityProgress,
-                                            state.recQualityTotal,
-                                        ),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    state.recQualityCurrentSourceName?.let { name ->
-                                        Text(
-                                            text = name,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    OutlinedButton(onClick = { screenModel.cancelRecommendationQualityCheck() }) {
-                                        Text(stringResource(KMR.strings.source_evaluation_rec_quality_cancel))
-                                    }
-                                    // KMK <--
-                                } else {
-                                    // KMK --> v0.7.42-fix2: show missing and outdated counts separately
-                                    if (recQualityQueue.missingCount > 0) {
-                                        Text(
-                                            text = pluralStringResource(KMR.plurals.source_evaluation_rec_quality_missing, count = recQualityQueue.missingCount, recQualityQueue.missingCount),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    if (recQualityQueue.outdatedCount > 0) {
-                                        Text(
-                                            text = pluralStringResource(KMR.plurals.source_evaluation_rec_quality_outdated_count, count = recQualityQueue.outdatedCount, recQualityQueue.outdatedCount),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    // KMK v0.7.44 Phase G.2: FlowRow so up to 3 buttons wrap on narrow phones
-                                    FlowRow(
+                            }
+                            // KMK <--
+
+                            // KMK --> v0.8.1-fix3: stale/outdated reassessment queue — a first-class,
+                            // independently continuable action, distinct from the unassessed queue's
+                            // start/continue buttons above. Only shown when there is something actionable.
+                            // KMK v0.8.14-fix1: the count here (state.staleCandidates.size) was already
+                            // actionable-only -- "Reassess outdated (N)" has never included excluded/
+                            // unreachable sources in its count. This pass moves the primary action ahead of
+                            // the excluded-sources note below (previously the note appeared first and read as
+                            // if it were blocking the action) and demotes that note to a collapsed disclosure.
+                            if (state.staleCandidates.isNotEmpty() && !state.queueState.isRunning) {
+                                item(key = "stale_reassess_button") {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = MaterialTheme.padding.medium),
                                         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.extraSmall),
                                     ) {
-                                        if (recQualityQueue.missingCount > 0) {
-                                            OutlinedButton(
-                                                onClick = { screenModel.evaluateRecommendationQualityForPromising(reCheckAll = false) },
-                                            ) {
-                                                Text(stringResource(KMR.strings.source_evaluation_rec_quality_evaluate))
-                                            }
+                                        val ready = state.installerPolicy?.readiness ==
+                                            SourceEvaluationInstallerPolicy.InstallerReadiness.READY
+                                        OutlinedButton(
+                                            onClick = screenModel::startOrContinueStaleReassessment,
+                                            enabled = ready,
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            Text(
+                                                if (state.canContinueStale) {
+                                                    pluralStringResource(KMR.plurals.source_evaluation_stale_reassess_continue, count = state.remainingStaleCandidateCount, state.remainingStaleCandidateCount)
+                                                } else {
+                                                    pluralStringResource(KMR.plurals.source_evaluation_stale_reassess_start, count = state.staleCandidates.size, state.staleCandidates.size)
+                                                },
+                                            )
                                         }
-                                        if (recQualityQueue.outdatedCount > 0) {
-                                            OutlinedButton(
-                                                onClick = { screenModel.recheckOutdatedRecommendationQuality() },
-                                            ) {
-                                                Text(stringResource(KMR.strings.source_evaluation_rec_quality_recheck_outdated))
-                                            }
-                                        }
-                                        if (recQualityQueue.checkedPromising.isNotEmpty()) {
-                                            TextButton(
-                                                onClick = { screenModel.evaluateRecommendationQualityForPromising(reCheckAll = true) },
-                                            ) {
+                                        if (state.canContinueStale) {
+                                            TextButton(onClick = screenModel::restartStaleReassessment, enabled = ready) {
                                                 Text(
-                                                    stringResource(KMR.strings.source_evaluation_rec_quality_recheck_all),
+                                                    stringResource(KMR.strings.source_evaluation_stale_reassess_restart),
                                                     style = MaterialTheme.typography.bodySmall,
                                                 )
                                             }
                                         }
                                     }
-                                    // KMK <--
-                                    // KMK --> v0.7.13: compact diagnostics summary after checks run
-                                    val diag = state.recQualityDiagnostics
-                                    if (diag != null && diag.hasAnyResults) {
+                                }
+                            }
+                            // KMK <--
+
+                            // KMK v0.8.20-fix1: the excluded-outdated disclosure (a collapsed "N skipped
+                            // source(s)" toggle plus an explanatory "can't be reassessed here"/"none can be
+                            // reassessed" note) was removed from this primary workflow. The reassessment
+                            // queue and its button already use only actionable candidates
+                            // (state.staleCandidates, itself built from the eligible pool -- see
+                            // SourceEvaluationCandidateQueuePolicy.staleCandidates), so excluded sources never
+                            // inflated the action count in the first place; this disclosure only ever
+                            // described sources the action was never going to touch, which read as a warning
+                            // or blocker even though nothing was actually blocked. The underlying
+                            // eligibility/reconciliation logic (SourceEvaluationOutdatedReconciliation) is
+                            // preserved -- it still powers the honest post-run completion message just below
+                            // (which must keep distinguishing "complete" from "complete, N still excluded")
+                            // and each row's neutral isActionableOutdated label -- only this pre-run warning
+                            // surface was removed.
+                            // KMK <--
+                        }
+
+                        // KMK v0.8.11: "For You search compatibility" section -- moved out of the
+                        // past-evaluations block so it reads as its own concept, with an explainer that
+                        // distinguishes it from catalogue Source Evaluation. Content/actions unchanged.
+                        if (recQualityQueue.totalPromising > 0) {
+                            item(key = "rec_quality_section") {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.extraSmall),
+                                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.extraSmall),
+                                ) {
+                                    Text(
+                                        text = stringResource(KMR.strings.source_evaluation_rec_quality_section_title),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    // KMK v0.8.11: plain-language boundary between this check and the
+                                    // catalogue evaluation above.
+                                    Text(
+                                        text = stringResource(KMR.strings.source_evaluation_rec_quality_explainer),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    // KMK --> v0.7.45: public-safety cleanup fix — non-installed probes
+                                    // are refused (not silently temp-installed via Shizuku/Current) when
+                                    // Private is unavailable; make that visible instead of only showing
+                                    // per-source errors.
+                                    if (state.recQualityNonInstalledSkippedCount > 0) {
                                         Text(
-                                            text = stringResource(
-                                                KMR.strings.source_evaluation_rec_quality_diagnostics,
-                                                diag.checkedCount,
-                                                diag.installLoadIssueCount,
-                                                diag.searchErrorCount,
-                                                diag.noResultsCount,
-                                                diag.weakCount,
-                                                diag.goodCount,
-                                            ),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            text = pluralStringResource(KMR.plurals.source_evaluation_rec_quality_private_required_message, count = state.recQualityNonInstalledSkippedCount, state.recQualityNonInstalledSkippedCount),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.error,
                                         )
                                     }
                                     // KMK <--
+                                    if (state.recQualityRunning) {
+                                        // KMK --> v0.7.43: background job — keep running after leaving screen
+                                        Text(
+                                            text = stringResource(
+                                                KMR.strings.source_evaluation_rec_quality_running,
+                                                state.recQualityProgress,
+                                                state.recQualityTotal,
+                                            ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        state.recQualityCurrentSourceName?.let { name ->
+                                            Text(
+                                                text = name,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        OutlinedButton(onClick = { screenModel.cancelRecommendationQualityCheck() }) {
+                                            Text(stringResource(KMR.strings.source_evaluation_rec_quality_cancel))
+                                        }
+                                        // KMK <--
+                                    } else {
+                                        // KMK --> v0.7.42-fix2: show missing and outdated counts separately
+                                        if (recQualityQueue.missingCount > 0) {
+                                            Text(
+                                                text = pluralStringResource(KMR.plurals.source_evaluation_rec_quality_missing, count = recQualityQueue.missingCount, recQualityQueue.missingCount),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        if (recQualityQueue.outdatedCount > 0) {
+                                            Text(
+                                                text = pluralStringResource(KMR.plurals.source_evaluation_rec_quality_outdated_count, count = recQualityQueue.outdatedCount, recQualityQueue.outdatedCount),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        // KMK v0.7.44 Phase G.2: FlowRow so up to 3 buttons wrap on narrow phones
+                                        FlowRow(
+                                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.extraSmall),
+                                        ) {
+                                            if (recQualityQueue.missingCount > 0) {
+                                                OutlinedButton(
+                                                    onClick = { screenModel.evaluateRecommendationQualityForPromising(reCheckAll = false) },
+                                                ) {
+                                                    Text(stringResource(KMR.strings.source_evaluation_rec_quality_evaluate))
+                                                }
+                                            }
+                                            if (recQualityQueue.outdatedCount > 0) {
+                                                OutlinedButton(
+                                                    onClick = { screenModel.recheckOutdatedRecommendationQuality() },
+                                                ) {
+                                                    Text(stringResource(KMR.strings.source_evaluation_rec_quality_recheck_outdated))
+                                                }
+                                            }
+                                            if (recQualityQueue.checkedPromising.isNotEmpty()) {
+                                                TextButton(
+                                                    onClick = { screenModel.evaluateRecommendationQualityForPromising(reCheckAll = true) },
+                                                ) {
+                                                    Text(
+                                                        stringResource(KMR.strings.source_evaluation_rec_quality_recheck_all),
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        // KMK <--
+                                        // KMK --> v0.7.13: compact diagnostics summary after checks run
+                                        val diag = state.recQualityDiagnostics
+                                        if (diag != null && diag.hasAnyResults) {
+                                            Text(
+                                                text = stringResource(
+                                                    KMR.strings.source_evaluation_rec_quality_diagnostics,
+                                                    diag.checkedCount,
+                                                    diag.installLoadIssueCount,
+                                                    diag.searchErrorCount,
+                                                    diag.noResultsCount,
+                                                    diag.weakCount,
+                                                    diag.goodCount,
+                                                ),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        // KMK <--
+                                    }
                                 }
                             }
                         }
+                        // KMK <--
+
+                        // KMK v0.8.25: end of the Check sources page
                     }
-                    // KMK <--
 
                     // KMK v0.8.11: "Diagnostics and recovery" section -- safety diagnostics, runtime
                     // health, copy-diagnostics/view-warning, and the management actions, gathered at the
                     // end instead of interleaved with run controls. Content/actions unchanged.
-                    item(key = "diagnostics_header") {
-                        SectionHeader(stringResource(KMR.strings.source_evaluation_section_diagnostics))
-                    }
-
-                    if (queueState.isIdle) {
-                        // KMK --> v0.6.19: safety diagnostics row (demoted from top-of-screen cards)
-                        val unsafeCount = state.unsafeSources.size
-                        val blockedCount = state.blockedPackages.size
-                        if (unsafeCount > 0 || blockedCount > 0) {
-                            item(key = "safety_diagnostics") {
-                                SafetyDiagnosticsRow(
-                                    unsafeCount = unsafeCount,
-                                    blockedCount = blockedCount,
-                                    onViewUnsafe = screenModel::showUnsafeSourcesDialog,
-                                    onViewBlocked = screenModel::showBlockedPackagesDialog,
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
+                    // KMK v0.8.25: the Diagnostics and recovery page
+                    if (pageIndex == PAGE_DIAGNOSTICS) {
+                        item(key = "diagnostics_header") {
+                            SectionHeader(stringResource(KMR.strings.source_evaluation_section_diagnostics))
                         }
-                        // KMK <--
 
-                        // KMK v0.8.10-fix5: non-blocking source-runtime health warning
-                        if (state.runtimeHealthIssues.isNotEmpty()) {
-                            item(key = "runtime_health_warning") {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.padding.medium),
-                                    colors = androidx.compose.material3.CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    ),
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(MaterialTheme.padding.medium),
-                                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
-                                        verticalAlignment = Alignment.Top,
+                        if (queueState.isIdle) {
+                            // KMK --> v0.6.19: safety diagnostics row (demoted from top-of-screen cards)
+                            val unsafeCount = state.unsafeSources.size
+                            val blockedCount = state.blockedPackages.size
+                            if (unsafeCount > 0 || blockedCount > 0) {
+                                item(key = "safety_diagnostics") {
+                                    SafetyDiagnosticsRow(
+                                        unsafeCount = unsafeCount,
+                                        blockedCount = blockedCount,
+                                        onViewUnsafe = screenModel::showUnsafeSourcesDialog,
+                                        onViewBlocked = screenModel::showBlockedPackagesDialog,
+                                        modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                                    )
+                                }
+                            }
+                            // KMK <--
+
+                            // KMK v0.8.10-fix5: non-blocking source-runtime health warning
+                            if (state.runtimeHealthIssues.isNotEmpty()) {
+                                item(key = "runtime_health_warning") {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.padding.medium),
+                                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        ),
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Info,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        Text(
-                                            text = pluralStringResource(
-                                                KMR.plurals.rec_hub_issues_count,
-                                                count = state.runtimeHealthIssues.size,
-                                                state.runtimeHealthIssues.size,
-                                            ) + ". " + stringResource(KMR.strings.source_evaluation_runtime_health_neutral),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        TextButton(onClick = screenModel::showRuntimeHealthDialog) {
-                                            Text(
-                                                stringResource(KMR.strings.source_evaluation_runtime_health_details),
-                                                style = MaterialTheme.typography.labelSmall,
+                                        Row(
+                                            modifier = Modifier.padding(MaterialTheme.padding.medium),
+                                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                                            verticalAlignment = Alignment.Top,
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Info,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
+                                            Text(
+                                                text = pluralStringResource(
+                                                    KMR.plurals.rec_hub_issues_count,
+                                                    count = state.runtimeHealthIssues.size,
+                                                    state.runtimeHealthIssues.size,
+                                                ) + ". " + stringResource(KMR.strings.source_evaluation_runtime_health_neutral),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                            TextButton(onClick = screenModel::showRuntimeHealthDialog) {
+                                                Text(
+                                                    stringResource(KMR.strings.source_evaluation_runtime_health_details),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                        // KMK <--
+                            // KMK <--
 
-                        // KMK --> v0.6.16: copy diagnostics button
-                        item(key = "copy_diagnostics") {
-                            Column(
+                            // KMK --> v0.6.16: copy diagnostics button
+                            item(key = "copy_diagnostics") {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(
+                                            horizontal = MaterialTheme.padding.medium,
+                                            vertical = MaterialTheme.padding.extraSmall,
+                                        ),
+                                    horizontalAlignment = Alignment.End,
+                                ) {
+                                    // KMK --> v0.7.11: re-surface consent warning without starting evaluation
+                                    TextButton(onClick = screenModel::showConsentWarning) {
+                                        Text(
+                                            stringResource(KMR.strings.source_evaluation_view_warning),
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
+                                    TextButton(onClick = screenModel::copyDiagnosticsToClipboard) {
+                                        Text(
+                                            stringResource(KMR.strings.source_evaluation_diagnostics_copy),
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
+                                    // KMK <--
+                                }
+                            }
+                            // KMK <--
+                        }
+
+                        // KMK --> v0.6.20: management section
+                        item(key = "management_header") {
+                            val managementExpandedState = stringResource(
+                                if (state.showManagementSection) KMR.strings.accessibility_state_expanded else KMR.strings.accessibility_state_collapsed,
+                            )
+                            val managementToggleAction = stringResource(
+                                if (state.showManagementSection) KMR.strings.accessibility_collapse_section else KMR.strings.accessibility_expand_section,
+                            )
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(
-                                        horizontal = MaterialTheme.padding.medium,
-                                        vertical = MaterialTheme.padding.extraSmall,
-                                    ),
-                                horizontalAlignment = Alignment.End,
+                                    .clickable(
+                                        onClickLabel = managementToggleAction,
+                                        role = Role.Button,
+                                        onClick = screenModel::toggleManagementSection,
+                                    )
+                                    .semantics { stateDescription = managementExpandedState }
+                                    .fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                // KMK --> v0.7.11: re-surface consent warning without starting evaluation
-                                TextButton(onClick = screenModel::showConsentWarning) {
-                                    Text(
-                                        stringResource(KMR.strings.source_evaluation_view_warning),
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
+                                Box(modifier = Modifier.weight(1f)) {
+                                    SectionHeader(stringResource(KMR.strings.source_evaluation_management_title))
                                 }
-                                TextButton(onClick = screenModel::copyDiagnosticsToClipboard) {
-                                    Text(
-                                        stringResource(KMR.strings.source_evaluation_diagnostics_copy),
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                }
-                                // KMK <--
-                            }
-                        }
-                        // KMK <--
-                    }
-
-                    // KMK --> v0.6.20: management section
-                    item(key = "management_header") {
-                        val managementExpandedState = stringResource(
-                            if (state.showManagementSection) KMR.strings.accessibility_state_expanded else KMR.strings.accessibility_state_collapsed,
-                        )
-                        val managementToggleAction = stringResource(
-                            if (state.showManagementSection) KMR.strings.accessibility_collapse_section else KMR.strings.accessibility_expand_section,
-                        )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(
-                                    onClickLabel = managementToggleAction,
-                                    role = Role.Button,
-                                    onClick = screenModel::toggleManagementSection,
+                                Icon(
+                                    if (state.showManagementSection) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = MaterialTheme.padding.medium),
                                 )
-                                .semantics { stateDescription = managementExpandedState }
-                                .fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                SectionHeader(stringResource(KMR.strings.source_evaluation_management_title))
-                            }
-                            Icon(
-                                if (state.showManagementSection) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = MaterialTheme.padding.medium),
-                            )
-                        }
-                    }
-                    if (state.showManagementSection) {
-                        item(key = "management_reset_disliked") {
-                            TextButton(
-                                onClick = { screenModel.requestManagementAction(SourceEvaluationScreenModel.ManagementAction.RESET_DISLIKED_SOURCES) },
-                                modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                            ) {
-                                Text(stringResource(KMR.strings.source_evaluation_reset_disliked_sources))
                             }
                         }
-                        item(key = "management_reset_baseline") {
-                            TextButton(
-                                onClick = { screenModel.requestManagementAction(SourceEvaluationScreenModel.ManagementAction.RESET_REASSESSMENT_BASELINE) },
-                                modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                            ) {
-                                Text(stringResource(KMR.strings.source_evaluation_reset_reassessment_baseline))
-                            }
-                        }
-                        item(key = "management_clear_seen") {
-                            TextButton(
-                                onClick = { screenModel.requestManagementAction(SourceEvaluationScreenModel.ManagementAction.CLEAR_SEEN_MANGA) },
-                                modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                            ) {
-                                Text(stringResource(KMR.strings.source_evaluation_clear_seen_manga))
-                            }
-                        }
-                        // KMK --> v0.7.18: hidden suggestion management
-                        if (state.dismissedSuggestionCount > 0) {
-                            item(key = "management_clear_dismissed") {
+                        if (state.showManagementSection) {
+                            item(key = "management_reset_disliked") {
                                 TextButton(
-                                    onClick = { screenModel.requestManagementAction(SourceEvaluationScreenModel.ManagementAction.CLEAR_DISMISSED_SUGGESTIONS) },
+                                    onClick = { screenModel.requestManagementAction(SourceEvaluationScreenModel.ManagementAction.RESET_DISLIKED_SOURCES) },
                                     modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
                                 ) {
-                                    Text(pluralStringResource(KMR.plurals.source_evaluation_clear_dismissed_suggestions, count = state.dismissedSuggestionCount, state.dismissedSuggestionCount))
+                                    Text(stringResource(KMR.strings.source_evaluation_reset_disliked_sources))
                                 }
                             }
-                        }
-                        if (state.dislikedSuggestionCount > 0) {
-                            item(key = "management_clear_disliked_suggestions") {
+                            item(key = "management_reset_baseline") {
                                 TextButton(
-                                    onClick = { screenModel.requestManagementAction(SourceEvaluationScreenModel.ManagementAction.CLEAR_DISLIKED_SUGGESTIONS) },
+                                    onClick = { screenModel.requestManagementAction(SourceEvaluationScreenModel.ManagementAction.RESET_REASSESSMENT_BASELINE) },
                                     modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
                                 ) {
-                                    Text(pluralStringResource(KMR.plurals.source_evaluation_clear_disliked_suggestion_sources, count = state.dislikedSuggestionCount, state.dislikedSuggestionCount))
+                                    Text(stringResource(KMR.strings.source_evaluation_reset_reassessment_baseline))
                                 }
                             }
+                            item(key = "management_clear_seen") {
+                                TextButton(
+                                    onClick = { screenModel.requestManagementAction(SourceEvaluationScreenModel.ManagementAction.CLEAR_SEEN_MANGA) },
+                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                                ) {
+                                    Text(stringResource(KMR.strings.source_evaluation_clear_seen_manga))
+                                }
+                            }
+                            // KMK --> v0.7.18: hidden suggestion management
+                            if (state.dismissedSuggestionCount > 0) {
+                                item(key = "management_clear_dismissed") {
+                                    TextButton(
+                                        onClick = { screenModel.requestManagementAction(SourceEvaluationScreenModel.ManagementAction.CLEAR_DISMISSED_SUGGESTIONS) },
+                                        modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                                    ) {
+                                        Text(pluralStringResource(KMR.plurals.source_evaluation_clear_dismissed_suggestions, count = state.dismissedSuggestionCount, state.dismissedSuggestionCount))
+                                    }
+                                }
+                            }
+                            if (state.dislikedSuggestionCount > 0) {
+                                item(key = "management_clear_disliked_suggestions") {
+                                    TextButton(
+                                        onClick = { screenModel.requestManagementAction(SourceEvaluationScreenModel.ManagementAction.CLEAR_DISLIKED_SUGGESTIONS) },
+                                        modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                                    ) {
+                                        Text(pluralStringResource(KMR.plurals.source_evaluation_clear_disliked_suggestion_sources, count = state.dislikedSuggestionCount, state.dislikedSuggestionCount))
+                                    }
+                                }
+                            }
+                            // KMK <--
                         }
                         // KMK <--
-                    }
-                    // KMK <--
 
+                        // KMK v0.8.25: end of the Diagnostics and recovery page
+                    }
                     item(key = "bottom_spacer") { Spacer(Modifier.height(MaterialTheme.padding.medium)) }
                 }
             }

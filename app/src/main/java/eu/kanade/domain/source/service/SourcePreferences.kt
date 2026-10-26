@@ -227,6 +227,10 @@ class SourcePreferences(
 
     fun recommendationAutoRecheckLastRunMillis() =
         preferenceStore.getLong("recommendation_auto_recheck_last_run_millis", 0L)
+
+    // KMK v0.8.25: how many manga were rated when the automatic check last ran, to notice a large change in taste
+    fun recommendationAutoRecheckRatedCount() =
+        preferenceStore.getInt("recommendation_auto_recheck_rated_count", 0)
     // KMK <--
 
     // KMK --> v0.8.24 recent-reading profile. Values are resolved on every read by exh.recs.RecentReadingPolicy, so a

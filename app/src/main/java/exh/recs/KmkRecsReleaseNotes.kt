@@ -36,6 +36,9 @@ object KmkRecsReleaseNotes {
 
         - **About page:** Links are grouped by project. Komikku FC has What's new, Komikku FC privacy and this app's GitHub page. Original Komikku has its What's new, Help translate, privacy policy, sponsor link, website, Discord and GitHub. The original project's privacy policy is labelled as written for the original app.
         - **What's new:** Komikku FC's history shows each version as its own card. The newest is open and older versions show one line until you open them, so the page no longer builds the whole history at once.
+        - **Compare versions from the reader:** The reader's source chooser now has Compare versions. It opens Best Version above the reader; each other version offers Read from this version, and your pick goes back to the reader to choose the chapter. Nothing is migrated and your library is not changed, and Back returns to the reader.
+        - **Source evaluation:** The page now has two tabs, Check sources and Diagnostics and recovery, so diagnostics and recovery are one tap away instead of at the bottom of a long page. The tab shows how many problems there are. A short explainer says what each check is for: trying sources before you install them, and checking the sources you use.
+        - **Automatic source check:** Besides missing and out-of-date results, it now also re-checks the sources you have installed when your ratings have changed a lot or an extension was updated since it was evaluated. It still never installs or removes anything.
         - **For You loading:** For You now prepares its first results in the background instead of on the main thread, while Browse is still opening.
         - **Sponsorship:** The sponsor button on the More screen now says "Sponsor the original developer". The sponsorship page belongs to the original Komikku developer, not to the maintainer of Komikku FC. The page it opens is unchanged.
 

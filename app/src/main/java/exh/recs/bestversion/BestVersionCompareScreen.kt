@@ -112,6 +112,16 @@ import tachiyomi.presentation.core.util.selectedBackground
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
+// KMK v0.8.25: hands the chosen version back to the reader that opened this screen, like the in-app search does
+private fun finishWithSelection(context: android.content.Context, mangaId: Long) {
+    val activity = context as? android.app.Activity ?: return
+    activity.setResult(
+        android.app.Activity.RESULT_OK,
+        android.content.Intent().putExtra(eu.kanade.tachiyomi.ui.main.MainActivity.EXTRA_ALTERNATE_SOURCE_MANGA_ID, mangaId),
+    )
+    activity.finish()
+}
+
 // KMK --> v0.8.20-fix5: Best Version state carries a closed typed error reason. Rendering is
 // exhaustive and resource-backed, so a new failure cannot accidentally become verbatim UI text.
 @Composable
@@ -144,6 +154,10 @@ private data class FullscreenPreviewPage(
 class BestVersionCompareScreen(
     internal val originMangaId: Long,
     internal val fixtureOperationId: String? = null,
+    // KMK v0.8.25: opened from the reader to pick the version to read from. Each version then offers Read from this version
+    // (the pick goes back to the reader) instead of Select as best, so nothing is migrated from a reading session, and
+    // Back returns to the reader.
+    internal val returnSelection: Boolean = false,
 ) : Screen() {
 
     @Composable
@@ -165,6 +179,9 @@ class BestVersionCompareScreen(
         }
         val state by screenModel.state.collectAsState()
         val chapterUnavailableText = stringResource(KMR.strings.best_version_reader_chapter_unavailable)
+        // KMK v0.8.25: opened from the reader, the top-bar arrow and system Back both return to the reader
+        val finishToReader = { (context as? android.app.Activity)?.finish() }
+        androidx.activity.compose.BackHandler(enabled = returnSelection) { finishToReader() }
         // KMK --> v0.7.9: local UI state for fullscreen page preview — does not affect model state
         // KMK --> v0.7.33: stored as 3 primitives so rememberSaveable survives rotation
         var fullscreenPageUrl by rememberSaveable { mutableStateOf<String?>(null) }
@@ -190,7 +207,7 @@ class BestVersionCompareScreen(
             topBar = { scrollBehavior ->
                 AppBar(
                     title = stringResource(KMR.strings.best_version_screen_title),
-                    navigateUp = navigator::pop,
+                    navigateUp = { if (returnSelection) finishToReader() else navigator.pop() },
                     actions = {
                         AppBarActions(
                             persistentListOf(
@@ -313,6 +330,11 @@ class BestVersionCompareScreen(
                                 .firstOrNull { it.chapterNumber == state.selectedChapterNumber }
                                 ?.toSChapter(),
                             onSelectBest = screenModel::selectBestVersion,
+                            onReadFromHere = if (returnSelection) {
+                                { manga -> finishWithSelection(context, manga.id) }
+                            } else {
+                                null
+                            },
                             // KMK --> v0.7.9
                             onOpenPagePreview = { p ->
                                 fullscreenPageUrl = p.imageUrl
@@ -904,6 +926,8 @@ private fun ComparePreviewContent(
     onOpenFullscreenCandidate: (MangaIdentityKey) -> Unit, // KMK v0.8.16
     onOpenReader: (Manga, SChapter) -> Unit,
     onRetryCandidate: (MangaIdentityKey) -> Unit, // KMK v0.8.17-fix1
+    // KMK v0.8.25: non-null when opened from the reader: pick this version to read from instead of selecting a best version
+    onReadFromHere: ((Manga) -> Unit)? = null,
 ) {
     // Thumbnail decoding happens after the source preview state is Loaded. Keep this small,
     // presentation-only retry ledger separate from the source/model state so a failed image can be
@@ -922,6 +946,17 @@ private fun ComparePreviewContent(
         }
     }
     LazyColumn(modifier = Modifier.fillMaxSize()) {
+        // KMK v0.8.25: say what picking does when opened from the reader
+        if (onReadFromHere != null) {
+            item(key = "reader_pick_hint") {
+                Text(
+                    text = stringResource(KMR.strings.best_version_pick_for_reader_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
+                )
+            }
+        }
         // KMK v0.8.18: origin/current manga included as the comparison baseline -- see
         // BestVersionCompareScreenModel.State.compareCandidates.
         items(state.compareCandidates, key = { "${it.source}|${it.url}" }) { manga ->
@@ -1227,18 +1262,30 @@ private fun ComparePreviewContent(
                         Text(stringResource(KMR.strings.best_version_open_reader_action))
                     }
                     Spacer(Modifier.height(8.dp))
-                    // KMK v0.8.18: selecting origin reads as "Keep current version" -- it routes to
-                    // BestVersionCompareScreenModel.keepCurrentVersion() (safe finalize, no
-                    // migrate/copy dialog), never the normal migrate/copy confirmation flow.
-                    OutlinedButton(
-                        onClick = { onSelectBest(key) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            stringResource(
-                                if (isOrigin) KMR.strings.best_version_keep_current else KMR.strings.best_version_select_as_best,
-                            ),
-                        )
+                    if (onReadFromHere != null) {
+                        // KMK v0.8.25: opened from the reader: only another version can be read from; nothing is migrated
+                        if (!isOrigin) {
+                            Button(
+                                onClick = { onReadFromHere(manga) },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(stringResource(KMR.strings.best_version_read_from_here_action))
+                            }
+                        }
+                    } else {
+                        // KMK v0.8.18: selecting origin reads as "Keep current version" -- it routes to
+                        // BestVersionCompareScreenModel.keepCurrentVersion() (safe finalize, no
+                        // migrate/copy dialog), never the normal migrate/copy confirmation flow.
+                        OutlinedButton(
+                            onClick = { onSelectBest(key) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (isOrigin) KMR.strings.best_version_keep_current else KMR.strings.best_version_select_as_best,
+                                ),
+                            )
+                        }
                     }
                 }
             }

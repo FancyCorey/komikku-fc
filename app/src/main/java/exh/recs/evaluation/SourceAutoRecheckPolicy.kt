@@ -40,6 +40,42 @@ object SourceAutoRecheckPolicy {
     /** Sources that need a check: missing plus out of date. A source with a current result is left alone. */
     fun <T> targets(missing: List<T>, outdated: List<T>): List<T> = missing + outdated
 
+    /**
+     * v0.8.25: the same size of change as the "reassessment recommended" prompt on the Source evaluation page. The search
+     * check tries queries built from the taste profile, so its results go stale when the ratings change a lot.
+     */
+    const val TASTE_CHANGE_RATED_THRESHOLD = 100
+
+    /** Whether the number of rated manga moved by at least [TASTE_CHANGE_RATED_THRESHOLD] since the last automatic check. */
+    fun tasteChanged(ratedNow: Int, ratedAtLastCheck: Int): Boolean =
+        ratedAtLastCheck > 0 && kotlin.math.abs(ratedNow - ratedAtLastCheck) >= TASTE_CHANGE_RATED_THRESHOLD
+
+    /**
+     * v0.8.25: sources to re-check: the missing and out-of-date ones, plus the ones with a current result when the taste
+     * changed a lot or [updated] says the installed extension is newer than the one that was evaluated. A source with a
+     * current result and neither reason is left alone.
+     */
+    fun <T> targets(
+        missing: List<T>,
+        outdated: List<T>,
+        checked: List<T>,
+        tasteChanged: Boolean,
+        updated: (T) -> Boolean,
+    ): List<T> = missing + outdated + checked.filter { tasteChanged || updated(it) }
+
+    /** Whether the installed extension that provides an evaluated source is newer than the one that was evaluated. */
+    fun extensionUpdated(
+        evaluatedVersionCode: Long?,
+        evaluatedPkgName: String,
+        evaluatedSignatureHash: String,
+        installed: List<Triple<String, String, Long>>,
+    ): Boolean {
+        val stored = evaluatedVersionCode ?: return false
+        return installed.any { (pkg, signature, version) ->
+            pkg == evaluatedPkgName && signature == evaluatedSignatureHash && version > stored
+        }
+    }
+
     enum class SkipReason { NOTHING_TO_CHECK, ANOTHER_CHECK_RUNNING }
 
     fun skipReason(targetCount: Int, evaluationRunning: Boolean, qualityRunning: Boolean): SkipReason? = when {
