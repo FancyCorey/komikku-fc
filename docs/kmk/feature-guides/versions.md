@@ -20,6 +20,10 @@ The matching screen answers “are these the same manga?” The Best Version scr
 | Keep current version | End the comparison without migrating. |
 | Select as best version | Review **Migrate**, **Copy**, or **Cancel**. Migrate replaces the current library entry; Copy keeps it too; Cancel applies neither library change. |
 
+## From the reader
+
+**In v0.8.25 (not yet released):** the reader's alternate-source chooser has **Compare versions**, which opens this comparison for the manga you are reading. Each other version shows **Read from this version** instead of Select as best. Choosing it goes back to the reader to pick a chapter on that source. Nothing is migrated, and the comparison does not change your library.
+
 ## What the comparison looks like
 
 <p align="center"><img src="../visual-guide/best-version-chapter-selection.png" width="300" alt="Best Version screen with comparable chapter choices under neutral source labels"></p>

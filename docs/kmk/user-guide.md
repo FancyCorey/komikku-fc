@@ -205,6 +205,8 @@ The action is unavailable when no valid read position exists.
 2. Configure the optional reading schedule, mode, weekdays, and time windows.
 3. The reader evaluates the local schedule when it opens and when it returns to the foreground.
 
+In v0.8.25 (not yet released) the reader's schedule dialog also has an **Enable reading schedule** switch, so you can turn it on without leaving the manga.
+
 The schedule is off by default. If you open the reader during a restricted time, reading is blocked immediately. If the restriction begins while you are reading, the visible grace message explains whether you may finish the current chapter. Switching chapters cannot bypass the restriction.
 
 ### Completion rating
@@ -213,6 +215,10 @@ Enable **Ask for a rating after finishing** under **Recommendation Settings > Li
 
 <p align="center"><img src="visual-guide/reader-linked-version-follow-up.png" width="260" alt="Reader follow-up for applying the preference to matching versions"></p>
 <p align="center"><em>Reader follow-up for applying the preference to matching versions.</em></p>
+
+## About and the original Komikku
+
+In v0.8.25 (not yet released), **More > About** has two sections. **Komikku FC** has What's new, What's coming, the Komikku FC privacy notes, licenses and this repository. **Original Komikku** has Komikku's own What's new (its release notes, loaded from GitHub when you open it), Help translate, Komikku's privacy policy (written for the original app), Sponsor, the website, Discord and GitHub. The More screen's sponsor button reads **Sponsor the original developer**.
 
 ## Name hiding and Action History
 

@@ -29,6 +29,10 @@ With **Hide manga you already know** on, each refresh filters out titles you hav
 
 The order can change as new results arrive and previously shown manga move lower. Your filters still apply.
 
+## Arrange sources on the page
+
+**In v0.8.25 (not yet released):** **More options > Arrange sources** opens the source list on the For You page. Drag the handles to reorder, and use the switches to enable or disable a source. **Done** refreshes For You only if the order changed. It is the same list and order as Recommendation Settings, so there is one source order, not two.
+
 ## How a refresh finds manga
 
 For You searches your enabled sources in your chosen order, a few at a time. The next source starts as soon as a search slot is free. Once enough rows are ready, sources still searching are stopped, and they do not leave a loading row behind.

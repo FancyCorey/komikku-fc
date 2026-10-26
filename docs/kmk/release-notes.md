@@ -8,6 +8,20 @@ The latest published Komikku FC feature version is **v0.8.24**, titled **Komikku
 
 v0.8.24 includes every change on Komikku's main branch up to 12 October 2026: everything in Komikku v1.14.1, plus the later changes made before that date. The Komikku FC additions listed below are separate from those Komikku changes.
 
+## In development: v0.8.25 (not yet released)
+
+These changes are in the source for the next version and are not part of the published v0.8.24 download. The list may change before release.
+
+- **Sponsor wording:** the More screen button now reads **Sponsor the original developer**. Where it opens is unchanged.
+- **Reading schedule switch:** the reading schedule dialog in the Reader has an **Enable reading schedule** switch, so a schedule can be turned on without leaving the manga. Back returns to the Reader. Settings > Reader keeps its own switch.
+- **About page:** **More > About** has a **Komikku FC** section (What's new, What's coming, privacy, licenses, and this repository) and an **Original Komikku** section (Komikku's own What's new, Help translate, its privacy policy written for the original app, Sponsor, website, Discord, and GitHub).
+- **What's new as cards:** each version is a card you open, and only the newest starts open.
+- **For You opens more smoothly on first use:** its first load now runs off the main thread, so Browse stays responsive while it loads. This was measured on an emulator with software rendering, not on a low-memory phone, and no speed claim is made for your device.
+- **Arrange sources on For You:** **More options > Arrange sources** reorders, enables and disables sources right on the page. **Done** refreshes For You only if the order changed.
+- **Source evaluation in two pages:** **Check sources** and **Diagnostics and recovery** (with a badge for problems), plus a short explanation of the two checks: trying uninstalled sources, and checking the sources you use.
+- **Automatic check triggers:** besides missing or outdated results, the automatic check also runs when your ratings changed by 100 or more since the last check or when an extension was updated. It never installs or removes anything. This stores one extra number, the rated-title count at the last check, on your device.
+- **Compare versions from the Reader:** the alternate-source chooser has **Compare versions**, which opens Best Version above the Reader. Each other version offers **Read from this version**. Nothing is migrated and your library is not changed. Back returns to the Reader.
+
 ## App Updates
 
 Download [Komikku FC v0.8.24](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.24) from this fork's Releases page. The previous release, [v0.8.23.1](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.23.1), remains available there. Choose the APK for your device and read its installation notes. Future updates are distributed through the same Releases page.

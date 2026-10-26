@@ -228,6 +228,8 @@ When either applies, **Continue from another source** appears at the end of the 
 3. Check the chapter name and translation-group label when supplied by the source. Several translations may have the same chapter number. You can select a different entry, then choose **Read this chapter**, or **Stay on this source** to cancel.
 4. While you read from the other source, **Return to primary source** in the top bar brings you back. While that source pair is active, use **Switch source** in the reader to choose a chapter from the other source. After returning to the primary source, the same action lets you switch back to the alternate source; returning is not the end of the pair.
 
+**In v0.8.25 (not yet released):** the chooser also has **Compare versions**. It opens [Best Version](versions.md) above the reader. Each other version offers **Read from this version**, which returns you to the reader to choose a chapter on that source. Nothing is migrated and your library is not changed. Back returns to the reader without picking.
+
 The suggested chapter number is not a guarantee that the contents match. Some sources split chapters or start numbering at a different point. If the app warns that the match is uncertain, check the pages before continuing. **Correct chapter mapping** lets you change which chapters correspond; **This chapter is not the match** keeps the current chapter open while you choose another match. If you have read ahead and the other source lacks that chapter, choose a suitable chapter from its list instead.
 
 This shortcut depends on an active reading pair and available chapters. If the session ends or cannot be restored, open the alternate-source chooser again rather than expecting the old pair to remain available. Reading-time restrictions still apply when switching sources. See [Versions](versions.md) for comparing page quality and choosing a preferred version, and [Local tracking](local-tracking.md) for sharing progress across linked manga.
@@ -249,6 +251,8 @@ The prompt appears after leaving the reader, not over the final page. Declining 
 | Schedule is off, or reading is allowed | Open and read normally. |
 | You open the reader while restricted | Reading is blocked immediately. Wait until reading is allowed, then reopen it. |
 | A restriction begins while you are already reading | You may finish the current chapter, but cannot start another while restricted. |
+
+**In v0.8.25 (not yet released):** the reading schedule dialog in the reader has an **Enable reading schedule** switch, so you can turn the schedule on without leaving the manga. When it is off, the dialog says the schedule will not apply until enabled. Back returns to the reader. Settings > Reader keeps its own switch.
 
 Switching sources does not bypass a schedule restriction. The schedule is off by default; the manual timer has its own separate choices.
 

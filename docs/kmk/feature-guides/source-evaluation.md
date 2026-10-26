@@ -33,6 +33,13 @@ When **Start** cannot be used, a line under it says why:
 | No extension list is available yet. Check your extension repositories in Browse. | Add or refresh an extension repository. |
 | No available source matches your languages and content settings. Check Languages on Your taste. | Change the recommendation languages or content options. |
 
+## Two pages, two checks
+
+**In v0.8.25 (not yet released):** the screen has two pages. **Check sources** starts checks. **Diagnostics and recovery** holds the safety diagnostics, warnings, Copy Diagnostics and the source-management resets, and its tab shows a badge with the number of problems. An explanation at the top of the first page separates the two checks:
+
+- **Try sources before installing** temporarily installs sources you have not installed to see how their manga fit your taste. Nothing stays installed.
+- **Check the sources you use** tests whether For You's searches work on your installed sources. The automatic check does this part and never installs anything.
+
 ## What an evaluation means
 
 An evaluation samples a source's popular and recent manga and compares their available details with your preferences. Search compatibility is checked separately. It is not a permanent judgment about the source, a complete inspection of its catalogue, or a promise about how many recommendations you will see.
@@ -72,6 +79,8 @@ Reassessment uses the same installer, warnings, and cleanup as a normal check.
 
 <p align="center"><img src="../visual-guide/v0.8.24/find-new-sources.png" width="260" alt="Automatic check settings under Find new sources"></p>
 <p align="center"><em>The automatic check settings are under Find new sources.</em></p>
+
+**In v0.8.25 (not yet released):** it also re-checks when your ratings changed by 100 or more since its last check, or when an extension was updated. The app stores one extra number for this, the count of rated titles at the last check, on your device only.
 
 By default it waits for Wi-Fi and for the battery not to be low. These requirements apply for the whole check, not only when it starts. If they stop being met, the check stops, and a later scheduled check picks up the sources that are still out of date. Turning **Check automatically** off also stops a check it has already started. The automatic check never installs or removes a source and never changes your source order. A check you start yourself on this page is not affected by these settings.
 
