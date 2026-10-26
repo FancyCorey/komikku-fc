@@ -62,6 +62,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -177,6 +178,8 @@ fun Screen.personalRecommendationsTab(): TabContent {
     // Match All, the default; false = Match Any). showBroaderResults is a purely transient,
     // non-persisted UI toggle -- see its own doc below.
     var focusDialogOpen by remember { mutableStateOf(false) }
+    // KMK v0.8.25: arrange the sources on this page; the settings model it needs is only created while arranging
+    var arrangingSources by rememberSaveable { mutableStateOf(false) }
     val persistedFocus by screenModel.activeFocusCriteria.collectAsState()
     var focusInclude by remember(persistedFocus) { mutableStateOf(persistedFocus.include) }
     var focusExclude by remember(persistedFocus) { mutableStateOf(persistedFocus.exclude) }
@@ -702,6 +705,11 @@ fun Screen.personalRecommendationsTab(): TabContent {
                 iconTint = if (focusCriteria.isActive) MaterialTheme.colorScheme.active else LocalContentColor.current,
                 onClick = { focusDialogOpen = true },
             ),
+            // KMK v0.8.25: arrange the For You sources on the page itself
+            AppBar.OverflowAction(
+                title = stringResource(KMR.strings.rec_arrange_sources),
+                onClick = { arrangingSources = true },
+            ),
             // KMK v0.8.24: the source evaluation page, one tap from For You
             AppBar.OverflowAction(
                 title = stringResource(KMR.strings.rec_hub_check_sources),
@@ -734,137 +742,150 @@ fun Screen.personalRecommendationsTab(): TabContent {
             // placement for the panel formerly on Recommendation Settings detail screens. This tab's
             // content is rendered inside BrowseTab's own shared Scaffold (TabContent, not a
             // screen-owned Scaffold), so the overlay is layered here around just this tab's content.
-            Box(modifier = Modifier.fillMaxSize()) {
-                PersonalRecommendationsContent(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(end = exh.recs.settings.EdgeQuickAccessPanelLayoutPolicy.MIN_TOUCH_TARGET_DP.dp),
-                    state = state,
-                    focusCriteria = focusCriteria,
-                    showBroaderResults = showBroaderResults,
-                    onShowBroaderResults = { showBroaderResults = true },
-                    onShowFilteredOnly = { showBroaderResults = false },
-                    getManga = screenModel::getManga,
-                    onVisibleResultsRendered = screenModel::recordVisibleExposure,
-                    onClickItem = { manga -> navigator.push(MangaScreen(manga.id, true)) },
-                    onClickSource = { source ->
-                        val ctx = state.searchContexts[source.id]
-                        navigator.push(
-                            BrowseSourceScreen(
-                                sourceId = source.id,
-                                listingQuery = ctx?.textQuery,
-                                filtersJson = ctx?.filtersJson,
-                                forYouRestrictionsJson = ctx?.restrictionsJson,
-                            ),
-                        )
+            if (arrangingSources) {
+                // KMK v0.8.25: same rows and model as Recommendation Settings > For You feed; Done refreshes only if the order changed
+                val arrangeModel = rememberScreenModel { exh.recs.settings.RecommendationsSettingsScreenModel() }
+                ForYouArrangeSources(
+                    screenModel = arrangeModel,
+                    modifier = Modifier.padding(contentPadding),
+                    onDone = { orderChanged ->
+                        arrangingSources = false
+                        if (orderChanged) screenModel.refresh()
                     },
-                    onClickTopPicks = {
-                        val presentation = RecommendationFocusPresentationPolicy.apply(state.combinedDetailResult, focusCriteria, state.focusAliasMap)
-                        val detail = if (showBroaderResults) presentation.broader else presentation.filtered
-                        if (detail is PersonalRecommendationResult.Success && detail.result.isNotEmpty()) {
-                            val isPartial = state.total > 0 && state.progress < state.total
-                            navigator.push(TopPicksScreen(ArrayList(detail.result.map { it.manga.id }), isPartial))
-                        }
-                    },
-                    // KMK --> v0.7.5: long-press source row to export
-                    onLongClickSource = { source ->
-                        val operationId = screenModel.exportCoordinator.beginOperation()
-                        if (operationId == null) {
-                            context.toast(KMR.strings.saf_export_operation_pending)
-                        } else {
-                            pendingExportSource = source
-                            pendingExportIsTopPicks = false
-                            exportInputSnapshot = screenModel.state.value
-                            exportPendingOperationId = operationId
-                            exportLauncher.launch(
-                                if (hideSourceNamesForExport) "kmk_recommendations.json" else "kmk_${source.name.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]"), "_")}.json",
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    PersonalRecommendationsContent(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(end = exh.recs.settings.EdgeQuickAccessPanelLayoutPolicy.MIN_TOUCH_TARGET_DP.dp),
+                        state = state,
+                        focusCriteria = focusCriteria,
+                        showBroaderResults = showBroaderResults,
+                        onShowBroaderResults = { showBroaderResults = true },
+                        onShowFilteredOnly = { showBroaderResults = false },
+                        getManga = screenModel::getManga,
+                        onVisibleResultsRendered = screenModel::recordVisibleExposure,
+                        onClickItem = { manga -> navigator.push(MangaScreen(manga.id, true)) },
+                        onClickSource = { source ->
+                            val ctx = state.searchContexts[source.id]
+                            navigator.push(
+                                BrowseSourceScreen(
+                                    sourceId = source.id,
+                                    listingQuery = ctx?.textQuery,
+                                    filtersJson = ctx?.filtersJson,
+                                    forYouRestrictionsJson = ctx?.restrictionsJson,
+                                ),
                             )
-                        }
-                    },
-                    // KMK <--
-                    // KMK v0.8.16: For You long-press selection mode
-                    selectedManga = selectedManga,
-                    onLongClickManga = { manga ->
-                        val key = MangaIdentityKey(manga.source, manga.url)
-                        selectedManga = ForYouSelectionPolicy.longPress(selectedManga, key, manga)
-                    },
-                    onToggleSelectManga = { manga ->
-                        val key = MangaIdentityKey(manga.source, manga.url)
-                        selectedManga = ForYouSelectionPolicy.toggle(selectedManga, key, manga)
-                    },
-                    onCloseSelection = { selectedManga = ForYouSelectionPolicy.clear() },
-                    // KMK v0.8.17-fix1: rateSelected/markSelectedNotInterested/clearSelectedRatings are
-                    // now suspend functions returning a BulkTasteActionOutcome instead of fire-and-forget
-                    // -- awaited here so a real success/failure toast can be shown and errors are never
-                    // silently swallowed. Selection is cleared once the action is accepted (before the
-                    // suspend call returns), matching the app's existing bulk-action convention.
-                    onRateSelected = { rating ->
-                        val targets = selectedManga.values.toList()
-                        val single = targets.singleOrNull()
-                        selectedManga = ForYouSelectionPolicy.clear()
-                        scope.launch {
-                            val outcome = screenModel.rateSelected(targets, rating)
-                            showBulkActionFeedback(context, bulkTasteActionRatingType(rating), outcome)
-                            if (single != null && outcome.successCount > 0) {
-                                pendingRateOtherVersions = single.id to rating
+                        },
+                        onClickTopPicks = {
+                            val presentation = RecommendationFocusPresentationPolicy.apply(state.combinedDetailResult, focusCriteria, state.focusAliasMap)
+                            val detail = if (showBroaderResults) presentation.broader else presentation.filtered
+                            if (detail is PersonalRecommendationResult.Success && detail.result.isNotEmpty()) {
+                                val isPartial = state.total > 0 && state.progress < state.total
+                                navigator.push(TopPicksScreen(ArrayList(detail.result.map { it.manga.id }), isPartial))
                             }
-                        }
-                    },
-                    onNotInterestedSelected = {
-                        val targets = selectedManga.values.toList()
-                        selectedManga = ForYouSelectionPolicy.clear()
-                        scope.launch {
-                            val outcome = screenModel.markSelectedNotInterested(targets)
-                            showBulkActionFeedback(context, BulkTasteActionType.NOT_INTERESTED, outcome)
-                        }
-                    },
-                    onClearRatingSelected = {
-                        val targets = selectedManga.values.toList()
-                        selectedManga = ForYouSelectionPolicy.clear()
-                        scope.launch {
-                            val outcome = screenModel.clearSelectedRatings(targets)
-                            showBulkActionFeedback(context, BulkTasteActionType.CLEAR_RATING, outcome)
-                        }
-                    },
-                    onFindBestVersionSelected = {
-                        val target = selectedManga.values.singleOrNull()
-                        selectedManga = ForYouSelectionPolicy.clear()
-                        if (target != null) navigator.push(BestVersionCompareScreen(target.id))
-                    },
-                    onOpenSelected = {
-                        val target = selectedManga.values.singleOrNull()
-                        selectedManga = ForYouSelectionPolicy.clear()
-                        if (target != null) navigator.push(MangaScreen(target.id, true))
-                    },
-                    // KMK --> v0.7.25: retry after offline
-                    onRetry = screenModel::retryFailedSourcesOrRefresh,
-                    // KMK v0.8.24
-                    onStopUsingSource = { source -> screenModel.stopUsingSourceInForYou(source.id) },
-                    onCheckSource = screenModel::checkSource,
-                    onManageExtension = { pkgName ->
-                        navigator.push(eu.kanade.tachiyomi.ui.browse.extension.details.ExtensionDetailsScreen(pkgName))
-                    },
-                    onRefresh = screenModel::refresh,
-                    onClearFocus = {
-                        focusInclude = emptySet()
-                        focusExclude = emptySet()
-                        focusMatchAll = true
-                        screenModel.setActiveFocus(RecommendationFocusPolicy.FocusCriteria.EMPTY)
-                        showBroaderResults = false
-                    },
+                        },
+                        // KMK --> v0.7.5: long-press source row to export
+                        onLongClickSource = { source ->
+                            val operationId = screenModel.exportCoordinator.beginOperation()
+                            if (operationId == null) {
+                                context.toast(KMR.strings.saf_export_operation_pending)
+                            } else {
+                                pendingExportSource = source
+                                pendingExportIsTopPicks = false
+                                exportInputSnapshot = screenModel.state.value
+                                exportPendingOperationId = operationId
+                                exportLauncher.launch(
+                                    if (hideSourceNamesForExport) "kmk_recommendations.json" else "kmk_${source.name.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]"), "_")}.json",
+                                )
+                            }
+                        },
+                        // KMK <--
+                        // KMK v0.8.16: For You long-press selection mode
+                        selectedManga = selectedManga,
+                        onLongClickManga = { manga ->
+                            val key = MangaIdentityKey(manga.source, manga.url)
+                            selectedManga = ForYouSelectionPolicy.longPress(selectedManga, key, manga)
+                        },
+                        onToggleSelectManga = { manga ->
+                            val key = MangaIdentityKey(manga.source, manga.url)
+                            selectedManga = ForYouSelectionPolicy.toggle(selectedManga, key, manga)
+                        },
+                        onCloseSelection = { selectedManga = ForYouSelectionPolicy.clear() },
+                        // KMK v0.8.17-fix1: rateSelected/markSelectedNotInterested/clearSelectedRatings are
+                        // now suspend functions returning a BulkTasteActionOutcome instead of fire-and-forget
+                        // -- awaited here so a real success/failure toast can be shown and errors are never
+                        // silently swallowed. Selection is cleared once the action is accepted (before the
+                        // suspend call returns), matching the app's existing bulk-action convention.
+                        onRateSelected = { rating ->
+                            val targets = selectedManga.values.toList()
+                            val single = targets.singleOrNull()
+                            selectedManga = ForYouSelectionPolicy.clear()
+                            scope.launch {
+                                val outcome = screenModel.rateSelected(targets, rating)
+                                showBulkActionFeedback(context, bulkTasteActionRatingType(rating), outcome)
+                                if (single != null && outcome.successCount > 0) {
+                                    pendingRateOtherVersions = single.id to rating
+                                }
+                            }
+                        },
+                        onNotInterestedSelected = {
+                            val targets = selectedManga.values.toList()
+                            selectedManga = ForYouSelectionPolicy.clear()
+                            scope.launch {
+                                val outcome = screenModel.markSelectedNotInterested(targets)
+                                showBulkActionFeedback(context, BulkTasteActionType.NOT_INTERESTED, outcome)
+                            }
+                        },
+                        onClearRatingSelected = {
+                            val targets = selectedManga.values.toList()
+                            selectedManga = ForYouSelectionPolicy.clear()
+                            scope.launch {
+                                val outcome = screenModel.clearSelectedRatings(targets)
+                                showBulkActionFeedback(context, BulkTasteActionType.CLEAR_RATING, outcome)
+                            }
+                        },
+                        onFindBestVersionSelected = {
+                            val target = selectedManga.values.singleOrNull()
+                            selectedManga = ForYouSelectionPolicy.clear()
+                            if (target != null) navigator.push(BestVersionCompareScreen(target.id))
+                        },
+                        onOpenSelected = {
+                            val target = selectedManga.values.singleOrNull()
+                            selectedManga = ForYouSelectionPolicy.clear()
+                            if (target != null) navigator.push(MangaScreen(target.id, true))
+                        },
+                        // KMK --> v0.7.25: retry after offline
+                        onRetry = screenModel::retryFailedSourcesOrRefresh,
+                        // KMK v0.8.24
+                        onStopUsingSource = { source -> screenModel.stopUsingSourceInForYou(source.id) },
+                        onCheckSource = screenModel::checkSource,
+                        onManageExtension = { pkgName ->
+                            navigator.push(eu.kanade.tachiyomi.ui.browse.extension.details.ExtensionDetailsScreen(pkgName))
+                        },
+                        onRefresh = screenModel::refresh,
+                        onClearFocus = {
+                            focusInclude = emptySet()
+                            focusExclude = emptySet()
+                            focusMatchAll = true
+                            screenModel.setActiveFocus(RecommendationFocusPolicy.FocusCriteria.EMPTY)
+                            showBroaderResults = false
+                        },
+                        // KMK <--
+                        contentPadding = contentPadding,
+                    )
+                    // KMK --> v0.8.19: this panel now jumps to Recommendation Settings sections
+                    // (its originally-stated purpose) instead of switching between For You/Loved/
+                    // Liked/Disliked, which the top tabs already cover.
+                    exh.recs.settings.RecommendationSettingsQuickAccessPanel(
+                        current = null,
+                        onNavigate = { destination ->
+                            navigator.push(destination.toScreen())
+                        },
+                    )
                     // KMK <--
-                    contentPadding = contentPadding,
-                )
-                // KMK --> v0.8.19: this panel now jumps to Recommendation Settings sections
-                // (its originally-stated purpose) instead of switching between For You/Loved/
-                // Liked/Disliked, which the top tabs already cover.
-                exh.recs.settings.RecommendationSettingsQuickAccessPanel(
-                    current = null,
-                    onNavigate = { destination ->
-                        navigator.push(destination.toScreen())
-                    },
-                )
-                // KMK <--
+                }
             }
         },
     )

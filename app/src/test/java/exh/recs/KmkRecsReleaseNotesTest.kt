@@ -315,6 +315,20 @@ class KmkRecsReleaseNotesTest {
             "**Reading schedule:**",
             "Enable reading schedule switch",
             "applied when you tap Save",
+            "**Original Komikku release notes:**",
+            "Original Komikku section",
+            "offers Retry",
+            "**About page:**",
+            "Links are grouped by project",
+            "Komikku FC privacy",
+            "written for the original app",
+            "**What's new:**",
+            "each version as its own card",
+            "**For You loading:**",
+            "in the background instead of on the main thread",
+            "**Arrange sources on For You:**",
+            "Arrange sources in the For You menu",
+            "Done refreshes For You when the order changed",
         ).forEach { phrase -> assertTrue(section.contains(phrase), "v0.8.25 What's New is missing: $phrase") }
         listOf("faster", "speed up", "sped up", "quicker", "improves loading", "instantly").forEach { word ->
             assertFalse(section.lowercase().contains(word), "unsupported speed wording in v0.8.25: $word")

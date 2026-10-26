@@ -29,6 +29,7 @@ object KmkRecsReleaseNotes {
 
         ##### New
 
+        - **Arrange sources on For You:** Choose Arrange sources in the For You menu to drag your sources into order on the page itself. It shows the same rows as Recommendation Settings, For You feed, so you no longer need to remember source names in settings. Done refreshes For You when the order changed.
         - **Original Komikku release notes:** About now has an Original Komikku section with Komikku's own What's new. It shows one card per release, newest open, loads when you open it, and offers Retry if it cannot load.
 
         ##### Improve

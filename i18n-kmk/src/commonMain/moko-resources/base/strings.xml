@@ -227,6 +227,10 @@
     <!-- KMK v0.8.25: the sponsorship page belongs to the original Komikku developer, not this fork's maintainer. New key so
          translations of "Sponsor me" are not shown with the wrong meaning; other languages fall back to English. -->
     <string name="sponsor_original_developer">Sponsor the original developer</string>
+    <!-- KMK v0.8.25 For You: arrange the sources on the page -->
+    <string name="rec_arrange_sources">Arrange sources</string>
+    <string name="rec_arrange_sources_hint">Drag sources to change their order. Done refreshes For You if the order changed.</string>
+    <string name="rec_arrange_sources_done">Done</string>
     <!-- KMK v0.8.25 About: Komikku FC and Original Komikku sections -->
     <string name="about_section_komikku_fc">Komikku FC</string>
     <string name="about_section_original_komikku">Original Komikku</string>
