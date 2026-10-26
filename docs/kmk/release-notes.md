@@ -12,7 +12,7 @@ v0.8.24 includes every change on Komikku's main branch up to 12 October 2026: ev
 
 These changes are in the source for the next version and are not part of the published v0.8.24 download. The list may change before release.
 
-- **Sponsor wording:** the More screen button now reads **Sponsor the original developer**. Where it opens is unchanged.
+- **Sponsor wording:** the sponsor button on the More screen and the Sponsor item in About now read **Sponsor the original developer**. Where it opens is unchanged.
 - **Reading schedule switch:** the reading schedule dialog in the Reader has an **Enable reading schedule** switch, so a schedule can be turned on without leaving the manga. Back returns to the Reader. Settings > Reader keeps its own switch.
 - **About page:** **More > About** has a **Komikku FC** section (What's new, What's coming, privacy, licenses, and this repository) and an **Original Komikku** section (Komikku's own What's new, Help translate, its privacy policy written for the original app, Sponsor, website, Discord, and GitHub).
 - **What's new as cards:** each version is a card you open, and only the newest starts open.

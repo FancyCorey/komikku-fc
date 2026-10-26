@@ -55,6 +55,40 @@ Name hiding also hides source names in Browse. The rest of Komikku's navigation 
 
 Name hiding (**Hide technical names in screenshots** under **Settings > Advanced > Developer tools**) replaces source, extension, and selected taste labels with neutral names. It does not change saved manga, requests, identifiers, or actions. Manga titles, artwork, reading context, and some genre suggestions can remain visible. Check the whole screen before sharing it; see [Sharing screenshots and exported files safely](../feature-guides/sharing.md).
 
+## In development: v0.8.25 (not yet released)
+
+These captures come from a development build and will be redone on the release artifact. See [the manifest](../technical-reference/screenshot-manifest-v0.8.25.xml).
+
+<p align="center"><img src="v0.8.25/about-komikku-fc.png" width="260" alt="About, Komikku FC section"></p>
+<p align="center"><em>About: Komikku FC.</em></p>
+
+<p align="center"><img src="v0.8.25/about-original-komikku.png" width="260" alt="About, Original Komikku section"></p>
+<p align="center"><em>About: Original Komikku.</em></p>
+
+<p align="center"><img src="v0.8.25/whats-new-cards.png" width="260" alt="What's new as one card per version"></p>
+<p align="center"><em>What's new cards.</em></p>
+
+<p align="center"><img src="v0.8.25/original-komikku-whats-new.png" width="260" alt="Original Komikku release notes as cards"></p>
+<p align="center"><em>The original Komikku's release notes.</em></p>
+
+<p align="center"><img src="v0.8.25/arrange-sources.png" width="260" alt="Arrange sources on the For You page"></p>
+<p align="center"><em>Arrange sources.</em></p>
+
+<p align="center"><img src="v0.8.25/source-evaluation-check-page.png" width="260" alt="Source evaluation, Check sources page"></p>
+<p align="center"><em>Source evaluation: Check sources.</em></p>
+
+<p align="center"><img src="v0.8.25/source-evaluation-diagnostics-page.png" width="260" alt="Source evaluation, Diagnostics and recovery page"></p>
+<p align="center"><em>Source evaluation: Diagnostics and recovery.</em></p>
+
+<p align="center"><img src="v0.8.25/reader-schedule-enable-switch.png" width="260" alt="Reading schedule dialog with the enable switch"></p>
+<p align="center"><em>Reading schedule with its enable switch.</em></p>
+
+<p align="center"><img src="v0.8.25/reader-alternate-source-compare-versions.png" width="260" alt="Alternate-source chooser with Compare versions"></p>
+<p align="center"><em>The chooser with Compare versions.</em></p>
+
+<p align="center"><img src="v0.8.25/best-version-from-reader.png" width="260" alt="Best Version opened from the reader"></p>
+<p align="center"><em>Best Version from the reader.</em></p>
+
 ## Recommendation settings
 
 <p align="center"><img src="v0.8.24/recommendation-settings.png" width="260" alt="Recommendation Settings first page with one entry per feature"></p>

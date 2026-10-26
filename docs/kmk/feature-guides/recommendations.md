@@ -33,6 +33,9 @@ The order can change as new results arrive and previously shown manga move lower
 
 **In v0.8.25 (not yet released):** **More options > Arrange sources** opens the source list on the For You page. Drag the handles to reorder, and use the switches to enable or disable a source. **Done** refreshes For You only if the order changed. It is the same list and order as Recommendation Settings, so there is one source order, not two.
 
+<p align="center"><img src="../visual-guide/v0.8.25/arrange-sources.png" width="260" alt="Arrange sources panel on the For You page with draggable source rows and a Done button"></p>
+<p align="center"><em>Arrange sources: drag the handles, then choose Done.</em></p>
+
 ## How a refresh finds manga
 
 For You searches your enabled sources in your chosen order, a few at a time. The next source starts as soon as a search slot is free. Once enough rows are ready, sources still searching are stopped, and they do not leave a loading row behind.

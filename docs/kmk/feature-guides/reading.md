@@ -230,6 +230,9 @@ When either applies, **Continue from another source** appears at the end of the 
 
 **In v0.8.25 (not yet released):** the chooser also has **Compare versions**. It opens [Best Version](versions.md) above the reader. Each other version offers **Read from this version**, which returns you to the reader to choose a chapter on that source. Nothing is migrated and your library is not changed. Back returns to the reader without picking.
 
+<p align="center"><img src="../visual-guide/v0.8.25/reader-alternate-source-compare-versions.png" width="260" alt="Reader alternate-source chooser with Compare versions, Search another title and Search more sources"></p>
+<p align="center"><em>The chooser, with Compare versions.</em></p>
+
 The suggested chapter number is not a guarantee that the contents match. Some sources split chapters or start numbering at a different point. If the app warns that the match is uncertain, check the pages before continuing. **Correct chapter mapping** lets you change which chapters correspond; **This chapter is not the match** keeps the current chapter open while you choose another match. If you have read ahead and the other source lacks that chapter, choose a suitable chapter from its list instead.
 
 This shortcut depends on an active reading pair and available chapters. If the session ends or cannot be restored, open the alternate-source chooser again rather than expecting the old pair to remain available. Reading-time restrictions still apply when switching sources. See [Versions](versions.md) for comparing page quality and choosing a preferred version, and [Local tracking](local-tracking.md) for sharing progress across linked manga.
@@ -253,6 +256,9 @@ The prompt appears after leaving the reader, not over the final page. Declining 
 | A restriction begins while you are already reading | You may finish the current chapter, but cannot start another while restricted. |
 
 **In v0.8.25 (not yet released):** the reading schedule dialog in the reader has an **Enable reading schedule** switch, so you can turn the schedule on without leaving the manga. When it is off, the dialog says the schedule will not apply until enabled. Back returns to the reader. Settings > Reader keeps its own switch.
+
+<p align="center"><img src="../visual-guide/v0.8.25/reader-schedule-enable-switch.png" width="260" alt="Reading schedule dialog with the Enable reading schedule switch turned on"></p>
+<p align="center"><em>The reading schedule dialog with its enable switch.</em></p>
 
 Switching sources does not bypass a schedule restriction. The schedule is off by default; the manual timer has its own separate choices.
 

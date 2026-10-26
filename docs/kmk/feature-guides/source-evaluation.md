@@ -40,6 +40,12 @@ When **Start** cannot be used, a line under it says why:
 - **Try sources before installing** temporarily installs sources you have not installed to see how their manga fit your taste. Nothing stays installed.
 - **Check the sources you use** tests whether For You's searches work on your installed sources. The automatic check does this part and never installs anything.
 
+<p align="center"><img src="../visual-guide/v0.8.25/source-evaluation-check-page.png" width="260" alt="Source evaluation with the Check sources page and the two-checks explanation"></p>
+<p align="center"><em>The Check sources page, with the explanation of the two checks.</em></p>
+
+<p align="center"><img src="../visual-guide/v0.8.25/source-evaluation-diagnostics-page.png" width="260" alt="Source evaluation Diagnostics and recovery page with a problem count badge on its tab"></p>
+<p align="center"><em>The Diagnostics and recovery page; its tab shows how many problems there are.</em></p>
+
 ## What an evaluation means
 
 An evaluation samples a source's popular and recent manga and compares their available details with your preferences. Search compatibility is checked separately. It is not a permanent judgment about the source, a complete inspection of its catalogue, or a promise about how many recommendations you will see.

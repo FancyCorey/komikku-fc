@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kmk-screenshot-manifest version="1" release="0.8.25" status="in-development" inventory="development-illustration-inventory" hash-algorithm="SHA-256">
+  <candidate-binding>
+    <package>app.komikku.dev</package>
+    <variant>debug</variant>
+    <capture-environment>Android emulator, API 30, 1080x1920, dark theme, development build from the v0.8.25 branch; Hide technical names in screenshots on, so source, extension and tag names are placeholders; status and navigation bars cropped; scaled to 720 pixels wide</capture-environment>
+    <limits>Development build, not a release candidate or a production-signed artifact; these captures must be redone on the release artifact before v0.8.25 is published. Sources are test fixtures, so source rows show failures. The reader flow uses a local sample manga with generated pages. These images illustrate behavior and do not assert that every state is shown.</limits>
+  </candidate-binding>
+  <artifact id="whats-new-cards-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/whats-new-cards.png" sha256="F739CBF998FF1D0A9374B24FA6C3C522482411DBD707554AAB8EEF0D94B3221B" width="720" height="1154">
+    <route>more/about/whats-new</route>
+    <state>fc-whats-new-version-cards</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="original-komikku-whats-new-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/original-komikku-whats-new.png" sha256="C1966FC0ACD9BCE90F30A948215A73AC3573FA65FAE483385F86E4EE4EB64A8C" width="720" height="1154">
+    <route>more/about/original-komikku-whats-new</route>
+    <state>original-release-notes-cards</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="about-komikku-fc-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/about-komikku-fc.png" sha256="D4C2E469464877E68889C8932E424A106D6FE2FFE1E60A5EEACFE94BCD038714" width="720" height="1154">
+    <route>more/about</route>
+    <state>komikku-fc-section</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="about-original-komikku-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/about-original-komikku.png" sha256="C11E46E1506CF4FCD20A6F6232D1566990B0014D0E3E5D21E9D48A444EC75E3E" width="720" height="1154">
+    <route>more/about</route>
+    <state>original-komikku-section</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="arrange-sources-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/arrange-sources.png" sha256="CAA997E81E28A49E2EB4F7283013848354A55E5436C2918BEE1C2FC2B49726AE" width="720" height="1154">
+    <route>browse/for-you/arrange-sources</route>
+    <state>arrange-panel-with-order-changed</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="source-evaluation-check-page-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/source-evaluation-check-page.png" sha256="CAE174E699A3DE8D94762DB176028077C259588192C93DDCCE431CC1F07D4441" width="720" height="1154">
+    <route>for-you/source-evaluation</route>
+    <state>check-sources-page-with-explainer</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="source-evaluation-diagnostics-page-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/source-evaluation-diagnostics-page.png" sha256="6A6D203992A7BE4E33A2FE0FE8C7F609231492765CAD157522679DA8DC918C02" width="720" height="1154">
+    <route>for-you/source-evaluation/diagnostics</route>
+    <state>diagnostics-page-with-badge</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="reader-schedule-enable-switch-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/reader-schedule-enable-switch.png" sha256="B6F621407F8E78C28C33DCA027BF3275D59BD7422929EF9DF173AF3C0CD3C1DE" width="720" height="1154">
+    <route>reader/reading-timer/configure-schedule</route>
+    <state>enable-switch-on</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="reader-alternate-source-compare-versions-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/reader-alternate-source-compare-versions.png" sha256="882E3DED8C41C7E3FE295962ED157B6DAF53CDB0760C23408965F027F4D795B2" width="720" height="1154">
+    <route>reader/alternate-source-chooser</route>
+    <state>compare-versions-button</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="best-version-from-reader-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/best-version-from-reader.png" sha256="E60BC7B64DC388727D159F84703B8874DE22EE1768508B636C833EAB274A7355" width="720" height="1154">
+    <route>reader/alternate-source-chooser/compare-versions</route>
+    <state>return-selection-mode</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+</kmk-screenshot-manifest>

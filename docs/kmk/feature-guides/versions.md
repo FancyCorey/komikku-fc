@@ -24,6 +24,9 @@ The matching screen answers “are these the same manga?” The Best Version scr
 
 **In v0.8.25 (not yet released):** the reader's alternate-source chooser has **Compare versions**, which opens this comparison for the manga you are reading. Each other version shows **Read from this version** instead of Select as best. Choosing it goes back to the reader to pick a chapter on that source. Nothing is migrated, and the comparison does not change your library.
 
+<p align="center"><img src="../visual-guide/v0.8.25/best-version-from-reader.png" width="260" alt="Best Version opened from the reader with a note that nothing is migrated"></p>
+<p align="center"><em>Best Version opened from the reader; it says nothing is migrated.</em></p>
+
 ## What the comparison looks like
 
 <p align="center"><img src="../visual-guide/best-version-chapter-selection.png" width="300" alt="Best Version screen with comparable chapter choices under neutral source labels"></p>
