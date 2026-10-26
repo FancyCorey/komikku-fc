@@ -2,9 +2,9 @@
 
 // KMK -->
 object KmkRecsReleaseNotes {
-    const val VERSION_CODE = 788
-    const val VERSION_NAME = "KMK-Recs v0.8.24"
-    const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.24"
+    const val VERSION_CODE = 789
+    const val VERSION_NAME = "KMK-Recs v0.8.25"
+    const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.25"
 
     /** Projects the retained historical notes into the current public product name. */
     fun displayMarkdown(): String = MARKDOWN.replace("KMK-Recs", "Komikku FC")
@@ -21,6 +21,20 @@ object KmkRecsReleaseNotes {
     // ...") that is now expressed by its category heading instead. See the v0.8.10-fix9
     // implementation report for the exact conversion approach and verification.
     val MARKDOWN = """
+        ## KMK-Recs v0.8.25
+
+        Clearer sponsorship wording and a reading schedule you can turn on from the reader.
+
+        #### What's Changed
+
+        ##### Improve
+
+        - **Sponsorship:** The sponsor button on the More screen now says "Sponsor the original developer". The sponsorship page belongs to the original Komikku developer, not to the maintainer of Komikku FC. The page it opens is unchanged.
+
+        ##### Fix
+
+        - **Reading schedule:** The schedule editor you open from the reader now has its own Enable reading schedule switch, the same setting as Settings, Reader. A schedule you set up from a manga is no longer left switched off without saying so. The switch is applied when you tap Save, and Cancel or Back keeps what you had.
+
         ## KMK-Recs v0.8.24
 
         Updated to the latest Komikku. Recommendations that follow what you read lately, ratings that stay in step across linked versions, and more dependable tracker updates.

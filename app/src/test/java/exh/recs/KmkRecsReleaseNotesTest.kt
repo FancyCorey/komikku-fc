@@ -44,7 +44,7 @@ class KmkRecsReleaseNotesTest {
 
     @Test
     fun `the display version uses the approved forward-facing product name`() {
-        assertEquals("Komikku FC v0.8.24", KmkRecsReleaseNotes.DISPLAY_VERSION_NAME)
+        assertEquals("Komikku FC v0.8.25", KmkRecsReleaseNotes.DISPLAY_VERSION_NAME)
         assertTrue(KmkRecsReleaseNotes.VERSION_NAME.startsWith("KMK-Recs "))
     }
 
@@ -52,6 +52,7 @@ class KmkRecsReleaseNotesTest {
     fun `rendered release notes use the forward-facing product name`() {
         val displayMarkdown = KmkRecsReleaseNotes.displayMarkdown()
 
+        assertTrue(displayMarkdown.contains("## Komikku FC v0.8.25"))
         assertTrue(displayMarkdown.contains("## Komikku FC v0.8.24"))
         assertTrue(displayMarkdown.contains("## Komikku FC v0.8.23.1"))
         assertFalse(displayMarkdown.contains("KMK-Recs"))
@@ -203,21 +204,22 @@ class KmkRecsReleaseNotesTest {
     @Test
     fun `headings are in strictly descending chronological order as written (newest-first)`() {
         // The renderer relies on source order for "newest first" -- verify the file wasn't
-        // accidentally reordered. v0.8.24 is expected to be exactly first.
+        // accidentally reordered. v0.8.25 is expected to be exactly first.
         val all = headings()
-        assertEquals("v0.8.24", all[0])
-        assertEquals("v0.8.23.1", all[1])
-        assertEquals("v0.8.22", all[2])
-        assertEquals("v0.8.21-fix2", all[3])
-        assertEquals("v0.8.21", all[4])
-        assertEquals("v0.8.20-fix5", all[5])
-        assertEquals("v0.8.20-fix4", all[6])
-        assertEquals("v0.8.20-fix3", all[7])
-        assertEquals("v0.8.20-fix2", all[8])
-        assertEquals("v0.8.20-fix1", all[9])
-        assertEquals("v0.8.20", all[10])
-        assertEquals("v0.8.19", all[11])
-        assertEquals("v0.8.18-fix1", all[12])
+        assertEquals("v0.8.25", all[0])
+        assertEquals("v0.8.24", all[1])
+        assertEquals("v0.8.23.1", all[2])
+        assertEquals("v0.8.22", all[3])
+        assertEquals("v0.8.21-fix2", all[4])
+        assertEquals("v0.8.21", all[5])
+        assertEquals("v0.8.20-fix5", all[6])
+        assertEquals("v0.8.20-fix4", all[7])
+        assertEquals("v0.8.20-fix3", all[8])
+        assertEquals("v0.8.20-fix2", all[9])
+        assertEquals("v0.8.20-fix1", all[10])
+        assertEquals("v0.8.20", all[11])
+        assertEquals("v0.8.19", all[12])
+        assertEquals("v0.8.18-fix1", all[13])
     }
 
     @Test
@@ -298,9 +300,28 @@ class KmkRecsReleaseNotesTest {
 
     // KMK v0.8.23.1 -->
     @Test
-    fun `the v0_8_24 entry is the current newest entry`() {
-        assertEquals("v0.8.24", sectionBodies().first().first)
+    fun `the v0_8_25 entry is the current newest entry`() {
+        assertEquals("v0.8.25", sectionBodies().first().first)
     }
+
+    // KMK --> v0.8.25: every accepted user-visible change maps to a line in the current entry, in reader language.
+    @Test
+    fun `the v0_8_25 entry maps each accepted change`() {
+        val section = sectionBodies().first { it.first == "v0.8.25" }.second
+        listOf(
+            "**Sponsorship:**",
+            "Sponsor the original developer",
+            "not to the maintainer of Komikku FC",
+            "**Reading schedule:**",
+            "Enable reading schedule switch",
+            "applied when you tap Save",
+        ).forEach { phrase -> assertTrue(section.contains(phrase), "v0.8.25 What's New is missing: $phrase") }
+        listOf("faster", "speed up", "sped up", "quicker", "improves loading", "instantly").forEach { word ->
+            assertFalse(section.lowercase().contains(word), "unsupported speed wording in v0.8.25: $word")
+        }
+        assertTrue(section.contains("#### What's Changed"))
+    }
+    // KMK <--
 
     // KMK --> v0.8.24: every accepted user-visible change maps to a line in the current entry, in reader language and
     // without a speed claim (no refresh-speed improvement was measured).

@@ -620,6 +620,9 @@ class ReaderActivity : BaseActivity() {
                         initialMode = ReaderScheduleStore.parseMode(readerPreferences.readingScheduleMode().get()),
                         initialWindows = ReaderScheduleStore.parseWindows(readerPreferences.readingScheduleWindows().get()),
                         onSave = viewModel::saveReadingSchedule,
+                        // KMK v0.8.25: same preference as Settings > Reader > Enable reading schedule
+                        initialEnabled = readerPreferences.readingScheduleEnabled().get(),
+                        onEnabledSave = { readerPreferences.readingScheduleEnabled().set(it) },
                     )
                 }
 

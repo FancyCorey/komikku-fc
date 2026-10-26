@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -86,6 +87,12 @@ fun ReaderScheduleDialog(
     initialMode: ReaderScheduleMode,
     initialWindows: List<ReaderScheduleWindow>,
     onSave: (mode: ReaderScheduleMode, windows: List<ReaderScheduleWindow>) -> Unit,
+    // KMK v0.8.25: when the editor is opened from the reader, the schedule's own on/off switch is offered here, because
+    // the schedule is enforced only while Reader settings > Enable reading schedule is on. [initialEnabled] null (the
+    // Reader settings screen, which has that switch itself) shows no switch. The choice is part of the draft: it is
+    // applied on Save, just before [onSave], and discarded by Cancel or Back like the rest of the draft.
+    initialEnabled: Boolean? = null,
+    onEnabledSave: ((Boolean) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
@@ -95,6 +102,7 @@ fun ReaderScheduleDialog(
     // Finding D. Only the explicit Save button commits.
     var mode by rememberSaveable { mutableStateOf(initialMode) }
     var windows by rememberSaveable(stateSaver = readerScheduleWindowsSaver) { mutableStateOf(initialWindows) }
+    var enabled by rememberSaveable { mutableStateOf(initialEnabled ?: true) }
     var showAddFlow by rememberSaveable { mutableStateOf(false) }
     // KMK v0.8.7: null = adding a new window; non-null = editing windows[editingIndex] in place.
     var editingIndex by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -119,11 +127,41 @@ fun ReaderScheduleDialog(
                     .heightIn(max = 420.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
+                // KMK v0.8.25 -->
+                if (initialEnabled != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .toggleable(
+                                value = enabled,
+                                role = Role.Switch,
+                                onValueChange = { enabled = it },
+                            ),
+                    ) {
+                        Text(
+                            text = stringResource(KMR.strings.reading_schedule_enabled_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Switch(checked = enabled, onCheckedChange = null)
+                    }
+                    if (!enabled) {
+                        Text(
+                            text = stringResource(KMR.strings.reading_schedule_enabled_off_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = MaterialTheme.padding.extraSmall),
+                        )
+                    }
+                }
+                // KMK <--
                 Text(
                     text = stringResource(KMR.strings.reading_schedule_scope_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = MaterialTheme.padding.small),
+                    modifier = Modifier.padding(vertical = MaterialTheme.padding.small),
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = MaterialTheme.padding.small))
@@ -249,6 +287,8 @@ fun ReaderScheduleDialog(
         },
         confirmButton = {
             TextButton(onClick = {
+                // KMK v0.8.25: switch first, so the evaluation that follows the save sees the final on/off state
+                if (initialEnabled != null) onEnabledSave?.invoke(enabled)
                 onSave(mode, windows)
                 onDismissRequest()
             }) {

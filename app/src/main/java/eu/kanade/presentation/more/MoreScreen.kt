@@ -282,12 +282,12 @@ fun Sponsor() {
             ) {
                 Icon(
                     imageVector = Icons.Filled.Favorite,
-                    contentDescription = stringResource(KMR.strings.sponsor_me),
+                    contentDescription = stringResource(KMR.strings.sponsor_original_developer),
                     tint = MaterialTheme.colorScheme.primary,
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text = stringResource(KMR.strings.sponsor_me),
+                    text = stringResource(KMR.strings.sponsor_original_developer),
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelLarge,
                 )

@@ -36,6 +36,18 @@ class ReaderScheduleNavigationSourceTest {
     }
 
     @Test
+    fun `reader schedule editor offers the same enable preference as Reader settings`() {
+        val reader = File("src/main/java/eu/kanade/tachiyomi/ui/reader/ReaderActivity.kt").readText()
+        val settings = File("src/main/java/eu/kanade/presentation/more/settings/screen/SettingsReaderScreen.kt").readText()
+
+        assertTrue(reader.contains("initialEnabled = readerPreferences.readingScheduleEnabled().get()"))
+        assertTrue(reader.contains("onEnabledSave = { readerPreferences.readingScheduleEnabled().set(it) }"))
+        // Reader settings keeps its own switch, so its editor shows none
+        assertTrue(settings.contains("preference = readerPreferences.readingScheduleEnabled()"))
+        assertFalse(settings.substringAfter("ReaderScheduleDialog(").substringBefore("return Preference.PreferenceGroup").contains("initialEnabled"))
+    }
+
+    @Test
     fun `main activity owns the schedule destination`() {
         val source = File("src/main/java/eu/kanade/tachiyomi/ui/main/MainActivity.kt").readText()
 
