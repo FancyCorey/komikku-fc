@@ -72,10 +72,10 @@ class RecommendationTasteTagsSettingsScreen(
                 "tag_content",
                 "suggestions_header",
                 "suggestions_content",
-                "recommendation_languages_header",
-                "recommendation_languages_content",
                 "source_match_section",
                 "source_match_header",
+                "recommendation_languages_header",
+                "recommendation_languages_content",
             )
         }
         ScrollToAnchorEffect(lazyListState, itemKeysInOrder, anchor)
@@ -217,6 +217,11 @@ class RecommendationTasteTagsSettingsScreen(
                             onAddBlocked = { screenModel.addTasteSuggestion(it, TagPreference.BLOCK) },
                         )
                     }
+                    // KMK v0.8.25: how well the sources you use match this taste lives here, next to the taste itself
+                    item(key = "source_match_section") {
+                        SectionHeader(stringResource(KMR.strings.source_match_title))
+                    }
+                    sourceMatchItems(evalState, recQualityQueue, evalModel)
                     // KMK v0.8.24: the language selector lives with the other general preferences.
                     item(key = "recommendation_languages_header") {
                         SectionHeader(
@@ -231,11 +236,6 @@ class RecommendationTasteTagsSettingsScreen(
                             onToggle = screenModel::toggleRecommendationLanguage,
                         )
                     }
-                    // KMK v0.8.25: how well the sources you use match this taste lives here, next to the taste itself
-                    item(key = "source_match_section") {
-                        SectionHeader(stringResource(KMR.strings.source_match_title))
-                    }
-                    sourceMatchItems(evalState, recQualityQueue, evalModel)
                 }
             }
         }

@@ -74,11 +74,17 @@ These captures come from a development build and will be redone on the release a
 <p align="center"><img src="v0.8.25/arrange-sources.png" width="260" alt="Arrange sources on the For You page"></p>
 <p align="center"><em>Arrange sources.</em></p>
 
-<p align="center"><img src="v0.8.25/source-evaluation-check-page.png" width="260" alt="Source evaluation, Check sources page"></p>
-<p align="center"><em>Source evaluation: Check sources.</em></p>
+<p align="center"><img src="v0.8.25/try-sources-page.png" width="260" alt="Try sources before installing, scrolled to Check older results again"></p>
+<p align="center"><em>Try sources before installing.</em></p>
 
-<p align="center"><img src="v0.8.25/source-evaluation-diagnostics-page.png" width="260" alt="Source evaluation, Diagnostics and recovery page"></p>
-<p align="center"><em>Source evaluation: Diagnostics and recovery.</em></p>
+<p align="center"><img src="v0.8.25/update-results-dialog.png" width="260" alt="Update results dialog"></p>
+<p align="center"><em>The Update results choices.</em></p>
+
+<p align="center"><img src="v0.8.25/your-taste-source-match.png" width="260" alt="Your taste, Source match section"></p>
+<p align="center"><em>Source match on Your taste.</em></p>
+
+<p align="center"><img src="v0.8.25/troubleshooting.png" width="260" alt="Troubleshooting with Source diagnostics at the top and Reset and clear below"></p>
+<p align="center"><em>Troubleshooting: diagnostics and Reset and clear.</em></p>
 
 <p align="center"><img src="v0.8.25/reader-schedule-enable-switch.png" width="260" alt="Reading schedule dialog with the enable switch"></p>
 <p align="center"><em>Reading schedule with its enable switch.</em></p>

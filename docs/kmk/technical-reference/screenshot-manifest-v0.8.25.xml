@@ -4,7 +4,7 @@
     <package>app.komikku.dev</package>
     <variant>debug</variant>
     <capture-environment>Android emulator, API 30, 1080x1920, dark theme, development build from the v0.8.25 branch; Hide technical names in screenshots on, so source, extension and tag names are placeholders; status and navigation bars cropped; scaled to 720 pixels wide</capture-environment>
-    <limits>Development build, not a release candidate or a production-signed artifact; these captures must be redone on the release artifact before v0.8.25 is published. Sources are test fixtures, so source rows show failures. The reader flow uses a local sample manga with generated pages. These images illustrate behavior and do not assert that every state is shown.</limits>
+    <limits>Development build, not a release candidate or a production-signed artifact; these captures must be redone on the release artifact before v0.8.25 is published. Sources are test fixtures, so source rows show failures and Source match has no results to check. The reader flow uses a local sample manga with generated pages. These images illustrate behavior and do not assert that every state is shown.</limits>
   </candidate-binding>
   <artifact id="whats-new-cards-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/whats-new-cards.png" sha256="F739CBF998FF1D0A9374B24FA6C3C522482411DBD707554AAB8EEF0D94B3221B" width="720" height="1154">
     <route>more/about/whats-new</route>
@@ -31,14 +31,24 @@
     <state>arrange-panel-with-order-changed</state>
     <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
   </artifact>
-  <artifact id="source-evaluation-check-page-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/source-evaluation-check-page.png" sha256="CAE174E699A3DE8D94762DB176028077C259588192C93DDCCE431CC1F07D4441" width="720" height="1154">
-    <route>for-you/source-evaluation</route>
-    <state>check-sources-page-with-explainer</state>
+  <artifact id="try-sources-page-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/try-sources-page.png" sha256="4516E26340B908E314B8BB0BF11567D031EE1ADFCB1D41A7D77827F134CB3B4A" width="720" height="1154">
+    <route>settings/recommendations/find-new-sources/try-sources</route>
+    <state>update-results-section</state>
     <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
   </artifact>
-  <artifact id="source-evaluation-diagnostics-page-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/source-evaluation-diagnostics-page.png" sha256="6A6D203992A7BE4E33A2FE0FE8C7F609231492765CAD157522679DA8DC918C02" width="720" height="1154">
-    <route>for-you/source-evaluation/diagnostics</route>
-    <state>diagnostics-page-with-badge</state>
+  <artifact id="update-results-dialog-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/update-results-dialog.png" sha256="445109B80C608D203310DAC6EA05CA01AAD00C8B2832B9CCBD418D044C1F5F0F" width="720" height="1154">
+    <route>settings/recommendations/find-new-sources/try-sources/update-results</route>
+    <state>choices-with-descriptions</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="your-taste-source-match-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/your-taste-source-match.png" sha256="4E75DD90F02EDEC3B152E488F514461761DE5C4666F31019559E81B3F133687A" width="720" height="1154">
+    <route>settings/recommendations/your-taste</route>
+    <state>source-match-section-no-results-yet</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="troubleshooting-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/troubleshooting.png" sha256="5108F4B25F937F91B942BE564BDF9B7991FBA80E26AD8D817752C7B5CD99C6F8" width="720" height="1154">
+    <route>settings/recommendations/troubleshooting</route>
+    <state>source-diagnostics-and-reset-and-clear</state>
     <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
   </artifact>
   <artifact id="reader-schedule-enable-switch-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/reader-schedule-enable-switch.png" sha256="B6F621407F8E78C28C33DCA027BF3275D59BD7422929EF9DF173AF3C0CD3C1DE" width="720" height="1154">
