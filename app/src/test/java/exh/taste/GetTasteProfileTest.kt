@@ -88,7 +88,8 @@ class GetTasteProfileTest {
 
         // Both tags should have contributed to the same group_key "girls_love"
         val girlsLoveWeight = profile.learnedTagWeights["girls_love"] ?: 0.0
-        assertTrue(girlsLoveWeight >= 4.0) { "girls_love group weight should be at least 4.0 (2 Love×2), got $girlsLoveWeight" }
+        // v0.8.25: two Loves on a tag every rated title carries are rarity-scaled (x0.75) and smoothly saturated
+        assertTrue(girlsLoveWeight >= 2.5) { "girls_love group weight should combine both Loves (about 2.9), got $girlsLoveWeight" }
         assertFalse("yuri" in profile.learnedTagWeights) { "Raw 'yuri' key should not appear when alias resolved" }
         assertFalse("girls love" in profile.learnedTagWeights) { "Raw 'girls love' key should not appear when alias resolved" }
     }
@@ -105,7 +106,7 @@ class GetTasteProfileTest {
     }
 
     @Test
-    fun `learned weights are capped at 10 even if many manga share the same tag`() = runBlocking {
+    fun `learned weights approach but never exceed 10 even if many manga share the same tag`() = runBlocking {
         val tastes = (1..20L).map { taste(it, MangaRating.LOVE) }
         val mangaMap = (1..20L).associate { id ->
             id to manga(id, listOf("Action"))
@@ -115,7 +116,7 @@ class GetTasteProfileTest {
         val profile = GetTasteProfile(tasteRepo, mangaRepo).await()
 
         val actionWeight = profile.learnedTagWeights["action"] ?: 0.0
-        assertEquals(10.0, actionWeight, 0.001) { "Weight should be capped at 10.0" }
+        assertTrue(actionWeight <= 10.0 && actionWeight > 9.0) { "Weight should saturate just below 10.0, got $actionWeight" }
     }
 
     @Test

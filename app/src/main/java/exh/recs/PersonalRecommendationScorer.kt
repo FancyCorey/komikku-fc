@@ -21,10 +21,21 @@ import tachiyomi.domain.taste.model.normalizeTag
  *   carry a recent weight (see GetRecentReadingTagWeights).
  * - Source affinity: [TasteProfile.sourceAffinity] value for the candidate's source (weak signal).
  *
+ * - Tag count (v0.8.25): the three tag components are scaled by [tagCountFactor], so a title carrying many tags cannot
+ *   outscore a focused one just by matching more of them. Titles with up to [TAG_COUNT_REFERENCE] tags are unchanged;
+ *   source affinity is not scaled.
+ *
  * The score is not normalized to [0,1]; the Browse Recommendations tab uses it only for
  * ordering within a single source row.
  */
 internal object PersonalRecommendationScorer {
+
+    /** A title with this many tags or fewer keeps its full tag score. */
+    const val TAG_COUNT_REFERENCE = 5
+
+    /** 1.0 up to [TAG_COUNT_REFERENCE] tags, then 1/sqrt(tags / reference): 10 tags -> 0.71, 20 tags -> 0.5. */
+    fun tagCountFactor(tagCount: Int): Double =
+        if (tagCount <= TAG_COUNT_REFERENCE) 1.0 else 1.0 / kotlin.math.sqrt(tagCount.toDouble() / TAG_COUNT_REFERENCE)
 
     data class ScoredCandidate(
         val manga: Manga,
@@ -42,7 +53,7 @@ internal object PersonalRecommendationScorer {
         val candidateGroups: List<String> = genres.map { genre ->
             val normalized = genre.normalizeTag()
             aliasMap[normalized] ?: normalized
-        }
+        }.distinct()
 
         // Hard block: if any group is blocked, reject immediately
         val blockedGroup = candidateGroups.firstOrNull { it in profile.blockedGroups }
@@ -97,7 +108,8 @@ internal object PersonalRecommendationScorer {
         // Source affinity (weak)
         val sourceAffinityScore = profile.sourceAffinity[candidate.source] ?: 0.0
 
-        val totalScore = explicitScore + learnedScore + recentScore + sourceAffinityScore
+        val totalScore = (explicitScore + learnedScore + recentScore) * tagCountFactor(candidateGroups.size) +
+            sourceAffinityScore
 
         // Build human-readable reason strings
         val reasons = buildList {

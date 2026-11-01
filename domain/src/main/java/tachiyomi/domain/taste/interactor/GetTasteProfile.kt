@@ -11,6 +11,8 @@ import tachiyomi.domain.taste.repository.TasteRepository
 class GetTasteProfile(
     private val tasteRepository: TasteRepository,
     private val mangaRepository: MangaRepository,
+    // KMK v0.8.25: injectable so rating age can be tested
+    private val nowMillis: () -> Long = System::currentTimeMillis,
 ) {
     /**
      * Builds a [TasteProfile] from:
@@ -18,8 +20,8 @@ class GetTasteProfile(
      * - all explicit tag preferences;
      * - all tag aliases (for group-key resolution).
      *
-     * Learned tag weights are capped to [-10, 10] per group key to prevent
-     * a single large-genre manga from dominating the profile forever.
+     * Learned tag weights come from [TasteWeighting] (v0.8.25): rarity-scaled, aged, smoothly saturating toward
+     * -10..+10 instead of a hard clip, and a single Dislike on a tag counts for half.
      */
     suspend fun await(): TasteProfile {
         val tastes = tasteRepository.getAllMangaTastes()
@@ -34,8 +36,8 @@ class GetTasteProfile(
             return aliasToGroup[normalized] ?: normalized
         }
 
-        // Accumulate learned weights from manga ratings
-        val rawWeights = mutableMapOf<String, Double>()
+        // Collect the rated titles with their tag groups; the arithmetic lives in TasteWeighting
+        val ratedTitles = mutableListOf<TasteWeighting.RatedTitle>()
         val sourcePositive = mutableMapOf<Long, Int>()
         val sourceNegative = mutableMapOf<Long, Int>()
 
@@ -58,13 +60,14 @@ class GetTasteProfile(
             // Fetch manga genres; skip if manga row was purged
             val genres = genresById[taste.mangaId] ?: continue
 
-            for (genre in genres) {
-                val groupKey = genre.toGroupKey()
-                rawWeights[groupKey] = (rawWeights[groupKey] ?: 0.0) + weight
-            }
+            ratedTitles += TasteWeighting.RatedTitle(
+                ratingWeight = weight,
+                ratedAtMillis = taste.updatedAt,
+                groups = genres.map { it.toGroupKey() }.toSet(),
+            )
         }
 
-        val learnedTagWeights = rawWeights.mapValues { (_, v) -> v.coerceIn(-10.0, 10.0) }
+        val learnedTagWeights = TasteWeighting.learnedWeights(ratedTitles, nowMillis())
 
         // Explicit tag preferences (from tag_taste table)
         val explicitTagPreferences: Map<String, Int> = tagTastes.associate { tt ->
