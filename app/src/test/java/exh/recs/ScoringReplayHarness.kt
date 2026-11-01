@@ -95,7 +95,11 @@ internal object ScoringReplayHarness {
             var tied = 0
             for (candidate in distractors) {
                 val s = score(variant, candidate.tags, profile)
-                if (abs(s - targetScore) < 1e-9) tied++ else if (s > targetScore) greater++
+                if (abs(s - targetScore) < 1e-9) {
+                    tied++
+                } else if (s > targetScore) {
+                    greater++
+                }
             }
             val rank = 1.0 + greater + tied / 2.0
             heldOut++
@@ -122,7 +126,10 @@ internal object ScoringReplayHarness {
         private val tagNames = (0 until tagCount).map { "tag$it" }
         private val cumulative: DoubleArray = run {
             var sum = 0.0
-            DoubleArray(tagCount) { rank -> sum += 1.0 / Math.pow(rank + 1.0, 0.9); sum }
+            DoubleArray(tagCount) { rank ->
+                sum += 1.0 / Math.pow(rank + 1.0, 0.9)
+                sum
+            }
         }
         private val currentPreference = HashMap<String, Double>()
         private val oldPreference = HashMap<String, Double>()

@@ -31,6 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +40,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import cafe.adriel.voyager.core.model.rememberNavigatorScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import dev.icerock.moko.resources.StringResource
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.util.Screen
@@ -50,6 +52,7 @@ import exh.recs.matching.CrossSourceIdentityReviewScreen
 import exh.recs.matching.SameMangaMatchSettings
 import exh.recs.matching.SameMangaPreselectionMode
 import exh.recs.toFocusDisplayLabel
+import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.kmk.KMR
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -111,6 +114,10 @@ class RecommendationDiagnosticsSettingsScreen(
         var focusRenameTarget by remember { mutableStateOf<SavedFocusMode?>(null) }
         var focusDeleteTarget by remember { mutableStateOf<SavedFocusMode?>(null) }
         var showPreselectionModeDialog by remember { mutableStateOf(false) }
+        // KMK v0.8.25: Reset and clear actions (moved here from the bottom of Source evaluation)
+        val resetActions = remember { ResetAndClearActions() }
+        val resetScope = rememberCoroutineScope()
+        var pendingResetAction by remember { mutableStateOf<ResetAndClearActions.Action?>(null) }
         // KMK v0.8.24: source loading problems are listed here (and counted on the hub), not as a permanent banner.
         val healthIssues by rememberSourceHealthIssues()
         val skippedSourceNames by rememberAutoCheckSkippedSourceNames()
@@ -137,6 +144,8 @@ class RecommendationDiagnosticsSettingsScreen(
                 "group_preview_budget",
                 "runtime_health_issues",
                 "auto_check_skipped_sources",
+                "source_diagnostics_entry",
+                "reset_and_clear_header",
                 "management_header",
                 "quality_signal_history_entry",
                 "discovery_cache_header",
@@ -411,7 +420,13 @@ class RecommendationDiagnosticsSettingsScreen(
                                     title = stringResource(KMR.strings.rec_hub_issues_row_title),
                                     subtitle = pluralStringResource(KMR.plurals.rec_hub_issues_count, count = issueCount, issueCount) +
                                         ". " + stringResource(KMR.strings.rec_hub_issues_row_summary),
-                                    onPreferenceClick = { navigator.push(exh.recs.evaluation.SourceEvaluationScreen()) },
+                                    onPreferenceClick = {
+                                        navigator.push(
+                                            exh.recs.evaluation.SourceEvaluationScreen(
+                                                mode = exh.recs.evaluation.SourceEvaluationMode.DIAGNOSTICS,
+                                            ),
+                                        )
+                                    },
                                 )
                             } else {
                                 TextPreferenceWidget(
@@ -433,6 +448,38 @@ class RecommendationDiagnosticsSettingsScreen(
                             )
                         }
                     }
+
+                    // KMK v0.8.25 -->
+                    if (section.includes("source_diagnostics_entry")) {
+                        item(key = "source_diagnostics_entry") {
+                            TextPreferenceWidget(
+                                title = stringResource(KMR.strings.rec_hub_source_diagnostics_title),
+                                subtitle = stringResource(KMR.strings.rec_hub_source_diagnostics_summary),
+                                onPreferenceClick = {
+                                    navigator.push(
+                                        exh.recs.evaluation.SourceEvaluationScreen(
+                                            mode = exh.recs.evaluation.SourceEvaluationMode.DIAGNOSTICS,
+                                        ),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                    if (section.includes("reset_and_clear_header")) {
+                        item(key = "reset_and_clear_header") {
+                            SectionHeader(stringResource(KMR.strings.reset_and_clear_header), summary = null)
+                        }
+                        ResetAndClearActions.Action.entries.forEach { action ->
+                            item(key = "reset_and_clear_${action.name}") {
+                                TextPreferenceWidget(
+                                    title = stringResource(action.titleRes()),
+                                    subtitle = stringResource(action.summaryRes()),
+                                    onPreferenceClick = { pendingResetAction = action },
+                                )
+                            }
+                        }
+                    }
+                    // KMK <--
 
                     // KMK v0.8.24: on the Linked versions page the history row follows the Best Version section directly
                     if (section == RecommendationDiagnosticsSection.ALL) {
@@ -623,6 +670,29 @@ class RecommendationDiagnosticsSettingsScreen(
                     }
                 }
             }
+        }
+        // KMK v0.8.25: name exactly what is about to be reset, instead of a generic "this will clear the selected data"
+        pendingResetAction?.let { action ->
+            AlertDialog(
+                onDismissRequest = { pendingResetAction = null },
+                title = { Text(stringResource(action.titleRes())) },
+                text = { Text(stringResource(action.summaryRes()) + "\n\n" + stringResource(KMR.strings.reset_confirm_undo)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            pendingResetAction = null
+                            resetScope.launch { resetActions.perform(action) }
+                        },
+                    ) {
+                        Text(stringResource(KMR.strings.reset_confirm_action))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pendingResetAction = null }) {
+                        Text(stringResource(MR.strings.action_cancel))
+                    }
+                },
+            )
         }
         if (showPreselectionModeDialog) {
             AlertDialog(
@@ -822,5 +892,21 @@ private fun SavedFocusModeManagementRow(
             }
         }
     }
+}
+// KMK <--
+
+// KMK v0.8.25 -->
+private fun ResetAndClearActions.Action.titleRes(): StringResource = when (this) {
+    ResetAndClearActions.Action.FORGET_DISLIKED_SOURCES -> KMR.strings.reset_forget_disliked_title
+    ResetAndClearActions.Action.SHOW_HIDDEN_SUGGESTIONS -> KMR.strings.reset_show_hidden_suggestions_title
+    ResetAndClearActions.Action.CLEAR_NOT_INTERESTED -> KMR.strings.reset_clear_not_interested_title
+    ResetAndClearActions.Action.RESET_RATINGS_BASELINE -> KMR.strings.reset_ratings_baseline_title
+}
+
+private fun ResetAndClearActions.Action.summaryRes(): StringResource = when (this) {
+    ResetAndClearActions.Action.FORGET_DISLIKED_SOURCES -> KMR.strings.reset_forget_disliked_summary
+    ResetAndClearActions.Action.SHOW_HIDDEN_SUGGESTIONS -> KMR.strings.reset_show_hidden_suggestions_summary
+    ResetAndClearActions.Action.CLEAR_NOT_INTERESTED -> KMR.strings.reset_clear_not_interested_summary
+    ResetAndClearActions.Action.RESET_RATINGS_BASELINE -> KMR.strings.reset_ratings_baseline_summary
 }
 // KMK <--

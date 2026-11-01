@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 import java.io.File
 
 /**
- * R1 correction (fix6): proves `ManagementAction.CLEAR_SEEN_MANGA` no longer touches the legacy
+ * R1 correction (fix6): proves the Not interested clear (formerly `ManagementAction.CLEAR_SEEN_MANGA`, moved to ResetAndClearActions in v0.8.25) no longer touches the legacy
  * `seenRecommendationMangaKeys` preference at all -- a prior "one-way hygiene" write there was
  * itself a live cleanup write of the legacy store, which the frozen R1 exit gate prohibits outside
  * the one-time migration and old-backup-restore boundaries. `SourceEvaluationScreenModel` has a
@@ -17,26 +17,26 @@ import java.io.File
  */
 class SourceEvaluationScreenModelClearSeenMangaSourceTest {
 
-    private fun source(): String = File("src/main/java/exh/recs/evaluation/SourceEvaluationScreenModel.kt").also {
+    private fun source(): String = File("src/main/java/exh/recs/settings/ResetAndClearActions.kt").also {
         assertTrue(it.isFile, "expected source file at ${it.path}")
     }.readText()
 
     @Test
-    fun `CLEAR_SEEN_MANGA never writes the legacy seen-manga preference`() {
+    fun `CLEAR_NOT_INTERESTED never writes the legacy seen-manga preference`() {
         val text = source()
-        val actionStart = text.indexOf("ManagementAction.CLEAR_SEEN_MANGA ->")
-        assertTrue(actionStart >= 0, "expected to find the CLEAR_SEEN_MANGA branch")
-        val nextBranchStart = text.indexOf("ManagementAction.CLEAR_DISMISSED_SUGGESTIONS", actionStart)
+        val actionStart = text.indexOf("Action.CLEAR_NOT_INTERESTED ->")
+        assertTrue(actionStart >= 0, "expected to find the CLEAR_NOT_INTERESTED branch")
+        val nextBranchStart = text.indexOf("\n        }\n    }", actionStart)
         assertTrue(nextBranchStart > actionStart, "expected a following branch to bound the CLEAR_SEEN_MANGA block")
         val branchBody = text.substring(actionStart, nextBranchStart)
 
         assertFalse(
             branchBody.contains("seenRecommendationMangaKeys"),
-            "CLEAR_SEEN_MANGA must not touch the legacy preference -- MangaTaste is the sole rating-family authority",
+            "CLEAR_NOT_INTERESTED must not touch the legacy preference -- MangaTaste is the sole rating-family authority",
         )
         assertTrue(
             branchBody.contains("clearMangaTaste.await("),
-            "CLEAR_SEEN_MANGA must still clear the authoritative MangaTaste rows",
+            "CLEAR_NOT_INTERESTED must still clear the authoritative MangaTaste rows",
         )
     }
 }

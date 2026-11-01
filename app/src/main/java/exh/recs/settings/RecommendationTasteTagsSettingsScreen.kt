@@ -67,6 +67,8 @@ class RecommendationTasteTagsSettingsScreen(
                 "suggestions_content",
                 "recommendation_languages_header",
                 "recommendation_languages_content",
+                "source_match_header",
+                "source_match_entry",
             )
         }
         ScrollToAnchorEffect(lazyListState, itemKeysInOrder, anchor)
@@ -220,6 +222,23 @@ class RecommendationTasteTagsSettingsScreen(
                             selectedLanguages = state.recommendationLanguages,
                             availableLanguages = state.availableLanguages,
                             onToggle = screenModel::toggleRecommendationLanguage,
+                        )
+                    }
+                    // KMK v0.8.25: how well the sources you use match this taste lives here, next to the taste itself
+                    item(key = "source_match_header") {
+                        SectionHeader(stringResource(KMR.strings.source_match_title))
+                    }
+                    item(key = "source_match_entry") {
+                        eu.kanade.presentation.more.settings.widget.TextPreferenceWidget(
+                            title = stringResource(KMR.strings.source_match_title),
+                            subtitle = stringResource(KMR.strings.rec_hub_source_match_summary),
+                            onPreferenceClick = {
+                                navigator.push(
+                                    exh.recs.evaluation.SourceEvaluationScreen(
+                                        mode = exh.recs.evaluation.SourceEvaluationMode.SOURCE_MATCH,
+                                    ),
+                                )
+                            },
                         )
                     }
                 }

@@ -62,11 +62,11 @@ class SourceEvaluationErrorSummaryContractTest {
     }
 
     @Test
-    fun `management and past evaluations use the shared section header hierarchy`() {
+    fun `past evaluations use the shared section header hierarchy`() {
         val screen = File("src/main/java/exh/recs/evaluation/SourceEvaluationScreen.kt").readText()
 
-        assertTrue(screen.contains("SectionHeader(stringResource(KMR.strings.source_evaluation_management_title))"))
-        assertTrue(screen.contains("screenModel::toggleManagementSection"))
+        // v0.8.25: the management actions moved to Troubleshooting (see SourceEvaluationPagesSourceTest)
+        assertTrue(!screen.contains("screenModel::toggleManagementSection"))
         assertTrue(screen.contains("SectionHeader(stringResource(KMR.strings.source_evaluation_past_results))"))
         assertTrue(screen.contains("screenModel::requestClearAllEvaluations"))
     }

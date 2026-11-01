@@ -38,7 +38,10 @@ class ScoringReplayHarnessTest {
             ScoringReplayHarness.replay(Variant.NEW_WEIGHTS_PLAIN_SUM, rated, distractors, now, year),
             ScoringReplayHarness.replay(Variant.OLD_WEIGHTS_NEW_SCORER, rated, distractors, now, year),
             listOf(
-                Variant.WITHOUT_RARITY, Variant.WITH_AGE, Variant.WITHOUT_SMOOTH_SATURATION, Variant.WITHOUT_DISLIKE_DAMPING,
+                Variant.WITHOUT_RARITY,
+                Variant.WITH_AGE,
+                Variant.WITHOUT_SMOOTH_SATURATION,
+                Variant.WITHOUT_DISLIKE_DAMPING,
             ).associateWith { ScoringReplayHarness.replay(it, rated, distractors, now, year) },
         )
     }
@@ -63,7 +66,10 @@ class ScoringReplayHarnessTest {
             ).forEach { (name, pick) ->
                 appendLine(
                     "%-30s  %-6.3f  %-6.3f  %-9.1f   %d".format(
-                        name, mean({ it.hitAt10 }, pick), mean({ it.meanReciprocalRank }, pick), mean({ it.meanRank }, pick),
+                        name,
+                        mean({ it.hitAt10 }, pick),
+                        mean({ it.meanReciprocalRank }, pick),
+                        mean({ it.meanRank }, pick),
                         rows.sumOf { pick(it).heldOut },
                     ),
                 )

@@ -233,6 +233,28 @@
     <string name="rec_arrange_sources_done">Done</string>
     <!-- KMK v0.8.25 Source evaluation: two pages and what each check is for -->
     <string name="source_evaluation_page_check">Check sources</string>
+    <!-- KMK v0.8.25 Source evaluation split: Source match, Source diagnostics, Reset and clear -->
+    <string name="source_match_title">Source match</string>
+    <string name="rec_hub_source_match_summary">Check how well the sources you use match your taste. Never installs anything.</string>
+    <string name="source_match_empty">There are no installed sources to check yet. Install a source, then come back.</string>
+    <string name="rec_hub_source_diagnostics_title">Source diagnostics</string>
+    <string name="rec_hub_source_diagnostics_summary">Sources that crashed or were blocked, loading problems, and a report you can copy.</string>
+    <string name="reset_and_clear_header">Reset and clear</string>
+    <string name="reset_forget_disliked_title">Forget disliked sources</string>
+    <string name="reset_forget_disliked_summary">Sources you told the app not to suggest can be suggested again.</string>
+    <string name="reset_show_hidden_suggestions_title">Show hidden suggestions again</string>
+    <string name="reset_show_hidden_suggestions_summary">Sources you hid from Sources to try come back to the list.</string>
+    <string name="reset_clear_not_interested_title">Clear Not interested titles</string>
+    <string name="reset_clear_not_interested_summary">Titles you marked Not interested can show up in For You again. Your ratings are not changed.</string>
+    <string name="reset_ratings_baseline_title">Reset the ratings baseline</string>
+    <string name="reset_ratings_baseline_summary">Source evaluation stops suggesting a re-check until your ratings change by 100 again.</string>
+    <string name="reset_confirm_undo">This can’t be undone.</string>
+    <string name="reset_confirm_action">Reset</string>
+    <string name="source_evaluation_update_results_button">Update results</string>
+    <string name="source_evaluation_update_results_title">Update results</string>
+    <string name="source_evaluation_update_results_current_tastes_desc">Score every result again with your current ratings.</string>
+    <string name="source_evaluation_update_results_updated_desc">Check again the results whose extension has been updated.</string>
+    <string name="source_evaluation_update_results_outdated_desc">Check again the results that are marked out of date.</string>
     <!-- KMK v0.8.25 Best Version from the reader -->
     <string name="alternate_source_reader_compare_versions">Compare versions</string>
     <string name="best_version_read_from_here_action">Read from this version</string>

@@ -118,7 +118,7 @@ class RecommendationSettingsRedesignSourceTest {
         val eval = source("src/main/java/exh/recs/evaluation/SourceEvaluationScreen.kt")
         val list = eval.substringAfter("LazyColumn(")
         val results = list.indexOf("item(key = \"eval_header\")")
-        listOf("installer_header", "reassess_header", "diagnostics_header", "management_header").forEach { key ->
+        listOf("installer_header", "reassess_header", "diagnostics_header").forEach { key ->
             val at = list.indexOf("item(key = \"$key\")")
             assertTrue(at > results, "$key must come after the results list")
         }

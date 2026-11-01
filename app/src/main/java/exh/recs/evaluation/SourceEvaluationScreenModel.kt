@@ -161,9 +161,6 @@ class SourceEvaluationScreenModel(
         val blockedPackagesWithNewerAvailable: Set<String> = emptySet(),
         // KMK <--
         // KMK <--
-        // KMK --> v0.7.18: non-zero when user has dismissed/disliked suggestions that could be cleared
-        val dismissedSuggestionCount: Int = 0,
-        val dislikedSuggestionCount: Int = 0,
         // KMK --> v0.7.18: true when available-extension list is empty after candidates loaded
         val repoUnavailableWarning: Boolean = false,
         // KMK <--
@@ -174,8 +171,6 @@ class SourceEvaluationScreenModel(
         // KMK --> v0.6.20: reassessment baseline state
         val currentRatedCount: Int = 0,
         val reassessmentBaselineCount: Int = 0,
-        val showManagementSection: Boolean = false,
-        val managementConfirmAction: ManagementAction? = null,
         // KMK <--
         // KMK v0.8.14: Phase E visual-fog reduction -- "skip evaluated"/"include explicit"/candidate
         // diagnostics and the installer-mode selector/Shizuku toggle are secondary setup detail, not
@@ -253,18 +248,6 @@ class SourceEvaluationScreenModel(
         val showSourceQualityDisliked: Boolean = false,
         val hiddenSourceQualityCount: Int = 0,
     )
-
-    // KMK --> v0.6.20: typed management action for confirmation dialogs
-    enum class ManagementAction {
-        RESET_DISLIKED_SOURCES,
-        RESET_REASSESSMENT_BASELINE,
-        CLEAR_SEEN_MANGA,
-        // KMK --> v0.7.18
-        CLEAR_DISMISSED_SUGGESTIONS,
-        CLEAR_DISLIKED_SUGGESTIONS,
-        // KMK <--
-    }
-    // KMK <--
 
     // KMK --> v0.7.11: typed pending action for consent dialog — distinguishes WHY the dialog was opened
     // so that confirming "View evaluation warning" never accidentally starts evaluation.
@@ -482,24 +465,6 @@ class SourceEvaluationScreenModel(
                 mutableState.update { it.copy(availableExtensionKeys = keys) }
             }
             .launchIn(screenModelScope)
-        // KMK <--
-
-        // KMK --> v0.7.18: load dismissed/disliked suggestion counts for management section display
-        screenModelScope.launch {
-            try {
-                val dismissedRaw = sourcePreferences.dismissedNonInstalledRecommendationSources().get()
-                val dislikedRaw = sourcePreferences.dislikedRecommendationSourceKeys().get()
-                val dismissedCount = dismissedRaw.split(";").count { it.isNotBlank() }
-                val dislikedCount = dislikedRaw.split(";").count { it.isNotBlank() }
-                mutableState.update {
-                    it.copy(dismissedSuggestionCount = dismissedCount, dislikedSuggestionCount = dislikedCount)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logcat(LogPriority.WARN) { "KMK SourceEvaluation: failed to load suggestion counts" }
-            }
-        }
         // KMK <--
 
         // KMK --> v0.6.20: load reassessment state
@@ -1456,10 +1421,6 @@ class SourceEvaluationScreenModel(
         }
     }
 
-    fun toggleManagementSection() {
-        mutableState.update { it.copy(showManagementSection = !it.showManagementSection) }
-    }
-
     // KMK v0.8.14 -->
     fun toggleSetupOptions() {
         mutableState.update { it.copy(showSetupOptions = !it.showSetupOptions) }
@@ -1467,62 +1428,6 @@ class SourceEvaluationScreenModel(
 
     fun toggleInstallerDetails() {
         mutableState.update { it.copy(showInstallerDetails = !it.showInstallerDetails) }
-    }
-    // KMK <--
-
-    fun requestManagementAction(action: ManagementAction) {
-        mutableState.update { it.copy(managementConfirmAction = action) }
-    }
-
-    fun dismissManagementConfirm() {
-        mutableState.update { it.copy(managementConfirmAction = null) }
-    }
-
-    fun confirmManagementAction() {
-        val action = state.value.managementConfirmAction ?: return
-        mutableState.update { it.copy(managementConfirmAction = null) }
-        screenModelScope.launch {
-            when (action) {
-                ManagementAction.RESET_DISLIKED_SOURCES -> {
-                    sourcePreferences.dislikedRecommendationSourceKeys().set("")
-                }
-                ManagementAction.RESET_REASSESSMENT_BASELINE -> {
-                    sourcePreferences.sourceEvaluationLastReassessmentRatingCount().set(0)
-                    sourcePreferences.sourceEvaluationLastReassessmentAt().set(0L)
-                    mutableState.update { it.copy(reassessmentBaselineCount = 0) }
-                }
-                // KMK v0.8.21-fix6: R1 correction -- Not Interested manga are bulk-cleared through
-                // the same ClearMangaTaste every other rating-clear uses. MangaTaste is the sole
-                // rating-family authority; this no longer touches the legacy
-                // seenRecommendationMangaKeys preference at all (a prior "one-way hygiene" write
-                // here was itself a live cleanup write of the legacy store, which the frozen R1
-                // contract prohibits outside the one-time migration and old-backup-restore
-                // boundaries -- removed, not merely justified).
-                ManagementAction.CLEAR_SEEN_MANGA -> {
-                    val notInterestedTastes = getMangaTaste.awaitAll()
-                        .filter { it.rating == tachiyomi.domain.taste.model.MangaRating.NOT_INTERESTED.value }
-                    val journalEntries = exh.util.EvaluationModeJournalRecorder.buildRatingChangeFromTaste(
-                        notInterestedTastes,
-                        null,
-                        exh.util.EvaluationJournalActionType.CLEAR_RATING,
-                    )
-                    notInterestedTastes.forEach { taste ->
-                        runCatching { clearMangaTaste.await(taste.source, taste.url) }
-                    }
-                    exh.util.EvaluationModeJournalRecorder.commit(journalEntries)
-                }
-                // KMK --> v0.7.18
-                ManagementAction.CLEAR_DISMISSED_SUGGESTIONS -> {
-                    sourcePreferences.dismissedNonInstalledRecommendationSources().set("")
-                    mutableState.update { it.copy(dismissedSuggestionCount = 0) }
-                }
-                ManagementAction.CLEAR_DISLIKED_SUGGESTIONS -> {
-                    sourcePreferences.dislikedRecommendationSourceKeys().set("")
-                    mutableState.update { it.copy(dislikedSuggestionCount = 0) }
-                }
-                // KMK <--
-            }
-        }
     }
     // KMK <--
 
