@@ -38,9 +38,11 @@ class TasteWeightingTest {
 
     @Test
     fun `rarity never leaves its bounds`() {
-        for (total in listOf(1, 2, 5, 50, 500)) for (with in 1..total) {
-            val f = TasteWeighting.rarityFactor(with, total)
-            assertTrue(f in TasteWeighting.RARITY_MIN..TasteWeighting.RARITY_MAX, "total=$total with=$with factor=$f")
+        for (total in listOf(1, 2, 5, 50, 500)) {
+            for (with in 1..total) {
+                val f = TasteWeighting.rarityFactor(with, total)
+                assertTrue(f in TasteWeighting.RARITY_MIN..TasteWeighting.RARITY_MAX, "total=$total with=$with factor=$f")
+            }
         }
     }
 
