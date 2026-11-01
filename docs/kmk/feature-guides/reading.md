@@ -255,7 +255,7 @@ The prompt appears after leaving the reader, not over the final page. Declining 
 | You open the reader while restricted | Reading is blocked immediately. Wait until reading is allowed, then reopen it. |
 | A restriction begins while you are already reading | You may finish the current chapter, but cannot start another while restricted. |
 
-**In v0.8.25 (not yet released):** the reading schedule dialog in the reader has an **Enable reading schedule** switch, so you can turn the schedule on without leaving the manga. When it is off, the dialog says the schedule will not apply until enabled. Back returns to the reader. Settings > Reader keeps its own switch.
+**In v0.8.25 (not yet released):** the reading schedule dialog in the reader has an **Enable reading schedule** switch, so you can turn the schedule on without leaving the manga. When it is off, the dialog says the schedule will not apply until enabled. Back returns to the reader. Adding the first time window while the schedule is off switches it on, and you can switch it off again before saving. Settings > Reader keeps its own switch.
 
 <p align="center"><img src="../visual-guide/v0.8.25/reader-schedule-enable-switch.png" width="260" alt="Reading schedule dialog with the Enable reading schedule switch turned on"></p>
 <p align="center"><em>The reading schedule dialog with its enable switch.</em></p>

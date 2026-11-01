@@ -8,7 +8,7 @@ Komikku FC keeps your recommendation preferences and reading data on your device
 - Source evaluations, source-quality choices, linked versions, and feature settings.
 - Reading progress and local tracking information.
 - Text recognized from downloaded chapter pages by OCR.
-- The automatic source check's schedule, network and battery choices, and last-run time.
+- The automatic source check's schedule, network and battery choices, and last-run time. In v0.8.25 (not yet released) it also keeps one number, how many titles you had rated at its last check, so it can tell when your ratings have changed a lot. It is a count only and stays on your device.
 - Small **Action History** records used to undo supported changes.
 
 For You also remembers checked chapter counts for up to two weeks, with a limit of 3,000 titles. This avoids loading the same chapter lists again just to apply your minimum chapter count.

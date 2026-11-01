@@ -79,7 +79,7 @@ enum class RecommendationDiagnosticsSection(
         setOf(
             "runtime_health_issues",
             "auto_check_skipped_sources",
-            "source_diagnostics_entry",
+            "source_diagnostics_header",
             "reset_and_clear_header",
             "taste_diagnostics_header",
             "taste_diagnostics_content",

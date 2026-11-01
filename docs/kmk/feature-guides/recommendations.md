@@ -182,6 +182,17 @@ Before ranking, a manga must pass your language, source, rating, known-manga, an
 
 These are **For You** rules, not a promise about every recommendation search. Newer discoveries use the same For You filters.
 
+## How a title is scored
+
+**In v0.8.25 (not yet released):** each title's score still comes from how its tags match what you rated and read, and it still needs at least one tag you like to appear. Four details changed:
+
+- **Many tags no longer win by default.** A title with more than five tags has its tag score scaled down, so a long tag list cannot outscore a focused title just by matching more of them. Titles with five tags or fewer are unchanged.
+- **Common tags count slightly less.** A tag found on almost all of the titles you rated says little about taste, so it counts a little less than a tag on only a few.
+- **Strong tags keep getting stronger.** A tag's weight now levels off smoothly instead of stopping at a hard limit, so a tag backed by many ratings stays ahead of one backed by a few.
+- **One Dislike counts for half.** A single Dislike on a tag lowers that tag by half as much; a second Dislike on it counts in full. Blocking a tag or giving it an explicit Dislike is still the way to say "never this".
+
+These changes were measured on generated data (a made-up reader with a hidden taste), where a held-out loved title ranked better in 32 of 40 runs and worse in 7. That is evidence the change works as designed, not a promise about your own library.
+
 ## Why repeated cards can move lower
 
 With repeat rotation enabled:

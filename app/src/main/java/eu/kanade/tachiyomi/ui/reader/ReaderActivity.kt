@@ -172,14 +172,24 @@ import androidx.compose.ui.graphics.Color as ComposeColor
 class ReaderActivity : BaseActivity() {
 
     companion object {
+        /** v0.8.25: read-only preview of a chapter (see [newIntent]). */
+        const val EXTRA_PREVIEW = "preview"
 
-        fun newIntent(context: Context, mangaId: Long?, chapterId: Long?/* SY --> */, page: Int? = null/* SY <-- */): Intent {
+        fun newIntent(
+            context: Context,
+            mangaId: Long?,
+            chapterId: Long?/* SY --> */,
+            page: Int? = null/* SY <-- */,
+            // KMK v0.8.25: a preview leaves no trace: no reading history, no read progress, no tracker update
+            preview: Boolean = false,
+        ): Intent {
             return Intent(context, ReaderActivity::class.java).apply {
                 putExtra("manga", mangaId)
                 putExtra("chapter", chapterId)
                 // SY -->
                 putExtra("page", page)
                 // SY <--
+                if (preview) putExtra(EXTRA_PREVIEW, true)
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
         }

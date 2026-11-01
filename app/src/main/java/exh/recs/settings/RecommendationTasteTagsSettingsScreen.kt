@@ -19,6 +19,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
+import exh.recs.evaluation.sourceMatchItems
 import tachiyomi.domain.taste.model.RatedMangaVisibility
 import tachiyomi.domain.taste.model.TagPreference
 import tachiyomi.i18n.kmk.KMR
@@ -48,6 +49,12 @@ class RecommendationTasteTagsSettingsScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        // KMK v0.8.25: Source match is on this page, not behind a row that opens another screen
+        val evalContext = androidx.compose.ui.platform.LocalContext.current
+        val evalModel = navigator.rememberNavigatorScreenModel(tag = "source-evaluation-embedded") { exh.recs.evaluation.SourceEvaluationScreenModel(evalContext) }
+        val evalState by evalModel.state.collectAsState()
+        val recQualityQueue = exh.recs.evaluation.rememberRecQualityQueue(evalState)
+        exh.recs.evaluation.SourceEvaluationDialogs(evalState, evalModel)
         val navigateUp = rememberRecommendationSettingsNavigateUp(navigator)
         val openForYou = rememberOpenForYouFromRecommendationSettings(navigator)
         // KMK EC-04 2026-09-04: Navigator-scoped, shared with the other three Recommendation
@@ -67,8 +74,8 @@ class RecommendationTasteTagsSettingsScreen(
                 "suggestions_content",
                 "recommendation_languages_header",
                 "recommendation_languages_content",
+                "source_match_section",
                 "source_match_header",
-                "source_match_entry",
             )
         }
         ScrollToAnchorEffect(lazyListState, itemKeysInOrder, anchor)
@@ -225,22 +232,10 @@ class RecommendationTasteTagsSettingsScreen(
                         )
                     }
                     // KMK v0.8.25: how well the sources you use match this taste lives here, next to the taste itself
-                    item(key = "source_match_header") {
+                    item(key = "source_match_section") {
                         SectionHeader(stringResource(KMR.strings.source_match_title))
                     }
-                    item(key = "source_match_entry") {
-                        eu.kanade.presentation.more.settings.widget.TextPreferenceWidget(
-                            title = stringResource(KMR.strings.source_match_title),
-                            subtitle = stringResource(KMR.strings.rec_hub_source_match_summary),
-                            onPreferenceClick = {
-                                navigator.push(
-                                    exh.recs.evaluation.SourceEvaluationScreen(
-                                        mode = exh.recs.evaluation.SourceEvaluationMode.SOURCE_MATCH,
-                                    ),
-                                )
-                            },
-                        )
-                    }
+                    sourceMatchItems(evalState, recQualityQueue, evalModel)
                 }
             }
         }

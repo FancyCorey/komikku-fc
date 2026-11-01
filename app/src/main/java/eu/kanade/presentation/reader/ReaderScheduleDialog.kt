@@ -275,6 +275,9 @@ fun ReaderScheduleDialog(
                                     // KMK v0.8.7: Edit — replace in place, every other window survives untouched.
                                     windows.toMutableList().also { it[index] = newWindow }
                                 } else {
+                                    // KMK v0.8.25: the first time window added while the schedule is off turns it on; a schedule with
+                                    // times but no effect is the confusing case. The switch can still be turned off before Save.
+                                    if (initialEnabled != null && !enabled && windows.isEmpty()) enabled = true
                                     windows + newWindow
                                 }
                             }

@@ -39,8 +39,6 @@ class KmkAccessibilityOwnershipSourceTest {
         val sourceEvaluation = source("src/main/java/exh/recs/evaluation/SourceEvaluationScreen.kt")
 
         assertTrue(sourceEvaluation.contains("role = Role.Button"))
-        assertTrue(sourceEvaluation.contains("onClickLabel = managementToggleAction"))
-        assertTrue(sourceEvaluation.contains("stateDescription = managementExpandedState"))
         assertTrue(sourceEvaluation.contains("onClickLabel = toggleAction"))
         assertTrue(sourceEvaluation.contains("stateDescription = expandedState"))
         assertTrue(sourceEvaluation.contains(".toggleable(value = checked, role = Role.Switch"))

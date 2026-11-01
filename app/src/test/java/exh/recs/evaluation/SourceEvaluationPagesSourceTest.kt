@@ -7,9 +7,9 @@ import org.junit.jupiter.api.Test
 import java.io.File
 
 /**
- * v0.8.25: the three jobs the Source evaluation screen used to hold are split by where they belong:
- * Find new sources (CHECK), Your taste (SOURCE_MATCH) and Troubleshooting (DIAGNOSTICS plus Reset and clear). There is no
- * tab row; each entry point opens a screen with one job.
+ * v0.8.25: the three jobs the Source evaluation screen used to hold now live where they belong, on the page itself and not
+ * behind a row that opens another screen: trying sources (Find new sources), Source match (Your taste), and the diagnostics
+ * plus Reset and clear (Troubleshooting). The evaluation screen keeps only the first job.
  */
 class SourceEvaluationPagesSourceTest {
 
@@ -20,58 +20,61 @@ class SourceEvaluationPagesSourceTest {
     private val find = File("src/main/java/exh/recs/settings/FindNewSourcesScreen.kt").readText()
 
     @Test
-    fun `the screen takes a mode and has no tab row`() {
-        assertTrue(screen.contains("enum class SourceEvaluationMode { CHECK, SOURCE_MATCH, DIAGNOSTICS }"))
-        assertTrue(screen.contains("val mode: SourceEvaluationMode = SourceEvaluationMode.CHECK"))
+    fun `the evaluation screen has no tab row, no modes, and only the try-sources job`() {
         assertFalse(screen.contains("PrimaryTabRow"))
-        assertFalse(screen.contains("BadgedBox"))
+        assertFalse(screen.contains("SourceEvaluationMode"))
+        assertFalse(screen.contains("PAGE_DIAGNOSTICS"))
+        assertTrue(screen.contains("item(key = \"start_button\")"))
+        assertTrue(screen.contains("item(key = \"reassess_header\")"))
+        assertFalse(screen.contains("item(key = \"diagnostics_header\")"))
+        assertTrue(find.contains("navigator.push(SourceEvaluationScreen())"), "Find new sources opens the try-sources screen")
     }
 
     @Test
-    fun `each entry point opens its own mode`() {
-        assertTrue(find.contains("navigator.push(SourceEvaluationScreen())"), "Find new sources opens the check")
-        assertTrue(taste.contains("SourceEvaluationMode.SOURCE_MATCH"), "Your taste opens Source match")
-        assertEquals(2, Regex("SourceEvaluationMode.DIAGNOSTICS").findAll(troubleshooting).count(), "both Troubleshooting rows open diagnostics")
+    fun `Troubleshooting shows the diagnostics on the page itself`() {
+        assertTrue(troubleshooting.contains("sourceDiagnosticsItems(evalState, evalModel)"))
+        assertTrue(troubleshooting.contains("SourceEvaluationDialogs(evalState, evalModel)"), "Details and the other buttons need their dialogs here")
+        assertFalse(troubleshooting.contains("SourceEvaluationScreen("), "no row that opens the evaluation screen for diagnostics")
+        val diagnostics = screen.substringAfter("sourceDiagnosticsItems(").substringBefore("sourceMatchItems(")
+        listOf("safety_diagnostics", "runtime_health_warning", "copy_diagnostics")
+            .forEach { assertTrue(diagnostics.contains("item(key = \"$it\")"), "$it is missing from the diagnostics items") }
+        assertTrue(diagnostics.contains("TextPreferenceWidget"), "copy and warning are full-width rows with a line each, not small text buttons")
     }
 
     @Test
-    fun `the three pages show only their own sections`() {
-        val diagnostics = screen.substringAfter("if (pageIndex == PAGE_DIAGNOSTICS) {\n").substringBefore("item(key = \"bottom_spacer\")")
-        listOf("diagnostics_header", "safety_diagnostics", "runtime_health_warning", "copy_diagnostics")
-            .forEach { assertTrue(diagnostics.contains("item(key = \"$it\")"), "$it is not on the diagnostics page") }
-
-        val match = screen.substringAfter("if (pageIndex == PAGE_SOURCE_MATCH) {").substringBefore("// KMK v0.8.25: end of the Source match page")
+    fun `Your taste shows Source match on the page itself`() {
+        assertTrue(taste.contains("sourceMatchItems(evalState, recQualityQueue, evalModel)"))
+        assertTrue(taste.contains("SourceEvaluationDialogs(evalState, evalModel)"))
+        assertFalse(taste.contains("SourceEvaluationScreen("))
+        val match = screen.substringAfter("sourceMatchItems(")
         listOf("source_match_header", "rec_quality_section", "source_match_empty")
-            .forEach { assertTrue(match.contains("item(key = \"$it\")"), "$it is not on the Source match page") }
-
-        val check = screen.substringAfter("if (pageIndex == PAGE_CHECK) {").substringBefore("end of the Check sources page")
-        listOf("run_header", "start_button", "eval_header", "installer_header", "reassess_header", "two_checks")
-            .forEach { assertTrue(check.contains("item(key = \"$it\")"), "$it is not on the check page") }
-        assertFalse(check.contains("item(key = \"rec_quality_section\")"))
-        assertFalse(check.contains("item(key = \"diagnostics_header\")"))
+            .forEach { assertTrue(match.contains("item(key = \"$it\")"), "$it is missing from Source match") }
     }
 
     @Test
-    fun `the management buttons are gone from this screen and live in Troubleshooting as described rows`() {
+    fun `item keys do not collide on the pages that embed these sections`() {
+        // a LazyColumn crashes on duplicate keys; Your taste has its own section header key
+        assertTrue(taste.contains("item(key = \"source_match_section\")"))
+        val key = Regex("item\\(key = \"source_match_header\"\\)")
+        assertEquals(1, key.findAll(screen).count(), "the shared items own this key")
+        assertEquals(0, key.findAll(taste).count(), "Your taste must not add a second item with it")
+    }
+
+    @Test
+    fun `the management buttons are gone from the evaluation screen and live in Troubleshooting as described rows`() {
         listOf("management_header", "management_reset_disliked", "toggleManagementSection", "requestManagementAction")
             .forEach { assertFalse(screen.contains(it), "$it must not remain on the evaluation screen") }
         assertTrue(troubleshooting.contains("ResetAndClearActions.Action.entries.forEach"))
         assertTrue(troubleshooting.contains("KMR.strings.reset_confirm_undo"), "each reset names itself and says it can't be undone")
-        // the old five actions had two that did the same thing; there are four now
-        assertEquals(4, ResetActionNames.size)
+        val names = listOf("FORGET_DISLIKED_SOURCES", "SHOW_HIDDEN_SUGGESTIONS", "CLEAR_NOT_INTERESTED", "RESET_RATINGS_BASELINE")
+            .filter { File("src/main/java/exh/recs/settings/ResetAndClearActions.kt").readText().contains(it) }
+        assertEquals(4, names.size, "the old five actions had two that did the same thing; there are four now")
     }
 
     @Test
-    fun `errors, progress and the summary show on every page`() {
-        val before = screen.substringAfter("state.screenError?.let { errorKey ->").substringBefore("if (pageIndex == PAGE_CHECK) {")
-        listOf("screen_error", "leftover_ext_warning", "repo_unavailable", "progress", "summary")
-            .forEach { assertTrue(before.contains("item(key = \"$it\")"), "$it is hidden on a page") }
-    }
-
-    @Test
-    fun `a search result for the diagnostics header opens the diagnostics page`() {
-        assertTrue(screen.contains("anchor == \"diagnostics_header\" || mode == SourceEvaluationMode.DIAGNOSTICS -> PAGE_DIAGNOSTICS"))
-        assertTrue(screen.contains("if (pageIndex == PAGE_DIAGNOSTICS) return@remember listOf(\"diagnostics_header\")"))
+    fun `a search result for the diagnostics header opens Troubleshooting`() {
+        val search = File("src/main/java/exh/recs/settings/RecommendationSettingsSearchScreen.kt").readText()
+        assertTrue(search.contains("RecommendationDiagnosticsSettingsScreen(anchor = \"source_diagnostics_header\")"))
     }
 
     @Test
@@ -85,6 +88,15 @@ class SourceEvaluationPagesSourceTest {
     }
 
     @Test
+    fun `wording no longer sends people to a screen that does not hold the thing`() {
+        assertTrue(strings.contains("name=\"rec_hub_check_sources\">Try sources before installing<"))
+        listOf("Open Source evaluation to retry", "check Source evaluation for a more detailed error", "Run Source evaluation to collect it")
+            .forEach { assertFalse(strings.contains(it), it) }
+        val empty = strings.substringAfter("name=\"source_match_empty\">").substringBefore("</string>")
+        assertTrue(empty.contains("already have results"), "the empty state says what is actually missing")
+    }
+
+    @Test
     fun `the explainer says what each check is for and that the automatic check never installs`() {
         assertTrue(strings.contains("""name="source_evaluation_two_checks_try_title">Try sources before installing<"""))
         assertTrue(strings.contains("""name="source_evaluation_two_checks_installed_title">Check the sources you use<"""))
@@ -94,10 +106,5 @@ class SourceEvaluationPagesSourceTest {
         assertTrue(summary.contains("your ratings have changed a lot"))
         assertTrue(summary.contains("an extension was updated"))
         assertTrue(summary.contains("Never installs or removes anything"))
-    }
-
-    private companion object {
-        val ResetActionNames = listOf("FORGET_DISLIKED_SOURCES", "SHOW_HIDDEN_SUGGESTIONS", "CLEAR_NOT_INTERESTED", "RESET_RATINGS_BASELINE")
-            .filter { File("src/main/java/exh/recs/settings/ResetAndClearActions.kt").readText().contains(it) }
     }
 }

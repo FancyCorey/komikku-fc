@@ -48,6 +48,9 @@ import exh.recs.ForYouResultBudgetPolicy
 import exh.recs.GroupPreviewBudgetPolicy
 import exh.recs.RecommendationEnrichmentCapPolicy
 import exh.recs.SavedFocusMode
+import exh.recs.evaluation.SourceEvaluationDialogs
+import exh.recs.evaluation.SourceEvaluationScreenModel
+import exh.recs.evaluation.sourceDiagnosticsItems
 import exh.recs.matching.CrossSourceIdentityReviewScreen
 import exh.recs.matching.SameMangaMatchSettings
 import exh.recs.matching.SameMangaPreselectionMode
@@ -116,6 +119,13 @@ class RecommendationDiagnosticsSettingsScreen(
         var showPreselectionModeDialog by remember { mutableStateOf(false) }
         // KMK v0.8.25: Reset and clear actions (moved here from the bottom of Source evaluation)
         val resetActions = remember { ResetAndClearActions() }
+        val evalContext = LocalContext.current
+        val evalModel = if (section.includes("source_diagnostics_header")) {
+            navigator.rememberNavigatorScreenModel(tag = "source-evaluation-embedded") { SourceEvaluationScreenModel(evalContext) }
+        } else {
+            null
+        }
+        val evalState = evalModel?.state?.collectAsState()?.value
         val resetScope = rememberCoroutineScope()
         var pendingResetAction by remember { mutableStateOf<ResetAndClearActions.Action?>(null) }
         // KMK v0.8.24: source loading problems are listed here (and counted on the hub), not as a permanent banner.
@@ -144,7 +154,7 @@ class RecommendationDiagnosticsSettingsScreen(
                 "group_preview_budget",
                 "runtime_health_issues",
                 "auto_check_skipped_sources",
-                "source_diagnostics_entry",
+                "source_diagnostics_header",
                 "reset_and_clear_header",
                 "management_header",
                 "quality_signal_history_entry",
@@ -412,29 +422,20 @@ class RecommendationDiagnosticsSettingsScreen(
                         }
                     }
 
-                    if (section.includes("runtime_health_issues")) {
-                        item(key = "runtime_health_issues") {
-                            val issueCount = healthIssues.size
-                            if (issueCount > 0) {
-                                TextPreferenceWidget(
-                                    title = stringResource(KMR.strings.rec_hub_issues_row_title),
-                                    subtitle = pluralStringResource(KMR.plurals.rec_hub_issues_count, count = issueCount, issueCount) +
-                                        ". " + stringResource(KMR.strings.rec_hub_issues_row_summary),
-                                    onPreferenceClick = {
-                                        navigator.push(
-                                            exh.recs.evaluation.SourceEvaluationScreen(
-                                                mode = exh.recs.evaluation.SourceEvaluationMode.DIAGNOSTICS,
-                                            ),
-                                        )
-                                    },
-                                )
-                            } else {
+                    // KMK v0.8.25: the diagnostics are on this page itself, not behind a row that opens another screen
+                    if (evalModel != null && evalState != null && section.includes("source_diagnostics_header")) {
+                        item(key = "source_diagnostics_header") {
+                            SectionHeader(stringResource(KMR.strings.rec_hub_source_diagnostics_title), summary = null)
+                        }
+                        if (healthIssues.isEmpty() && evalState.unsafeSources.isEmpty() && evalState.blockedPackages.isEmpty()) {
+                            item(key = "source_diagnostics_no_issues") {
                                 TextPreferenceWidget(
                                     title = stringResource(KMR.strings.rec_hub_no_issues_title),
                                     subtitle = stringResource(KMR.strings.rec_hub_no_issues_summary),
                                 )
                             }
                         }
+                        sourceDiagnosticsItems(evalState, evalModel)
                     }
 
                     if (section.includes("auto_check_skipped_sources") && skippedSourceNames.isNotEmpty()) {
@@ -450,21 +451,6 @@ class RecommendationDiagnosticsSettingsScreen(
                     }
 
                     // KMK v0.8.25 -->
-                    if (section.includes("source_diagnostics_entry")) {
-                        item(key = "source_diagnostics_entry") {
-                            TextPreferenceWidget(
-                                title = stringResource(KMR.strings.rec_hub_source_diagnostics_title),
-                                subtitle = stringResource(KMR.strings.rec_hub_source_diagnostics_summary),
-                                onPreferenceClick = {
-                                    navigator.push(
-                                        exh.recs.evaluation.SourceEvaluationScreen(
-                                            mode = exh.recs.evaluation.SourceEvaluationMode.DIAGNOSTICS,
-                                        ),
-                                    )
-                                },
-                            )
-                        }
-                    }
                     if (section.includes("reset_and_clear_header")) {
                         item(key = "reset_and_clear_header") {
                             SectionHeader(stringResource(KMR.strings.reset_and_clear_header), summary = null)
@@ -672,6 +658,7 @@ class RecommendationDiagnosticsSettingsScreen(
             }
         }
         // KMK v0.8.25: name exactly what is about to be reset, instead of a generic "this will clear the selected data"
+        if (evalModel != null && evalState != null) SourceEvaluationDialogs(evalState, evalModel)
         pendingResetAction?.let { action ->
             AlertDialog(
                 onDismissRequest = { pendingResetAction = null },

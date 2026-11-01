@@ -273,14 +273,6 @@
             <item quantity="one">%1$d enrichment call failed or timed out</item>
             <item quantity="other">%1$d enrichment calls failed or timed out</item>
         </plurals>
-    <plurals name="source_evaluation_clear_dismissed_suggestions">
-            <item quantity="one">Clear %1$d dismissed suggestion</item>
-            <item quantity="other">Clear %1$d dismissed suggestions</item>
-        </plurals>
-    <plurals name="source_evaluation_clear_disliked_suggestion_sources">
-            <item quantity="one">Clear %1$d disliked suggestion source</item>
-            <item quantity="other">Clear %1$d disliked suggestion sources</item>
-        </plurals>
     <plurals name="rec_exposure_window_days">
             <item quantity="one">%1$d day</item>
             <item quantity="other">%1$d days</item>

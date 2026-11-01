@@ -8,14 +8,14 @@ Open **Settings > Recommendation Settings**, or open For You and select its sett
 
 | Entry | What it covers |
 | --- | --- |
-| Your taste | Ratings and manga you already know, minimum chapter count, recent reading, preferred and blocked tags, taste suggestions, and recommendation languages. |
+| Your taste | Ratings and manga you already know, minimum chapter count, recent reading, preferred and blocked tags, taste suggestions, recommendation languages, and (v0.8.25) **Source match**. |
 | For You feed | Showing the For You tab, looser matches, the For You preview, new-release exploration, repeat display, and source order. |
 | Focus modes | Saved Focus modes used by For You's Focus control. |
-| Find new sources | [Source evaluation](source-evaluation.md), [suggested sources to install](sources.md), and the automatic source check. |
-| Source evaluation | The [Source evaluation](source-evaluation.md) page itself, without going through Find new sources first. |
+| Find new sources | [Trying sources before installing](source-evaluation.md), [suggested sources to install](sources.md), and the automatic source check. |
+| Try sources before installing | (v0.8.25) The [evaluation page](source-evaluation.md) itself, without going through Find new sources first. It was called Source evaluation before v0.8.25, when it also held Source match, the diagnostics and the reset buttons; those moved to Your taste and Troubleshooting. |
 | Speed and data | Data saving, result limits, extra details, extra pages, and discovery history. |
 | Linked versions and ratings | Rating prompts, tracking linked versions together, same-manga matching, and Best Version previews. |
-| Troubleshooting | Source loading problems, sources skipped by the automatic check, taste diagnostics, and source tag quality. |
+| Troubleshooting | Source diagnostics and loading problems, Reset and clear, sources skipped by the automatic check, taste diagnostics, and source tag quality. |
 
 <p align="center"><img src="../visual-guide/v0.8.24/recommendation-settings.png" width="260" alt="Recommendation Settings first page listing one entry per feature"></p>
 <p align="center"><em>The first page lists one entry per feature, each with its current value.</em></p>
@@ -55,6 +55,10 @@ Under **Ratings and known manga**, choose whether to hide disliked manga, hide a
 Add a genre or tag as **Preferred** to favor matching manga, or as **Blocked** to exclude matches. You can edit or delete your saved choices. Taste suggestions come from your rated manga, and a suggestion is saved as preferred or blocked only when you choose that action. A suggestion is not a setting already applied for you.
 
 **Languages for recommendations** chooses the languages For You can search. Sources to Try also uses them for its suggestions.
+
+### Source match
+
+**In v0.8.25 (not yet released):** at the bottom of Your taste, **Source match** checks whether For You's searches work on the sources you use, so you can see how your taste meets your sources in one place. It never installs anything and works on sources that already have a result; if there are none it tells you to run **Try sources before installing** once. See [Source match](source-evaluation.md#source-match).
 
 ## For You feed
 
@@ -178,13 +182,14 @@ These settings change the small comparison samples, not the chapter itself. **Vi
 
 | Section | What it shows |
 | --- | --- |
-| Sources with problems | Sources that failed to load since the app started, with a summary on the first Recommendation Settings page when something needs attention. Open Source evaluation to retry, update, or turn them off. When nothing has failed, the page shows **No issues found**. |
+| Source diagnostics | **In v0.8.25 (not yet released):** at the top of the page itself, not behind another screen. Sources that failed to load since the app started, with **Details** to retry, update, reinstall, uninstall or disable loading; crashed or blocked extensions; **Copy diagnostics**; and **View evaluation warning**. When nothing has failed, the page shows **No issues found**. Before v0.8.25 a **Sources with problems** row opened the Source evaluation page for these. |
+| Reset and clear | **In v0.8.25 (not yet released):** four actions, each with a line saying what it does and a confirmation that names it: Forget disliked sources, Show hidden suggestions again, Clear Not interested titles, and Reset the ratings baseline. See [Reset and clear](source-evaluation.md#reset-and-clear). |
 | Skipped on For You | Sources that **Use results on For You** is currently skipping, and why. This section appears only when the automatic check and that switch are both on. |
 | Taste diagnostics | How your ratings and tags were turned into a taste profile. |
 | Source details and tag checks | How well each source's tags match the genres For You understands. The first 20 sources are listed straight away, with **Show all** for the rest. |
 
 <p align="center"><img src="../visual-guide/v0.8.24/troubleshooting.png" width="260" alt="Troubleshooting page listing sources with problems, then taste diagnostics"></p>
-<p align="center"><em>Troubleshooting after four sources failed to load: Sources with problems leads to Source evaluation.</em></p>
+<p align="center"><em>Troubleshooting after four sources failed to load (v0.8.24 layout, where Sources with problems opened Source evaluation; see the v0.8.25 layout below).</em></p>
 
 These sections explain what the app knows about your sources and preferences. Details supplied by a source can still be missing or wrong.
 

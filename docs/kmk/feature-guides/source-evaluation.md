@@ -4,12 +4,15 @@ Source evaluation helps you decide which manga sources are worth using for recom
 
 ## Where you find it
 
-You can open Source evaluation from four places:
+**In v0.8.25 (not yet released)** the three jobs this page used to hold are on the pages where you would look for them, not behind a row that opens another screen:
 
-- **Recommendation Settings > Source evaluation**;
-- **Recommendation Settings > Find new sources > Source evaluation**;
-- the For You menu;
-- the **Sources with problems** row under **Recommendation Settings > Troubleshooting**.
+| Job | Where it is |
+| --- | --- |
+| Try sources you have not installed | **Recommendation Settings > Find new sources > Try sources before installing**, also a row on the Recommendation Settings list and an item in the For You menu. This is the page this guide describes. |
+| Check the sources you already use (**Source match**) | At the bottom of **Recommendation Settings > Your taste**. |
+| Diagnostics and **Reset and clear** | **Recommendation Settings > Troubleshooting**, at the top and directly below. |
+
+Before v0.8.25 all three were on one long Source evaluation page, with diagnostics and the reset buttons at the very bottom.
 
 <p align="center"><img src="../visual-guide/v0.8.24/source-evaluation.png" width="260" alt="Source evaluation with run options, Start and the reason it is unavailable"></p>
 <p align="center"><em>Run options, Start, and the reason Start is unavailable.</em></p>
@@ -20,9 +23,7 @@ The page is laid out in this order:
 2. Run options and the **Start** or **Continue** button.
 3. Past results, directly below the buttons.
 4. Installer settings.
-5. Reassessment.
-6. Quality results.
-7. **Diagnostics and recovery**, and **Management**, at the end.
+5. **Check older results again**, with one **Update results** button.
 
 When **Start** cannot be used, a line under it says why:
 
@@ -33,18 +34,26 @@ When **Start** cannot be used, a line under it says why:
 | No extension list is available yet. Check your extension repositories in Browse. | Add or refresh an extension repository. |
 | No available source matches your languages and content settings. Check Languages on Your taste. | Change the recommendation languages or content options. |
 
-## Two pages, two checks
+## Update results
 
-**In v0.8.25 (not yet released):** the screen has two pages. **Check sources** starts checks. **Diagnostics and recovery** holds the safety diagnostics, warnings, Copy Diagnostics and the source-management resets, and its tab shows a badge with the number of problems. An explanation at the top of the first page separates the two checks:
+**In v0.8.25 (not yet released):** **Update results** replaces three separate reassess buttons. It opens a short list of choices, each with a line saying what it does, and only the ones that apply are shown:
 
-- **Try sources before installing** temporarily installs sources you have not installed to see how their manga fit your taste. Nothing stays installed.
-- **Check the sources you use** tests whether For You's searches work on your installed sources. The automatic check does this part and never installs anything.
+- **Reassess sources** scores every result again with your current ratings.
+- **Reassess updated extensions** checks again the results whose extension has been updated.
+- **Reassess outdated** checks again the results marked out of date. If an earlier run stopped part way, **Continue** and **Start over** appear here.
 
-<p align="center"><img src="../visual-guide/v0.8.25/source-evaluation-check-page.png" width="260" alt="Source evaluation with the Check sources page and the two-checks explanation"></p>
-<p align="center"><em>The Check sources page, with the explanation of the two checks.</em></p>
+<p align="center"><img src="../visual-guide/v0.8.25/try-sources-page.png" width="260" alt="Try sources before installing with run options, Start, installer and the Update results section"></p>
+<p align="center"><em>Try sources before installing, scrolled to Check older results again.</em></p>
 
-<p align="center"><img src="../visual-guide/v0.8.25/source-evaluation-diagnostics-page.png" width="260" alt="Source evaluation Diagnostics and recovery page with a problem count badge on its tab"></p>
-<p align="center"><em>The Diagnostics and recovery page; its tab shows how many problems there are.</em></p>
+<p align="center"><img src="../visual-guide/v0.8.25/update-results-dialog.png" width="260" alt="Update results dialog listing Reassess sources with its description"></p>
+<p align="center"><em>The Update results choices.</em></p>
+
+## Source match
+
+**In v0.8.25 (not yet released):** this is the check of the sources you already use. It tests whether For You's searches work on them, and it never installs anything. It sits at the bottom of **Your taste**, because it is about how your taste meets your sources. It works on sources that already have a result from **Try sources before installing**; if there are none it says so and where to start.
+
+<p align="center"><img src="../visual-guide/v0.8.25/your-taste-source-match.png" width="260" alt="Your taste scrolled to its Source match section"></p>
+<p align="center"><em>Source match at the bottom of Your taste.</em></p>
 
 ## What an evaluation means
 
@@ -66,7 +75,7 @@ The saved result shows how well the source fits, how much information supports t
 
 ## Reassess results
 
-An old result can stop describing the source well when your taste or the extension changes. The **Check older results again** section offers the actions that apply:
+An old result can stop describing the source well when your taste or the extension changes. In v0.8.25 (not yet released) the **Check older results again** section has one **Update results** button (see above), which offers the actions below that apply, each with a line saying what it does. Before v0.8.25 each was its own button:
 
 | Action | When it appears | What it does |
 | --- | --- | --- |
@@ -139,30 +148,29 @@ Sort by Best fit, Newest, Source name, Extension name, For You compatibility, or
 
 **Clear all** beside past results asks for confirmation before clearing saved Source evaluation results. It does not uninstall the extensions. Check the outcome before assuming the clear succeeded.
 
-## Understand the management resets
+## Reset and clear
 
-Expand **Source management** to find these actions. Each requests confirmation. Cancel the confirmation if you want to keep the saved information.
+**In v0.8.25 (not yet released):** these actions are on **Recommendation Settings > Troubleshooting**, below the diagnostics. Each row says what it does, and each asks before it runs, naming the action and saying it can't be undone. Cancel the confirmation if you want to keep the saved information.
 
 | Action | What it clears or resets |
 | --- | --- |
-| Reset disliked sources | Clears saved recommendation dislikes for sources. Other filters, quality marks, and disabled-source choices can still exclude them. |
-| Reset reassessment baseline | Resets the remembered rating count and time used to suggest reassessment. It does not erase your manga ratings or perform a new evaluation. |
-| Clear seen manga | Clears manga marked Not interested. Despite the label, this is not a reset of chapter read marks or general reading history. Check those manga's ratings afterwards if the operation was interrupted. |
-| Clear dismissed suggestions | Makes dismissed Sources to Try suggestions eligible again when their other conditions allow them. It does not install them. |
-| Clear disliked suggestion sources | Clears the same saved source-dislike list used by Reset disliked sources, including dislikes that can affect installed-source recommendations. It does not clear quality marks or dismissals. |
+| Forget disliked sources | Sources you told the app not to suggest can be suggested again. Other filters, quality marks, and disabled-source choices can still exclude them. This replaces two older buttons, Reset disliked sources and Clear disliked suggestion sources, which did exactly the same thing. |
+| Show hidden suggestions again | Makes Sources to try suggestions you hid eligible again when their other conditions allow them. It does not install them. |
+| Clear Not interested titles | Titles you marked Not interested can show up in For You again. Your ratings are not changed. |
+| Reset the ratings baseline | Source evaluation stops suggesting a re-check until your ratings change by 100 again. It does not erase your ratings or run a new evaluation. |
 
-Some actions appear only when there is information to clear. None of these actions repairs an unavailable source or guarantees that new recommendations will appear. For the separate discovery-history reset and its scope, see [Recommendation settings](recommendation-settings.md).
+None of these actions repairs an unavailable source or guarantees that new recommendations will appear. For the separate discovery-history reset and its scope, see [Recommendation settings](recommendation-settings.md).
 
-## Diagnostics and recovery
+## Diagnostics
 
-When no evaluation job is active, open **Diagnostics and recovery**. **View warning** shows the installation and cleanup warning again without starting a check.
+**In v0.8.25 (not yet released):** the diagnostics are at the top of **Recommendation Settings > Troubleshooting**, under **Source diagnostics**. **View evaluation warning** shows the installation and cleanup warning again without starting a check.
 
-<p align="center"><img src="../visual-guide/v0.8.24/source-evaluation-management.png" width="260" alt="Diagnostics and recovery with a source-loading warning, and Source management"></p>
-<p align="center"><em>A source-loading warning with Details, followed by Source management.</em></p>
+<p align="center"><img src="../visual-guide/v0.8.25/troubleshooting.png" width="260" alt="Troubleshooting with Source diagnostics at the top, then Reset and clear"></p>
+<p align="center"><em>Troubleshooting: the source-loading warning with Details, Copy diagnostics, then Reset and clear.</em></p>
 
 **Copy Diagnostics** puts a short report on your clipboard; it does not send it anywhere. The report includes the app version, time, evaluation options, counts, current job stage, and Shizuku setup status. Source and extension names can appear when name hiding is off. Name hiding replaces those names with generic labels. This report uses error categories rather than raw errors and does not include extension package names or signature hashes. Read the copied text before sharing it; this does not describe the contents of other logs or screenshots.
 
-If a source-loading warning appears in this section, open **Details**. Sources that failed to load are also listed under **Recommendation Settings > Troubleshooting > Sources with problems**, which opens this page. The available actions depend on the problem:
+If a source-loading warning appears under Source diagnostics, open **Details**. Sources that failed to load are listed here, on **Recommendation Settings > Troubleshooting**. The available actions depend on the problem:
 
 | Action | What it does |
 | --- | --- |

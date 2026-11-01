@@ -62,7 +62,7 @@ Opening a bundle never adds manga automatically. Invalid structure and unresolve
 ## Recommendation settings
 
 1. From For You, select the settings icon, or open **Settings > Recommendation Settings**.
-2. Choose an entry: **Your taste**, **For You feed**, **Focus modes**, **Find new sources**, **Source evaluation**, **Speed and data**, **Linked versions and ratings**, or **Troubleshooting**. Each row shows its current value.
+2. Choose an entry: **Your taste**, **For You feed**, **Focus modes**, **Find new sources**, **Try sources before installing**, **Speed and data**, **Linked versions and ratings**, or **Troubleshooting**. Each row shows its current value.
 3. Change a setting with the switches, choices, and dialogs used elsewhere in Komikku.
 4. Return to For You and refresh when asked to reload recommendations.
 
@@ -116,9 +116,11 @@ Action History keeps a limited record in memory, not a permanent backup. Undo is
 
 For example, progress at chapter 15 can mark available chapters through the matching point read on another participating version. A confirmed chapter match takes priority; otherwise the app uses the highest available number at or below 15. This does not download pages, make later chapters unread, or send an outside tracker update. If you mark an earlier chapter unread but leave saved progress farther ahead, loading or refreshing can mark it read again. See [Local tracking](feature-guides/local-tracking.md) for matching limits and separate external-tracker settings.
 
-## Source evaluation
+## Trying sources before installing (Source evaluation)
 
-1. Open **Recommendation Settings** and select **Source evaluation**, or choose **Source evaluation** from the For You menu.
+In v0.8.25 (not yet released) this page is called **Try sources before installing**. **Source match** moved to the bottom of **Your taste**, and the diagnostics and the reset buttons moved to **Troubleshooting**, so none of them is behind another screen. The steps below are for this page.
+
+1. Open **Recommendation Settings** and select **Try sources before installing** (called **Source evaluation** before v0.8.25), or choose it from the For You menu.
 2. Under **Sources to check at once**, choose 10 for a short first check, or 25, 50, or 100. The app checks up to that many before pausing for **Continue**.
 3. Open **More setup options** to decide whether to skip already checked sources or include explicit sources. Read [Source evaluation](feature-guides/source-evaluation.md#before-starting-a-check) for these choices and any installer setup.
 4. Select **Start** when the page says it is ready. You can leave this screen while the check runs.

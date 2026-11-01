@@ -133,8 +133,6 @@ class KmkDirectPluralResourceContractTest {
             "source_evaluation_candidates_unsafe_hidden",
             "source_evaluation_cleanup_failed_warning",
             "source_evaluation_cleanup_prompt_required_warning",
-            "source_evaluation_clear_disliked_suggestion_sources",
-            "source_evaluation_clear_dismissed_suggestions",
             "source_evaluation_complete_cleanup",
             "source_evaluation_continue_next_batch",
             "source_evaluation_detail_enriched_count",

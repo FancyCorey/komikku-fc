@@ -1240,7 +1240,8 @@ class ReaderViewModel @JvmOverloads constructor(
                     }
                 },
             ),
-            incognitoMode = getIncognitoState.await(manga.source),
+            // KMK v0.8.25: a preview from Best Version is read like incognito: nothing is recorded
+            incognitoMode = savedState.get<Boolean>(ReaderActivity.EXTRA_PREVIEW) == true || getIncognitoState.await(manga.source),
             selectedChapterId = selectedChapter.id,
             dateRelativeTime = uiPreferences.relativeTime().get(),
             autoScrollFrequency = readerPreferences.autoscrollInterval().get(),

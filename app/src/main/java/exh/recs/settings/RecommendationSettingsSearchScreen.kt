@@ -678,8 +678,8 @@ internal fun rememberRecommendationSettingsSearchEntries(): List<RecommendationS
             summary = stringResource(KMR.strings.rec_search_entry_evaluation_diagnostics_summary),
             category = evaluation,
             synonyms = listOf("evaluation diagnostics", "quarantine", "error rows", "retry"),
-            destination = SourceEvaluationScreen(anchor = "diagnostics_header"),
-            anchor = "diagnostics_header",
+            destination = RecommendationDiagnosticsSettingsScreen(anchor = "source_diagnostics_header"),
+            anchor = "source_diagnostics_header",
         ),
         RecommendationSettingsSearchIndex.Entry(
             key = "installer_mode",

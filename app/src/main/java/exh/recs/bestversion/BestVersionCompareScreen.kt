@@ -296,7 +296,7 @@ class BestVersionCompareScreen(
                                             ?.find { it.url == chapter.url }
                                     if (localChapter != null) {
                                         context.startActivity(
-                                            ReaderActivity.newIntent(context, manga.id, localChapter.id),
+                                            ReaderActivity.newIntent(context, manga.id, localChapter.id, preview = true),
                                         )
                                     } else {
                                         Toast.makeText(
@@ -360,7 +360,7 @@ class BestVersionCompareScreen(
                                             ?.newChapters
                                             ?.find { it.url == chapter.url }
                                     if (localChapter != null) {
-                                        context.startActivity(ReaderActivity.newIntent(context, manga.id, localChapter.id))
+                                        context.startActivity(ReaderActivity.newIntent(context, manga.id, localChapter.id, preview = true))
                                     } else {
                                         Toast.makeText(
                                             context,
