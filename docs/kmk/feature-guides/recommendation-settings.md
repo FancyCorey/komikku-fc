@@ -90,7 +90,7 @@ Saved **Focus modes** can be renamed, deleted, and moved up or down here. They a
 
 This page contains three things:
 
-- **Source evaluation** checks whether sources can give useful recommendations. Some checks temporarily install extensions; see [Source evaluation](source-evaluation.md) before starting.
+- **Try sources before installing** (called Source evaluation before v0.8.25) checks whether sources can give useful recommendations. Some checks temporarily install extensions; see [Source evaluation](source-evaluation.md) before starting.
 - **Suggested for you** opens Sources to Try, which suggests extensions to install. See [Sources](sources.md).
 - **Automatic check** re-checks your installed sources on a schedule.
 

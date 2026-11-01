@@ -691,6 +691,53 @@ internal fun rememberRecommendationSettingsSearchEntries(): List<RecommendationS
             anchor = "installer_header",
         ),
 
+        // KMK v0.8.25: the pieces that moved off the Source evaluation page are searchable where they now live
+        RecommendationSettingsSearchIndex.Entry(
+            key = "source_match",
+            title = stringResource(KMR.strings.source_match_title),
+            summary = stringResource(KMR.strings.rec_hub_source_match_summary),
+            category = tasteFilters,
+            synonyms = listOf("compatibility", "for you search check", "installed sources", "check my sources"),
+            destination = RecommendationTasteTagsSettingsScreen(anchor = "source_match_section"),
+            anchor = "source_match_section",
+        ),
+        RecommendationSettingsSearchIndex.Entry(
+            key = "reset_forget_disliked",
+            title = stringResource(KMR.strings.reset_forget_disliked_title),
+            summary = stringResource(KMR.strings.reset_forget_disliked_summary),
+            category = stringResource(KMR.strings.rec_hub_troubleshooting),
+            synonyms = listOf("reset disliked sources", "dislikes", "forget sources"),
+            destination = RecommendationDiagnosticsSettingsScreen(anchor = "reset_and_clear_header"),
+            anchor = "reset_and_clear_header",
+        ),
+        RecommendationSettingsSearchIndex.Entry(
+            key = "reset_show_hidden_suggestions",
+            title = stringResource(KMR.strings.reset_show_hidden_suggestions_title),
+            summary = stringResource(KMR.strings.reset_show_hidden_suggestions_summary),
+            category = stringResource(KMR.strings.rec_hub_troubleshooting),
+            synonyms = listOf("dismissed suggestions", "clear dismissed", "hidden sources"),
+            destination = RecommendationDiagnosticsSettingsScreen(anchor = "reset_and_clear_header"),
+            anchor = "reset_and_clear_header",
+        ),
+        RecommendationSettingsSearchIndex.Entry(
+            key = "reset_clear_not_interested",
+            title = stringResource(KMR.strings.reset_clear_not_interested_title),
+            summary = stringResource(KMR.strings.reset_clear_not_interested_summary),
+            category = stringResource(KMR.strings.rec_hub_troubleshooting),
+            synonyms = listOf("clear seen manga", "seen manga", "not interested"),
+            destination = RecommendationDiagnosticsSettingsScreen(anchor = "reset_and_clear_header"),
+            anchor = "reset_and_clear_header",
+        ),
+        RecommendationSettingsSearchIndex.Entry(
+            key = "reset_ratings_baseline",
+            title = stringResource(KMR.strings.reset_ratings_baseline_title),
+            summary = stringResource(KMR.strings.reset_ratings_baseline_summary),
+            category = stringResource(KMR.strings.rec_hub_troubleshooting),
+            synonyms = listOf("reassessment baseline", "recheck suggestion", "reset baseline"),
+            destination = RecommendationDiagnosticsSettingsScreen(anchor = "reset_and_clear_header"),
+            anchor = "reset_and_clear_header",
+        ),
+
         // -- Sources To Try --
         RecommendationSettingsSearchIndex.Entry(
             key = "sources_to_try_install_visible",

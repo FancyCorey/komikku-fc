@@ -17,7 +17,7 @@ Source evaluation has a separate restriction for extensions associated with a de
 1. Open **Recommendation Settings > For You feed** and check enabled sources.
 2. In **Your taste**, check recommendation languages, tag filters, and minimum chapter count.
 3. Read each source row's message, then refresh For You after changing a setting.
-4. If results are still missing, use **Check source** when offered or open [Source evaluation](source-evaluation.md).
+4. If results are still missing, use **Check source** when offered, or open **Recommendation Settings > Troubleshooting** (v0.8.25; before that, [Source evaluation](source-evaluation.md)) to see the loading problem and its options.
 
 <p align="center"><img src="../visual-guide/v0.8.24/for-you-feed-sources.png" width="260" alt="For You feed source list with enabled switches"></p>
 <p align="center"><em>Check which sources are enabled under For You feed.</em></p>
