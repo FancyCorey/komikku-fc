@@ -1513,7 +1513,7 @@
     <!-- KMK --> <string name="reading_schedule_enabled_title">Enable reading schedule</string>
     <!-- KMK v0.8.25: shown in the reader's schedule editor so a configured schedule is never silently inactive -->
     <string name="reading_schedule_enabled_off_note">Off: your times are saved, but nothing is restricted until you turn this on and save.</string>
-    <!-- KMK --> <string name="reading_schedule_scope_note">Applies only inside this app, and only to the reader. It does not restrict any other app on your device.</string>
+    <!-- KMK --> <string name="reading_schedule_scope_note">Controls when you can read in this app.</string>
     <!-- KMK --> <string name="reading_schedule_configure">Configure schedule</string>
     <!-- KMK --> <string name="reading_schedule_not_configured">Not set up yet</string>
     <!-- KMK --> <string name="reading_schedule_mode_restricted">Block reading during these windows</string>

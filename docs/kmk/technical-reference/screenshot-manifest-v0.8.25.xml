@@ -51,9 +51,9 @@
     <state>source-diagnostics-and-reset-and-clear</state>
     <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
   </artifact>
-  <artifact id="reader-schedule-enable-switch-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/reader-schedule-enable-switch.png" sha256="B6F621407F8E78C28C33DCA027BF3275D59BD7422929EF9DF173AF3C0CD3C1DE" width="720" height="1154">
+  <artifact id="reader-schedule-enable-switch-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/reader-schedule-enable-switch.png" sha256="273744A60F3050994B4DDA710FA48D86BC05AFB97FFBBC0169D3CB547945CDD1" width="720" height="1154">
     <route>reader/reading-timer/configure-schedule</route>
-    <state>enable-switch-on</state>
+    <state>enable-switch-off-with-note</state>
     <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
   </artifact>
   <artifact id="reader-alternate-source-compare-versions-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/reader-alternate-source-compare-versions.png" sha256="882E3DED8C41C7E3FE295962ED157B6DAF53CDB0760C23408965F027F4D795B2" width="720" height="1154">

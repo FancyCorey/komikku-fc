@@ -17,7 +17,7 @@ These controls are optional. When disabled, they do not restrict ordinary readin
 
 The schedule entry in the reader opens the same choices found under **Settings > Reader**, so there is only one place to manage the schedule. Changes are saved with the app's other settings.
 
-**Reading schedule** lets you choose days and time windows, then either block reading during those windows or allow reading only during them. Enable the schedule to apply it. It affects this app's reader only, not other apps. If an allowed period ends while you are already reading, you can finish that chapter; a new chapter waits until reading is allowed again.
+**Reading schedule** lets you choose days and time windows, then either block reading during those windows or allow reading only during them. Enable the schedule to apply it. If an allowed period ends while you are already reading, you can finish that chapter; a new chapter waits until reading is allowed again.
 
 The **manual timer** is separate from the schedule. It counts active reading time rather than time spent with the app in the background. The timer dialog has three sections:
 
@@ -257,7 +257,7 @@ The prompt appears after leaving the reader, not over the final page. Declining 
 
 **In v0.8.25 (not yet released):** the reading schedule dialog in the reader has an **Enable reading schedule** switch, so you can turn the schedule on without leaving the manga. When it is off, the dialog says the schedule will not apply until enabled. Back returns to the reader. Adding the first time window while the schedule is off switches it on, and you can switch it off again before saving. Settings > Reader keeps its own switch.
 
-<p align="center"><img src="../visual-guide/v0.8.25/reader-schedule-enable-switch.png" width="260" alt="Reading schedule dialog with the Enable reading schedule switch turned on"></p>
+<p align="center"><img src="../visual-guide/v0.8.25/reader-schedule-enable-switch.png" width="260" alt="Reading schedule dialog with the Enable reading schedule switch and the note about what it does"></p>
 <p align="center"><em>The reading schedule dialog with its enable switch.</em></p>
 
 Switching sources does not bypass a schedule restriction. The schedule is off by default; the manual timer has its own separate choices.

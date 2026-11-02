@@ -654,7 +654,7 @@ object KmkRecsReleaseNotes {
         #### What's Changed
 
         ##### New
-        - an optional reading schedule (Settings > Reader > Reading schedule) that can restrict or allow reading during chosen days and times, entirely inside this app.
+        - an optional reading schedule (Settings > Reader > Reading schedule) that can restrict or allow reading during chosen days and times.
         - add or remove any number of recurring time windows, each covering one or more days of the week, using the same time picker already used elsewhere in the app.
 
         ##### Improve
