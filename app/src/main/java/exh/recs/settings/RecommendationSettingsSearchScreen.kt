@@ -669,7 +669,7 @@ internal fun rememberRecommendationSettingsSearchEntries(): List<RecommendationS
             summary = stringResource(KMR.strings.rec_search_entry_reassess_outdated_summary),
             category = evaluation,
             synonyms = listOf("stale", "outdated", "continue reassessing", "reassess outdated"),
-            destination = SourceEvaluationScreen(anchor = "reassess_header"),
+            destination = FindNewSourcesScreen(anchor = "reassess_header"),
             anchor = "reassess_header",
         ),
         RecommendationSettingsSearchIndex.Entry(
@@ -687,7 +687,7 @@ internal fun rememberRecommendationSettingsSearchEntries(): List<RecommendationS
             summary = stringResource(KMR.strings.rec_search_entry_installer_mode_summary),
             category = evaluation,
             synonyms = listOf("installer", "shizuku", "cleanup", "install prompts"),
-            destination = SourceEvaluationScreen(anchor = "installer_header"),
+            destination = FindNewSourcesScreen(anchor = "installer_header"),
             anchor = "installer_header",
         ),
 

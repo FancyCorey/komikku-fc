@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
@@ -38,7 +39,14 @@ import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.util.Screen
 import exh.recs.evaluation.SourceAutoRecheckPolicy
 import exh.recs.evaluation.SourceAutoRecheckScheduler
+import exh.recs.evaluation.SourceEvaluationDialogs
 import exh.recs.evaluation.SourceEvaluationScreen
+import exh.recs.evaluation.SourceEvaluationScreenModel
+import exh.recs.evaluation.SourceEvaluationUpdateResultsDialog
+import exh.recs.evaluation.sourceEvaluationInstallerItems
+import exh.recs.evaluation.sourceEvaluationInstallerKeys
+import exh.recs.evaluation.sourceEvaluationUpdateItems
+import exh.recs.evaluation.sourceEvaluationUpdateKeys
 import exh.util.PreferenceJournalActionType
 import exh.util.PreferenceUndoJournal
 import exh.util.PreferenceUndoRecorder
@@ -63,7 +71,10 @@ import java.util.Date
  * behind the two rows below with unchanged controls. The Automatic check section re-checks stale sources on a schedule
  * the user sets; it is off until turned on and never installs anything (see [SourceAutoRecheckPolicy]).
  */
-class FindNewSourcesScreen : Screen() {
+class FindNewSourcesScreen(
+    // KMK v0.8.25: a settings-search result for Check older results again or Installer and cleanup scrolls to it
+    val anchor: String? = null,
+) : Screen() {
 
     @Composable
     override fun Content() {
@@ -87,6 +98,28 @@ class FindNewSourcesScreen : Screen() {
         val applyToForYou by applyPref.collectAsState()
         val lastRun by lastRunPref.collectAsState()
         var showIntervalDialog by rememberSaveable { mutableStateOf(false) }
+        // KMK v0.8.25: Check older results again and Installer and cleanup are on this page, not at the bottom of the evaluation page
+        val evalModel = navigator.rememberNavigatorScreenModel(tag = "source-evaluation-embedded") { SourceEvaluationScreenModel(context) }
+        val evalState by evalModel.state.collectAsState()
+        var showUpdateResults by rememberSaveable { mutableStateOf(false) }
+        val lazyListState = rememberLazyListState()
+        val itemKeysInOrder = remember(evalState) {
+            listOf(
+                "check_my_sources",
+                "suggested_sources",
+                "auto_recheck_header",
+                "auto_recheck_enabled",
+                "auto_recheck_interval",
+                "auto_recheck_unmetered",
+                "auto_recheck_apply",
+                "auto_recheck_battery",
+            ) + sourceEvaluationUpdateKeys(evalState) + sourceEvaluationInstallerKeys(evalState)
+        }
+        ScrollToAnchorEffect(lazyListState, itemKeysInOrder, anchor)
+        SourceEvaluationDialogs(evalState, evalModel)
+        if (showUpdateResults) {
+            SourceEvaluationUpdateResultsDialog(evalState, evalModel, onDismiss = { showUpdateResults = false })
+        }
 
         Scaffold(
             topBar = { scrollBehavior ->
@@ -108,7 +141,7 @@ class FindNewSourcesScreen : Screen() {
                 )
             },
         ) { contentPadding ->
-            LazyColumn(contentPadding = contentPadding) {
+            LazyColumn(state = lazyListState, contentPadding = contentPadding) {
                 item(key = "check_my_sources") {
                     TextPreferenceWidget(
                         title = stringResource(KMR.strings.rec_hub_check_sources),
@@ -217,6 +250,9 @@ class FindNewSourcesScreen : Screen() {
                         )
                     }
                 }
+                // KMK v0.8.25: keeping old results current, then the installer they use
+                sourceEvaluationUpdateItems(evalState, onShowUpdateResults = { showUpdateResults = true })
+                sourceEvaluationInstallerItems(evalState, evalModel)
             }
         }
 

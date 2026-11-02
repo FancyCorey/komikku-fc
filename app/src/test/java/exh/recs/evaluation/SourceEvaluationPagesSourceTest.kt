@@ -31,6 +31,21 @@ class SourceEvaluationPagesSourceTest {
     }
 
     @Test
+    fun `installer settings and Update results are on Find new sources, not at the bottom of the evaluation page`() {
+        assertTrue(find.contains("sourceEvaluationUpdateItems(evalState"))
+        assertTrue(find.contains("sourceEvaluationInstallerItems(evalState, evalModel)"))
+        assertTrue(find.contains("SourceEvaluationUpdateResultsDialog("))
+        assertTrue(find.contains("val anchor: String? = null"), "settings search can scroll to them")
+        val content = screen.substringBefore("fun sourceEvaluationInstallerKeys")
+        listOf("installer_header", "installer_mode", "shizuku_setup", "reassess_header", "reassess_button", "stale_reassess_complete")
+            .forEach { assertFalse(content.contains("item(key = \"$it\")"), "$it must no longer be on the evaluation page") }
+        assertTrue(content.contains("item(key = \"start_button\")"), "the run and its results stay")
+        val search = File("src/main/java/exh/recs/settings/RecommendationSettingsSearchScreen.kt").readText()
+        assertTrue(search.contains("FindNewSourcesScreen(anchor = \"installer_header\")"))
+        assertTrue(search.contains("FindNewSourcesScreen(anchor = \"reassess_header\")"))
+    }
+
+    @Test
     fun `Troubleshooting shows the diagnostics on the page itself`() {
         assertTrue(troubleshooting.contains("sourceDiagnosticsItems(evalState, evalModel)"))
         assertTrue(troubleshooting.contains("SourceEvaluationDialogs(evalState, evalModel)"), "Details and the other buttons need their dialogs here")

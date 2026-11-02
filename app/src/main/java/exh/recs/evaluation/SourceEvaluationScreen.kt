@@ -169,7 +169,6 @@ class SourceEvaluationScreen(
         val openForYou = exh.recs.settings.rememberOpenForYouFromRecommendationSettings(navigator)
         val context = LocalContext.current
         val screenModel = rememberScreenModel { SourceEvaluationScreenModel(context) }
-        var showUpdateResults by rememberSaveable { mutableStateOf(false) }
         val state by screenModel.state.collectAsState()
         val queueState = state.queueState
 
@@ -231,104 +230,12 @@ class SourceEvaluationScreen(
 
         SourceEvaluationDialogs(state, screenModel)
 
-        // KMK --> v0.6.20: reassessment prompt threshold (hoisted in v0.8.11 so the anchor key list
-        // below and the items can share the exact same condition)
-        val ratingsSinceBaseline = state.currentRatedCount - state.reassessmentBaselineCount
-        // KMK v0.8.25: Update results -- every way to re-check old results, in one place
-        if (showUpdateResults) {
-            val installerReady = state.installerPolicy?.readiness == SourceEvaluationInstallerPolicy.InstallerReadiness.READY
-            val idle = !state.queueState.isRunning
-            val choose: (() -> Unit) -> Unit = { action ->
-                showUpdateResults = false
-                action()
-            }
-
-            @Composable
-            fun Choice(label: String, description: String, onClick: () -> Unit) {
-                TextButton(
-                    onClick = { choose(onClick) },
-                    enabled = installerReady && idle,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(label, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-            AlertDialog(
-                onDismissRequest = { showUpdateResults = false },
-                title = { Text(stringResource(KMR.strings.source_evaluation_update_results_title)) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
-                        Choice(
-                            label = if (ratingsSinceBaseline >= REASSESSMENT_THRESHOLD) {
-                                stringResource(KMR.strings.source_evaluation_reassess_button)
-                            } else {
-                                stringResource(KMR.strings.source_evaluation_reassess_current_tastes)
-                            },
-                            description = stringResource(KMR.strings.source_evaluation_update_results_current_tastes_desc),
-                        ) {
-                            screenModel.setSkipAlreadyEvaluated(false)
-                            screenModel.startEvaluation()
-                        }
-                        if (state.updatedEvaluatedExtensionCount > 0) {
-                            Choice(
-                                label = stringResource(KMR.strings.source_evaluation_reassess_updated_button),
-                                description = stringResource(KMR.strings.source_evaluation_update_results_updated_desc),
-                                onClick = screenModel::startReassessUpdated,
-                            )
-                        }
-                        if (state.staleCandidates.isNotEmpty()) {
-                            Choice(
-                                label = if (state.canContinueStale) {
-                                    pluralStringResource(KMR.plurals.source_evaluation_stale_reassess_continue, count = state.remainingStaleCandidateCount, state.remainingStaleCandidateCount)
-                                } else {
-                                    pluralStringResource(KMR.plurals.source_evaluation_stale_reassess_start, count = state.staleCandidates.size, state.staleCandidates.size)
-                                },
-                                description = stringResource(KMR.strings.source_evaluation_update_results_outdated_desc),
-                                onClick = screenModel::startOrContinueStaleReassessment,
-                            )
-                            if (state.canContinueStale) {
-                                Choice(
-                                    label = stringResource(KMR.strings.source_evaluation_stale_reassess_restart),
-                                    description = stringResource(KMR.strings.source_evaluation_update_results_outdated_desc),
-                                    onClick = screenModel::restartStaleReassessment,
-                                )
-                            }
-                        }
-                    }
-                },
-                confirmButton = {},
-                dismissButton = {
-                    TextButton(onClick = { showUpdateResults = false }) {
-                        Text(stringResource(MR.strings.action_cancel))
-                    }
-                },
-            )
-        }
-        // KMK <--
-
-        // KMK v0.8.13-fix1: hoisted so the anchor key list and the item body share the exact same
-        // computed state, instead of each calling SourceEvaluationStaleCompletionDisplayPolicy
-        // separately with the risk of the two calls drifting.
-        val staleCompletionState = SourceEvaluationStaleCompletionDisplayPolicy.evaluate(
-            staleCandidatesEmpty = state.staleCandidates.isEmpty(),
-            continuationCursorStaleIsSet = state.continuationCursorStale != null,
-            isRunning = state.queueState.isRunning,
-            hasUnreachableOutdated = state.outdatedReconciliation.hasUnreachableOutdated,
-        )
-
         // KMK v0.8.11: scroll-to-anchor support for Recommendation Settings search results. The key
         // list mirrors the LazyColumn's item order below, including every conditional item that can
         // precede an anchor target -- see exh.recs.settings.ScrollToAnchorEffect. Items after the
         // last anchorable key (the past-evaluations list) are not needed for anchor resolution.
         val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
-        val itemKeysInOrder = remember(state, queueState, recQualityQueue, ratingsSinceBaseline, visiblePastEvaluations, sortedEvaluations.size, pastEvaluationsVisibleCount) {
+        val itemKeysInOrder = remember(state, queueState, recQualityQueue, visiblePastEvaluations, sortedEvaluations.size, pastEvaluationsVisibleCount) {
             buildList {
                 if (state.screenError != null) add("screen_error")
                 if (state.leftoverPkgName != null) add("leftover_ext_warning")
@@ -365,25 +272,6 @@ class SourceEvaluationScreen(
                         TasteSuggestionVisibilityPolicy.canShowFewer(pastEvaluationsVisibleCount)
                     ) {
                         add("eval_reveal")
-                    }
-                }
-                if (queueState.isIdle) {
-                    add("installer_header")
-                    val installerReadyForAnchors = state.installerPolicy?.readiness ==
-                        SourceEvaluationInstallerPolicy.InstallerReadiness.READY
-                    if (installerReadyForAnchors) add("installer_details_toggle")
-                    if (state.showInstallerDetails || !installerReadyForAnchors) add("installer_mode")
-                    if (state.showShizukuSetup) add("shizuku_setup") else add("shizuku_setup_toggle")
-                    if (state.installerPolicy?.requiresPromptWarning == true) add("prompt_warning")
-                    if (state.installerPolicy?.readiness == SourceEvaluationInstallerPolicy.InstallerReadiness.UNAVAILABLE) {
-                        add("unavailable_warning")
-                    }
-                    add("reassess_header")
-                    if (ratingsSinceBaseline >= REASSESSMENT_THRESHOLD) add("reassessment_prompt")
-                    add("reassess_button")
-                    if (state.updatedEvaluatedExtensionCount > 0) add("updated_evaluated_notice")
-                    if (staleCompletionState != SourceEvaluationStaleCompletionDisplayPolicy.DisplayState.Hidden) {
-                        add("stale_reassess_complete")
                     }
                 }
             }
@@ -950,202 +838,6 @@ class SourceEvaluationScreen(
                                 }
                             }
                         }
-                    }
-
-                    // KMK v0.8.24: setup, installer and keeping results current come after the results
-                    if (queueState.isIdle) {
-                        // KMK v0.8.11: "Installer and cleanup" section -- installer mode, Shizuku setup,
-                        // and installer-related warnings, grouped instead of interleaved with run options.
-                        item(key = "installer_header") {
-                            SectionHeader(stringResource(KMR.strings.source_evaluation_section_installer))
-                        }
-
-                        // KMK v0.8.14: Phase E -- the installer-mode selector is secondary setup detail once
-                        // the installer is already ready; force it visible (not collapsible) whenever it
-                        // isn't ready, since that's exactly the critical-setup case the plan says must stay
-                        // visible. "installer_header" remains the search anchor either way.
-                        val installerReady = state.installerPolicy?.readiness ==
-                            SourceEvaluationInstallerPolicy.InstallerReadiness.READY
-                        val showInstallerModeSelector = state.showInstallerDetails || !installerReady
-                        if (installerReady) {
-                            item(key = "installer_details_toggle") {
-                                DisclosureToggleRow(
-                                    label = stringResource(KMR.strings.source_evaluation_installer_details_toggle),
-                                    expanded = state.showInstallerDetails,
-                                    onToggle = screenModel::toggleInstallerDetails,
-                                )
-                            }
-                        }
-                        if (showInstallerModeSelector) {
-                            item(key = "installer_mode") {
-                                InstallerModeSelector(
-                                    selected = state.options.installerMode,
-                                    policy = state.installerPolicy,
-                                    onSelect = screenModel::setInstallerMode,
-                                )
-                            }
-                        }
-
-                        // KMK --> v0.6.11: Shizuku setup card
-                        // KMK --> v0.6.19: only show when Shizuku is selected/relevant or user expanded it
-                        if (state.showShizukuSetup) {
-                            item(key = "shizuku_setup") {
-                                ShizukuSetupCard(
-                                    shizukuState = state.shizukuState,
-                                    installerMode = state.options.installerMode,
-                                    isEvaluationRunning = state.queueState.isRunning,
-                                    onInstallShizuku = screenModel::openShizukuSetup,
-                                    onOpenShizuku = screenModel::openShizukuApp,
-                                    onUseForRun = screenModel::useShizukuForEvaluation,
-                                    onStopUsing = screenModel::stopUsingShizukuForEvaluation,
-                                    onUninstall = screenModel::uninstallShizuku,
-                                    onRefresh = screenModel::refreshShizukuState,
-                                    // KMK --> v0.6.13: show "Use Private instead" when Shizuku is selected
-                                    privateAvailable = state.privateAvailable,
-                                    onUsePrivateInstead = screenModel::switchToPrivate,
-                                    // KMK <--
-                                )
-                            }
-                        } else {
-                            item(key = "shizuku_setup_toggle") {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = MaterialTheme.padding.medium),
-                                ) {
-                                    TextButton(onClick = screenModel::showShizukuSetup) {
-                                        Text(
-                                            stringResource(KMR.strings.source_evaluation_shizuku_setup_toggle),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        // KMK <-- v0.6.19
-                        // KMK <-- v0.6.11
-
-                        val currentPolicy = state.installerPolicy
-                        if (currentPolicy?.requiresPromptWarning == true) {
-                            item(key = "prompt_warning") {
-                                InfoCard(
-                                    message = currentPolicy.messageKey?.toLocalString()
-                                        ?: stringResource(KMR.strings.source_evaluation_installer_warning),
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
-                        }
-
-                        if (currentPolicy?.readiness == SourceEvaluationInstallerPolicy.InstallerReadiness.UNAVAILABLE) {
-                            item(key = "unavailable_warning") {
-                                InfoCard(
-                                    message = currentPolicy.messageKey?.toLocalString()
-                                        ?: stringResource(KMR.strings.source_evaluation_installer_unavailable),
-                                    isError = true,
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
-                        }
-
-                        // KMK v0.8.11: "Reassessment" section -- every reassess flavor (current tastes,
-                        // updated extensions, stale/outdated) in one place.
-                        item(key = "reassess_header") {
-                            SectionHeader(stringResource(KMR.strings.source_evaluation_section_reassessment))
-                        }
-
-                        // KMK --> v0.6.20: reassessment prompt
-                        if (ratingsSinceBaseline >= REASSESSMENT_THRESHOLD) {
-                            item(key = "reassessment_prompt") {
-                                InfoCard(
-                                    message = pluralStringResource(KMR.plurals.source_evaluation_reassessment_recommended, count = ratingsSinceBaseline, ratingsSinceBaseline),
-                                    isError = false,
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
-                        }
-
-                        // KMK v0.8.25: the three reassess buttons (current tastes, updated extensions, outdated) are one
-                        // button; the choices, each with a line saying what it does, are in the dialog it opens.
-                        item(key = "reassess_button") {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = MaterialTheme.padding.medium),
-                                horizontalArrangement = Arrangement.Start,
-                            ) {
-                                OutlinedButton(
-                                    onClick = { showUpdateResults = true },
-                                    enabled = state.installerPolicy?.readiness ==
-                                        SourceEvaluationInstallerPolicy.InstallerReadiness.READY &&
-                                        !state.queueState.isRunning,
-                                ) {
-                                    Text(stringResource(KMR.strings.source_evaluation_update_results_button))
-                                }
-                            }
-                        }
-                        // KMK <--
-
-                        // KMK --> v0.7.4: updated evaluated extensions notice + reassess button
-                        if (state.updatedEvaluatedExtensionCount > 0) {
-                            item(key = "updated_evaluated_notice") {
-                                InfoCard(
-                                    message = pluralStringResource(KMR.plurals.source_evaluation_updated_extensions_notice, count = state.updatedEvaluatedExtensionCount, state.updatedEvaluatedExtensionCount),
-                                    isError = false,
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
-                        }
-                        // KMK <--
-
-                        // KMK v0.8.1-fix4: state-derived completion feedback -- shown only once a stale
-                        // reassessment run has actually happened (continuationCursorStale != null) and
-                        // nothing remains, so it naturally disappears again once new stale work appears.
-                        if (staleCompletionState != SourceEvaluationStaleCompletionDisplayPolicy.DisplayState.Hidden) {
-                            item(key = "stale_reassess_complete") {
-                                InfoCard(
-                                    // KMK v0.8.13-fix1: distinguish "everything actionable reassessed,
-                                    // nothing excluded" from "everything actionable reassessed, but N
-                                    // outdated rows remain excluded" -- a generic "complete" message next
-                                    // to an "N of M outdated can't be reassessed" note previously read as
-                                    // if the excluded rows had also been processed.
-                                    message = if (staleCompletionState == SourceEvaluationStaleCompletionDisplayPolicy.DisplayState.CompletedWithUnreachableRemaining) {
-                                        pluralStringResource(KMR.plurals.source_evaluation_stale_reassess_complete_partial, count = state.outdatedReconciliation.unreachableOutdatedCount, state.outdatedReconciliation.unreachableOutdatedCount)
-                                    } else {
-                                        stringResource(KMR.strings.source_evaluation_stale_reassess_complete)
-                                    },
-                                    isError = false,
-                                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
-                                )
-                            }
-                        }
-                        // KMK <--
-
-                        // KMK --> v0.8.1-fix3: stale/outdated reassessment queue — a first-class,
-                        // independently continuable action, distinct from the unassessed queue's
-                        // start/continue buttons above. Only shown when there is something actionable.
-                        // KMK v0.8.14-fix1: the count here (state.staleCandidates.size) was already
-                        // actionable-only -- "Reassess outdated (N)" has never included excluded/
-                        // unreachable sources in its count. This pass moves the primary action ahead of
-                        // the excluded-sources note below (previously the note appeared first and read as
-                        // if it were blocking the action) and demotes that note to a collapsed disclosure.
-                        // KMK <--
-
-                        // KMK v0.8.20-fix1: the excluded-outdated disclosure (a collapsed "N skipped
-                        // source(s)" toggle plus an explanatory "can't be reassessed here"/"none can be
-                        // reassessed" note) was removed from this primary workflow. The reassessment
-                        // queue and its button already use only actionable candidates
-                        // (state.staleCandidates, itself built from the eligible pool -- see
-                        // SourceEvaluationCandidateQueuePolicy.staleCandidates), so excluded sources never
-                        // inflated the action count in the first place; this disclosure only ever
-                        // described sources the action was never going to touch, which read as a warning
-                        // or blocker even though nothing was actually blocked. The underlying
-                        // eligibility/reconciliation logic (SourceEvaluationOutdatedReconciliation) is
-                        // preserved -- it still powers the honest post-run completion message just below
-                        // (which must keep distinguishing "complete" from "complete, N still excluded")
-                        // and each row's neutral isActionableOutdated label -- only this pre-run warning
-                        // surface was removed.
-                        // KMK <--
                     }
 
                     item(key = "bottom_spacer") { Spacer(Modifier.height(MaterialTheme.padding.medium)) }
@@ -3249,5 +2941,335 @@ fun androidx.compose.foundation.lazy.LazyListScope.sourceMatchItems(
             )
         }
     }
+}
+// KMK <--
+
+// KMK v0.8.25 -->
+/** Keys of the items in [sourceEvaluationInstallerItems], in order, for scroll-to-anchor. */
+fun sourceEvaluationInstallerKeys(state: SourceEvaluationScreenModel.State): List<String> = buildList {
+    if (!state.queueState.isIdle) return@buildList
+    add("installer_header")
+    val ready = state.installerPolicy?.readiness == SourceEvaluationInstallerPolicy.InstallerReadiness.READY
+    if (ready) add("installer_details_toggle")
+    if (state.showInstallerDetails || !ready) add("installer_mode")
+    if (state.showShizukuSetup) add("shizuku_setup") else add("shizuku_setup_toggle")
+    if (state.installerPolicy?.requiresPromptWarning == true) add("prompt_warning")
+    if (state.installerPolicy?.readiness == SourceEvaluationInstallerPolicy.InstallerReadiness.UNAVAILABLE) add("unavailable_warning")
+}
+
+/** Keys of the items in [sourceEvaluationUpdateItems], in order, for scroll-to-anchor. */
+fun sourceEvaluationUpdateKeys(state: SourceEvaluationScreenModel.State): List<String> = buildList {
+    if (!state.queueState.isIdle) return@buildList
+    add("reassess_header")
+    if (state.currentRatedCount - state.reassessmentBaselineCount >= REASSESSMENT_THRESHOLD) add("reassessment_prompt")
+    add("reassess_button")
+    if (state.updatedEvaluatedExtensionCount > 0) add("updated_evaluated_notice")
+    if (staleCompletionDisplayState(state) != SourceEvaluationStaleCompletionDisplayPolicy.DisplayState.Hidden) add("stale_reassess_complete")
+}
+
+private fun staleCompletionDisplayState(state: SourceEvaluationScreenModel.State) =
+    SourceEvaluationStaleCompletionDisplayPolicy.evaluate(
+        staleCandidatesEmpty = state.staleCandidates.isEmpty(),
+        continuationCursorStaleIsSet = state.continuationCursorStale != null,
+        isRunning = state.queueState.isRunning,
+        hasUnreachableOutdated = state.outdatedReconciliation.hasUnreachableOutdated,
+    )
+
+/** Installer mode, Shizuku setup and installer warnings. Shown on Find new sources, where the setting belongs. */
+fun androidx.compose.foundation.lazy.LazyListScope.sourceEvaluationInstallerItems(
+    state: SourceEvaluationScreenModel.State,
+    screenModel: SourceEvaluationScreenModel,
+) {
+    if (state.queueState.isIdle) {
+        // KMK v0.8.11: "Installer and cleanup" section -- installer mode, Shizuku setup,
+        // and installer-related warnings, grouped instead of interleaved with run options.
+        item(key = "installer_header") {
+            SectionHeader(stringResource(KMR.strings.source_evaluation_section_installer))
+        }
+
+        // KMK v0.8.14: Phase E -- the installer-mode selector is secondary setup detail once
+        // the installer is already ready; force it visible (not collapsible) whenever it
+        // isn't ready, since that's exactly the critical-setup case the plan says must stay
+        // visible. "installer_header" remains the search anchor either way.
+        val installerReady = state.installerPolicy?.readiness ==
+            SourceEvaluationInstallerPolicy.InstallerReadiness.READY
+        val showInstallerModeSelector = state.showInstallerDetails || !installerReady
+        if (installerReady) {
+            item(key = "installer_details_toggle") {
+                DisclosureToggleRow(
+                    label = stringResource(KMR.strings.source_evaluation_installer_details_toggle),
+                    expanded = state.showInstallerDetails,
+                    onToggle = screenModel::toggleInstallerDetails,
+                )
+            }
+        }
+        if (showInstallerModeSelector) {
+            item(key = "installer_mode") {
+                InstallerModeSelector(
+                    selected = state.options.installerMode,
+                    policy = state.installerPolicy,
+                    onSelect = screenModel::setInstallerMode,
+                )
+            }
+        }
+
+        // KMK --> v0.6.11: Shizuku setup card
+        // KMK --> v0.6.19: only show when Shizuku is selected/relevant or user expanded it
+        if (state.showShizukuSetup) {
+            item(key = "shizuku_setup") {
+                ShizukuSetupCard(
+                    shizukuState = state.shizukuState,
+                    installerMode = state.options.installerMode,
+                    isEvaluationRunning = state.queueState.isRunning,
+                    onInstallShizuku = screenModel::openShizukuSetup,
+                    onOpenShizuku = screenModel::openShizukuApp,
+                    onUseForRun = screenModel::useShizukuForEvaluation,
+                    onStopUsing = screenModel::stopUsingShizukuForEvaluation,
+                    onUninstall = screenModel::uninstallShizuku,
+                    onRefresh = screenModel::refreshShizukuState,
+                    // KMK --> v0.6.13: show "Use Private instead" when Shizuku is selected
+                    privateAvailable = state.privateAvailable,
+                    onUsePrivateInstead = screenModel::switchToPrivate,
+                    // KMK <--
+                )
+            }
+        } else {
+            item(key = "shizuku_setup_toggle") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = MaterialTheme.padding.medium),
+                ) {
+                    TextButton(onClick = screenModel::showShizukuSetup) {
+                        Text(
+                            stringResource(KMR.strings.source_evaluation_shizuku_setup_toggle),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+        // KMK <-- v0.6.19
+        // KMK <-- v0.6.11
+
+        val currentPolicy = state.installerPolicy
+        if (currentPolicy?.requiresPromptWarning == true) {
+            item(key = "prompt_warning") {
+                InfoCard(
+                    message = currentPolicy.messageKey?.toLocalString()
+                        ?: stringResource(KMR.strings.source_evaluation_installer_warning),
+                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                )
+            }
+        }
+
+        if (currentPolicy?.readiness == SourceEvaluationInstallerPolicy.InstallerReadiness.UNAVAILABLE) {
+            item(key = "unavailable_warning") {
+                InfoCard(
+                    message = currentPolicy.messageKey?.toLocalString()
+                        ?: stringResource(KMR.strings.source_evaluation_installer_unavailable),
+                    isError = true,
+                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                )
+            }
+        }
+    }
+}
+
+/** "Check older results again": one Update results button and the notices around it. Shown on Find new sources. */
+fun androidx.compose.foundation.lazy.LazyListScope.sourceEvaluationUpdateItems(
+    state: SourceEvaluationScreenModel.State,
+    onShowUpdateResults: () -> Unit,
+) {
+    val ratingsSinceBaseline = state.currentRatedCount - state.reassessmentBaselineCount
+    val staleCompletionState = staleCompletionDisplayState(state)
+    if (state.queueState.isIdle) {
+        // KMK v0.8.11: "Reassessment" section -- every reassess flavor (current tastes,
+        // updated extensions, stale/outdated) in one place.
+        item(key = "reassess_header") {
+            SectionHeader(stringResource(KMR.strings.source_evaluation_section_reassessment))
+        }
+
+        // KMK --> v0.6.20: reassessment prompt
+        if (ratingsSinceBaseline >= REASSESSMENT_THRESHOLD) {
+            item(key = "reassessment_prompt") {
+                InfoCard(
+                    message = pluralStringResource(KMR.plurals.source_evaluation_reassessment_recommended, count = ratingsSinceBaseline, ratingsSinceBaseline),
+                    isError = false,
+                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                )
+            }
+        }
+
+        // KMK v0.8.25: the three reassess buttons (current tastes, updated extensions, outdated) are one
+        // button; the choices, each with a line saying what it does, are in the dialog it opens.
+        item(key = "reassess_button") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = MaterialTheme.padding.medium),
+                horizontalArrangement = Arrangement.Start,
+            ) {
+                OutlinedButton(
+                    onClick = onShowUpdateResults,
+                    enabled = state.installerPolicy?.readiness ==
+                        SourceEvaluationInstallerPolicy.InstallerReadiness.READY &&
+                        !state.queueState.isRunning,
+                ) {
+                    Text(stringResource(KMR.strings.source_evaluation_update_results_button))
+                }
+            }
+        }
+        // KMK <--
+
+        // KMK --> v0.7.4: updated evaluated extensions notice + reassess button
+        if (state.updatedEvaluatedExtensionCount > 0) {
+            item(key = "updated_evaluated_notice") {
+                InfoCard(
+                    message = pluralStringResource(KMR.plurals.source_evaluation_updated_extensions_notice, count = state.updatedEvaluatedExtensionCount, state.updatedEvaluatedExtensionCount),
+                    isError = false,
+                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                )
+            }
+        }
+        // KMK <--
+
+        // KMK v0.8.1-fix4: state-derived completion feedback -- shown only once a stale
+        // reassessment run has actually happened (continuationCursorStale != null) and
+        // nothing remains, so it naturally disappears again once new stale work appears.
+        if (staleCompletionState != SourceEvaluationStaleCompletionDisplayPolicy.DisplayState.Hidden) {
+            item(key = "stale_reassess_complete") {
+                InfoCard(
+                    // KMK v0.8.13-fix1: distinguish "everything actionable reassessed,
+                    // nothing excluded" from "everything actionable reassessed, but N
+                    // outdated rows remain excluded" -- a generic "complete" message next
+                    // to an "N of M outdated can't be reassessed" note previously read as
+                    // if the excluded rows had also been processed.
+                    message = if (staleCompletionState == SourceEvaluationStaleCompletionDisplayPolicy.DisplayState.CompletedWithUnreachableRemaining) {
+                        pluralStringResource(KMR.plurals.source_evaluation_stale_reassess_complete_partial, count = state.outdatedReconciliation.unreachableOutdatedCount, state.outdatedReconciliation.unreachableOutdatedCount)
+                    } else {
+                        stringResource(KMR.strings.source_evaluation_stale_reassess_complete)
+                    },
+                    isError = false,
+                    modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+                )
+            }
+        }
+        // KMK <--
+
+        // KMK --> v0.8.1-fix3: stale/outdated reassessment queue — a first-class,
+        // independently continuable action, distinct from the unassessed queue's
+        // start/continue buttons above. Only shown when there is something actionable.
+        // KMK v0.8.14-fix1: the count here (state.staleCandidates.size) was already
+        // actionable-only -- "Reassess outdated (N)" has never included excluded/
+        // unreachable sources in its count. This pass moves the primary action ahead of
+        // the excluded-sources note below (previously the note appeared first and read as
+        // if it were blocking the action) and demotes that note to a collapsed disclosure.
+        // KMK <--
+
+        // KMK v0.8.20-fix1: the excluded-outdated disclosure (a collapsed "N skipped
+        // source(s)" toggle plus an explanatory "can't be reassessed here"/"none can be
+        // reassessed" note) was removed from this primary workflow. The reassessment
+        // queue and its button already use only actionable candidates
+        // (state.staleCandidates, itself built from the eligible pool -- see
+        // SourceEvaluationCandidateQueuePolicy.staleCandidates), so excluded sources never
+        // inflated the action count in the first place; this disclosure only ever
+        // described sources the action was never going to touch, which read as a warning
+        // or blocker even though nothing was actually blocked. The underlying
+        // eligibility/reconciliation logic (SourceEvaluationOutdatedReconciliation) is
+        // preserved -- it still powers the honest post-run completion message just below
+        // (which must keep distinguishing "complete" from "complete, N still excluded")
+        // and each row's neutral isActionableOutdated label -- only this pre-run warning
+        // surface was removed.
+        // KMK <--
+    }
+}
+
+/** The Update results choices. */
+@Composable
+fun SourceEvaluationUpdateResultsDialog(
+    state: SourceEvaluationScreenModel.State,
+    screenModel: SourceEvaluationScreenModel,
+    onDismiss: () -> Unit,
+) {
+    val ratingsSinceBaseline = state.currentRatedCount - state.reassessmentBaselineCount
+    run {
+        val installerReady = state.installerPolicy?.readiness == SourceEvaluationInstallerPolicy.InstallerReadiness.READY
+        val idle = !state.queueState.isRunning
+        val choose: (() -> Unit) -> Unit = { action ->
+            onDismiss()
+            action()
+        }
+
+        @Composable
+        fun Choice(label: String, description: String, onClick: () -> Unit) {
+            TextButton(
+                onClick = { choose(onClick) },
+                enabled = installerReady && idle,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(label, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        AlertDialog(
+            onDismissRequest = { onDismiss() },
+            title = { Text(stringResource(KMR.strings.source_evaluation_update_results_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
+                    Choice(
+                        label = if (ratingsSinceBaseline >= REASSESSMENT_THRESHOLD) {
+                            stringResource(KMR.strings.source_evaluation_reassess_button)
+                        } else {
+                            stringResource(KMR.strings.source_evaluation_reassess_current_tastes)
+                        },
+                        description = stringResource(KMR.strings.source_evaluation_update_results_current_tastes_desc),
+                    ) {
+                        screenModel.setSkipAlreadyEvaluated(false)
+                        screenModel.startEvaluation()
+                    }
+                    if (state.updatedEvaluatedExtensionCount > 0) {
+                        Choice(
+                            label = stringResource(KMR.strings.source_evaluation_reassess_updated_button),
+                            description = stringResource(KMR.strings.source_evaluation_update_results_updated_desc),
+                            onClick = screenModel::startReassessUpdated,
+                        )
+                    }
+                    if (state.staleCandidates.isNotEmpty()) {
+                        Choice(
+                            label = if (state.canContinueStale) {
+                                pluralStringResource(KMR.plurals.source_evaluation_stale_reassess_continue, count = state.remainingStaleCandidateCount, state.remainingStaleCandidateCount)
+                            } else {
+                                pluralStringResource(KMR.plurals.source_evaluation_stale_reassess_start, count = state.staleCandidates.size, state.staleCandidates.size)
+                            },
+                            description = stringResource(KMR.strings.source_evaluation_update_results_outdated_desc),
+                            onClick = screenModel::startOrContinueStaleReassessment,
+                        )
+                        if (state.canContinueStale) {
+                            Choice(
+                                label = stringResource(KMR.strings.source_evaluation_stale_reassess_restart),
+                                description = stringResource(KMR.strings.source_evaluation_update_results_outdated_desc),
+                                onClick = screenModel::restartStaleReassessment,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { onDismiss() }) {
+                    Text(stringResource(MR.strings.action_cancel))
+                }
+            },
+        )
+    }
+    // KMK <--
 }
 // KMK <--

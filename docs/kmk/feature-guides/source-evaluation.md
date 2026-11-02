@@ -8,7 +8,8 @@ Source evaluation helps you decide which manga sources are worth using for recom
 
 | Job | Where it is |
 | --- | --- |
-| Try sources you have not installed | **Recommendation Settings > Find new sources > Try sources before installing**, also a row on the Recommendation Settings list and an item in the For You menu. This is the page this guide describes. |
+| Try sources you have not installed | **Recommendation Settings > Find new sources > Try sources before installing**, also a row on the Recommendation Settings list and an item in the For You menu. It holds the run options, **Start**, progress and past results. |
+| Installer and cleanup, and **Update results** (check older results again) | On **Recommendation Settings > Find new sources** itself, below the automatic check. They used to be at the bottom of the evaluation page. |
 | Check the sources you already use (**Source match**) | At the bottom of **Recommendation Settings > Your taste**. |
 | Diagnostics and **Reset and clear** | **Recommendation Settings > Troubleshooting**, at the top and directly below. |
 
@@ -22,8 +23,8 @@ The page is laid out in this order:
 1. Readiness and progress.
 2. Run options and the **Start** or **Continue** button.
 3. Past results, directly below the buttons.
-4. Installer settings.
-5. **Check older results again**, with one **Update results** button.
+
+The installer settings and **Update results** are no longer on this page; see Find new sources above.
 
 When **Start** cannot be used, a line under it says why:
 
@@ -36,17 +37,20 @@ When **Start** cannot be used, a line under it says why:
 
 ## Update results
 
-**In v0.8.25 (not yet released):** **Update results** replaces three separate reassess buttons. It opens a short list of choices, each with a line saying what it does, and only the ones that apply are shown:
+**In v0.8.25 (not yet released):** **Update results**, under **Check older results again** on **Find new sources**, replaces three separate reassess buttons. It opens a short list of choices, each with a line saying what it does, and only the ones that apply are shown:
 
 - **Reassess sources** scores every result again with your current ratings.
 - **Reassess updated extensions** checks again the results whose extension has been updated.
 - **Reassess outdated** checks again the results marked out of date. If an earlier run stopped part way, **Continue** and **Start over** appear here.
 
-<p align="center"><img src="../visual-guide/v0.8.25/try-sources-page.png" width="260" alt="Try sources before installing with run options, Start, installer and the Update results section"></p>
-<p align="center"><em>Try sources before installing, scrolled to Check older results again.</em></p>
+<p align="center"><img src="../visual-guide/v0.8.25/find-new-sources-page.png" width="260" alt="Find new sources with the automatic check, Check older results again with Update results, and Installer and cleanup"></p>
+<p align="center"><em>Find new sources, scrolled to Check older results again and Installer and cleanup.</em></p>
 
 <p align="center"><img src="../visual-guide/v0.8.25/update-results-dialog.png" width="260" alt="Update results dialog listing Reassess sources with its description"></p>
 <p align="center"><em>The Update results choices.</em></p>
+
+<p align="center"><img src="../visual-guide/v0.8.25/try-sources-page.png" width="260" alt="Try sources before installing with run options, Start and past results"></p>
+<p align="center"><em>Try sources before installing now holds only the run and its results.</em></p>
 
 ## Source match
 

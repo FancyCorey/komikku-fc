@@ -11,7 +11,7 @@ Open **Settings > Recommendation Settings**, or open For You and select its sett
 | Your taste | Ratings and manga you already know, minimum chapter count, recent reading, preferred and blocked tags, taste suggestions, recommendation languages, and (v0.8.25) **Source match**. |
 | For You feed | Showing the For You tab, looser matches, the For You preview, new-release exploration, repeat display, and source order. |
 | Focus modes | Saved Focus modes used by For You's Focus control. |
-| Find new sources | [Trying sources before installing](source-evaluation.md), [suggested sources to install](sources.md), and the automatic source check. |
+| Find new sources | [Trying sources before installing](source-evaluation.md), [suggested sources to install](sources.md), the automatic source check, and (v0.8.25) **Check older results again** with **Update results**, and **Installer and cleanup**. |
 | Try sources before installing | (v0.8.25) The [evaluation page](source-evaluation.md) itself, without going through Find new sources first. It was called Source evaluation before v0.8.25, when it also held Source match, the diagnostics and the reset buttons; those moved to Your taste and Troubleshooting. |
 | Speed and data | Data saving, result limits, extra details, extra pages, and discovery history. |
 | Linked versions and ratings | Rating prompts, tracking linked versions together, same-manga matching, and Best Version previews. |

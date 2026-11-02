@@ -262,7 +262,7 @@
     <string name="best_version_read_from_here_action">Read from this version</string>
     <string name="best_version_pick_for_reader_hint">Compare the versions, then choose the one to continue reading from. Nothing is migrated and your library is not changed.</string>
     <string name="source_evaluation_two_checks_try_title">Try sources before installing</string>
-    <string name="source_evaluation_two_checks_try_body">Run evaluation temporarily installs sources you have not installed yet, to see how their manga fit your taste. Nothing stays installed. Use Check older results again after your ratings or an extension change.</string>
+    <string name="source_evaluation_two_checks_try_body">Run evaluation temporarily installs sources you have not installed yet, to see how their manga fit your taste. Nothing stays installed. Use Update results under Find new sources after your ratings or an extension change.</string>
     <string name="source_evaluation_two_checks_installed_title">Check the sources you use</string>
     <string name="source_evaluation_two_checks_installed_body">The For You search check tests whether For You\'s searches work on the sources you already have installed. The automatic check, under Find new sources, does this part and never installs anything.</string>
     <!-- KMK v0.8.25 About: Komikku FC and Original Komikku sections -->
@@ -1903,7 +1903,7 @@
     <string name="rec_hub_troubleshooting_summary_issues">Needs attention: %1$s</string>
     <string name="source_evaluation_runtime_health_neutral">Other sources keep working.</string>
     <string name="source_evaluation_start_reason_no_candidates">Nothing to evaluate yet: every available source already has a result.</string>
-    <string name="source_evaluation_start_reason_installer">Start is unavailable until an extension installer is ready. See Installer below.</string>
+    <string name="source_evaluation_start_reason_installer">Start is unavailable until an extension installer is ready. Set one up under Find new sources, Installer and cleanup.</string>
     <string name="rec_show_for_you_tab">Show For You tab</string>
     <string name="rec_show_for_you_tab_on">Shown in Browse</string>
     <string name="rec_show_for_you_tab_off">Hidden. These settings apply again when you show it</string>

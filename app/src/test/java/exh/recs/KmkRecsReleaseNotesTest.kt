@@ -331,6 +331,7 @@ class KmkRecsReleaseNotesTest {
             "Nothing is migrated and your library is not changed",
             "**Source evaluation, split by job:**",
             "Update results button",
+            "moved up to Find new sources",
             "Source match, the check of the sources you already use, is on Your taste",
             "on Troubleshooting itself",
             "Reset and clear group",

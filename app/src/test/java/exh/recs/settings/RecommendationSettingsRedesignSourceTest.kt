@@ -114,16 +114,17 @@ class RecommendationSettingsRedesignSourceTest {
     }
 
     @Test
-    fun `check my sources shows results before setup, recovery and reset sections`() {
+    fun `try sources shows the run action and results, and setup and recovery live on other pages`() {
         val eval = source("src/main/java/exh/recs/evaluation/SourceEvaluationScreen.kt")
-        val list = eval.substringAfter("LazyColumn(")
+        val content = eval.substringBefore("fun sourceEvaluationInstallerKeys")
+        val list = content.substringAfter("LazyColumn(")
         val results = list.indexOf("item(key = \"eval_header\")")
-        listOf("installer_header", "reassess_header").forEach { key ->
-            val at = list.indexOf("item(key = \"$key\")")
-            assertTrue(at > results, "$key must come after the results list")
+        assertTrue(list.indexOf("item(key = \"start_button\")") in 0 until results, "the run action stays above the results")
+        listOf("installer_header", "reassess_header", "diagnostics_header").forEach { key ->
+            assertFalse(list.contains("item(key = \"$key\")"), "$key moved off the evaluation page")
         }
-        assertTrue(list.indexOf("item(key = \"start_button\")") < results, "the run action stays above the results")
-        val keys = eval.substringAfter("val itemKeysInOrder").substringBefore("ScrollToAnchorEffect(")
-        assertTrue(keys.indexOf("add(\"eval_sort\")") in 0 until keys.indexOf("add(\"installer_header\")"), "anchor keys mirror the new order")
+        val keys = content.substringAfter("val itemKeysInOrder").substringBefore("ScrollToAnchorEffect(")
+        assertTrue(keys.contains("add(\"eval_sort\")"), "anchor keys still mirror the page")
+        assertFalse(keys.contains("installer_header"))
     }
 }

@@ -74,8 +74,11 @@ These captures come from a development build and will be redone on the release a
 <p align="center"><img src="v0.8.25/arrange-sources.png" width="260" alt="Arrange sources on the For You page"></p>
 <p align="center"><em>Arrange sources.</em></p>
 
-<p align="center"><img src="v0.8.25/try-sources-page.png" width="260" alt="Try sources before installing, scrolled to Check older results again"></p>
-<p align="center"><em>Try sources before installing.</em></p>
+<p align="center"><img src="v0.8.25/find-new-sources-page.png" width="260" alt="Find new sources with Check older results again and Installer and cleanup"></p>
+<p align="center"><em>Find new sources: Update results and Installer and cleanup.</em></p>
+
+<p align="center"><img src="v0.8.25/try-sources-page.png" width="260" alt="Try sources before installing with run options and results"></p>
+<p align="center"><em>Try sources before installing: the run and its results.</em></p>
 
 <p align="center"><img src="v0.8.25/update-results-dialog.png" width="260" alt="Update results dialog"></p>
 <p align="center"><em>The Update results choices.</em></p>
