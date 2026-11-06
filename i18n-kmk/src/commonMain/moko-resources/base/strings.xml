@@ -921,6 +921,7 @@
     <!-- KMK --> <string name="source_evaluation_rec_quality_mixed">Mixed</string>
     <!-- KMK --> <string name="source_evaluation_rec_quality_weak">Weak</string>
     <!-- KMK --> <string name="source_evaluation_rec_quality_no_matches">No matches</string>
+    <!-- KMK v0.8.25 --> <string name="source_evaluation_rec_quality_no_tags">Cannot judge, results carry no genres</string>
     <!-- KMK --> <string name="source_evaluation_rec_quality_error">Error</string>
     <!-- KMK --> <string name="source_evaluation_rec_quality_too_little_evidence">Too little evidence</string>
     <!-- KMK v0.7.12: surface error reasons in rec-quality display, settings reorganization -->
@@ -1332,6 +1333,35 @@
     <!-- KMK --> <string name="link_group_management_done">Done</string>
     <!-- KMK --> <string name="link_group_management_cancel">Cancel</string>
     <!-- KMK --> <string name="link_group_management_operation_failed">The change could not be saved.</string>
+    <!-- KMK v0.8.25 --> <string name="reader_presets_label">Preset</string>
+    <!-- KMK v0.8.25 --> <string name="reader_presets_save_new">Save current settings as a preset</string>
+    <!-- KMK v0.8.25 --> <string name="reader_presets_update_named">Update “%1$s”</string>
+    <!-- KMK v0.8.25 --> <string name="reader_presets_delete_named">Delete “%1$s”</string>
+    <!-- KMK v0.8.25 --> <string name="reader_presets_save_chip">Save as preset</string>
+    <!-- KMK v0.8.25 --> <string name="reader_presets_delete_confirm">Delete the preset “%1$s”? Series that use it go back to your usual settings.</string>
+    <!-- KMK v0.8.25 --> <string name="reader_presets_none">Usual settings</string>
+    <!-- KMK v0.8.25 --> <string name="reader_presets_new_name">Preset name</string>
+    <!-- KMK v0.8.25 --> <string name="rec_exploration">More like what you loved</string>
+    <!-- KMK v0.8.25 --> <string name="rec_exploration_summary">Adds a few cards from a search for a title you loved and a few from tags that sit next to your favorites. Uses up to three extra searches per refresh, and is skipped while saving data.</string>
+    <!-- KMK v0.8.25 --> <string name="rec_row_includes_because_loved">Includes picks like a title you loved</string>
+    <!-- KMK v0.8.25 --> <string name="rec_row_includes_something_different">Includes something different</string>
+    <!-- KMK v0.8.25 --> <string name="link_group_management_sync">Share rating and progress</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_open">Group library automatically</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_title">Group your library</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_intro">These titles share a name with a manga you already group, or with each other. Check the ones that are right, change the ones that are close, then group them. Nothing is grouped until you tap Group selected.</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_row_joins">Joins “%1$s”</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_row_new">New group with %1$s</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_row_choose">Pick the right group</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_row_maybe">Maybe “%1$s”</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_change">Change</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_apply">Group selected (%1$d)</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_none">Nothing to suggest. A title shows up here when its name matches a group member or another ungrouped title.</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_dialog_title">Choose a group</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_search">Search groups</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_skip">Do not group this title</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_done">Grouped %1$d. Rating, tracking and chapter progress are shared with them.</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_partial">Some titles could not be grouped. %1$d were grouped.</string>
+    <!-- KMK v0.8.25 --> <string name="bulk_group_needs_partner">A new group needs at least two checked titles with the same name.</string>
 
     <!-- KMK v0.7.31: C1 — rec-quality error category badge -->
     <!-- KMK --> <string name="source_evaluation_rec_error_kind">Error kind: %1$s</string>
