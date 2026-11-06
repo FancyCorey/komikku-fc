@@ -65,6 +65,13 @@ class LinkGroupManagementScreen(private val focusedGroupId: String? = null) : Sc
                 is LinkGroupManagementScreenModel.State.Error -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text(stringResource(KMR.strings.link_group_management_error), color = MaterialTheme.colorScheme.error) }
                 is LinkGroupManagementScreenModel.State.Success -> {
                     Column(Modifier.fillMaxSize().padding(padding)) {
+                        // KMK v0.8.25: find the right group for every ungrouped library title at once
+                        if (focusedGroupId == null) {
+                            TextButton(
+                                onClick = { navigator.push(BulkGroupSuggestionsScreen()) },
+                                modifier = Modifier.padding(horizontal = MaterialTheme.padding.small),
+                            ) { Text(stringResource(KMR.strings.bulk_group_open)) }
+                        }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                             TextButton(onClick = { dialog = GroupDialog.Create(s.addCandidates) }) { Text(stringResource(KMR.strings.link_group_management_create_group)) }
                             undoId?.let { id ->
@@ -84,6 +91,12 @@ class LinkGroupManagementScreen(private val focusedGroupId: String? = null) : Sc
                                     group,
                                     s.allGroups,
                                     onAdd = { dialog = GroupDialog.Add(group.groupId, s.addCandidates) },
+                                    onSync = {
+                                        model.syncGroup(group.groupId) { ok ->
+                                            operationFailed = !ok
+                                            undoId = null
+                                        }
+                                    },
                                     onMerge = { dialog = GroupDialog.Merge(group, s.allGroups.filter { it.groupId != group.groupId }) },
                                     onUngroup = { dialog = GroupDialog.ConfirmUngroup(group) },
                                     onMove = { member -> dialog = GroupDialog.Move(member, s.allGroups.filter { it.groupId != group.groupId }) },
@@ -159,7 +172,7 @@ class LinkGroupManagementScreen(private val focusedGroupId: String? = null) : Sc
     }
 
     @Composable
-    private fun GroupCard(group: LinkGroup, groups: List<LinkGroup>, onAdd: () -> Unit, onMerge: () -> Unit, onUngroup: () -> Unit, onMove: (LinkGroupMember) -> Unit, onRemove: (LinkGroupMember) -> Unit) {
+    private fun GroupCard(group: LinkGroup, groups: List<LinkGroup>, onAdd: () -> Unit, onSync: () -> Unit, onMerge: () -> Unit, onUngroup: () -> Unit, onMove: (LinkGroupMember) -> Unit, onRemove: (LinkGroupMember) -> Unit) {
         var expanded by rememberSaveable(group.groupId) { mutableStateOf(false) }
         val toggleAction = stringResource(
             if (expanded) KMR.strings.accessibility_collapse_link_group else KMR.strings.accessibility_expand_link_group,
@@ -187,6 +200,7 @@ class LinkGroupManagementScreen(private val focusedGroupId: String? = null) : Sc
                 }
                 if (expanded) {
                     TextButton(onClick = onAdd) { Text(stringResource(KMR.strings.link_group_management_add_to_group)) }
+                    TextButton(onClick = onSync) { Text(stringResource(KMR.strings.link_group_management_sync)) }
                     if (groups.size > 1) TextButton(onClick = onMerge) { Text(stringResource(KMR.strings.link_group_management_merge_groups)) }
                     TextButton(onClick = onUngroup) { Text(stringResource(KMR.strings.link_group_management_ungroup)) }
                     group.members.forEach { member ->

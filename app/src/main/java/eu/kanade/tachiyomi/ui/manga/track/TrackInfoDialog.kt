@@ -931,6 +931,21 @@ data class TrackInfoDialogHomeScreen(
                     item.track?.let { external -> syncLocalTrackingFromExternal.sync(external, item.tracker) }
                 }
                 syncLocalTrackingFromExternal.synchronize()
+                // KMK v0.8.25: the versions tracked together take the group's rating, chapter and tracker entry right away
+                if (targets.size > 1) syncTrackedVersions(manga, targets)
+            }
+        }
+
+        private suspend fun syncTrackedVersions(manga: Manga, targets: List<Manga>) {
+            try {
+                val groupId = Injekt.get<tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks>()
+                    .awaitBySourceUrl(manga.source, manga.url)?.groupId ?: return
+                exh.recs.matching.ConfirmedGroupJoinSynchronizer()
+                    .onMembersJoined(groupId, targets.map { it.source to it.url })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logcat(LogPriority.WARN, e) { "KMK tracking: could not share the group with the tracked versions" }
             }
         }
 

@@ -3,6 +3,7 @@ package exh.recs.links
 import androidx.compose.runtime.Immutable
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import exh.recs.matching.ConfirmedGroupJoinSynchronizer
 import exh.util.GroupJournalActionType
 import exh.util.GroupJournalEntry
 import exh.util.GroupLinkSnapshot
@@ -63,6 +64,8 @@ class LinkGroupManagementScreenModel(
     private val getCrossSourceGroupPrimary: GetCrossSourceGroupPrimary = Injekt.get(),
     private val restoreCrossSourceGroupState: RestoreCrossSourceGroupState = Injekt.get(),
     private val groupUndoService: GroupUndoService = GroupUndoService(),
+    // KMK v0.8.25: confirms and syncs tracking, rating and tracker entries for titles that join a group
+    private val joinSynchronizer: Lazy<ConfirmedGroupJoinSynchronizer> = lazy { ConfirmedGroupJoinSynchronizer() },
 ) : StateScreenModel<LinkGroupManagementScreenModel.State>(State.Loading) {
     // KMK <--
 
@@ -140,7 +143,7 @@ class LinkGroupManagementScreenModel(
                 primaryDeletes = emptyList(),
                 linksBefore = links,
                 primariesBefore = getCrossSourceGroupPrimary.awaitAll(),
-            )
+            ).also { if (it != null) syncJoined(groupId, newLinks.map { link -> link.source to link.url }) }
         }
     }
 
@@ -167,7 +170,7 @@ class LinkGroupManagementScreenModel(
                 primaryDeletes = emptyList(),
                 linksBefore = links,
                 primariesBefore = getCrossSourceGroupPrimary.awaitAll(),
-            )
+            ).also { if (it != null) syncJoined(groupId, writes.map { link -> link.source to link.url }) }
         }
     }
 
@@ -204,7 +207,7 @@ class LinkGroupManagementScreenModel(
                 primaryDeletes = primaryDeletes,
                 linksBefore = links,
                 primariesBefore = primaries,
-            )
+            ).also { if (it != null) syncJoined(destinationGroupId, listOf(source to url)) }
         }
     }
 
@@ -267,7 +270,7 @@ class LinkGroupManagementScreenModel(
                 primaryDeletes = if (sourcePrimary != null) listOf(sourceGroupId) else emptyList(),
                 linksBefore = links,
                 primariesBefore = primaries,
-            )
+            ).also { if (it != null) syncJoined(destinationGroupId, sourceMembers.map { link -> link.source to link.url }) }
         }
     }
 
@@ -296,6 +299,36 @@ class LinkGroupManagementScreenModel(
             val outcome = groupUndoService.undo(entryId)
             load()
             onResult(outcome)
+        }
+    }
+
+    /**
+     * Makes every title already in [groupId] one confirmed group and shares the group's rating, tracking, chapter progress and
+     * tracker entry with the titles that lack them. For groups made before linking did this.
+     */
+    fun syncGroup(groupId: String, onResult: (Boolean) -> Unit = {}) {
+        screenModelScope.launch {
+            val ok = try {
+                val members = getCrossSourceMangaLinks.awaitAll().filter { it.groupId == groupId }
+                joinSynchronizer.value.onMembersJoined(groupId, members.map { it.source to it.url })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                false
+            }
+            load()
+            onResult(ok)
+        }
+    }
+
+    /** Confirms the new members and gives them the group's tracking, rating and tracker entries. Never fails the link itself. */
+    private suspend fun syncJoined(groupId: String, joined: List<Pair<Long, String>>) {
+        try {
+            joinSynchronizer.value.onMembersJoined(groupId, joined)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // the link is already saved; the synchronizer logs its own step failures
         }
     }
 

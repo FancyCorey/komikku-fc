@@ -8,6 +8,7 @@ import tachiyomi.domain.chapter.interactor.GetChapter
 import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
 import tachiyomi.domain.history.interactor.GetHistory
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.domain.taste.model.CrossSourceMangaLink
 import tachiyomi.domain.tracker.model.LocalTrackedWork
 import tachiyomi.domain.tracker.model.LocalTrackedWorkSource
 import tachiyomi.domain.tracker.model.LocalTrackedWorkSourceConfirmation
@@ -32,6 +33,7 @@ class ConfirmedGroupLocalTrackingPropagator(
     private val getHistoryOverride: GetHistory? = null,
     private val getChapterOverride: GetChapter? = null,
     private val getChaptersByMangaIdOverride: GetChaptersByMangaId? = null,
+    private val ratingActionsOverride: ConfirmedGroupTasteRatingActions? = null,
 ) {
     private data class LatestRead(
         val manga: Manga,
@@ -44,6 +46,7 @@ class ConfirmedGroupLocalTrackingPropagator(
     private val getHistory: GetHistory by lazy { getHistoryOverride ?: Injekt.get() }
     private val getChapter: GetChapter by lazy { getChapterOverride ?: Injekt.get() }
     private val getChaptersByMangaId: GetChaptersByMangaId by lazy { getChaptersByMangaIdOverride ?: Injekt.get() }
+    private val ratingActions: ConfirmedGroupTasteRatingActions by lazy { ratingActionsOverride ?: ConfirmedGroupTasteRatingManager() }
 
     /** Creates the first local-tracking work when a rating is intended to mean follow this title. */
     suspend fun ensureTrackedForRating(targets: List<Manga>): Boolean {
@@ -156,6 +159,7 @@ class ConfirmedGroupLocalTrackingPropagator(
         duplicateWorkIds.forEach { duplicateWorkId ->
             repository.consolidateWork(sharedWorkId, duplicateWorkId)
         }
+        val attachedNow = mutableListOf<Manga>()
         for (manga in resolved) {
             val existingId = repository.getWorkIdBySourceUrl(manga.source, manga.url)
             if (existingId != null) continue
@@ -183,7 +187,29 @@ class ConfirmedGroupLocalTrackingPropagator(
                     updatedAt = now,
                 ),
             )
+            attachedNow += manga
         }
+        shareGroupRating(sharedWorkId, resolved, attachedNow)
         return true
+    }
+
+    /**
+     * KMK v0.8.25: a title that joins a tracked group takes the group's rating when it has none of its own, the same way it
+     * takes the group's chapter. Never fails the attach; the rating-sharing setting is checked by the rating owner.
+     */
+    private suspend fun shareGroupRating(workId: String, resolved: List<Manga>, attached: List<Manga>) {
+        if (attached.isEmpty()) return
+        try {
+            val members = (
+                repository.getSources(workId).map { Triple(it.source, it.url, it.title) } +
+                    resolved.map { Triple(it.source, it.url, it.title) }
+                ).distinctBy { it.first to it.second }
+                .map { (source, url, title) -> CrossSourceMangaLink(source, url, workId, title, 0L, 0L) }
+            attached.forEach { ratingActions.applyGroupRatingToJoinedMember(members, it) }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // the title is already attached to the tracking entry
+        }
     }
 }

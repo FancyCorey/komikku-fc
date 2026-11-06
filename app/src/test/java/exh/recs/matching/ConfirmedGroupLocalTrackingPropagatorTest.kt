@@ -62,6 +62,22 @@ class ConfirmedGroupLocalTrackingPropagatorTest {
     }
 
     @Test
+    fun `a title newly attached to a tracked group takes the group rating`() = runTest {
+        val origin = manga(1, "/origin")
+        val target = manga(2, "/target")
+        val ratingActions = mockk<ConfirmedGroupTasteRatingActions>(relaxed = true)
+        val withRating = ConfirmedGroupLocalTrackingPropagator(repository, ratingActionsOverride = ratingActions)
+        coEvery { repository.getWorkIdBySourceUrl(1, "/origin") } returns "work-1"
+        coEvery { repository.getWorkIdBySourceUrl(2, "/target") } returns null
+        coEvery { repository.getWork("work-1") } returns work("work-1", "Origin", updatedAt = 10L)
+
+        assertTrue(withRating.propagateIfAnyTracked(listOf(origin, target), enabled = true))
+
+        coVerify(exactly = 1) { ratingActions.applyGroupRatingToJoinedMember(any(), target) }
+        coVerify(exactly = 0) { ratingActions.applyGroupRatingToJoinedMember(any(), origin) }
+    }
+
+    @Test
     fun `separate existing works are consolidated before propagation`() = runTest {
         val origin = manga(1, "/origin")
         val target = manga(2, "/target")

@@ -125,6 +125,10 @@ class RecordLocalTrackedChapterProgress(
             )
         }
 
+    /** On hold and Dropped are choices; only the user changes them, and reading on this device already respects that. */
+    private fun keepsChosenStatus(status: LocalTrackedWorkStatus): LocalTrackedWorkStatus? =
+        status.takeIf { it == LocalTrackedWorkStatus.ON_HOLD || it == LocalTrackedWorkStatus.DROPPED }
+
     /** Finds the existing local work for a confirmed sibling when the current source is new. */
     private suspend fun resolveConfirmedWorkId(manga: Manga): String? {
         val originLink = getCrossSourceMangaLinks.awaitBySourceUrl(manga.source, manga.url) ?: return null
@@ -437,7 +441,8 @@ class RecordLocalTrackedChapterProgress(
         if (decision == tachiyomi.domain.tracker.model.LocalTrackedProgressInheritanceDecision.ALREADY_RECORDED) {
             // The work-level chapter may already match while this source's row is stale. Keep
             // the aggregate conflict decision, but advance the source-specific row independently.
-            val status = LocalTrackedProgressInheritancePolicy.statusAfterProgress(targetWork.status)
+            // KMK v0.8.25: replaying saved progress is not new reading, so it never undoes On hold or Dropped
+            val status = keepsChosenStatus(targetWork.status) ?: LocalTrackedProgressInheritancePolicy.statusAfterProgress(targetWork.status)
             if (status != targetWork.status || targetWork.startDate == null ||
                 (status != LocalTrackedWorkStatus.COMPLETED && targetWork.finishDate != null)
             ) {
@@ -473,7 +478,11 @@ class RecordLocalTrackedChapterProgress(
             )
             return
         }
-        val updatedWork = LocalTrackedProgressInheritancePolicy.apply(targetWork, aggregateUpdate) ?: return
+        val applied = LocalTrackedProgressInheritancePolicy.apply(targetWork, aggregateUpdate) ?: return
+        // KMK v0.8.25: a chapter copied from another version moves the chapter, not a status the user chose
+        val updatedWork = keepsChosenStatus(targetWork.status)
+            ?.let { applied.copy(status = it, finishDate = targetWork.finishDate) }
+            ?: applied
         localTrackerRepository.upsertInheritedWork(updatedWork)
         localTrackerRepository.recordSourceProgress(
             LocalTrackedWorkSourceProgress(

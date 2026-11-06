@@ -115,6 +115,9 @@ class LovedMangaScreenModel(
     private val confirmedMangaGroupTargets: ConfirmedMangaGroupTargets = Injekt.get(),
     private val confirmedGroupLocalTrackingPropagator: ConfirmedGroupLocalTrackingPropagator =
         Injekt.get(),
+    // KMK v0.8.25: titles merged into a group get its tracking, rating and tracker entries
+    private val joinSynchronizer: Lazy<exh.recs.matching.ConfirmedGroupJoinSynchronizer> =
+        lazy { exh.recs.matching.ConfirmedGroupJoinSynchronizer() },
     // KMK <--
 ) : StateScreenModel<LovedMangaScreenModel.State>(State.Loading) {
 
@@ -646,6 +649,14 @@ class LovedMangaScreenModel(
                 )
                 upsertCrossSourceMangaLinks.await(plan.writes)
                 undoEntry?.let { exh.util.GroupUndoJournal.record(it) }
+                // KMK v0.8.25: the link is saved; now give the merged titles the group's tracking, rating and tracker entries
+                try {
+                    joinSynchronizer.value.onMembersJoined(plan.targetGroupId, plan.writes.map { it.source to it.url })
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // never undoes the merge
+                }
                 plan to undoEntry?.id
             }
             result.onSuccess { (plan, undoEntryId) ->

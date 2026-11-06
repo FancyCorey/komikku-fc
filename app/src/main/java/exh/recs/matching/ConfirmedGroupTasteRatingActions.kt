@@ -18,6 +18,10 @@ interface ConfirmedGroupTasteRatingActions {
     suspend fun propagateToConfirmedMember(origin: Manga, member: Manga)
     suspend fun currentRating(origin: Manga): MangaRating?
     suspend fun setGroupRating(origin: Manga, rating: MangaRating?)
+
+    // KMK v0.8.25: a title the user just put into a group takes the group's rating if it has none of its own. Unlike
+    // [propagateToConfirmedMember] it does not need the title to be locally tracked first: joining the group is the consent.
+    suspend fun applyGroupRatingToJoinedMember(groupMembers: List<CrossSourceMangaLink>, member: Manga) = Unit
 }
 
 object NoOpConfirmedGroupTasteRatingActions : ConfirmedGroupTasteRatingActions {
@@ -60,6 +64,26 @@ class ConfirmedGroupTasteRatingManager(
         val rating = ConfirmedGroupTasteRatingPolicy.joiningRating(
             enabled = sourcePreferences.confirmedTrackedVersionRatingPropagationEnabled().get(),
             destinationTaste = destinationTaste,
+            existingGroupTastes = groupTastes,
+        ) ?: return
+        val journalEntries = exh.util.EvaluationModeJournalRecorder.buildRatingChange(
+            getMangaTaste = getMangaTaste,
+            manga = listOf(member),
+            newRating = rating.value,
+            actionType = ratingActionType(rating),
+        )
+        if (!insertMangaTasteIfAbsent.await(member, rating)) return
+        exh.util.EvaluationModeJournalRecorder.commit(journalEntries)
+    }
+
+    override suspend fun applyGroupRatingToJoinedMember(groupMembers: List<CrossSourceMangaLink>, member: Manga) {
+        if (!sourcePreferences.confirmedTrackedVersionRatingPropagationEnabled().get()) return
+        val groupTastes = groupMembers
+            .filterNot { it.source == member.source && it.url == member.url }
+            .mapNotNull { getMangaTaste.await(it.source, it.url) }
+        val rating = ConfirmedGroupTasteRatingPolicy.joiningRating(
+            enabled = true,
+            destinationTaste = getMangaTaste.await(member.source, member.url),
             existingGroupTastes = groupTastes,
         ) ?: return
         val journalEntries = exh.util.EvaluationModeJournalRecorder.buildRatingChange(

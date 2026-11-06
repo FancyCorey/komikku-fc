@@ -22,6 +22,7 @@ import eu.kanade.domain.manga.interactor.UpdateManga
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.sync.SyncPreferences
 import eu.kanade.domain.track.interactor.RecordLocalTrackedChapterProgress
+import eu.kanade.domain.track.interactor.RefreshLinkedGroupTrackers
 import eu.kanade.domain.track.model.toDbTrack
 import eu.kanade.domain.track.model.toDomainTrack
 import eu.kanade.tachiyomi.data.LibraryUpdateStatus
@@ -484,6 +485,15 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
                     }
                 }
                 .awaitAll()
+        }
+
+        // KMK v0.8.25: ask each linked group's external tracker once, so progress made on any version reaches the others
+        try {
+            RefreshLinkedGroupTrackers().await()
+        } catch (e: Throwable) {
+            rethrowIfFatal(e)
+            if (e is CancellationException) throw e
+            xLogE("Linked group tracker refresh failed", e)
         }
 
         // Keep confirmed local versions aligned with persisted progress after refresh. This is

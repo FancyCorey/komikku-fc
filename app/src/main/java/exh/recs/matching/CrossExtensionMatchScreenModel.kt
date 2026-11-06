@@ -611,6 +611,10 @@ class CrossExtensionMatchScreenModel(
                     )
                 }
                 // KMK <--
+                // KMK v0.8.25: the versions just added to local tracking take everything the group already has, now
+                if (mode is CrossExtensionMatchMode.LocalTracking && origin != null && targets.isNotEmpty()) {
+                    syncJoinedVersions(origin, targets)
+                }
                 completed = true
             } catch (e: CancellationException) {
                 throw e
@@ -620,6 +624,18 @@ class CrossExtensionMatchScreenModel(
                 mutableState.update { it.copy(isApplying = false) }
             }
             if (completed) onComplete()
+        }
+    }
+
+    private suspend fun syncJoinedVersions(origin: Manga, targets: List<Manga>) {
+        try {
+            val groupId = getCrossSourceMangaLinks.awaitBySourceUrl(origin.source, origin.url)?.groupId ?: return
+            // the title the user is standing on is one of the receivers: it is the one that needs the group's rating
+            ConfirmedGroupJoinSynchronizer().onMembersJoined(groupId, (targets + origin).map { it.source to it.url })
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // the versions are already attached; the synchronizer logs its own step failures
         }
     }
 
