@@ -3,6 +3,7 @@ package exh.ocr
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import com.google.mlkit.common.sdkinternal.MlKitContext
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -53,7 +54,7 @@ interface OcrTextRecognizer {
 }
 
 class MlKitLatinOcrTextRecognizer(
-    @Suppress("UNUSED_PARAMETER") context: Context,
+    private val context: Context,
 ) : OcrTextRecognizer {
 
     override val engineKey: String get() = ENGINE_KEY
@@ -67,6 +68,9 @@ class MlKitLatinOcrTextRecognizer(
     }
 
     private val recognizer by lazy {
+        // KMK v0.8.25: the app's manifest removes ML Kit's start-up provider, so ML Kit starts here, the first time OCR is used,
+        // and not at every launch for people who never search text.
+        MlKitContext.initializeIfNeeded(context.applicationContext)
         TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     }
 
