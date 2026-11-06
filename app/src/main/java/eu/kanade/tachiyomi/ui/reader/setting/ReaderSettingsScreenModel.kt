@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.reader.setting
 
 import eu.kanade.tachiyomi.ui.reader.ReaderViewModel
+import exh.reader.presets.ReaderPresets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,8 @@ class ReaderSettingsScreenModel(
     val onChangeOrientation: (ReaderOrientation) -> Unit,
     val preferences: ReaderPreferences = Injekt.get(),
 ) {
+    // KMK v0.8.25: reader presets for the series being read
+    val presets: ReaderPresets by lazy { ReaderPresets() }
 
     val viewerFlow = readerState
         .map { it.viewer }

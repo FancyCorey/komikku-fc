@@ -28,6 +28,10 @@ import java.text.NumberFormat
 @Composable
 internal fun ReadingModePage(screenModel: ReaderSettingsScreenModel) {
     HeadingItem(MR.strings.pref_category_for_this_series)
+
+    // KMK v0.8.25: reader presets, in the same chip format, first under "For this series"
+    ReaderPresetSection(screenModel)
+
     val manga by screenModel.mangaFlow.collectAsState()
 
     val readingMode = remember(manga) { ReadingMode.fromPreference(manga?.readingMode?.toInt()) }

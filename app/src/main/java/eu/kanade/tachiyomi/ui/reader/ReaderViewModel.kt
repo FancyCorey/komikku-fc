@@ -947,6 +947,16 @@ class ReaderViewModel @JvmOverloads constructor(
 
     val incognitoMode: Boolean
         get() = activeRoute?.incognitoMode ?: false
+
+    // KMK v0.8.25: per-series reader presets
+    // Created only when a series is opened, and a missing preference store only means no preset, never a crash.
+    private val readerPresetsHolder = lazy<exh.reader.presets.ReaderPresets?> {
+        try {
+            exh.reader.presets.ReaderPresets()
+        } catch (e: Exception) {
+            null
+        }
+    }
     private val downloadAheadAmount = downloadPreferences.autoDownloadWhileReading().get()
 
     init {
@@ -1017,6 +1027,7 @@ class ReaderViewModel @JvmOverloads constructor(
     }
 
     override fun onCleared() {
+        if (readerPresetsHolder.isInitialized()) readerPresetsHolder.value?.endSession()
         alternateSourceCandidateGeneration++
         alternateSourceCommandGeneration++
         alternateSourceCandidateJob?.cancel()
@@ -1131,6 +1142,8 @@ class ReaderViewModel @JvmOverloads constructor(
         restoredPage: Int? = null,
     ): ReaderRouteState {
         val manga = getManga.await(mangaId) ?: throw ReaderMangaUnavailableException()
+        // KMK v0.8.25: this series' reader preset applies before its viewer is built; the usual settings return when it closes
+        readerPresetsHolder.value?.beginFor(manga)
         sourceManager.isInitialized.first { it }
         val source = sourceManager.getOrStub(manga.source)
         val metadataSource = source.getMainSource<MetadataSource<*, *>>()

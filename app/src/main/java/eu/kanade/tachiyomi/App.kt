@@ -166,6 +166,13 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
 
         setupNotificationChannels()
 
+        // KMK v0.8.25: a reader killed while a series' preset was applied must not leave that look in the global settings
+        try {
+            exh.reader.presets.ReaderPresets().restorePending()
+        } catch (_: Exception) {
+            // nothing to restore, or settings not readable yet
+        }
+
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
 
         val scope = ProcessLifecycleOwner.get().lifecycleScope
