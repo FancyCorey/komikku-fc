@@ -19,6 +19,8 @@ data class TasteProfile(
     val sourceAffinity: Map<Long, Double>,
     val blockedGroups: Set<String>,
     val recentTagWeights: Map<String, Double> = emptyMap(),
+    // KMK v0.8.25: what the user did with each source's titles (Love/Like/Dislike/Not interested)
+    val sourceReactions: Map<Long, SourceReactions> = emptyMap(),
 ) {
     fun isEmpty(): Boolean =
         learnedTagWeights.isEmpty() && explicitTagPreferences.isEmpty() && blockedGroups.isEmpty() &&

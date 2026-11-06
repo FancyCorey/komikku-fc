@@ -310,13 +310,14 @@ class SourceRecommendationFitDisplayPolicyTest {
     }
 
     @Test
-    fun `isCurrentOutcome is true only for GREAT GOOD MIXED WEAK NO_MATCHES ERROR`() {
+    fun `isCurrentOutcome is true only for GREAT GOOD MIXED WEAK NO_MATCHES NO_TAGS ERROR`() {
         val expectedCurrent = setOf(
             CompatibilityDisplayState.GREAT,
             CompatibilityDisplayState.GOOD,
             CompatibilityDisplayState.MIXED,
             CompatibilityDisplayState.WEAK,
             CompatibilityDisplayState.NO_MATCHES,
+            CompatibilityDisplayState.NO_TAGS,
             CompatibilityDisplayState.ERROR,
         )
         for (state in CompatibilityDisplayState.entries) {

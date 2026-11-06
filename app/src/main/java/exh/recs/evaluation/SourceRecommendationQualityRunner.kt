@@ -258,13 +258,11 @@ class SourceRecommendationQualityRunner(
             RecommendationQualityLabel.ERROR -> {
                 if (outcome.reasons.isNotEmpty()) outcome.reasons.take(2).joinToString("; ").take(200) else null
             }
-            RecommendationQualityLabel.NO_MATCHES -> {
-                if (outcome.weakMetadataCandidateCount > 0) {
-                    "Search returned results but none had usable genre metadata"
-                } else {
-                    "Search returned no results for taste profile tags"
-                }
-            }
+            RecommendationQualityLabel.NO_MATCHES -> "Search returned no results for taste profile tags"
+            RecommendationQualityLabel.NO_TAGS ->
+                "Search works, but ${outcome.weakMetadataCandidateCount} of ${outcome.rawResultCount} results carry no genres, " +
+                    "so taste cannot be judged"
+
             RecommendationQualityLabel.WEAK -> {
                 buildString {
                     if (outcome.weakMetadataCandidateCount > 0) {

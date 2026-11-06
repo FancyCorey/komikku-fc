@@ -133,6 +133,10 @@ sealed interface PersonalRecommendationResult {
 
         // KMK v0.8.24: every item in this row is a looser match
         val isLooser: Boolean get() = result.isNotEmpty() && result.all { it.looser }
+
+        // KMK v0.8.25: which exploration lanes put cards into this row, so the row can say so
+        val hasBecauseLoved: Boolean get() = result.any { it.lane == RecommendationDiscoveryLane.BECAUSE_LOVED }
+        val hasSomethingDifferent: Boolean get() = result.any { it.lane == RecommendationDiscoveryLane.SOMETHING_DIFFERENT }
         val reason: String? get() = result
             .flatMap { it.matchedGroups }
             .distinct()
@@ -444,10 +448,19 @@ class BrowsePersonalRecommendationsScreenModel(
 
     @Volatile private var currentBoostedSourceIds: Set<Long> = emptySet()
 
+    // KMK v0.8.25: ratings and tags for the exploration lanes, read once per refresh
+    private val getExplorationInputs: tachiyomi.domain.taste.interactor.GetExplorationInputs by lazy {
+        tachiyomi.domain.taste.interactor.GetExplorationInputs(Injekt.get(), Injekt.get())
+    }
+
     /** Refresh-owned budget state; never shared by overlapping or superseded refreshes. */
     private data class LatestExplorationBudgetState(
         val limit: Int,
         val attemptsUsed: java.util.concurrent.atomic.AtomicInteger =
+            java.util.concurrent.atomic.AtomicInteger(0),
+        // KMK v0.8.25: the refresh's exploration searches ("because you loved", "something different"), claimed in order
+        val exploration: RecommendationExplorationPlanner.Plan = RecommendationExplorationPlanner.Plan.NONE,
+        val explorationAttemptsUsed: java.util.concurrent.atomic.AtomicInteger =
             java.util.concurrent.atomic.AtomicInteger(0),
     )
     // KMK <--
@@ -1114,7 +1127,7 @@ class BrowsePersonalRecommendationsScreenModel(
                 // Resolve a private Latest budget for this refresh. It is passed to every source
                 // search instead of living on the ScreenModel, so a cancelled older refresh cannot
                 // reset or consume the newer refresh's counter.
-                val latestBudgetState = LatestExplorationBudgetState(
+                val baseLatestBudgetState = LatestExplorationBudgetState(
                     // KMK v0.8.24: no Latest exploration (extra requests) while saving data
                     limit = if (dataSaving) {
                         0
@@ -1125,6 +1138,10 @@ class BrowsePersonalRecommendationsScreenModel(
                             attemptedSourceCount = candidateSources.size,
                         )
                     },
+                )
+                // KMK v0.8.25: the same refresh-owned carrier also holds this refresh's exploration searches
+                val latestBudgetState = baseLatestBudgetState.copy(
+                    exploration = buildExplorationPlan(profile, aliasMap, dataSaving, candidateSources.size),
                 )
                 currentRefreshTimestamp = clock()
 
@@ -2066,7 +2083,14 @@ class BrowsePersonalRecommendationsScreenModel(
             // failed lookup fails open to no reordering (ExposureRerankContext.NONE), never to
             // hiding results. "Interacted" is derived live from favorite + existing taste data
             // already loaded for this refresh -- not a stored copy -- so it is always current.
-            val candidatePool = allNew + latestAdditive
+            // KMK v0.8.25: a few "because you loved" / "something different" cards, bounded per refresh
+            val explorationAdditive = tryAdditiveExplorationAugmentation(
+                source, queryKey, fingerprint, topTags, profile, aliasMap, tasteByKey, visibility,
+                seenKeys, hideKnownManga, minChapterCount, enrichLimit, displayLimit, rawCap,
+                state = latestBudgetState,
+                excludeMangaIds = (allNew + latestAdditive).mapNotNull { it.manga.id.takeIf { id -> id != 0L } }.toSet(),
+            )
+            val candidatePool = allNew + latestAdditive + explorationAdditive
             val exposureContext = buildExposureRerankContext(source.id, candidatePool, tasteByKey)
             val mergedRecommendations = mergeFreshAndRememberedCandidates(
                 remembered, candidatePool, profile, aliasMap, tasteByKey, visibility, seenKeys,
@@ -2619,8 +2643,123 @@ class BrowsePersonalRecommendationsScreenModel(
             exposureContext.now,
             exposureContext.windowDays,
             allowNeutralLatest = allowsNeutralLatest(displayLimit),
+            allowNeutralExploration = sourcePreferences.recommendationExplorationEnabled().get(),
         )
     }
+
+    // KMK v0.8.25 -->
+    private suspend fun buildExplorationPlan(
+        profile: TasteProfile,
+        aliasMap: Map<String, String>,
+        dataSaving: Boolean,
+        candidateSourceCount: Int,
+    ): RecommendationExplorationPlanner.Plan {
+        val attempts = RecommendationExplorationPlanner.attemptBudget(
+            enabled = sourcePreferences.recommendationExplorationEnabled().get(),
+            dataSaving = dataSaving,
+            candidateSourceCount = candidateSourceCount,
+        )
+        if (attempts <= 0) return RecommendationExplorationPlanner.Plan.NONE
+        return try {
+            val inputs = getExplorationInputs.await()
+
+            fun group(tag: String): String {
+                val normalized = tag.normalizeTag()
+                return aliasMap[normalized] ?: normalized
+            }
+            RecommendationExplorationPlanner.plan(
+                lovedByRecency = inputs.lovedByRecency.map {
+                    RecommendationExplorationPlanner.LovedTitle(it.title, it.tags.map(::group).toSet())
+                },
+                positiveTagSets = inputs.positiveTagSets.map { tags -> tags.map(::group).toSet() },
+                learnedWeights = profile.learnedTagWeights,
+                // a different loved title every ten minutes, so repeated refreshes do not ask for the same one
+                rotation = (clock() / EXPLORATION_ROTATION_MS).toInt(),
+                maxAttempts = attempts,
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            RecommendationExplorationPlanner.Plan.NONE
+        }
+    }
+
+    /**
+     * One bounded exploration search for this source, if the refresh still has one to give: a plain title search for a loved
+     * title, or a text search for tags next to the favourites. Cards are tagged with their lane, deduplicated against the
+     * rest of the row, filtered exactly like every other lane, and kept to a few. Any problem yields an empty list, so the
+     * row is simply the same as before.
+     */
+    private suspend fun tryAdditiveExplorationAugmentation(
+        source: Source,
+        queryKey: String,
+        fingerprint: String,
+        topTags: List<String>,
+        profile: TasteProfile,
+        aliasMap: Map<String, String>,
+        tasteByKey: Map<MangaTasteKey, MangaTaste>,
+        visibility: RatedMangaVisibility,
+        seenKeys: Set<SeenMangaKey>,
+        hideKnownManga: Boolean,
+        minChapterCount: Int,
+        enrichLimit: Int,
+        displayLimit: Int,
+        rawCap: Int,
+        state: LatestExplorationBudgetState,
+        excludeMangaIds: Set<Long>,
+    ): List<PersonalRecommendation> {
+        if (!currentCoroutineContext().isActive) return emptyList()
+        if (state.exploration.attempts <= 0) return emptyList()
+        val index = state.explorationAttemptsUsed.getAndIncrement()
+        val request = state.exploration.requestFor(index) ?: return emptyList()
+        val quota = RecommendationExplorationPlanner.slots(displayLimit)
+        return try {
+            val page = runObservedPersonalizedSearch(
+                source,
+                GenreFilterMapper.SearchParams(FilterList(), request.query),
+                page = 1,
+                request = null,
+            )
+            val rawSMangas = RecommendationRawCandidatePolicy.distinctWithinLimit(
+                page.mangas.filter { RecommendationCatalogueLanePolicy.isUsableEntry(it.url, it.title) },
+                rawCap,
+            ) { it.url }
+            if (rawSMangas.isEmpty()) return emptyList()
+            val processed = processRawCandidates(
+                source, rawSMangas, tasteByKey, visibility, seenKeys, minChapterCount,
+                hideKnownManga, enrichLimit, displayLimit, profile, aliasMap,
+                allowNeutralCandidates = true,
+            )
+            val additive = processed.recommendations
+                .filter { it.manga.id == 0L || it.manga.id !in excludeMangaIds }
+                .take(quota)
+                .map { it.copy(lane = request.lane) }
+            if (additive.isEmpty()) return emptyList()
+            try {
+                memoryStore.upsertBatch(
+                    sourceId = source.id,
+                    querySignature = queryKey,
+                    queryTags = topTags,
+                    queryStrategy = request.lane.storageKey,
+                    page = 1,
+                    profileFingerprint = fingerprint,
+                    recommendations = additive,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+            }
+            additive
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        } catch (e: Error) {
+            rethrowIfFatal(e)
+            emptyList()
+        }
+    }
+    // KMK <--
 
     private fun allowsNeutralLatest(displayLimit: Int): Boolean =
         RecommendationLatestBudgetPolicy.resolveAdditiveSlotsPerSource(
@@ -4091,6 +4230,9 @@ class BrowsePersonalRecommendationsScreenModel(
     companion object {
         private const val MAX_VISIBLE_SOURCE_ROWS = 20
         private const val MAX_SOURCE_ATTEMPTS = 40
+
+        /** KMK v0.8.25: how long the same loved title stays the one the exploration search asks about. */
+        private const val EXPLORATION_ROTATION_MS = 10L * 60 * 1000
         private const val BOOSTED_SOURCE_COUNT = 3
         private const val SOURCE_BATCH_SIZE = 5
         // KMK v0.8.2: replaced by ForYouResultBudgetPolicy.resolve(configuredValue, isBoosted) —

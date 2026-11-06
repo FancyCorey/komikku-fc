@@ -1843,6 +1843,7 @@ private fun EvaluationResultRow(
                     CompatibilityDisplayState.MIXED -> KMR.strings.source_evaluation_rec_quality_mixed
                     CompatibilityDisplayState.WEAK -> KMR.strings.source_evaluation_rec_quality_weak
                     CompatibilityDisplayState.NO_MATCHES -> KMR.strings.source_evaluation_rec_quality_no_matches
+                    CompatibilityDisplayState.NO_TAGS -> KMR.strings.source_evaluation_rec_quality_no_tags
                     CompatibilityDisplayState.ERROR -> KMR.strings.source_evaluation_rec_quality_error
                     CompatibilityDisplayState.NOT_CHECKED,
                     CompatibilityDisplayState.OUTDATED,

@@ -2,6 +2,7 @@ package tachiyomi.domain.taste.interactor
 
 import tachiyomi.domain.manga.repository.MangaRepository
 import tachiyomi.domain.taste.model.MangaRating
+import tachiyomi.domain.taste.model.SourceReactions
 import tachiyomi.domain.taste.model.TagPreference
 import tachiyomi.domain.taste.model.TasteProfile
 import tachiyomi.domain.taste.model.normalizeTag
@@ -40,10 +41,19 @@ class GetTasteProfile(
         val ratedTitles = mutableListOf<TasteWeighting.RatedTitle>()
         val sourcePositive = mutableMapOf<Long, Int>()
         val sourceNegative = mutableMapOf<Long, Int>()
+        // KMK v0.8.25: reaction points per source for the source match, Not interested included
+        val reactionPositive = mutableMapOf<Long, Int>()
+        val reactionNegative = mutableMapOf<Long, Int>()
 
         // KMK v0.8.24: one batched read instead of one query per rated manga
         val genresById = mangaRepository.genresByMangaId(tastes.map { it.mangaId })
         for (taste in tastes) {
+            when (taste.rating) {
+                MangaRating.LOVE.value -> reactionPositive.merge(taste.source, 2, Int::plus)
+                MangaRating.LIKE.value -> reactionPositive.merge(taste.source, 1, Int::plus)
+                MangaRating.DISLIKE.value -> reactionNegative.merge(taste.source, 2, Int::plus)
+                MangaRating.NOT_INTERESTED.value -> reactionNegative.merge(taste.source, 1, Int::plus)
+            }
             val weight = when (taste.rating) {
                 MangaRating.LOVE.value -> 2.0
                 MangaRating.LIKE.value -> 1.0
@@ -91,6 +101,9 @@ class GetTasteProfile(
             explicitTagPreferences = explicitTagPreferences,
             sourceAffinity = sourceAffinity,
             blockedGroups = blockedGroups,
+            sourceReactions = (reactionPositive.keys + reactionNegative.keys).associateWith { sid ->
+                SourceReactions(reactionPositive[sid] ?: 0, reactionNegative[sid] ?: 0)
+            },
         )
     }
 }

@@ -10,6 +10,8 @@ enum class RecommendationQualityVerdict(val serialized: String) {
     NO_MATCHES("no_matches"),
     ERROR("error"),
     TOO_LITTLE_EVIDENCE("too_little_evidence"),
+    // KMK v0.8.25: the search worked but its results carry no genres, so taste cannot be judged either way
+    NO_TAGS("no_tags"),
     ;
 
     companion object {

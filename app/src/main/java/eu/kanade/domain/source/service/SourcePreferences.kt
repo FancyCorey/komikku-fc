@@ -270,6 +270,9 @@ class SourcePreferences(
     fun recommendationLatestExplorationPercent() =
         preferenceStore.getInt("recommendation_latest_exploration_percent", exh.recs.RecommendationLatestBudgetPolicy.DEFAULT)
 
+    /** KMK v0.8.25: "because you loved" and "something different" cards in For You. */
+    fun recommendationExplorationEnabled() = preferenceStore.getBoolean("recommendation_exploration_enabled", true)
+
     /** Separate Latest-lane switch; a legacy stored `0` keeps the lane disabled on first read. */
     fun recommendationLatestExplorationEnabled() = preferenceStore.getBoolean(
         "recommendation_latest_exploration_enabled",

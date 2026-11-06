@@ -459,6 +459,15 @@ internal fun rememberRecommendationSettingsSearchEntries(): List<RecommendationS
             anchor = "latest_exploration",
         ),
         RecommendationSettingsSearchIndex.Entry(
+            key = "source_priority_exploration",
+            title = stringResource(KMR.strings.rec_exploration),
+            summary = stringResource(KMR.strings.rec_exploration_summary),
+            category = forYouSources,
+            synonyms = listOf("because you loved", "something different", "more like", "similar", "explore"),
+            destination = RecommendationSourcePrioritySettingsScreen(anchor = "exploration"),
+            anchor = "exploration",
+        ),
+        RecommendationSettingsSearchIndex.Entry(
             key = "source_priority_exposure_window",
             title = stringResource(KMR.strings.rec_exposure_window),
             summary = stringResource(KMR.strings.rec_exposure_window_summary),

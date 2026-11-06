@@ -22,6 +22,11 @@ data class SourceRecommendationFitProbeOutcome(
     // KMK <--
 ) {
 
+    private companion object {
+        const val MIN_RESULTS_TO_JUDGE_TAGS = 3
+        const val NO_TAGS_SHARE_TENTHS = 6
+    }
+
     /** Convert to the scorer's Outcome model. */
     fun toScorerOutcome(): SourceRecommendationFitScorer.Outcome = SourceRecommendationFitScorer.Outcome(
         visibleCandidateCount = visibleCandidateCount,
@@ -33,6 +38,14 @@ data class SourceRecommendationFitProbeOutcome(
         errorCount = errorCount,
         avgCandidateScore = avgCandidateScore,
     )
+
+    /**
+     * KMK v0.8.25: most of what the search returned still had no genre after enrichment, so the probe could not tell
+     * whether the source matches the user's taste. That is a statement about the source's metadata, not about taste.
+     */
+    val resultsCarryNoTags: Boolean
+        get() = rawResultCount >= MIN_RESULTS_TO_JUDGE_TAGS &&
+            weakMetadataCandidateCount * 10 >= rawResultCount * NO_TAGS_SHARE_TENTHS
 
     /**
      * Derive a human-readable label for display in Source Evaluation results.
@@ -51,6 +64,7 @@ data class SourceRecommendationFitProbeOutcome(
         if (errorCount > 0 && querySuccessCount == 0) return RecommendationQualityLabel.ERROR
         if (rawResultCount == 0) return RecommendationQualityLabel.NO_MATCHES
         val score = SourceRecommendationFitScorer.score(toScorerOutcome())
+        if (resultsCarryNoTags && score < 0.55) return RecommendationQualityLabel.NO_TAGS
         return when {
             score >= 0.80 -> RecommendationQualityLabel.GREAT
             score >= 0.55 -> RecommendationQualityLabel.GOOD
@@ -61,6 +75,7 @@ data class SourceRecommendationFitProbeOutcome(
 }
 
 enum class RecommendationQualityLabel {
+    NO_TAGS,
     GREAT,
     GOOD,
     MIXED,

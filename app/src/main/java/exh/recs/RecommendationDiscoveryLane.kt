@@ -36,7 +36,16 @@ enum class RecommendationDiscoveryLane(val storageKey: String) {
 
     /** The bounded Latest-page-1 exploration probe owned by [RecommendationCatalogueLanePolicy]. */
     LATEST_CATALOGUE("LATEST_CATALOGUE"),
+
+    /** KMK v0.8.25: a title search for one of the user's recently loved titles. */
+    BECAUSE_LOVED("BECAUSE_LOVED"),
+
+    /** KMK v0.8.25: tags that sit next to the user's favourites but that they have no clear opinion on yet. */
+    SOMETHING_DIFFERENT("SOMETHING_DIFFERENT"),
     ;
+
+    /** The two v0.8.25 exploration lanes: small, labelled, and allowed to carry no taste evidence. */
+    val isExploration: Boolean get() = this == BECAUSE_LOVED || this == SOMETHING_DIFFERENT
 
     companion object {
         /**
@@ -46,6 +55,8 @@ enum class RecommendationDiscoveryLane(val storageKey: String) {
         fun fromStorageKey(storageKey: String?): RecommendationDiscoveryLane? = when (storageKey) {
             POPULAR_CATALOGUE.storageKey -> POPULAR_CATALOGUE
             LATEST_CATALOGUE.storageKey -> LATEST_CATALOGUE
+            BECAUSE_LOVED.storageKey -> BECAUSE_LOVED
+            SOMETHING_DIFFERENT.storageKey -> SOMETHING_DIFFERENT
             else -> null
         }
     }

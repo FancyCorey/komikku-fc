@@ -1,5 +1,7 @@
 package exh.recs
 
+import tachiyomi.domain.taste.model.SourceReactions
+
 // KMK -->
 
 /**
@@ -26,8 +28,13 @@ data class SourceFitStats(
     // KMK --> v0.7.32: D2 — number of times this source contributed to the Top Picks row
     val topPicksContributionCount: Int = 0,
     // KMK <--
+    // KMK v0.8.25: the user's own reactions to this source's titles. Filled in when a screen shows the label; never stored.
+    val reactions: SourceReactions? = null,
 ) {
     val fitLabel: SourceFitLabel
+        get() = SourceFitLabelPolicy.withReactions(runBasedLabel, reactions)
+
+    private val runBasedLabel: SourceFitLabel
         get() {
             if (runCount < MIN_RUNS_FOR_LABEL) return SourceFitLabel.TooLittleData
             // KMK --> v0.7.32: D1 — prefer recent window rates when sufficient recent data exists
@@ -98,6 +105,25 @@ data class SourceFitStats(
         // KMK --> v0.7.32: D1 — 30-day sliding window
         private const val RECENT_WINDOW_MS = 30L * 24 * 60 * 60 * 1000
         // KMK <--
+    }
+}
+
+/**
+ * KMK v0.8.25: one honest answer to "does this source match me". The run statistics say whether the source returned
+ * something we accepted; the user's own reactions say whether they liked it. With enough reactions the shrunk rate may lift
+ * a Mixed source to Good fit or lower a Good source to Mixed. It never overrides errors, and with too few reactions it
+ * changes nothing.
+ */
+object SourceFitLabelPolicy {
+    fun withReactions(base: SourceFitLabel, reactions: SourceReactions?): SourceFitLabel {
+        if (reactions == null || !reactions.isEnough) return base
+        if (base == SourceFitLabel.TooLittleData || base == SourceFitLabel.OftenErrors) return base
+        val rate = reactions.shrunkRate
+        return when {
+            rate >= SourceReactions.GOOD_RATE && base.fitScore < SourceFitLabel.GoodFit.fitScore -> SourceFitLabel.GoodFit
+            rate <= SourceReactions.POOR_RATE && base.fitScore >= SourceFitLabel.GoodFit.fitScore -> SourceFitLabel.Mixed
+            else -> base
+        }
     }
 }
 

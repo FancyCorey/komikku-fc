@@ -65,6 +65,8 @@ object RecommendationCandidateMemoryRanker {
         exposureNow: Long = 0L,
         exposureWindowDays: Int = exh.recs.RecommendationExposurePolicy.DEFAULT_WINDOW_DAYS,
         allowNeutralLatest: Boolean = false,
+        // KMK v0.8.25: the exploration lanes may carry no taste evidence yet, by design
+        allowNeutralExploration: Boolean = false,
     ): List<PersonalRecommendation> {
         // Build deduped candidate set: local id → (manga, source, lane)
         val candidateById = mutableMapOf<Long, Triple<Manga, Long, exh.recs.RecommendationDiscoveryLane>>()
@@ -109,7 +111,10 @@ object RecommendationCandidateMemoryRanker {
             // for display forever, since memory rows are never deleted, only re-filtered here on
             // every merge.
             // Preserve bounded Latest exploration through rescoring, including zero-score metadata gaps.
-            val neutralLatest = allowNeutralLatest && lane == exh.recs.RecommendationDiscoveryLane.LATEST_CATALOGUE &&
+            val neutralLatest = (
+                (allowNeutralLatest && lane == exh.recs.RecommendationDiscoveryLane.LATEST_CATALOGUE) ||
+                    (allowNeutralExploration && lane.isExploration)
+                ) &&
                 result.score >= 0.0 && !result.hasNegativeTasteEvidence
             val positiveMatch = result.score > 0.0 && result.matchedGroups.isNotEmpty()
             if (result.blocked || (!positiveMatch && !neutralLatest)) return@mapNotNull null

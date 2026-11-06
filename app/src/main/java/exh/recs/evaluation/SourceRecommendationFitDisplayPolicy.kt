@@ -24,6 +24,9 @@ enum class CompatibilityDisplayState {
     WEAK,
     /** Current fit verdict is NO_MATCHES or TOO_LITTLE_EVIDENCE — probe ran but found nothing useful. */
     NO_MATCHES,
+    /** The search works but its results carry no genres, so taste cannot be judged; never counts against the source. */
+    NO_TAGS,
+
     /** Current fit verdict is ERROR — probe ran but failed. A stale error is OUTDATED, not this. */
     ERROR,
     ;
@@ -66,6 +69,7 @@ object SourceRecommendationFitDisplayPolicy {
             RecommendationQualityVerdict.NO_MATCHES,
             RecommendationQualityVerdict.TOO_LITTLE_EVIDENCE,
             -> CompatibilityDisplayState.NO_MATCHES
+            RecommendationQualityVerdict.NO_TAGS -> CompatibilityDisplayState.NO_TAGS
             RecommendationQualityVerdict.ERROR -> CompatibilityDisplayState.ERROR
         }
     }
@@ -83,6 +87,7 @@ object SourceRecommendationFitDisplayPolicy {
         -> 0
         CompatibilityDisplayState.WEAK -> 1
         CompatibilityDisplayState.NO_MATCHES -> 2
+        CompatibilityDisplayState.NO_TAGS -> 2
         CompatibilityDisplayState.ERROR -> 3
         CompatibilityDisplayState.OUTDATED -> 4
         CompatibilityDisplayState.NOT_CHECKED -> 5

@@ -84,6 +84,8 @@ object SourceRecommendationQualityDiagnostics {
                     checkedCount++
                     weak++
                 }
+                // KMK v0.8.25: cannot be judged, so it is neither good nor bad
+                CompatibilityDisplayState.NO_TAGS -> checkedCount++
                 CompatibilityDisplayState.GREAT, CompatibilityDisplayState.GOOD, CompatibilityDisplayState.MIXED -> {
                     checkedCount++
                     good++

@@ -151,7 +151,13 @@ class RecommendationSourcePrioritySettingsScreen(
             val itemKeysInOrder = remember(sourcesState.size, state.suggestFitOrderAvailable) {
                 buildList {
                     add("show_for_you_tab")
+                    // KMK v0.8.25: mirrors every row above the source list, so search can scroll to the ones after the first two
+                    add("looser_matches")
                     add("preview_for_you")
+                    add("latest_exploration")
+                    add("exploration")
+                    add("exposure_window")
+                    add("exposure_clear")
                     add("source_header")
                     add("source_status_note")
                     repeat(sourcesState.size) { add("source_row_$it") }
@@ -234,6 +240,15 @@ class RecommendationSourcePrioritySettingsScreen(
                             valueLabel = { percent -> stringResource(KMR.strings.rec_latest_exploration_percent, percent) },
                             onEnabledChange = screenModel::setLatestExplorationEnabled,
                             onValueChange = screenModel::setLatestExplorationPercent,
+                        )
+                    }
+                    // KMK v0.8.25: cards from a search for a loved title and from tags next to the favourites
+                    item(key = "exploration") {
+                        SwitchPreferenceWidget(
+                            title = stringResource(KMR.strings.rec_exploration),
+                            subtitle = stringResource(KMR.strings.rec_exploration_summary),
+                            checked = state.explorationEnabled,
+                            onCheckedChanged = screenModel::setExplorationEnabled,
                         )
                     }
                     // How long a

@@ -1194,6 +1194,11 @@ private fun PersonalRecommendationsContent(
                                             if ((original as? PersonalRecommendationResult.Success)?.isLooser == true) {
                                                 add(stringResource(KMR.strings.rec_looser_matches_row))
                                             }
+                                            // KMK v0.8.25: say which exploration cards the row includes
+                                            (original as? PersonalRecommendationResult.Success)?.let { success ->
+                                                if (success.hasBecauseLoved) add(stringResource(KMR.strings.rec_row_includes_because_loved))
+                                                if (success.hasSomethingDifferent) add(stringResource(KMR.strings.rec_row_includes_something_different))
+                                            }
                                         }.joinToString(" • "),
                                         onClick = { onClickSource(source) },
                                         // KMK --> v0.7.5: long-press to export source row

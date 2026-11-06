@@ -148,6 +148,12 @@ class RecommendationsSettingsScreenModel(
     private val clearRecommendationExposure: tachiyomi.domain.taste.interactor.ClearRecommendationExposure = Injekt.get(),
 ) : StateScreenModel<RecommendationsSettingsScreenModel.State>(State()) {
 
+    // KMK v0.8.25: per-source reaction points, loaded once and attached to the fit stats the screen shows
+    private var sourceReactions: Map<Long, tachiyomi.domain.taste.model.SourceReactions> = emptyMap()
+
+    private fun withReactions(stats: Map<Long, SourceFitStats>): Map<Long, SourceFitStats> =
+        stats.mapValues { (id, s) -> s.copy(reactions = sourceReactions[id]) }
+
     private val suggestionInstallJobs = mutableMapOf<String, Job>()
     private val suggestionInstallOperationIds = mutableMapOf<String, Long>()
     private var bulkSuggestionInstallJob: Job? = null
@@ -184,6 +190,7 @@ class RecommendationsSettingsScreenModel(
     // bounded Latest exploration share
     private val latestExplorationPercentPref = sourcePreferences.recommendationLatestExplorationPercent()
     private val latestExplorationEnabledPref = sourcePreferences.recommendationLatestExplorationEnabled()
+    private val explorationEnabledPref = sourcePreferences.recommendationExplorationEnabled()
     // Exposure window
     private val exposureWindowDaysPref = sourcePreferences.recommendationExposureWindowDays()
     private val exposureWindowEnabledPref = sourcePreferences.recommendationExposureWindowEnabled()
@@ -262,6 +269,7 @@ class RecommendationsSettingsScreenModel(
                 groupPreviewBudget = GroupPreviewBudgetPolicy.validate(groupPreviewBudgetPref.get()),
                 latestExplorationPercent = exh.recs.RecommendationLatestBudgetPolicy.validate(latestExplorationPercentPref.get()),
                 latestExplorationEnabled = latestExplorationEnabledPref.get(),
+                explorationEnabled = explorationEnabledPref.get(),
                 exposureWindowDays = exh.recs.RecommendationExposurePolicy.validateWindowDays(exposureWindowDaysPref.get()),
                 exposureWindowEnabled = exposureWindowEnabledPref.get(),
                 // KMK <--
@@ -363,7 +371,18 @@ class RecommendationsSettingsScreenModel(
         screenModelScope.launch {
             sourceFitStatsPref.changes().collectLatest { raw ->
                 val parsed = SourceFitStatsStore.parse(raw)
-                mutableState.update { it.copy(sourceFitStats = parsed.toPersistentMap()) }
+                mutableState.update { it.copy(sourceFitStats = withReactions(parsed).toPersistentMap()) }
+            }
+        }
+        // KMK v0.8.25: the labels also weigh how the user reacted to each source's titles
+        screenModelScope.launch {
+            try {
+                sourceReactions = Injekt.get<tachiyomi.domain.taste.interactor.GetTasteProfile>().await().sourceReactions
+                mutableState.update { it.copy(sourceFitStats = withReactions(it.sourceFitStats).toPersistentMap()) }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // labels stay run-based
             }
         }
         // KMK <--
@@ -681,6 +700,19 @@ class RecommendationsSettingsScreenModel(
             latestExplorationEnabledPref.set(enabled)
         }
         mutableState.update { it.copy(latestExplorationEnabled = enabled) }
+    }
+
+    /** KMK v0.8.25: switches the "because you loved" and "something different" cards. */
+    fun setExplorationEnabled(enabled: Boolean) {
+        journalPreferenceChange(
+            exh.util.PreferenceJournalActionType.RESULT_BUDGET,
+            "explorationEnabled",
+            explorationEnabledPref,
+            enabled,
+        ) {
+            explorationEnabledPref.set(enabled)
+        }
+        mutableState.update { it.copy(explorationEnabled = enabled) }
     }
     // KMK <--
 
@@ -1695,6 +1727,7 @@ class RecommendationsSettingsScreenModel(
         // bounded Latest exploration share
         val latestExplorationPercent: Int = exh.recs.RecommendationLatestBudgetPolicy.DEFAULT,
         val latestExplorationEnabled: Boolean = true,
+        val explorationEnabled: Boolean = true,
         val exposureWindowDays: Int = exh.recs.RecommendationExposurePolicy.DEFAULT_WINDOW_DAYS,
         val exposureWindowEnabled: Boolean = true,
         // Clear-exposure-history action state.
