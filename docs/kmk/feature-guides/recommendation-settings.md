@@ -68,6 +68,7 @@ Add a genre or tag as **Preferred** to favor matching manga, or as **Blocked** t
 | Show looser matches | When a source returns manga but none of them match your taste, its row can show up to four of them instead of being empty. These rows are labelled "Looser matches: its tags don't match your taste". Blocked tags, dislikes, and ratings still apply, and looser matches never enter Top Picks. It is on by default. |
 | Preview For You | Shows the saved recommendation snapshot. It is not a live source check. |
 | Explore new releases | Sets how much For You looks beyond your usual source order for newer manga, from Off to a percentage of its searches. |
+| More like what you loved | Adds a few cards from a search for a title you loved and from tags next to your favorites, using up to three extra searches per refresh. Skipped while saving data. It is on by default. See [More like what you loved](recommendations.md#more-like-what-you-loved). |
 | Wait before showing a title again | Moves titles you were recently shown later in the list for the chosen number of days. **Clear repeat history** forgets what was shown. |
 | Source order | Enable or disable each source for recommendations and arrange their priority. You can reset the order, or apply a suggested order based on source fit when that action is offered. |
 

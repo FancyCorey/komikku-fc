@@ -193,6 +193,21 @@ These are **For You** rules, not a promise about every recommendation search. Ne
 
 These changes were measured on generated data (a made-up reader with a hidden taste), where a held-out loved title ranked better in 32 of 40 runs and worse in 7. That is evidence the change works as designed, not a promise about your own library.
 
+They were also checked once against a real library of about 500 ratings, hiding each loved title in turn and ranking it among titles the owner had not rated. Compared fairly, against titles with about the same number of tags, the ranking was about the same as before, and tags alone placed a loved title better than chance but not by a wide margin. No improvement is claimed for real libraries. That is part of why v0.8.25 adds [More like what you loved](#more-like-what-you-loved).
+
+**Rating age decay** is built but off. It would count older ratings a little less. On that real library it made no measurable difference, so it stays off until there is evidence it helps.
+
+## More like what you loved
+
+**In v0.8.25 (not yet released):** tags are a weak signal on their own, so For You can add a few cards another way. Each refresh may spend up to three extra searches, each on a different source:
+
+- **A title you loved:** a plain search on the source for one of the titles you loved most recently. The source knows its own titles, so it can offer sequels and similar series that shared tags would miss. The title it asks about changes every few minutes.
+- **Something different:** a text search for tags that often appear with your strongest tags but that you have not shown a clear opinion on yet, to keep For You from narrowing.
+
+Each search adds at most about one card in six to that source's row, and the row says **Includes picks like a title you loved** or **Includes something different**. These cards go through the same filters as every other card: blocked tags, titles you already know, rated, hid or have in your library, language and minimum chapter count.
+
+The name of a title you loved is sent to a source as a search, like any search you type yourself. Turn the cards off with **More like what you loved** under **For You feed**. They are also skipped while [saving data](#saving-data).
+
 ## Why repeated cards can move lower
 
 With repeat rotation enabled:

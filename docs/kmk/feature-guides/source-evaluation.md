@@ -59,6 +59,10 @@ When **Start** cannot be used, a line under it says why:
 <p align="center"><img src="../visual-guide/v0.8.25/your-taste-source-match.png" width="260" alt="Your taste scrolled to its Source match section"></p>
 <p align="center"><em>Source match at the bottom of Your taste.</em></p>
 
+**In v0.8.25 (not yet released):** a source's **Great fit**, **Good fit** and similar tags on For You also take your own reactions into account: how many of its titles you loved or liked, and how many you disliked or marked Not interested. A handful of reactions never decides anything; with enough of them a Mixed source can show as a Good fit and a Good fit can drop to Mixed. Errors are never changed by reactions.
+
+When a source's search works but most of its results come without genres, the check cannot tell whether it matches your taste. It then says **Cannot judge, results carry no genres** instead of Weak, and the source is not skipped by the automatic check.
+
 ## What an evaluation means
 
 An evaluation samples a source's popular and recent manga and compares their available details with your preferences. Search compatibility is checked separately. It is not a permanent judgment about the source, a complete inspection of its catalogue, or a promise about how many recommendations you will see.

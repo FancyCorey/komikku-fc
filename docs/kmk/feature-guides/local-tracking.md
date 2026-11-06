@@ -46,6 +46,26 @@ When local tracking starts, it begins at the chapter you read most recently on a
 
 <img src="../diagrams/local-tracking/linked-record.svg" width="281" alt="Confirm A with B and B with C; all three versions share one local-tracking record.">
 
+### When you add another version
+
+**In v0.8.25 (not yet released):** choosing **Track other versions** on a manga screen, adding a title to a group, creating a group, or merging titles into a group gives every version what the group already has, without opening each one. All of this happens on your device and sends nothing to a tracker account:
+
+- The versions are confirmed as the same manga and join the same local-tracking record.
+- A version without a rating of its own takes the group's most recent rating, including the manga you are on. A version you rated yourself keeps its rating. **Rate linked versions together** turns this off.
+- A tracker entry linked to one version is linked to the others that have none, when **Track linked versions together** is on.
+- The chapter you read furthest is applied to every version that already has a chapter list. A version you never opened has no chapter list yet, so the app loads it in the background and the chapter appears a moment later. This uses the version's source, so it needs a connection.
+
+Copying a chapter from another version never changes a status you chose. **On hold** and **Dropped** stay set; only you change them, or reading on this device.
+
+After a library update, the app also refreshes the tracker of each linked group once when **Sync reading progress from connected trackers** is on, so progress made on any version reaches the others without opening them.
+
+### Manage groups you already have
+
+On a rated list (Loved, Liked, Disliked, Not interested), the link icon opens **Manage linked manga versions**.
+
+- **Share rating and progress**, on an open group card, does the same for a group you made before v0.8.25: it confirms the group's versions as the same manga and gives the ones that lack them the rating, tracking, chapter progress and tracker entry.
+- **Group library automatically** lists the library titles that are not in a group yet next to the group they most likely belong to. A match is by name first, ignoring capitals, punctuation and accents, then by any other name used by a member of a group, then by close names, which are left unchecked for you to decide. **Change** opens a searchable list of groups, with a choice to leave a title alone. Nothing is grouped until you choose **Group selected**. It only looks at titles in your library.
+
 ### Stop sharing with one version
 
 1. Select the manga title in its **Local tracking** entry to open **Confirmed versions**, which lists its confirmed linked versions. Selecting a version there opens its full manga page. **Track other versions**, below the entry, is a separate search for more versions.

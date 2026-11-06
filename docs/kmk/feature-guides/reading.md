@@ -186,6 +186,16 @@ The additional reader-options section under **Settings > Reader** contains these
 
 </details>
 
+## Reader presets
+
+**In v0.8.25 (not yet released):** the first tab of the reader settings has a **Preset** row, next to the reading mode and orientation it belongs with. A preset is a saved set of reader settings for a series, for example a webtoon look for one series and a landscape page layout for a comic.
+
+- Open the row to pick **Usual settings** or a saved preset, or choose **Save current settings as a preset** and give it a name.
+- When a preset is in use, the row also offers **Update “name”** to save what the reader looks like now into it, and **Delete “name”**.
+- A preset applies when the reader opens that series and your usual settings come back when you leave, so it never leaks into other series. It follows the series to its linked versions.
+
+A preset holds the cropping, page layout, scaling, zoom, background, tap zones and their inversion, dual-page options, webtoon side padding, and the default reading mode and orientation. A series that has its own reading mode or orientation keeps it. App-wide choices such as keep screen on, volume keys, brightness, color filters and the reading schedule stay as they are. If the app is closed while a preset is applied, your usual settings are put back the next time it starts.
+
 ## Completion and rating behavior
 
 Under **Recommendation Settings > Linked versions and ratings**, **Ask for a rating after finishing** controls the completion offer. **Ask about other versions** controls the later offer to rate other versions after saving a rating. Neither setting chooses a rating for you.

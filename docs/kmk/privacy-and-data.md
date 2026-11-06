@@ -10,12 +10,15 @@ Komikku FC keeps your recommendation preferences and reading data on your device
 - Text recognized from downloaded chapter pages by OCR.
 - The automatic source check's schedule, network and battery choices, and last-run time. In v0.8.25 (not yet released) it also keeps one number, how many titles you had rated at its last check, so it can tell when your ratings have changed a lot. It is a count only and stays on your device.
 - Small **Action History** records used to undo supported changes.
+- In v0.8.25 (not yet released), reader presets (named sets of reader settings) and which series uses which. They are saved with your settings.
 
 For You also remembers checked chapter counts for up to two weeks, with a limit of 3,000 titles. This avoids loading the same chapter lists again just to apply your minimum chapter count.
 
 ## What uses the network
 
 Browsing, For You, source checks, finding other versions, loading manga details, checking chapter counts, installing extensions, and external tracking can contact their sources or services.
+
+In v0.8.25 (not yet released), For You can run up to three extra searches per refresh, one of which asks a source about the name of a title you loved. Turn **More like what you loved** off under **For You feed** to stop them; they are also skipped while saving data. Tracking other versions can load a version's chapter list from its source in the background.
 
 **Use less data on recommendations** reduces optional searching; it does not make recommendations work offline or stop every network request. See [Speed and data](feature-guides/recommendation-settings.md#speed-and-data).
 
