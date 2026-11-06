@@ -1,0 +1,9 @@
+flowchart TD
+    A["A For You refresh"] --> B{"Saving data, or<br/>switched off?"}
+    B -->|Yes| C["No extra searches"]
+    B -->|No| D["Up to three extra searches,<br/>each on a different source"]
+    D --> E["A title you loved"]
+    D --> F["Tags next to your favorites"]
+    E --> G["Same filters as every other card"]
+    F --> G
+    G --> H["A few cards join the row,<br/>and the row says so"]

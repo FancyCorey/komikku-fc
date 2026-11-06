@@ -78,6 +78,9 @@ Add a genre or tag as **Preferred** to favor matching manga, or as **Blocked** t
 <p align="center"><img src="../visual-guide/v0.8.24/for-you-feed-sources.png" width="260" alt="Source priority list with one-line status tags"></p>
 <p align="center"><em>Each source row shows one-line tags. Boosted is outlined because it is your own choice.</em></p>
 
+<p align="center"><img src="../visual-guide/v0.8.25/for-you-feed-exploration.png" width="260" alt="For You feed settings with Explore new releases, New-release coverage, and the More like what you loved switch"></p>
+<p align="center"><em>More like what you loved, below the new-release settings (v0.8.25, not yet released).</em></p>
+
 Each source row shows one-line tags for its current state. **Boosted** is outlined because it is your own choice, while tags such as **Great fit** and **Top Picks** describe results. The number beside **Great fit** describes the source's earlier contribution to Top Picks, not how many manga must appear now. The **Shown** count describes the latest refresh after filters and duplicate handling.
 
 ## Focus modes

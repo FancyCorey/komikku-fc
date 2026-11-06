@@ -206,6 +206,8 @@ They were also checked once against a real library of about 500 ratings, hiding 
 
 Each search adds at most about one card in six to that source's row, and the row says **Includes picks like a title you loved** or **Includes something different**. These cards go through the same filters as every other card: blocked tags, titles you already know, rated, hid or have in your library, language and minimum chapter count.
 
+<img src="../diagrams/recommendations/more-like-what-you-loved.svg" width="460" alt="On a For You refresh, unless data saving or the switch turns it off, up to three extra searches run, each on a different source: one for a title you loved and one for tags next to your favorites. Their cards pass the same filters as every other card, and a few join the row, which says so.">
+
 The name of a title you loved is sent to a source as a search, like any search you type yourself. Turn the cards off with **More like what you loved** under **For You feed**. They are also skipped while [saving data](#saving-data).
 
 ## Why repeated cards can move lower

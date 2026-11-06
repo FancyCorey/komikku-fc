@@ -188,11 +188,16 @@ The additional reader-options section under **Settings > Reader** contains these
 
 ## Reader presets
 
-**In v0.8.25 (not yet released):** the first tab of the reader settings has a **Preset** row, next to the reading mode and orientation it belongs with. A preset is a saved set of reader settings for a series, for example a webtoon look for one series and a landscape page layout for a comic.
+**In v0.8.25 (not yet released):** the first tab of the reader settings has a **Preset** row at the top, under **For this series** and above **Reading mode**, in the same chip format. A preset is a saved set of reader settings for a series, for example a webtoon look for one series and a landscape page layout for a comic.
+
+<p align="center"><img src="../visual-guide/v0.8.25/reader-presets.png" width="260" alt="Reader settings, first tab, with the Preset row under For this series showing Usual settings, a saved preset called Webtoon, and the Save as preset, Update and Delete chips"></p>
+<p align="center"><em>The Preset row with Webtoon saved and in use.</em></p>
 
 - Open the row to pick **Usual settings** or a saved preset, or choose **Save current settings as a preset** and give it a name.
 - When a preset is in use, the row also offers **Update “name”** to save what the reader looks like now into it, and **Delete “name”**.
 - A preset applies when the reader opens that series and your usual settings come back when you leave, so it never leaks into other series. It follows the series to its linked versions.
+
+<img src="../diagrams/reading/reader-preset.svg" width="460" alt="Open a series in the reader. If it uses a preset, the preset's settings apply before the first page appears; otherwise your usual settings apply. Closing the reader brings your usual settings back.">
 
 A preset holds the cropping, page layout, scaling, zoom, background, tap zones and their inversion, dual-page options, webtoon side padding, and the default reading mode and orientation. A series that has its own reading mode or orientation keeps it. App-wide choices such as keep screen on, volume keys, brightness, color filters and the reading schedule stay as they are. If the app is closed while a preset is applied, your usual settings are put back the next time it starts.
 

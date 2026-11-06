@@ -98,6 +98,18 @@ These captures come from a development build and will be redone on the release a
 <p align="center"><img src="v0.8.25/best-version-from-reader.png" width="260" alt="Best Version opened from the reader"></p>
 <p align="center"><em>Best Version from the reader.</em></p>
 
+<p align="center"><img src="v0.8.25/reader-presets.png" width="260" alt="Reader settings with the Preset row under For this series"></p>
+<p align="center"><em>The Preset row in the reader settings.</em></p>
+
+<p align="center"><img src="v0.8.25/for-you-feed-exploration.png" width="260" alt="For You feed settings with the More like what you loved switch"></p>
+<p align="center"><em>More like what you loved in For You feed settings.</em></p>
+
+<p align="center"><img src="v0.8.25/manage-linked-versions.png" width="260" alt="Manage linked manga versions with a group open and Share rating and progress"></p>
+<p align="center"><em>Manage linked manga versions with a group open.</em></p>
+
+<p align="center"><img src="v0.8.25/group-library-automatically.png" width="260" alt="Group your library with suggested groups"></p>
+<p align="center"><em>Group your library.</em></p>
+
 ## Recommendation settings
 
 <p align="center"><img src="v0.8.24/recommendation-settings.png" width="260" alt="Recommendation Settings first page with one entry per feature"></p>

@@ -71,4 +71,24 @@
     <state>return-selection-mode</state>
     <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
   </artifact>
+  <artifact id="reader-presets-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/reader-presets.png" sha256="E40BE8BD38D279868EE276D5506AF7735D16ED5266B1499A4DA08CC00B2835C8" width="720" height="1154">
+    <route>reader/settings/reading-mode-tab</route>
+    <state>preset-row-with-saved-preset-in-use</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="for-you-feed-exploration-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/for-you-feed-exploration.png" sha256="6E8273E4C4A57DE17968314522FE6CC77FBC4DE874B8663A197B4201F466D1B7" width="720" height="1154">
+    <route>settings/recommendations/for-you-feed</route>
+    <state>more-like-what-you-loved-switch</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="manage-linked-versions-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/manage-linked-versions.png" sha256="B63214699C2D876D99812FBFEC4ABBE8ACEA3F20547C1BF0870D71A8D1549819" width="720" height="1154">
+    <route>reader-or-rated-lists/manage-linked-versions</route>
+    <state>open-group-card-with-share-rating-and-progress</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
+  <artifact id="group-library-automatically-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/group-library-automatically.png" sha256="FA2F958DE160B1420A9386B709EB8D700B36D69598E51234346683DD2EE9B13F" width="720" height="1154">
+    <route>reader-or-rated-lists/manage-linked-versions/group-library-automatically</route>
+    <state>suggested-groups-before-applying</state>
+    <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
+  </artifact>
 </kmk-screenshot-manifest>

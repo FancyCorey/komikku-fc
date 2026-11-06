@@ -10,6 +10,15 @@
     <constraints>language genre minimum-chapters exclusions source-eligibility personalized-majority exposure-window</constraints>
     <privacy screenshot="approved">Evaluation mode replaces source names with neutral labels. Manga artwork, titles, and recommendation context remain visible.</privacy>
   </feature>
+  <feature id="for-you-exploration" route="browse/for-you">
+    <purpose>Add a few cards from a search for a recently loved title and from tags next to the favorites, within a small per-refresh search budget.</purpose>
+    <documentation>docs/kmk/feature-guides/recommendations.md</documentation>
+    <owner>app/src/main/java/exh/recs/RecommendationExplorationPlanner.kt</owner>
+    <presentation>app/src/main/java/exh/recs/settings/RecommendationSourcePrioritySettingsScreen.kt</presentation>
+    <states>off saving-data planned searched row-labelled</states>
+    <constraints>three-searches-per-refresh skipped-while-saving-data same-filters-as-every-card</constraints>
+    <privacy screenshot="approved">The setting shows no manga or source names. The name of a loved title is sent to a source as a search.</privacy>
+  </feature>
   <feature id="top-picks-and-bundles" route="browse/for-you/top-picks">
     <purpose>Present combined top matches and export or import a validated recommendation set.</purpose>
     <documentation>docs/kmk/feature-guides/recommendations.md</documentation>
@@ -87,6 +96,15 @@
     <states>allowed restricted grace completed deferred-prompt</states>
     <privacy screenshot="withheld">Reader pages and progress are private content.</privacy>
   </feature>
+  <feature id="reader-presets" route="reader/settings">
+    <purpose>Save the reader's settings for a series as a named preset, apply it when the reader opens, and put the usual settings back when it closes, including after the app was stopped while reading.</purpose>
+    <documentation>docs/kmk/feature-guides/reading.md</documentation>
+    <owner>app/src/main/java/exh/reader/presets/ReaderPresets.kt</owner>
+    <presentation>app/src/main/java/eu/kanade/presentation/reader/settings/ReaderPresetSection.kt</presentation>
+    <states>usual-settings preset-in-use saved updated deleted restored-after-stop</states>
+    <constraints>series-and-confirmed-versions app-wide-settings-excluded series-reading-mode-wins</constraints>
+    <privacy screenshot="approved">The settings sheet shows reader options and preset names only. Reader pages behind it are dimmed.</privacy>
+  </feature>
   <feature id="local-tracking" route="manga/detail/trackers">
     <purpose>Remember status, score, dates, and integer or decimal chapter progress without an external tracking account; apply saved progress on load or refresh and share it across confirmed versions when enabled.</purpose>
     <documentation>docs/kmk/feature-guides/local-tracking.md</documentation>
@@ -94,6 +112,16 @@
     <dispatch>app/src/main/java/eu/kanade/domain/track/interactor/RecordLocalTrackedChapterProgress.kt</dispatch>
     <states>untracked tracked edited progress-applied sharing-disabled conflict</states>
     <privacy screenshot="withheld">Local progress and linked manga are saved on the device. External-account reconciliation is a separate user action; sharing local progress does not change tracker accounts.</privacy>
+  </feature>
+  <feature id="linked-version-sync" route="rated-lists/manage-linked-versions">
+    <purpose>When a version joins a group, confirm it as the same manga, attach the group's local tracking, give it the group's rating if it has none, share the tracker entry and apply the chapter; suggest groups for ungrouped library titles by name.</purpose>
+    <documentation>docs/kmk/feature-guides/local-tracking.md</documentation>
+    <owner>app/src/main/java/exh/recs/matching/ConfirmedGroupJoinSynchronizer.kt</owner>
+    <presentation>app/src/main/java/exh/recs/links/LinkGroupManagementScreen.kt</presentation>
+    <dispatch>app/src/main/java/exh/recs/links/LibraryGroupSuggestionPlanner.kt</dispatch>
+    <states>confirmed tracked rating-shared chapters-loading suggested applied partial-failure</states>
+    <constraints>own-rating-kept on-hold-and-dropped-kept chapter-lists-load-in-background</constraints>
+    <privacy screenshot="approved">Group cards show manga titles and artwork. Evaluation mode replaces source names with neutral labels, including on the grouping screen.</privacy>
   </feature>
   <feature id="reader-source-switching" route="reader/alternate-source">
     <purpose>Switch either way between an active pair of manga sources; suggest the same or closest available chapter and let the reader review chapter names and translation-group labels before opening it.</purpose>

@@ -1,0 +1,8 @@
+flowchart TD
+    A["Open a series<br/>in the reader"] --> B{"Does it use<br/>a preset?"}
+    B -->|Yes| C["The preset's<br/>settings apply before<br/>the first page appears"]
+    B -->|No| D["Your usual settings"]
+    C --> E["Read"]
+    D --> E
+    E --> F["Close the reader"]
+    F --> G["Your usual settings<br/>come back"]

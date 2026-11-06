@@ -55,6 +55,8 @@ When local tracking starts, it begins at the chapter you read most recently on a
 - A tracker entry linked to one version is linked to the others that have none, when **Track linked versions together** is on.
 - The chapter you read furthest is applied to every version that already has a chapter list. A version you never opened has no chapter list yet, so the app loads it in the background and the chapter appears a moment later. This uses the version's source, so it needs a connection.
 
+<img src="../diagrams/local-tracking/add-version.svg" width="300" alt="Adding a version confirms it as the same manga, joins the group's local-tracking record, gives a version with no rating the group's rating, shares the tracker entry, applies your chapter to versions that have chapters, and loads chapters in the background for versions you never opened.">
+
 Copying a chapter from another version never changes a status you chose. **On hold** and **Dropped** stay set; only you change them, or reading on this device.
 
 After a library update, the app also refreshes the tracker of each linked group once when **Sync reading progress from connected trackers** is on, so progress made on any version reaches the others without opening them.
@@ -64,7 +66,13 @@ After a library update, the app also refreshes the tracker of each linked group 
 On a rated list (Loved, Liked, Disliked, Not interested), the link icon opens **Manage linked manga versions**.
 
 - **Share rating and progress**, on an open group card, does the same for a group you made before v0.8.25: it confirms the group's versions as the same manga and gives the ones that lack them the rating, tracking, chapter progress and tracker entry.
+<p align="center"><img src="../visual-guide/v0.8.25/manage-linked-versions.png" width="260" alt="Manage linked manga versions with Group library automatically and Create group at the top, and an open group card showing Add title, Share rating and progress, Merge into group and Ungroup all"></p>
+<p align="center"><em>Manage linked manga versions, with a group card open.</em></p>
+
 - **Group library automatically** lists the library titles that are not in a group yet next to the group they most likely belong to. A match is by name first, ignoring capitals, punctuation and accents, then by any other name used by a member of a group, then by close names, which are left unchecked for you to decide. **Change** opens a searchable list of groups, with a choice to leave a title alone. Nothing is grouped until you choose **Group selected**. It only looks at titles in your library.
+
+<p align="center"><img src="../visual-guide/v0.8.25/group-library-automatically.png" width="260" alt="Group your library listing two same-named titles as a new group, pre-checked, and other titles marked Maybe with a Change action, above a Group selected button"></p>
+<p align="center"><em>Group your library: exact matches are checked, close ones are left for you.</em></p>
 
 ### Stop sharing with one version
 
