@@ -54,6 +54,13 @@ class LibraryGroupSuggestionPlannerTest {
     }
 
     @Test
+    fun `the grouping screen hides source names when technical names are hidden`() {
+        val screen = java.io.File("src/main/java/exh/recs/links/BulkGroupSuggestionsScreen.kt").readText()
+        assertTrue(screen.contains("rememberEvaluationModeEnabled()"))
+        assertTrue(screen.contains("EvaluationModeFormatter.sourceLabel(it.manga.source)"))
+    }
+
+    @Test
     fun `unrelated titles produce no suggestion and exact ones sort first`() {
         val list = listOf(manga(1, "Tower of God Season 2"), manga(2, "Kami no Tou"), manga(3, "Something Else"))
         val s = LibraryGroupSuggestionPlanner.plan(list, listOf(solo, tower))

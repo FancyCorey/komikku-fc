@@ -96,7 +96,13 @@ class BulkGroupSuggestionsScreen : Screen() {
                     val suggestions = remember(s.addCandidates, groupNames) {
                         LibraryGroupSuggestionPlanner.plan(s.addCandidates.map { it.manga }, groupNames)
                     }
-                    val sourceNames = remember(s.addCandidates) { s.addCandidates.associate { it.manga.id to it.sourceName } }
+                    // source names follow Hide technical names, like the rest of the group manager
+                    val hideNames = exh.util.rememberEvaluationModeEnabled()
+                    val sourceNames = remember(s.addCandidates, hideNames) {
+                        s.addCandidates.associate {
+                            it.manga.id to if (hideNames) exh.util.EvaluationModeFormatter.sourceLabel(it.manga.source) else it.sourceName
+                        }
+                    }
                     fun targetOf(suggestion: Suggestion): Target? = chosen[suggestion.manga.id] ?: suggestion.target
                     fun isChecked(suggestion: Suggestion): Boolean =
                         targetOf(suggestion) != null && (accepted[suggestion.manga.id] ?: (suggestion.confidence == Confidence.EXACT))
