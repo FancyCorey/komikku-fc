@@ -52,6 +52,17 @@ class ReaderPresetsAssignmentTest {
     }
 
     @Test
+    fun `choosing a preset on any version sets it for the whole series and says how many versions that is`() = runTest {
+        val presets = presets()
+        presets.assign(a, "Webtoon")
+        presets.assign(b, "Paged")
+
+        assertEquals("Paged", presets.presetNameFor(a), "both actions reach every version, not only the one being read")
+        assertEquals("Paged", presets.presetNameFor(b))
+        assertEquals(1, presets.linkedVersionCount(a))
+    }
+
+    @Test
     fun `Usual settings with no preset anywhere changes nothing`() = runTest {
         val presets = presets()
         presets.assign(a, null)

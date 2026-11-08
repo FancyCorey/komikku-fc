@@ -158,7 +158,7 @@ class AboutScreen : Screen() {
 
                 item {
                     TextPreferenceWidget(
-                        title = stringResource(MR.strings.whats_new),
+                        title = stringResource(KMR.strings.kmk_whats_new_title),
                         subtitle = KmkRecsReleaseNotes.DISPLAY_VERSION_NAME,
                         onPreferenceClick = { navigator.push(KmkRecsWhatsNewScreen()) },
                     )
@@ -237,7 +237,7 @@ class AboutScreen : Screen() {
 
                 item {
                     TextPreferenceWidget(
-                        title = stringResource(MR.strings.whats_new),
+                        title = stringResource(KMR.strings.about_original_whats_new_title),
                         subtitle = stringResource(KMR.strings.about_original_whats_new_subtitle),
                         onPreferenceClick = { navigator.push(OriginalKomikkuWhatsNewScreen()) },
                     )

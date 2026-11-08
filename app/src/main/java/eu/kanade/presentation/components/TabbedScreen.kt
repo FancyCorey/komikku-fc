@@ -10,6 +10,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -23,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.tachiyomi.ui.browse.BulkFavoriteScreenModel
@@ -107,10 +109,7 @@ fun TabbedScreen(
                 end = contentPadding.calculateEndPadding(LocalLayoutDirection.current),
             ),
         ) {
-            PrimaryTabRow(
-                selectedTabIndex = selectedPage,
-                modifier = Modifier.zIndex(1f),
-            ) {
+            val tabItems: @Composable () -> Unit = {
                 tabs.forEachIndexed { index, tab ->
                     Tab(
                         selected = selectedPage == index,
@@ -119,6 +118,22 @@ fun TabbedScreen(
                         unselectedContentColor = MaterialTheme.colorScheme.onSurface,
                     )
                 }
+            }
+            // KMK v0.8.25: with more than four tabs (Browse adds For You) a fixed row cut labels to "Sourc…" and "Exten…" on a
+            // phone, so the row scrolls instead and every label is whole.
+            if (tabs.size > FIXED_TAB_ROW_MAX) {
+                PrimaryScrollableTabRow(
+                    selectedTabIndex = selectedPage,
+                    modifier = Modifier.zIndex(1f),
+                    edgePadding = 0.dp,
+                    tabs = tabItems,
+                )
+            } else {
+                PrimaryTabRow(
+                    selectedTabIndex = selectedPage,
+                    modifier = Modifier.zIndex(1f),
+                    tabs = tabItems,
+                )
             }
 
             HorizontalPager(
@@ -145,3 +160,6 @@ data class TabContent(
     val actions: ImmutableList<AppBar.AppBarAction> = persistentListOf(),
     val content: @Composable (contentPadding: PaddingValues, snackbarHostState: SnackbarHostState) -> Unit,
 )
+
+// KMK v0.8.25
+private const val FIXED_TAB_ROW_MAX = 4

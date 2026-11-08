@@ -1,8 +1,10 @@
 package eu.kanade.presentation.reader.settings
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -15,11 +17,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsScreenModel
 import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.kmk.KMR
 import tachiyomi.presentation.core.components.SettingsChipRow
+import tachiyomi.presentation.core.components.material.padding
+import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
 
 // KMK v0.8.25 -->
@@ -39,8 +44,12 @@ internal fun ReaderPresetSection(screenModel: ReaderSettingsScreenModel) {
     var naming by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
     var confirmDelete by remember { mutableStateOf(false) }
+    var linkedVersions by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(manga, version) { assigned = manga?.let { screenModel.presets.presetNameFor(it) } }
+    LaunchedEffect(manga, version) {
+        assigned = manga?.let { screenModel.presets.presetNameFor(it) }
+        linkedVersions = manga?.let { screenModel.presets.linkedVersionCount(it) } ?: 0
+    }
 
     fun use(name: String?) {
         val current = manga ?: return
@@ -82,6 +91,15 @@ internal fun ReaderPresetSection(screenModel: ReaderSettingsScreenModel) {
                 label = { Text(stringResource(KMR.strings.reader_presets_delete_named, name)) },
             )
         }
+    }
+    // KMK v0.8.25: say which titles a choice here reaches, so a preset on one version is never a surprise on another
+    if (linkedVersions > 0) {
+        Text(
+            text = pluralStringResource(KMR.plurals.reader_presets_scope_linked, linkedVersions, linkedVersions),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium),
+        )
     }
 
     if (naming) {

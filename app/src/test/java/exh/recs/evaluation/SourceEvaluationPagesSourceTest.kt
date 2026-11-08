@@ -60,7 +60,9 @@ class SourceEvaluationPagesSourceTest {
     fun `Your taste shows Source match on the page itself`() {
         assertTrue(taste.contains("sourceMatchItems(evalState, recQualityQueue, evalModel)"))
         assertTrue(taste.contains("SourceEvaluationDialogs(evalState, evalModel)"))
-        assertFalse(taste.contains("SourceEvaluationScreen("))
+        // v0.8.25: the only way Your taste leaves for Try sources before installing is the empty state's own button
+        assertEquals(1, Regex("SourceEvaluationScreen\\(").findAll(taste).count())
+        assertTrue(taste.contains("sourceMatchItems(evalState, recQualityQueue, evalModel) {\n                        navigator.push(exh.recs.evaluation.SourceEvaluationScreen())"))
         val match = screen.substringAfter("sourceMatchItems(")
         listOf("source_match_header", "rec_quality_section", "source_match_empty")
             .forEach { assertTrue(match.contains("item(key = \"$it\")"), "$it is missing from Source match") }
@@ -108,7 +110,10 @@ class SourceEvaluationPagesSourceTest {
         listOf("Open Source evaluation to retry", "check Source evaluation for a more detailed error", "Run Source evaluation to collect it")
             .forEach { assertFalse(strings.contains(it), it) }
         val empty = strings.substringAfter("name=\"source_match_empty\">").substringBefore("</string>")
-        assertTrue(empty.contains("already have results"), "the empty state says what is actually missing")
+        assertTrue(empty.contains("uses the results of Try sources before installing"), "the empty state says what is actually missing")
+        // v0.8.25: and gives a button that opens that page, instead of describing where it is
+        val match = File("src/main/java/exh/recs/evaluation/SourceEvaluationScreen.kt").readText().substringAfter("item(key = \"source_match_empty\")")
+        assertTrue(match.substringBefore("// KMK <--").contains("TextButton(onClick = open) { Text(stringResource(KMR.strings.rec_hub_check_sources)) }"))
     }
 
     @Test

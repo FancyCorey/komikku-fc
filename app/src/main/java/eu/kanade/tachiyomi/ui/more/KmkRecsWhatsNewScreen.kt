@@ -33,7 +33,6 @@ import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.kmk.KMR
-import tachiyomi.i18n.sy.SYMR
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.InfoScreen
@@ -67,9 +66,9 @@ class KmkRecsWhatsNewScreen : Screen() {
 
         InfoScreen(
             icon = Icons.Outlined.NewReleases,
-            headingText = stringResource(MR.strings.whats_new),
-            subtitleText = stringResource(SYMR.strings.latest_, KmkRecsReleaseNotes.DISPLAY_VERSION_NAME) +
-                " - " + stringResource(KMR.strings.current_, KmkRecsReleaseNotes.DISPLAY_VERSION_NAME),
+            // KMK v0.8.25: named for this app, so it is never mistaken for the original Komikku's notes, and the version once
+            headingText = stringResource(KMR.strings.kmk_whats_new_title),
+            subtitleText = KmkRecsReleaseNotes.DISPLAY_VERSION_NAME,
             acceptText = stringResource(MR.strings.action_ok),
             onAcceptClick = { navigator.pop() },
         ) {
@@ -78,10 +77,36 @@ class KmkRecsWhatsNewScreen : Screen() {
                     .fillMaxWidth()
                     .padding(vertical = MaterialTheme.padding.large),
             ) {
+                // KMK v0.8.25: the few changes most people notice, before the full notes and history
+                if (KmkRecsReleaseNotes.HIGHLIGHTS.isNotEmpty()) {
+                    KmkRecsWhatsNewHighlights(KmkRecsReleaseNotes.HIGHLIGHTS)
+                }
                 groups.forEach { group ->
                     KmkRecsWhatsNewFamilySection(group = group)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun KmkRecsWhatsNewHighlights(highlights: List<String>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = MaterialTheme.padding.medium),
+    ) {
+        Text(
+            text = stringResource(KMR.strings.kmk_whats_new_highlights),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(vertical = MaterialTheme.padding.small),
+        )
+        highlights.forEach { line ->
+            Text(
+                text = "• $line",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(vertical = MaterialTheme.padding.extraSmall),
+            )
         }
     }
 }

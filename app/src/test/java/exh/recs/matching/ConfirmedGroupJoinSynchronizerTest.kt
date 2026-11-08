@@ -63,7 +63,7 @@ class ConfirmedGroupJoinSynchronizerTest {
     private fun stub() {
         coEvery { links.awaitByGroupId("g") } returns rows
         listOf(existing, added, addedToo).forEach { coEvery { getManga.await(it.url, it.source) } returns it }
-        coEvery { identity.mutateAll(any(), any()) } returns CrossSourceIdentityMutationResult.APPLIED
+        coEvery { identity.confirmUnlessRejected(any()) } returns CrossSourceIdentityConfirmOutcome(CrossSourceIdentityMutationResult.APPLIED)
         coEvery { tracking.propagateIfAnyTracked(any(), any()) } returns true
         coEvery { getTracks.await(existing.id) } returns emptyList()
     }
@@ -74,7 +74,7 @@ class ConfirmedGroupJoinSynchronizerTest {
         val ok = synchronizer().onMembersJoined("g", listOf(added.source to added.url, addedToo.source to addedToo.url))
         assertTrue(ok)
         coVerifyOrder {
-            identity.mutateAll(match { it.size == 2 }, CrossSourceIdentityMutation.CONFIRM)
+            identity.confirmUnlessRejected(match { it.size == 2 })
             tracking.propagateIfAnyTracked(any(), any())
             rating.applyGroupRatingToJoinedMember(rows, added)
             rating.applyGroupRatingToJoinedMember(rows, addedToo)
@@ -83,6 +83,26 @@ class ConfirmedGroupJoinSynchronizerTest {
         assertEquals(2, replays, "progress is replayed at once, and again after a version's chapters have loaded")
         assertEquals(listOf("replay", "fetch ${added.id}", "replay"), order, "the quick replay comes first; the slow chapter load comes after")
     }
+
+    // KMK v0.8.25 -->
+    @Test
+    fun `a version the user marked Not the same manga is reported and gets nothing from the group`() = runTest {
+        stub()
+        val rejectedPair = tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.canonicalPair(
+            tachiyomi.domain.taste.model.CrossSourceRecordKey(existing.source, existing.url),
+            tachiyomi.domain.taste.model.CrossSourceRecordKey(added.source, added.url),
+        )
+        coEvery { identity.confirmUnlessRejected(any()) } returns
+            CrossSourceIdentityConfirmOutcome(CrossSourceIdentityMutationResult.APPLIED, rejected = listOf(rejectedPair))
+
+        val outcome = synchronizer().join("g", listOf(added.source to added.url, addedToo.source to addedToo.url))
+
+        assertEquals(listOf(rejectedPair), outcome.rejected)
+        coVerify(exactly = 0) { rating.applyGroupRatingToJoinedMember(any(), added) }
+        coVerify { rating.applyGroupRatingToJoinedMember(listOf(link(existing), link(addedToo)), addedToo) }
+        coVerify { tracking.propagateIfAnyTracked(match { list -> list.none { it.id == added.id } }, any()) }
+    }
+    // KMK <--
 
     @Test
     fun `the title the user is on receives the group rating when it is among the receivers`() = runTest {
@@ -121,9 +141,10 @@ class ConfirmedGroupJoinSynchronizerTest {
     fun `both screens that only write link rows call the synchronizer`() {
         val manager = File("src/main/java/exh/recs/links/LinkGroupManagementScreenModel.kt").readText()
         val rated = File("src/main/java/exh/recs/loved/LovedMangaScreenModel.kt").readText()
-        assertTrue(manager.contains("joinSynchronizer.value.onMembersJoined"))
+        // v0.8.25: the group manager uses join(), which also reports "Not the same manga" pairs and ties confirmations to the action
+        assertTrue(manager.contains("joinSynchronizer.value.join(groupId, joined, actionId)"))
         listOf("ADD_MEMBER", "MOVE_MEMBER", "MERGE").forEach { assertTrue(manager.contains("actionType = GroupJournalActionType.$it")) }
-        assertTrue(Regex("syncJoined\\(").findAll(manager).count() >= 5, "add, create, move and merge each sync")
+        assertTrue(Regex("\\.joined\\(").findAll(manager).count() >= 4, "add, create, move and merge each sync")
         assertTrue(rated.contains("joinSynchronizer.value.onMembersJoined(plan.targetGroupId"))
     }
 

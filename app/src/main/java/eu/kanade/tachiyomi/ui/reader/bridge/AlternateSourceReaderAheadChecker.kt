@@ -1,10 +1,13 @@
 package eu.kanade.tachiyomi.ui.reader.bridge
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 // KMK v0.8.25 -->
@@ -20,6 +23,8 @@ class AlternateSourceReaderAheadChecker internal constructor(
     private val chapters: suspend (AlternateSourceReaderMangaCandidate) -> AlternateSourceReaderChapterDiscovery,
     private val now: () -> Long = System::currentTimeMillis,
     private val perVersionTimeoutMillis: Long = 20_000L,
+    // network work, and its timeout, run here rather than on the caller's dispatcher
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
     data class Report(
@@ -72,7 +77,7 @@ class AlternateSourceReaderAheadChecker internal constructor(
                 async {
                     gate.withPermit {
                         val result = try {
-                            withTimeoutOrNull(perVersionTimeoutMillis) { chapters(candidate) }
+                            withContext(ioDispatcher) { withTimeoutOrNull(perVersionTimeoutMillis) { chapters(candidate) } }
                         } catch (e: CancellationException) {
                             throw e
                         } catch (_: Exception) {

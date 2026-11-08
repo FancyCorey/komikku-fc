@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import exh.recs.matching.ConfirmedGroupJoinSynchronizer
+import exh.recs.matching.GroupJoinConfirmations
 import exh.util.GroupJournalActionType
 import exh.util.GroupJournalEntry
 import exh.util.GroupLinkSnapshot
@@ -21,7 +22,9 @@ import tachiyomi.domain.taste.interactor.GetCrossSourceGroupPrimary
 import tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks
 import tachiyomi.domain.taste.interactor.RestoreCrossSourceGroupState
 import tachiyomi.domain.taste.model.CrossSourceGroupPrimary
+import tachiyomi.domain.taste.model.CrossSourceIdentityPair
 import tachiyomi.domain.taste.model.CrossSourceMangaLink
+import tachiyomi.domain.taste.model.CrossSourceRecordKey
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.Locale
@@ -46,13 +49,28 @@ data class LinkGroup(
     val primary: LinkGroupMember? = null,
 ) {
     val primaryTitle: String
-        get() = primary?.manga?.title ?: primary?.link?.title ?: links.firstOrNull()?.title ?: groupId
+        // KMK v0.8.25: an empty title falls through too, so a group is never shown without a name (seen on the group list and in
+        // Move and Merge)
+        get() = listOfNotNull(primary?.manga?.title, primary?.link?.title, *links.map { it.title }.toTypedArray())
+            .firstOrNull { it.isNotBlank() } ?: groupId
 }
 
 data class LinkGroupMutationResult(
     val succeeded: Boolean,
     val undoEntryId: String? = null,
+    // KMK v0.8.25: the link and what was shared afterwards are reported separately
+    val groupId: String? = null,
+    val sharing: LinkGroupSharing = LinkGroupSharing.NOT_NEEDED,
+    // pairs the user marked "Not the same manga"; when not empty nothing was linked (or, for sharing, nothing was shared with them)
+    val conflicts: List<LinkGroupConflict> = emptyList(),
 )
+
+// KMK v0.8.25 -->
+enum class LinkGroupSharing { NOT_NEEDED, COMPLETE, INCOMPLETE }
+
+@Immutable
+data class LinkGroupConflict(val pair: CrossSourceIdentityPair, val firstTitle: String, val secondTitle: String)
+// KMK <--
 
 // KMK --> v0.8.0: optional focusedGroupId scopes visible results to a single group. The model still
 // reads all groups so a member can be moved without changing or folding any other membership.
@@ -66,6 +84,8 @@ class LinkGroupManagementScreenModel(
     private val groupUndoService: GroupUndoService = GroupUndoService(),
     // KMK v0.8.25: confirms and syncs tracking, rating and tracker entries for titles that join a group
     private val joinSynchronizer: Lazy<ConfirmedGroupJoinSynchronizer> = lazy { ConfirmedGroupJoinSynchronizer() },
+    // KMK v0.8.25: "Not the same manga" checks, and taking back the confirmations grouping made when the grouping is undone
+    private val groupConfirmations: Lazy<GroupJoinConfirmations> = lazy { GroupJoinConfirmations() },
 ) : StateScreenModel<LinkGroupManagementScreenModel.State>(State.Loading) {
     // KMK <--
 
@@ -128,9 +148,11 @@ class LinkGroupManagementScreenModel(
     fun addMangaToGroup(groupId: String, manga: List<Manga>, onResult: (LinkGroupMutationResult) -> Unit = {}) {
         mutate(onResult) {
             val links = getCrossSourceMangaLinks.awaitAll()
-            if (links.none { it.groupId == groupId }) return@mutate null
+            if (links.none { it.groupId == groupId }) return@mutate failed()
             val selected = manga.distinctBy { it.source to it.url }
-            if (selected.isEmpty() || selected.any { candidate -> links.any { it.source == candidate.source && it.url == candidate.url } }) return@mutate null
+            if (selected.isEmpty() || selected.any { candidate -> links.any { it.source == candidate.source && it.url == candidate.url } }) return@mutate failed()
+            conflicts(selected.map { it.key() }, links.filter { it.groupId == groupId }.map { it.key() }, links, selected)
+                .takeIf { it.isNotEmpty() }?.let { return@mutate LinkGroupMutationResult(false, groupId = groupId, conflicts = it) }
             val now = System.currentTimeMillis()
             val newLinks = selected.map { candidate ->
                 CrossSourceMangaLink(candidate.source, candidate.url, groupId, candidate.title, now, now)
@@ -143,7 +165,7 @@ class LinkGroupManagementScreenModel(
                 primaryDeletes = emptyList(),
                 linksBefore = links,
                 primariesBefore = getCrossSourceGroupPrimary.awaitAll(),
-            ).also { if (it != null) syncJoined(groupId, newLinks.map { link -> link.source to link.url }) }
+            ).joined(groupId, newLinks.map { link -> link.source to link.url })
         }
     }
 
@@ -151,11 +173,13 @@ class LinkGroupManagementScreenModel(
     fun createGroup(manga: List<Manga>, onResult: (LinkGroupMutationResult) -> Unit = {}) {
         mutate(onResult) {
             val selected = manga.distinctBy { it.source to it.url }
-            if (selected.size < 2) return@mutate null
+            if (selected.size < 2) return@mutate failed()
             val links = getCrossSourceMangaLinks.awaitAll()
             if (selected.any { candidate -> links.any { it.source == candidate.source && it.url == candidate.url } }) {
-                return@mutate null
+                return@mutate failed()
             }
+            conflicts(selected.map { it.key() }, emptyList(), links, selected)
+                .takeIf { it.isNotEmpty() }?.let { return@mutate LinkGroupMutationResult(false, conflicts = it) }
             val groupId = UUID.randomUUID().toString()
             val now = System.currentTimeMillis()
             val writes = selected.map { candidate ->
@@ -170,7 +194,7 @@ class LinkGroupManagementScreenModel(
                 primaryDeletes = emptyList(),
                 linksBefore = links,
                 primariesBefore = getCrossSourceGroupPrimary.awaitAll(),
-            ).also { if (it != null) syncJoined(groupId, writes.map { link -> link.source to link.url }) }
+            ).joined(groupId, writes.map { link -> link.source to link.url })
         }
     }
 
@@ -178,8 +202,10 @@ class LinkGroupManagementScreenModel(
     fun moveMember(source: Long, url: String, destinationGroupId: String, onResult: (LinkGroupMutationResult) -> Unit = {}) {
         mutate(onResult) {
             val links = getCrossSourceMangaLinks.awaitAll()
-            val member = links.singleOrNull { it.source == source && it.url == url } ?: return@mutate null
-            if (member.groupId == destinationGroupId || links.none { it.groupId == destinationGroupId }) return@mutate null
+            val member = links.singleOrNull { it.source == source && it.url == url } ?: return@mutate failed()
+            if (member.groupId == destinationGroupId || links.none { it.groupId == destinationGroupId }) return@mutate failed()
+            conflicts(listOf(member.key()), links.filter { it.groupId == destinationGroupId }.map { it.key() }, links)
+                .takeIf { it.isNotEmpty() }?.let { return@mutate LinkGroupMutationResult(false, groupId = destinationGroupId, conflicts = it) }
             val primaries = getCrossSourceGroupPrimary.awaitAll()
             val primaryBefore = primaries.associateBy { it.groupId }
             val oldGroupRemaining = links.filter { it.groupId == member.groupId && (it.source != source || it.url != url) }
@@ -207,7 +233,10 @@ class LinkGroupManagementScreenModel(
                 primaryDeletes = primaryDeletes,
                 linksBefore = links,
                 primariesBefore = primaries,
-            ).also { if (it != null) syncJoined(destinationGroupId, listOf(source to url)) }
+            ).also { entry ->
+                // it left its old group, so what grouping confirmed between it and that group is taken back
+                if (entry != null) takeBack(member.key(), oldGroupRemaining.map { it.key() }, entry.id)
+            }.joined(destinationGroupId, listOf(source to url))
         }
     }
 
@@ -215,7 +244,7 @@ class LinkGroupManagementScreenModel(
     fun ungroupMember(source: Long, url: String, onResult: (LinkGroupMutationResult) -> Unit = {}) {
         mutate(onResult) {
             val links = getCrossSourceMangaLinks.awaitAll()
-            val member = links.singleOrNull { it.source == source && it.url == url } ?: return@mutate null
+            val member = links.singleOrNull { it.source == source && it.url == url } ?: return@mutate failed()
             val primaries = getCrossSourceGroupPrimary.awaitAll()
             val primary = primaries.singleOrNull { it.groupId == member.groupId }
             val remaining = links.filter { it.groupId == member.groupId && (it.source != source || it.url != url) }
@@ -242,7 +271,7 @@ class LinkGroupManagementScreenModel(
                 primaryDeletes = primaryDeletes,
                 linksBefore = links,
                 primariesBefore = primaries,
-            )
+            ).also { entry -> if (entry != null) takeBack(member.key(), remaining.map { it.key() }, entry.id) }.saved()
         }
     }
 
@@ -250,9 +279,11 @@ class LinkGroupManagementScreenModel(
     fun mergeGroups(sourceGroupId: String, destinationGroupId: String, onResult: (LinkGroupMutationResult) -> Unit = {}) {
         mutate(onResult) {
             val links = getCrossSourceMangaLinks.awaitAll()
-            if (sourceGroupId == destinationGroupId) return@mutate null
+            if (sourceGroupId == destinationGroupId) return@mutate failed()
             val sourceMembers = links.filter { it.groupId == sourceGroupId }
-            if (sourceMembers.isEmpty() || links.none { it.groupId == destinationGroupId }) return@mutate null
+            if (sourceMembers.isEmpty() || links.none { it.groupId == destinationGroupId }) return@mutate failed()
+            conflicts(sourceMembers.map { it.key() }, links.filter { it.groupId == destinationGroupId }.map { it.key() }, links)
+                .takeIf { it.isNotEmpty() }?.let { return@mutate LinkGroupMutationResult(false, groupId = destinationGroupId, conflicts = it) }
             val primaries = getCrossSourceGroupPrimary.awaitAll()
             val primaryMap = primaries.associateBy { it.groupId }
             val sourcePrimary = primaryMap[sourceGroupId]
@@ -270,7 +301,7 @@ class LinkGroupManagementScreenModel(
                 primaryDeletes = if (sourcePrimary != null) listOf(sourceGroupId) else emptyList(),
                 linksBefore = links,
                 primariesBefore = primaries,
-            ).also { if (it != null) syncJoined(destinationGroupId, sourceMembers.map { link -> link.source to link.url }) }
+            ).joined(destinationGroupId, sourceMembers.map { link -> link.source to link.url })
         }
     }
 
@@ -279,7 +310,7 @@ class LinkGroupManagementScreenModel(
         mutate(onResult) {
             val links = getCrossSourceMangaLinks.awaitAll()
             val members = links.filter { it.groupId == groupId }
-            if (members.isEmpty()) return@mutate null
+            if (members.isEmpty()) return@mutate failed()
             val primaries = getCrossSourceGroupPrimary.awaitAll()
             val hasPrimary = primaries.any { it.groupId == groupId }
             commit(
@@ -290,15 +321,39 @@ class LinkGroupManagementScreenModel(
                 primaryDeletes = if (hasPrimary) listOf(groupId) else emptyList(),
                 linksBefore = links,
                 primariesBefore = primaries,
-            )
+            ).also { entry ->
+                if (entry != null) members.forEach { member -> takeBack(member.key(), members.map { it.key() }, entry.id) }
+            }.saved()
         }
     }
 
     fun undo(entryId: String, onResult: (GroupUndoOutcome) -> Unit = {}) {
         screenModelScope.launch {
             val outcome = groupUndoService.undo(entryId)
+            if (outcome.result == exh.util.GroupUndoResult.RESTORED) {
+                // KMK v0.8.25: identity follows the grouping back: an undone join takes back what it confirmed, an undone removal
+                // confirms again what it took back. Decisions the user made since are kept.
+                guarded {
+                    groupConfirmations.value.reverseForAction(entryId)
+                    groupConfirmations.value.restoreClearedBy(entryId)
+                }
+            }
             load()
             onResult(outcome)
+        }
+    }
+
+    /** KMK v0.8.25: the user says the titles in [conflicts] are the same manga after all; [then] repeats the action they asked for. */
+    fun confirmSameManga(conflicts: List<LinkGroupConflict>, then: () -> Unit) {
+        screenModelScope.launch {
+            val ok = try {
+                groupConfirmations.value.confirmAsUser(conflicts.map { it.pair })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                false
+            }
+            if (ok) then()
         }
     }
 
@@ -306,40 +361,105 @@ class LinkGroupManagementScreenModel(
      * Makes every title already in [groupId] one confirmed group and shares the group's rating, tracking, chapter progress and
      * tracker entry with the titles that lack them. For groups made before linking did this.
      */
-    fun syncGroup(groupId: String, onResult: (Boolean) -> Unit = {}) {
+    fun syncGroup(groupId: String, onResult: (LinkGroupMutationResult) -> Unit = {}) {
         screenModelScope.launch {
-            val ok = try {
-                val members = getCrossSourceMangaLinks.awaitAll().filter { it.groupId == groupId }
-                joinSynchronizer.value.onMembersJoined(groupId, members.map { it.source to it.url })
+            val links = try {
+                getCrossSourceMangaLinks.awaitAll()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                false
+                emptyList()
             }
+            val members = links.filter { it.groupId == groupId }
+            val outcome = sync(groupId, members.map { it.source to it.url }, actionId = null)
             load()
-            onResult(ok)
+            onResult(
+                LinkGroupMutationResult(
+                    succeeded = members.isNotEmpty(),
+                    groupId = groupId,
+                    sharing = outcome.sharing(),
+                    conflicts = outcome?.rejected.orEmpty().map { it.toConflict(links) },
+                ),
+            )
         }
     }
 
     /** Confirms the new members and gives them the group's tracking, rating and tracker entries. Never fails the link itself. */
-    private suspend fun syncJoined(groupId: String, joined: List<Pair<Long, String>>) {
-        try {
-            joinSynchronizer.value.onMembersJoined(groupId, joined)
+    private suspend fun sync(
+        groupId: String,
+        joined: List<Pair<Long, String>>,
+        actionId: String?,
+    ): ConfirmedGroupJoinSynchronizer.JoinOutcome? = try {
+        joinSynchronizer.value.join(groupId, joined, actionId)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        // the link is already saved; the synchronizer logs its own step failures
+        null
+    }
+
+    private fun ConfirmedGroupJoinSynchronizer.JoinOutcome?.sharing() =
+        if (this?.sharingComplete == true) LinkGroupSharing.COMPLETE else LinkGroupSharing.INCOMPLETE
+
+    /** After a join was saved: shares with the new members and says whether that finished. */
+    private suspend fun GroupJournalEntry?.joined(groupId: String, keys: List<Pair<Long, String>>): LinkGroupMutationResult {
+        val entry = this ?: return failed()
+        val outcome = sync(groupId, keys, entry.id)
+        return LinkGroupMutationResult(true, entry.id, groupId, outcome.sharing())
+    }
+
+    private fun GroupJournalEntry?.saved() = this?.let { LinkGroupMutationResult(true, it.id) } ?: failed()
+
+    private fun failed() = LinkGroupMutationResult(false)
+
+    /** "Not the same manga" decisions between the titles about to be linked and the group they join. */
+    private suspend fun conflicts(
+        joining: List<CrossSourceRecordKey>,
+        existing: List<CrossSourceRecordKey>,
+        links: List<CrossSourceMangaLink>,
+        extraTitles: List<Manga> = emptyList(),
+    ): List<LinkGroupConflict> {
+        val pairs = try {
+            groupConfirmations.value.rejectedAmong(joining, existing)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            // the link is already saved; the synchronizer logs its own step failures
+            // the join itself never turns a rejection into a confirmation, so a failed check cannot overrule the user
+            emptyList()
+        }
+        return pairs.map { it.toConflict(links, extraTitles) }
+    }
+
+    private fun CrossSourceIdentityPair.toConflict(links: List<CrossSourceMangaLink>, extra: List<Manga> = emptyList()): LinkGroupConflict {
+        fun title(key: CrossSourceRecordKey) = links.firstOrNull { it.source == key.source && it.url == key.url }?.title
+            ?: extra.firstOrNull { it.source == key.source && it.url == key.url }?.title
+            ?: key.url
+        return LinkGroupConflict(this, title(left), title(right))
+    }
+
+    private suspend fun takeBack(member: CrossSourceRecordKey, formerPeers: List<CrossSourceRecordKey>, actionId: String) =
+        guarded { groupConfirmations.value.reverseBetween(member, formerPeers, actionId) }
+
+    private suspend fun guarded(block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // the grouping change is saved; a confirmation that could not be taken back stays recorded and is retried next time
         }
     }
 
+    private fun CrossSourceMangaLink.key() = CrossSourceRecordKey(source, url)
+    private fun Manga.key() = CrossSourceRecordKey(source, url)
+
     private fun mutate(
         onResult: (LinkGroupMutationResult) -> Unit,
-        action: suspend () -> GroupJournalEntry?,
+        action: suspend () -> LinkGroupMutationResult,
     ) {
         screenModelScope.launch {
             val result = try {
-                val entry = action()
-                LinkGroupMutationResult(succeeded = entry != null, undoEntryId = entry?.id)
+                action()
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

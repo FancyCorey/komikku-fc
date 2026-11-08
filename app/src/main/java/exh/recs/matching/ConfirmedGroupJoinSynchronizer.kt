@@ -16,6 +16,7 @@ import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks
 import tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy
+import tachiyomi.domain.taste.model.CrossSourceIdentityPair
 import tachiyomi.domain.taste.model.CrossSourceMangaLink
 import tachiyomi.domain.taste.model.CrossSourceRecordKey
 import tachiyomi.domain.track.interactor.GetTracks
@@ -54,23 +55,47 @@ class ConfirmedGroupJoinSynchronizer(
     private val fetchChapters: suspend (Manga) -> Unit = { Injekt.get<UpdateMangaFromRemote>().invoke(it, fetchChapters = true) },
     // Loading chapter lists from sources is slow, so it runs here and not while the screen waits.
     private val backgroundScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    // KMK v0.8.25: which confirmations grouping wrote, so removing or undoing the grouping can take them back
+    private val confirmations: Lazy<GroupJoinConfirmations> = lazy { GroupJoinConfirmations() },
 ) {
 
+    /**
+     * KMK v0.8.25: what joining did. [sharingComplete] is false when a sharing step failed (the link itself is saved either way);
+     * [rejected] are pairs the user marked as not the same manga, which were neither confirmed nor shared with.
+     */
+    data class JoinOutcome(
+        val sharingComplete: Boolean,
+        val rejected: List<CrossSourceIdentityPair> = emptyList(),
+    )
+
     /** @return true when every step ran without error. */
-    suspend fun onMembersJoined(groupId: String, joined: Collection<Pair<Long, String>>): Boolean {
-        if (joined.isEmpty()) return true
+    suspend fun onMembersJoined(groupId: String, joined: Collection<Pair<Long, String>>): Boolean =
+        join(groupId, joined).sharingComplete
+
+    /** [actionId] ties the confirmations this writes to one group action, so its Undo can take them back. */
+    suspend fun join(groupId: String, joined: Collection<Pair<Long, String>>, actionId: String? = null): JoinOutcome {
+        if (joined.isEmpty()) return JoinOutcome(true)
         var ok = true
+        var rejected = emptyList<CrossSourceIdentityPair>()
         try {
             val members = getCrossSourceMangaLinks.awaitByGroupId(groupId)
             val joinedKeys = joined.toSet()
             val anchorLink = members.firstOrNull { (it.source to it.url) !in joinedKeys }
                 ?: members.firstOrNull()
-                ?: return true
+                ?: return JoinOutcome(true)
 
-            ok = confirmAgainstAnchor(anchorLink, members) && ok
+            val confirmed = confirmAgainstAnchor(anchorLink, members, actionId)
+            ok = confirmed.first && ok
+            rejected = confirmed.second
+            // A version the user said is not the same manga gets nothing from the group.
+            val rejectedKeys = rejected.flatMap { listOf(it.left, it.right) }
+                .filterNot { it.source == anchorLink.source && it.url == anchorLink.url }
+                .map { it.source to it.url }
+                .toSet()
 
-            val anchor = anchorLink.toManga() ?: return ok
-            val allManga = members.mapNotNull { it.toManga() }
+            val anchor = anchorLink.toManga() ?: return JoinOutcome(ok, rejected)
+            val allManga = members.mapNotNull { it.toManga() }.filterNot { (it.source to it.url) in rejectedKeys }
+            val sharingMembers = members.filterNot { (it.source to it.url) in rejectedKeys }
 
             ok = step {
                 localTrackingPropagator.propagateIfAnyTracked(
@@ -82,7 +107,7 @@ class ConfirmedGroupJoinSynchronizer(
             ok = step {
                 allManga
                     .filter { (it.source to it.url) in joinedKeys }
-                    .forEach { ratingActions.applyGroupRatingToJoinedMember(members, it) }
+                    .forEach { ratingActions.applyGroupRatingToJoinedMember(sharingMembers, it) }
             } && ok
             ok = step {
                 for (track in getTracks.await(anchor.id)) shareTrackerBinding.await(track)
@@ -119,10 +144,14 @@ class ConfirmedGroupJoinSynchronizer(
             logcat(LogPriority.WARN, e) { "KMK group: could not finish syncing the new group members" }
             ok = false
         }
-        return ok
+        return JoinOutcome(ok, rejected)
     }
 
-    private suspend fun confirmAgainstAnchor(anchor: CrossSourceMangaLink, members: List<CrossSourceMangaLink>): Boolean {
+    private suspend fun confirmAgainstAnchor(
+        anchor: CrossSourceMangaLink,
+        members: List<CrossSourceMangaLink>,
+        actionId: String?,
+    ): Pair<Boolean, List<CrossSourceIdentityPair>> {
         val pairs = members
             .filterNot { it.source == anchor.source && it.url == anchor.url }
             .map {
@@ -131,9 +160,18 @@ class ConfirmedGroupJoinSynchronizer(
                     CrossSourceRecordKey(it.source, it.url),
                 )
             }
-        if (pairs.isEmpty()) return true
-        val result = identityController.mutateAll(pairs, CrossSourceIdentityMutation.CONFIRM)
-        return result != CrossSourceIdentityMutationResult.FAILED && result != CrossSourceIdentityMutationResult.CONFLICT
+        if (pairs.isEmpty()) return true to emptyList()
+        // Grouping implies "same manga", but never over the user's own "Not the same manga".
+        val outcome = identityController.confirmUnlessRejected(pairs)
+        try {
+            confirmations.value.recordWritten(outcome.written, actionId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN, e) { "KMK group: could not remember which confirmations grouping wrote" }
+        }
+        val ok = outcome.result != CrossSourceIdentityMutationResult.FAILED && outcome.result != CrossSourceIdentityMutationResult.CONFLICT
+        return ok to outcome.rejected
     }
 
     private suspend fun step(block: suspend () -> Unit): Boolean = try {

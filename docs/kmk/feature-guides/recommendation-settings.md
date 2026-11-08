@@ -58,7 +58,7 @@ Add a genre or tag as **Preferred** to favor matching manga, or as **Blocked** t
 
 ### Source match
 
-**In v0.8.25 (not yet released):** at the bottom of Your taste, **Source match** checks whether For You's searches work on the sources you use, so you can see how your taste meets your sources in one place. It never installs anything and works on sources that already have a result; if there are none it tells you to run **Try sources before installing** once. See [Source match](source-evaluation.md#source-match).
+**In v0.8.25 (not yet released):** at the bottom of Your taste, **Source match** checks whether For You's searches work on the sources you use, so you can see how your taste meets your sources in one place. It never installs anything and works on sources that already have a result; if there are none it says so, with a **Try sources before installing** button that opens that page. See [Source match](source-evaluation.md#source-match).
 
 ## For You feed
 

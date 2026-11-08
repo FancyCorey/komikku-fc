@@ -288,7 +288,8 @@ class SourceEvaluationScreen(
                 // same `RecommendationNonInstalledDiscoverySettingsScreen()` destination.
                 // KMK: the For You shortcut returns to root and asks HomeScreen to select the tab.
                 AppBar(
-                    title = stringResource(KMR.strings.rec_hub_check_sources),
+                    // KMK v0.8.25: a top bar has room for about twenty characters on a phone
+                    title = stringResource(KMR.strings.rec_hub_check_sources_short),
                     navigateUp = navigateUp,
                     actions = {
                         RecommendationSettingsDetailActions(
@@ -2785,6 +2786,8 @@ fun androidx.compose.foundation.lazy.LazyListScope.sourceMatchItems(
     state: SourceEvaluationScreenModel.State,
     recQualityQueue: SourceRecommendationQualityQueue.QueueResult,
     screenModel: SourceEvaluationScreenModel,
+    // KMK v0.8.25: opens Try sources before installing, which Source match needs to have run once
+    onOpenTrySources: (() -> Unit)? = null,
 ) {
     item(key = "source_match_header") {
         Column(
@@ -2934,12 +2937,16 @@ fun androidx.compose.foundation.lazy.LazyListScope.sourceMatchItems(
     // KMK <--
     if (recQualityQueue.totalPromising <= 0) {
         item(key = "source_match_empty") {
-            Text(
-                text = stringResource(KMR.strings.source_match_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
-            )
+            Column(Modifier.padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small)) {
+                Text(
+                    text = stringResource(KMR.strings.source_match_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                onOpenTrySources?.let { open ->
+                    TextButton(onClick = open) { Text(stringResource(KMR.strings.rec_hub_check_sources)) }
+                }
+            }
         }
     }
 }

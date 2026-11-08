@@ -61,7 +61,14 @@ fun AlternateSourceReaderDialog(
     when (presentation) {
         AlternateSourceReaderPresentation.Hidden -> Unit
         is AlternateSourceReaderPresentation.ChoosingSource -> SelectionDialog(
-            title = stringResource(KMR.strings.alternate_source_reader_choose_source_title),
+            // KMK v0.8.25: from the Next row, only the versions that can continue; search and compare stay in the full chooser
+            title = stringResource(
+                if (presentation.continuation) {
+                    KMR.strings.alternate_source_reader_continue_title
+                } else {
+                    KMR.strings.alternate_source_reader_choose_source_title
+                },
+            ),
             subtitle = presentation.currentSourceLabel?.let {
                 stringResource(KMR.strings.alternate_source_reader_current_source, it)
             },
@@ -70,9 +77,9 @@ fun AlternateSourceReaderDialog(
             onSelect = onSelectSource,
             selectedToken = presentation.selectedToken,
             onConfirm = onConfirmSource,
-            extraAction = onSearchMore,
-            inAppAction = onSearchInApp,
-            compareAction = onCompareVersions,
+            extraAction = onSearchMore.takeUnless { presentation.continuation },
+            inAppAction = onSearchInApp.takeUnless { presentation.continuation },
+            compareAction = onCompareVersions.takeUnless { presentation.continuation },
             retryAction = onRetry,
         )
         is AlternateSourceReaderPresentation.ChoosingChapter -> SelectionDialog(
@@ -346,7 +353,17 @@ private fun CandidateRow(
                     )
                 }
                 // KMK v0.8.25 -->
-                row.latestChapter?.let { latest ->
+                if (row.nextChapter != null && row.latestChapter != null) {
+                    Text(
+                        text = stringResource(
+                            KMR.strings.alternate_source_reader_next_and_latest,
+                            formatChapterNumber(row.nextChapter.toDouble()),
+                            formatChapterNumber(row.latestChapter.toDouble()),
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                row.latestChapter?.takeIf { row.nextChapter == null }?.let { latest ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = stringResource(MR.strings.display_mode_chapter, formatChapterNumber(latest.toDouble())),
@@ -400,4 +417,5 @@ private val AlternateSourceReaderRecoveryReason.resource
         AlternateSourceReaderRecoveryReason.LOOP_STOPPED -> KMR.strings.alternate_source_reader_error_loop
         AlternateSourceReaderRecoveryReason.INVALID_SESSION -> KMR.strings.alternate_source_reader_error_invalid_session
         AlternateSourceReaderRecoveryReason.FAILED -> KMR.strings.alternate_source_reader_error_failed
+        AlternateSourceReaderRecoveryReason.NEXT_CHAPTER_GONE -> KMR.strings.alternate_source_reader_error_next_gone
     }

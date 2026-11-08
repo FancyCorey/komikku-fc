@@ -153,18 +153,20 @@ class ReaderPresets(
         return confirmedVersionKeys(manga).firstNotNullOfOrNull { assigned[it] }
     }
 
+    /**
+     * Chooses the preset for the series: this title and every version confirmed as the same manga. Choosing a preset and choosing
+     * Usual settings have the same reach, so what the reader shows is what every version gets. (Before v0.8.25 a preset was
+     * stored on one version and the others only inherited it unless they had their own.)
+     */
     suspend fun assign(manga: Manga, name: String?) {
         val updated = assignments().toMutableMap()
-        if (name == null) {
-            // Usual settings means no preset for the series, so it is cleared on every confirmed version too; clearing only
-            // this title would let the lookup find a sibling's preset again straight away.
-            updated.remove(keyOf(manga))
-            confirmedVersionKeys(manga).forEach(updated::remove)
-        } else {
-            updated[keyOf(manga)] = name
-        }
+        val keys = listOf(keyOf(manga)) + confirmedVersionKeys(manga)
+        if (name == null) keys.forEach(updated::remove) else keys.forEach { updated[it] = name }
         assignmentsPref.set(Json.encodeToString(assignmentSerializer, updated))
     }
+
+    /** How many other versions a preset choice here also applies to, shown under the preset row. */
+    suspend fun linkedVersionCount(manga: Manga): Int = (confirmedVersionKeys(manga).toSet() - keyOf(manga)).size
 
     private suspend fun confirmedVersionKeys(manga: Manga): List<String> {
         val own = getCrossSourceMangaLinks.awaitBySourceUrl(manga.source, manga.url) ?: return emptyList()

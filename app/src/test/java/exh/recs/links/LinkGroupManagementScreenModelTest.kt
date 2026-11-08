@@ -46,6 +46,7 @@ class LinkGroupManagementScreenModelTest {
         val model: LinkGroupManagementScreenModel,
         val links: MutableList<CrossSourceMangaLink>,
         val primaries: MutableList<tachiyomi.domain.taste.model.CrossSourceGroupPrimary>,
+        val confirmations: exh.recs.matching.GroupJoinConfirmations,
     )
 
     private fun model(
@@ -65,6 +66,8 @@ class LinkGroupManagementScreenModelTest {
         val manga = mockk<MangaRepository>(relaxed = true)
         coEvery { manga.getMangaByUrlAndSourceId(any(), any()) } returns null
         coEvery { manga.getFavorites() } returns emptyList()
+        val confirmations = mockk<exh.recs.matching.GroupJoinConfirmations>(relaxed = true)
+        coEvery { confirmations.rejectedAmong(any(), any()) } returns emptyList()
         val screen = LinkGroupManagementScreenModel(
             getCrossSourceMangaLinks = linkReader,
             mangaRepository = manga,
@@ -72,9 +75,115 @@ class LinkGroupManagementScreenModelTest {
             getCrossSourceGroupPrimary = primaryReader,
             restoreCrossSourceGroupState = restore,
             groupUndoService = GroupUndoService(linkReader, primaryReader, restore),
+            groupConfirmations = lazy { confirmations },
         )
-        return Fixture(screen, links, primaries)
+        return Fixture(screen, links, primaries, confirmations)
     }
+
+    // KMK v0.8.25 -->
+    @Test
+    fun `adding a title the user marked Not the same manga links nothing and reports the pair`() = runTest {
+        val restore = mockk<RestoreCrossSourceGroupState>(relaxed = true)
+        val fixture = model(listOf(link("existing", 1L, "kept")), restore)
+        val pair = tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.canonicalPair(
+            tachiyomi.domain.taste.model.CrossSourceRecordKey(2L, "a"),
+            tachiyomi.domain.taste.model.CrossSourceRecordKey(1L, "kept"),
+        )
+        coEvery { fixture.confirmations.rejectedAmong(any(), any()) } returns listOf(pair)
+        advanceUntilIdle()
+        var result: LinkGroupMutationResult? = null
+
+        fixture.model.addMangaToGroup("existing", listOf(manga(2L, "a"))) { result = it }
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { restore.await(any(), any(), any(), any()) }
+        assertFalse(result!!.succeeded)
+        assertEquals(setOf("Title kept", "Title a"), result!!.conflicts.single().let { setOf(it.firstTitle, it.secondTitle) })
+        assertTrue(GroupUndoJournal.snapshot().isEmpty(), "nothing to undo because nothing was saved")
+    }
+
+    @Test
+    fun `confirming the pair as the same manga is the user's decision and then the add goes ahead`() = runTest {
+        val restore = mockk<RestoreCrossSourceGroupState>(relaxed = true)
+        val fixture = model(listOf(link("existing", 1L, "kept")), restore)
+        val pair = tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.canonicalPair(
+            tachiyomi.domain.taste.model.CrossSourceRecordKey(2L, "a"),
+            tachiyomi.domain.taste.model.CrossSourceRecordKey(1L, "kept"),
+        )
+        coEvery { fixture.confirmations.rejectedAmong(any(), any()) } returnsMany listOf(listOf(pair), emptyList())
+        coEvery { fixture.confirmations.confirmAsUser(listOf(pair)) } returns true
+        advanceUntilIdle()
+        var first: LinkGroupMutationResult? = null
+        var second: LinkGroupMutationResult? = null
+        val add = { onResult: (LinkGroupMutationResult) -> Unit -> fixture.model.addMangaToGroup("existing", listOf(manga(2L, "a")), onResult) }
+
+        add { first = it }
+        advanceUntilIdle()
+        fixture.model.confirmSameManga(first!!.conflicts) { add { second = it } }
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { fixture.confirmations.confirmAsUser(listOf(pair)) }
+        coVerify(exactly = 1) { restore.await(any(), emptyList(), emptyList(), emptyList()) }
+        assertTrue(second!!.succeeded)
+    }
+
+    @Test
+    fun `removing a title takes back what grouping confirmed between it and its former group`() = runTest {
+        val selected = link("g1", 1L, "selected")
+        val peer = link("g1", 2L, "peer")
+        val restore = mockk<RestoreCrossSourceGroupState>(relaxed = true)
+        val fixture = model(listOf(selected, peer), restore)
+        advanceUntilIdle()
+        var result: LinkGroupMutationResult? = null
+
+        fixture.model.ungroupMember(selected.source, selected.url) { result = it }
+        advanceUntilIdle()
+
+        coVerify {
+            fixture.confirmations.reverseBetween(
+                tachiyomi.domain.taste.model.CrossSourceRecordKey(1L, "selected"),
+                listOf(tachiyomi.domain.taste.model.CrossSourceRecordKey(2L, "peer")),
+                result!!.undoEntryId,
+            )
+        }
+    }
+
+    @Test
+    fun `undo puts identity back the way the grouping found it`() = runTest {
+        val restore = mockk<RestoreCrossSourceGroupState>(relaxed = true)
+        val fixture = model(listOf(link("existing", 1L, "kept")), restore)
+        advanceUntilIdle()
+        var result: LinkGroupMutationResult? = null
+        fixture.model.addMangaToGroup("existing", listOf(manga(2L, "a"))) { result = it }
+        advanceUntilIdle()
+        // the undo sees the rows it wrote
+        fixture.links += link("existing", 2L, "a")
+        var undone: exh.util.GroupUndoOutcome? = null
+
+        fixture.model.undo(result!!.undoEntryId!!) { undone = it }
+        advanceUntilIdle()
+
+        assertEquals(GroupUndoResult.RESTORED, undone?.result)
+        coVerify { fixture.confirmations.reverseForAction(result!!.undoEntryId!!) }
+        coVerify { fixture.confirmations.restoreClearedBy(result!!.undoEntryId!!) }
+    }
+
+    @Test
+    fun `the link and its sharing are reported separately`() = runTest {
+        val restore = mockk<RestoreCrossSourceGroupState>(relaxed = true)
+        val fixture = model(listOf(link("existing", 1L, "kept")), restore)
+        advanceUntilIdle()
+        var result: LinkGroupMutationResult? = null
+
+        // no synchronizer can be built in this test, which is exactly a sharing step failing after the link was saved
+        fixture.model.addMangaToGroup("existing", listOf(manga(2L, "a"))) { result = it }
+        advanceUntilIdle()
+
+        assertTrue(result!!.succeeded, "the link is saved")
+        assertEquals(LinkGroupSharing.INCOMPLETE, result!!.sharing)
+        assertEquals("existing", result!!.groupId, "so the screen can offer Retry for this group")
+    }
+    // KMK <--
 
     @Test
     fun `move touches only selected member and journals undo after atomic write succeeds`() = runTest {

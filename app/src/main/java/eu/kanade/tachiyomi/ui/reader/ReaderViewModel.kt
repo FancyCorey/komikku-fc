@@ -315,6 +315,9 @@ class ReaderViewModel @JvmOverloads constructor(
         val candidate: AlternateSourceReaderMangaCandidate,
         val returnBridgeKey: AlternateSourceBridgeKey? = null,
         val returnSessionId: String? = null,
+        // KMK v0.8.25: chosen from the last chapter's Next row, so reading goes on with the chapter after the finished one. Kept
+        // on the selection so a Retry keeps it.
+        val continueAfterFinished: Boolean = false,
     )
 
     private data class AlternateSourceChapterSelection(
@@ -1338,7 +1341,6 @@ class ReaderViewModel @JvmOverloads constructor(
     ) {
         if (isChapterNavigationBlockedBySchedule()) return
         pendingReadNextKey = readNextFromKey
-        pendingContinueAfterFinished = continueAfterFinished || readNextFromKey != null
         val request = currentAlternateSourceCandidateRequest(precedingChapterId, followingChapterId)
             ?: run {
                 mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.RecoverableFailure(
@@ -1359,7 +1361,11 @@ class ReaderViewModel @JvmOverloads constructor(
             currentCoroutineContext().ensureActive()
             val rows = discovery.candidates.map { candidate ->
                 val token = newAlternateSourceToken()
-                alternateSourceMangaTokens[token] = AlternateSourceMangaSelection(request, candidate)
+                alternateSourceMangaTokens[token] = AlternateSourceMangaSelection(
+                    request,
+                    candidate,
+                    continueAfterFinished = continueAfterFinished || readNextFromKey != null,
+                )
                 candidate.toPresentationRow(token)
             }
             // KMK v0.8.25 -->
@@ -1369,6 +1375,10 @@ class ReaderViewModel @JvmOverloads constructor(
                     ?.key
             }?.let { token ->
                 selectAlternateSourceCandidate(token)
+                return@launchAlternateSourceCandidateWork
+            }
+            if (continueAfterFinished) {
+                showContinuationList(request, precedingChapterId)
                 return@launchAlternateSourceCandidateWork
             }
             // KMK <--
@@ -1538,14 +1548,35 @@ class ReaderViewModel @JvmOverloads constructor(
             }
             alternateSourceChapterTokens.clear()
             retainedAlternateSourceSelection = null
-            mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.ChoosingChapter(
-                sourceToken = token,
-                content = AlternateSourceReaderLoadState.Loading,
-            )
+            // KMK v0.8.25: continuing from the Next row never shows a chapter picker, not even while it loads
+            mutableAlternateSourcePresentation.value = if (selection.continueAfterFinished) {
+                AlternateSourceReaderPresentation.Resolving(AlternateSourceReaderResolvingPurpose.ENTRY)
+            } else {
+                AlternateSourceReaderPresentation.ChoosingChapter(
+                    sourceToken = token,
+                    content = AlternateSourceReaderLoadState.Loading,
+                )
+            }
             val discovery = alternateSourceReaderCandidateGateway.chapters(
                 selection.candidate,
                 explicitRetry = explicitUserRetry,
             )
+            if (selection.continueAfterFinished && discovery !is AlternateSourceReaderChapterDiscovery.Available) {
+                // the reader's own messages, each with Retry; never the chapter picker
+                when (discovery) {
+                    AlternateSourceReaderChapterDiscovery.Empty -> nextChapterGone()
+                    else -> mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.RecoverableFailure(
+                        if (discovery == AlternateSourceReaderChapterDiscovery.SourceUnavailable) {
+                            AlternateSourceReaderRecoveryReason.ROUTE_UNAVAILABLE
+                        } else {
+                            AlternateSourceReaderRecoveryReason.FAILED
+                        },
+                        canRetry = true,
+                        invalidateTokens = false,
+                    )
+                }
+                return@launchAlternateSourceCandidateWork
+            }
             var recommendedToken: AlternateSourceReaderOpaqueToken? = null
             val content = when (discovery) {
                 is AlternateSourceReaderChapterDiscovery.Available -> {
@@ -1559,9 +1590,13 @@ class ReaderViewModel @JvmOverloads constructor(
                     val nextAfterFinished = AlternateSourceReaderAheadPolicy
                         .nextChapterAfter(discovery.chapters, originNumber)
                         .takeIf { continuesAfterFinished }
-                    val readNextNow = pendingContinueAfterFinished && nextAfterFinished != null
+                    val readNextNow = selection.continueAfterFinished && nextAfterFinished != null
                     pendingReadNextKey = null
-                    pendingContinueAfterFinished = false
+                    if (selection.continueAfterFinished && nextAfterFinished == null) {
+                        // The answer that showed the Next row is out of date: say so, never offer the chapter just finished.
+                        nextChapterGone()
+                        return@launchAlternateSourceCandidateWork
+                    }
                     val recommended = nextAfterFinished
                         ?: AlternateSourceReaderChapterPolicy.recommendedChapter(discovery.chapters, originNumber)
                     if (readNextNow) {
@@ -1990,7 +2025,6 @@ class ReaderViewModel @JvmOverloads constructor(
     val linkedVersionsAhead: StateFlow<AlternateSourceReaderAheadState?> = mutableLinkedVersionsAhead.asStateFlow()
     private var aheadCheckJob: Job? = null
     private var pendingReadNextKey: String? = null
-    private var pendingContinueAfterFinished = false
 
     /**
      * Called when the last chapter's end screen is built. Asks the confirmed linked versions in the background, so the answer is
@@ -2032,6 +2066,54 @@ class ReaderViewModel @JvmOverloads constructor(
             null,
             readNextFromKey = onlyVersionKey,
             continueAfterFinished = true,
+        )
+    }
+
+    /** The list the Next row opens when several versions are ahead: only those, each with its next and latest chapter. */
+    private suspend fun showContinuationList(request: AlternateSourceReaderCandidateRequest, finishedChapterId: Long) {
+        val ahead = mutableLinkedVersionsAhead.value
+            ?.takeIf { it.finishedChapterId == finishedChapterId }
+            ?.report
+            ?.aheadByKey
+            .orEmpty()
+        val rows = alternateSourceMangaTokens.entries
+            .mapNotNull { (token, selection) ->
+                ahead[AlternateSourceReaderAheadChecker.keyOf(selection.candidate)]?.let { Triple(token, selection, it) }
+            }
+            .sortedWith(compareByDescending<Triple<*, *, AlternateSourceReaderAheadPolicy.Ahead>> { it.third.latestChapter })
+            .map { (token, selection, version) ->
+                selection.candidate.toPresentationRow(token).copy(
+                    nextChapter = version.nextChapter,
+                    latestChapter = version.latestChapter,
+                    chaptersAhead = version.chaptersAhead,
+                )
+            }
+        if (rows.isEmpty()) {
+            nextChapterGone()
+            return
+        }
+        val origin = getManga.await(request.primaryRoute.mangaId)
+        mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.ChoosingSource(
+            content = AlternateSourceReaderLoadState.Content(rows, hasPartialFailure = false),
+            currentSourceLabel = origin?.let {
+                if (sourcePreferencesForRatingPrompt.evaluationMode().get()) {
+                    EvaluationModeFormatter.sourceLabel(it.source)
+                } else {
+                    sourceManager.get(it.source)?.name
+                }
+            },
+            continuation = true,
+        )
+    }
+
+    /** The next chapter that was offered is gone: explain, offer Retry, and drop the answer so the end screen asks again. */
+    private fun nextChapterGone() {
+        mutableLinkedVersionsAhead.value = null
+        aheadChecker.clear()
+        mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.RecoverableFailure(
+            AlternateSourceReaderRecoveryReason.NEXT_CHAPTER_GONE,
+            canRetry = true,
+            invalidateTokens = false,
         )
     }
 

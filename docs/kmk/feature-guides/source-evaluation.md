@@ -54,7 +54,7 @@ When **Start** cannot be used, a line under it says why:
 
 ## Source match
 
-**In v0.8.25 (not yet released):** this is the check of the sources you already use. It tests whether For You's searches work on them, and it never installs anything. It sits at the bottom of **Your taste**, because it is about how your taste meets your sources. It works on sources that already have a result from **Try sources before installing**; if there are none it says so and where to start.
+**In v0.8.25 (not yet released):** this is the check of the sources you already use. It tests whether For You's searches work on them, and it never installs anything. It sits at the bottom of **Your taste**, because it is about how your taste meets your sources. It works on sources that already have a result from **Try sources before installing**; if there are none it says so, with a button that opens **Try sources before installing**. That page's title bar reads **Try before installing** on a phone.
 
 <p align="center"><img src="../visual-guide/v0.8.25/your-taste-source-match.png" width="260" alt="Your taste scrolled to its Source match section"></p>
 <p align="center"><em>Source match at the bottom of Your taste.</em></p>

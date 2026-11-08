@@ -87,7 +87,9 @@ class ChapterEndLinkedVersionsSourceTest {
     @Test
     fun `choosing a version from the Next row's list carries the intent to read on`() {
         assertTrue(viewModel.contains("continueAfterFinished = true,"))
-        assertTrue(viewModel.contains("val readNextNow = pendingContinueAfterFinished && nextAfterFinished != null"))
+        // kept on the selection, so a Retry keeps it too
+        assertTrue(viewModel.contains("val readNextNow = selection.continueAfterFinished && nextAfterFinished != null"))
+        assertTrue(viewModel.contains("continueAfterFinished = continueAfterFinished || readNextFromKey != null"))
     }
 
     @Test

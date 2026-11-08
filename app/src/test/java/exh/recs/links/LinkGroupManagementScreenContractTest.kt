@@ -19,7 +19,8 @@ class LinkGroupManagementScreenContractTest {
     @Test
     fun `member and group removal remain separate explicit actions`() {
         assertTrue(screen.contains("model.ungroupMember(member.link.source, member.link.url)"))
-        assertTrue(screen.contains("model.ungroupGroup(dialog.group.groupId, onResult)"))
+        // v0.8.25: the group-level action is in the group menu and still asks first
+        assertTrue(screen.contains("model.ungroupGroup(dialog.group.groupId)"))
         assertTrue(screen.contains("GroupDialog.ConfirmUngroup"))
     }
 }

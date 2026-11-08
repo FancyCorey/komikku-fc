@@ -15,6 +15,8 @@ data class AlternateSourceReaderCandidateRow(
     // KMK v0.8.25: the newest chapter this version has and how far ahead of the finished chapter it is (0 = not ahead)
     val latestChapter: Float? = null,
     val chaptersAhead: Int = 0,
+    // KMK v0.8.25: the chapter reading would continue with, shown in the list the Next row opens
+    val nextChapter: Float? = null,
 ) {
     init {
         require((primaryLabel != null) xor (genericLabel != null))
@@ -50,6 +52,9 @@ enum class AlternateSourceReaderRecoveryReason {
     LOOP_STOPPED,
     INVALID_SESSION,
     FAILED,
+
+    // KMK v0.8.25: the version that had the next chapter no longer has it
+    NEXT_CHAPTER_GONE,
 }
 
 enum class AlternateSourceReaderNotice {
@@ -80,6 +85,8 @@ sealed interface AlternateSourceReaderPresentation {
         val content: AlternateSourceReaderLoadState<AlternateSourceReaderCandidateRow>,
         val selectedToken: AlternateSourceReaderOpaqueToken? = null,
         val currentSourceLabel: String? = null,
+        // KMK v0.8.25: the short list from the last chapter's Next row: only versions that can continue, no search or compare
+        val continuation: Boolean = false,
     ) : AlternateSourceReaderPresentation
     data class ChoosingChapter(
         val sourceToken: AlternateSourceReaderOpaqueToken,

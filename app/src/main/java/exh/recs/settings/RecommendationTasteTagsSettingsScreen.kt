@@ -221,7 +221,9 @@ class RecommendationTasteTagsSettingsScreen(
                     item(key = "source_match_section") {
                         SectionHeader(stringResource(KMR.strings.source_match_title))
                     }
-                    sourceMatchItems(evalState, recQualityQueue, evalModel)
+                    sourceMatchItems(evalState, recQualityQueue, evalModel) {
+                        navigator.push(exh.recs.evaluation.SourceEvaluationScreen())
+                    }
                     // KMK v0.8.24: the language selector lives with the other general preferences.
                     item(key = "recommendation_languages_header") {
                         SectionHeader(

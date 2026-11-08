@@ -6,9 +6,9 @@
     <capture-environment>Android emulator, API 30, 1080x1920, dark theme, development build from the v0.8.25 branch; Hide technical names in screenshots on, so source, extension and tag names are placeholders; status and navigation bars cropped; scaled to 720 pixels wide</capture-environment>
     <limits>Development build, not a release candidate or a production-signed artifact; these captures must be redone on the release artifact before v0.8.25 is published. Sources are test fixtures, so source rows show failures and Source match has no results to check. The reader flow uses a local sample manga with generated pages. These images illustrate behavior and do not assert that every state is shown.</limits>
   </candidate-binding>
-  <artifact id="whats-new-cards-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/whats-new-cards.png" sha256="F739CBF998FF1D0A9374B24FA6C3C522482411DBD707554AAB8EEF0D94B3221B" width="720" height="1154">
+  <artifact id="whats-new-cards-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/whats-new-cards.png" sha256="13D61CB4C560E93042FEF2821925ADDE13C74349404DBDBC1FD2606DC17285C9" width="720" height="1154">
     <route>more/about/whats-new</route>
-    <state>fc-whats-new-version-cards</state>
+    <state>fc-whats-new-highlights-then-version-cards</state>
     <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
   </artifact>
   <artifact id="original-komikku-whats-new-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/original-komikku-whats-new.png" sha256="C1966FC0ACD9BCE90F30A948215A73AC3573FA65FAE483385F86E4EE4EB64A8C" width="720" height="1154">
@@ -16,7 +16,7 @@
     <state>original-release-notes-cards</state>
     <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
   </artifact>
-  <artifact id="about-komikku-fc-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/about-komikku-fc.png" sha256="D4C2E469464877E68889C8932E424A106D6FE2FFE1E60A5EEACFE94BCD038714" width="720" height="1154">
+  <artifact id="about-komikku-fc-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/about-komikku-fc.png" sha256="EA245E97B4315334A12495029D7FC945F0A264A2DD5485FECC09E27D96EBE65A" width="720" height="1154">
     <route>more/about</route>
     <state>komikku-fc-section</state>
     <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
@@ -81,9 +81,9 @@
     <state>more-like-what-you-loved-switch</state>
     <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
   </artifact>
-  <artifact id="manage-linked-versions-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/manage-linked-versions.png" sha256="B63214699C2D876D99812FBFEC4ABBE8ACEA3F20547C1BF0870D71A8D1549819" width="720" height="1154">
+  <artifact id="manage-linked-versions-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/manage-linked-versions.png" sha256="6CDED8AADA861FBD0075D2E3D386798C44AC55B8DD93A6A7130584543D128B57" width="720" height="1154">
     <route>reader-or-rated-lists/manage-linked-versions</route>
-    <state>open-group-card-with-share-rating-and-progress</state>
+    <state>open-group-card-with-group-actions-menu</state>
     <sanitization>status-and-navigation-bars-cropped; source-extension-and-tag-names-placeholders; no-account; no-device-identifier; no-local-path</sanitization>
   </artifact>
   <artifact id="group-library-automatically-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/group-library-automatically.png" sha256="FA2F958DE160B1420A9386B709EB8D700B36D69598E51234346683DD2EE9B13F" width="720" height="1154">

@@ -6,6 +6,18 @@ object KmkRecsReleaseNotes {
     const val VERSION_NAME = "KMK-Recs v0.8.25"
     const val DISPLAY_VERSION_NAME = "Komikku FC v0.8.25"
 
+    /**
+     * KMK v0.8.25: the short list shown first on What's new, one line each. The full notes below still say everything. Keep it to
+     * the changes most people will notice, in plain words, and update it with each version.
+     */
+    val HIGHLIGHTS = listOf(
+        "At the end of a series, Next continues from a linked version that has more chapters.",
+        "Linked versions share their rating and progress when you add one, and never over a Not the same manga decision.",
+        "Reader presets: save the reader's look for a series and switch with one tap.",
+        "For You can add titles like the ones you loved, and what you read lately counts for more.",
+        "Group library automatically finds the right group for titles that are not grouped yet.",
+    )
+
     /** Projects the retained historical notes into the current public product name. */
     fun displayMarkdown(): String = MARKDOWN.replace("KMK-Recs", "Komikku FC")
 
@@ -23,7 +35,7 @@ object KmkRecsReleaseNotes {
     val MARKDOWN = """
         ## KMK-Recs v0.8.25
 
-        Clearer sponsorship wording, an About page that separates Komikku FC from the original Komikku, and a reading schedule you can turn on from the reader.
+        Linked versions that share their rating and progress and respect Not the same manga, a last chapter that can continue from a linked version, reader presets, and an About page that separates Komikku FC from the original Komikku.
 
         #### What's Changed
 
@@ -36,7 +48,7 @@ object KmkRecsReleaseNotes {
         - **Group library automatically:** Manage linked manga versions can list the library titles that are not in a group yet next to the group they most likely belong to, found by name and by the other names group members use. Exact matches are pre-checked and nothing is grouped until you choose Group selected.
         - **Reader presets:** The first tab of the reader settings has a Preset row. Save the reader as it is now for a series, switch between presets, update or delete one. A preset applies when the reader opens, your usual settings come back when you leave, and it follows the series to its linked versions.
         - **More like what you loved:** For You can add a few cards from a search for a title you loved and from tags that sit next to your favorites, and a row says when it includes them. It uses up to three extra searches per refresh, is skipped while saving data, and can be turned off under For You feed.
-        - **The last chapter shows what linked versions have after it:** At the end of a series the reader checks the versions you confirmed as the same manga for a chapter after the one you finished. One version ahead gives the normal Next row with the chapter and the source, and tapping it reads from that source. Several open the list, where each version shows its latest chapter and how far ahead it is, with the furthest ahead first. If nothing is ahead, nothing is linked, or you are saving data, the screen is the same as before. Continuing from another source now starts at the chapter after the one you finished, and never replaces a chapter match you saved.
+        - **The last chapter shows what linked versions have after it:** At the end of a series the reader checks the versions you confirmed as the same manga for a chapter after the one you finished. One version ahead gives the normal Next row with the chapter and the source, and tapping it reads from that source. Several open Continue reading from, a short list of only those versions with their next and latest chapter, and choosing one reads on without a chapter list. If that chapter is gone by the time you tap it, the reader says so and offers Retry, and it never offers the chapter you just finished as the next one. If nothing is ahead, nothing is linked, or you are saving data, the screen is the same as before. Continuing from another source now starts at the chapter after the one you finished, and never replaces a chapter match you saved.
 
         ##### Improve
 
@@ -49,6 +61,10 @@ object KmkRecsReleaseNotes {
         - **Trackers after a library update:** The tracker of each linked group is refreshed once after a library update when Sync local tracking from trackers is on, so progress made on any version reaches the others without opening them.
         - **Preview from Best Version:** Open in reader from Best Version and Compare versions is now a preview: it leaves no reading history, no read progress and no tracker update.
         - **Automatic source check:** Besides missing and out-of-date results, it now also re-checks the sources you have installed when your ratings have changed a lot or an extension was updated since it was evaluated. It still never installs or removes anything.
+        - **Grouping respects Not the same manga:** Adding, moving or merging titles you marked Not the same manga asks first instead of linking them, and Share rating and progress skips them. Removing a title, moving it, Ungroup all and Undo take back the confirmation that grouping made, so the reader no longer offers that version to continue from; confirmations you made yourself are kept. If a title is linked but sharing does not finish, the screen says so and offers Retry.
+        - **Manage linked manga versions:** A group's actions are in its menu and each title's Move and Remove in its own, and Move and Merge into group show a list of groups with covers where the chosen one is marked.
+        - **Reader presets apply to the whole series:** Choosing a preset or Usual settings reaches every version confirmed as the same manga, and the row says how many.
+        - **What's new and About:** What's new in Komikku FC starts with a few highlights and shows its version once, and About names What's new in Komikku FC and What's new in Komikku apart. Source match, when it has nothing to check, has a button that opens Try sources before installing.
         - **Track other versions and opening a manga touch only that manga:** They used to replay the saved progress of every tracked manga in your library each time. They now update only that manga's own record. A library update and a restore still refresh every group. No speed claim is made until it has been timed on a device.
         - **What you read lately counts for more on For You:** A tag you rated well and also read within your window counts for the larger of its older weight and (half of it plus three times its recent weight). A little recent reading changes nothing and none of it lowers the tag; a lot of it can lift it above an older rating. Blocked and disliked tags are never boosted.
         - **For You loading:** For You now prepares its first results in the background instead of on the main thread, while Browse is still opening.
@@ -56,6 +72,7 @@ object KmkRecsReleaseNotes {
 
         ##### Fix
 
+        - **Browse tabs fit a phone:** With For You, Browse has five tabs, and on a phone Sources and Extensions were cut short. The tab row now scrolls instead, so every name is whole; For You is at the end of the row.
         - **Dropped and On hold stay set:** Copying a chapter from another version no longer changes a status you chose. Before, Dropped went back to Reading the next time a library update ran or you opened another version.
         - **Reading schedule:** The schedule editor you open from the reader now has its own Enable reading schedule switch, the same setting as Settings, Reader. A schedule you set up from a manga is no longer left switched off without saying so. The switch is applied when you tap Save, and Cancel or Back keeps what you had. Adding the first time window while the schedule is off now switches it on, and you can switch it off again before saving.
 

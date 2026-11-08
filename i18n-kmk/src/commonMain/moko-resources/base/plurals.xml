@@ -469,6 +469,10 @@
             <item quantity="one">Partial: %1$d of %2$d word</item>
             <item quantity="other">Partial: %1$d of %2$d words</item>
         </plurals>
+    <plurals name="reader_presets_scope_linked">
+            <item quantity="one">Also applies to its %1$d linked version</item>
+            <item quantity="other">Also applies to its %1$d linked versions</item>
+        </plurals>
     <plurals name="link_group_management_source_count">
             <item quantity="one">%1$d version</item>
             <item quantity="other">%1$d versions</item>

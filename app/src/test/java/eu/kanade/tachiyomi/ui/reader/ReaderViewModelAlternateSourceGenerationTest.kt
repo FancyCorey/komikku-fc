@@ -31,6 +31,8 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.SMangaUpdate
 import eu.kanade.tachiyomi.source.online.HttpSource
+import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderAheadPolicy
+import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderAheadState
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderLoadState
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderPhase
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderPresentation
@@ -112,6 +114,7 @@ import uy.kohesive.injekt.api.InjektModule
 import uy.kohesive.injekt.api.InjektRegistrar
 import uy.kohesive.injekt.api.InjektScope
 import uy.kohesive.injekt.api.addSingletonFactory
+import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.registry.default.DefaultRegistrar
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
@@ -893,6 +896,7 @@ class ReaderViewModelAlternateSourceGenerationTest {
             stubCandidateChapterThree(current)
             assertTrue(current.viewModel.init(MANGA_ID, SECOND_CHAPTER_ID, page = null).getOrThrow())
 
+            awaitAheadAnswer(current)
             val existingJobs = scopeJobs(current)
             current.viewModel.openLinkedVersionsAhead(SECOND_CHAPTER_ID, null)
             val chooser = awaitReal(5_000) {
@@ -901,7 +905,11 @@ class ReaderViewModelAlternateSourceGenerationTest {
                 }
             } as AlternateSourceReaderPresentation.ChoosingSource
             awaitNewWorkCompletion(current, existingJobs)
-            current.viewModel.toggleAlternateSourceCandidate((chooser.content as AlternateSourceReaderLoadState.Content).items.single().token)
+            val row = (chooser.content as AlternateSourceReaderLoadState.Content).items.single()
+            assertTrue("the Next row opens the short list, not the full chooser", chooser.continuation)
+            assertEquals(3f, row.nextChapter)
+            assertEquals(3f, row.latestChapter)
+            current.viewModel.toggleAlternateSourceCandidate(row.token)
 
             var sawChapterPicker = false
             current.viewModel.confirmAlternateSourceCandidate()
@@ -913,6 +921,86 @@ class ReaderViewModelAlternateSourceGenerationTest {
             assertEquals(CANDIDATE_CHAPTER3_ID, current.viewModel.currentChapter?.id)
         } finally {
             closeRetainedFixture(fixture)
+        }
+    }
+
+    @Test
+    fun nextRowWhoseChapterIsGoneExplainsAndNeverOffersTheFinishedChapter() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var fixture: Fixture? = null
+        listOf(ORIGIN_SOURCE_ID, CANDIDATE_SOURCE_ID, SENTINEL_SOURCE_ID).forEach(SourceRuntimeFailureRegistry::clear)
+        try {
+            fixture = retainedFixture(endOfSeriesMapping = true)
+            val current = requireNotNull(fixture)
+            ReaderViewModelTestBindings.allowBridgeReplacement()
+            stubCandidateChapterThree(current)
+            assertTrue(current.viewModel.init(MANGA_ID, SECOND_CHAPTER_ID, page = null).getOrThrow())
+            awaitAheadAnswer(current)
+            // between the check and the tap, the other source took its chapter 3 down
+            coEvery { current.candidateSource.getMangaUpdate(any(), any(), false, true) } coAnswers {
+                SMangaUpdate(firstArg(), listOf(sourceChapter("/candidate/chapter/2", "Chapter 2", 2f)))
+            }
+
+            var sawChapterPicker = false
+            val job = backgroundScope.launch(kotlinx.coroutines.Dispatchers.Unconfined) {
+                current.viewModel.alternateSourcePresentation.collect {
+                    if (it is AlternateSourceReaderPresentation.ChoosingChapter) sawChapterPicker = true
+                }
+            }
+            current.viewModel.openLinkedVersionsAhead(SECOND_CHAPTER_ID, "$CANDIDATE_SOURCE_ID:$CANDIDATE_MANGA_URL")
+            val shown = awaitReal(5_000) {
+                current.viewModel.alternateSourcePresentation.first { it is AlternateSourceReaderPresentation.RecoverableFailure }
+            } as AlternateSourceReaderPresentation.RecoverableFailure
+            job.cancel()
+
+            assertEquals(AlternateSourceReaderRecoveryReason.NEXT_CHAPTER_GONE, shown.reason)
+            assertTrue("Retry is offered", shown.canRetry)
+            assertTrue("the chapter just finished is never offered as Next", !sawChapterPicker)
+            assertEquals("the stale answer is dropped, so the Next row goes away", null, current.viewModel.linkedVersionsAhead.value)
+
+            current.viewModel.dismissAlternateSourcePresentation()
+            assertEquals("Back returns to the end of the chapter", AlternateSourceReaderPresentation.Hidden, current.viewModel.alternateSourcePresentation.value)
+            assertEquals(SECOND_CHAPTER_ID, current.viewModel.currentChapter?.id)
+        } finally {
+            closeRetainedFixture(fixture)
+        }
+    }
+
+    @Test
+    fun noLinkedVersionAheadGivesNoNextRow() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var fixture: Fixture? = null
+        listOf(ORIGIN_SOURCE_ID, CANDIDATE_SOURCE_ID, SENTINEL_SOURCE_ID).forEach(SourceRuntimeFailureRegistry::clear)
+        try {
+            fixture = retainedFixture(endOfSeriesMapping = true)
+            val current = requireNotNull(fixture)
+            coEvery { current.candidateSource.getMangaUpdate(any(), any(), false, true) } coAnswers {
+                SMangaUpdate(firstArg(), listOf(sourceChapter("/candidate/chapter/2", "Chapter 2", 2f)))
+            }
+            assertTrue(current.viewModel.init(MANGA_ID, SECOND_CHAPTER_ID, page = null).getOrThrow())
+
+            val answer = awaitAheadAnswer(current)
+
+            assertEquals(AlternateSourceReaderAheadPolicy.Offer.None, answer.report.offer)
+            assertEquals("report=${answer.report}", 2f, answer.report.latestByKey["$CANDIDATE_SOURCE_ID:$CANDIDATE_MANGA_URL"])
+        } finally {
+            closeRetainedFixture(fixture)
+        }
+    }
+
+    /** What the end screen does when the last chapter's end is built: ask the linked versions, then wait for the answer. */
+    private suspend fun awaitAheadAnswer(current: Fixture): AlternateSourceReaderAheadState {
+        // the test machine may look like a metered connection; data saving is its own rule with its own test
+        uy.kohesive.injekt.Injekt.get<eu.kanade.domain.source.service.SourcePreferences>()
+            .recommendationDataSaving().set(exh.recs.ForYouDataSaving.NEVER.storedValue)
+        current.viewModel.checkLinkedVersionsAhead(SECOND_CHAPTER_ID)
+        return try {
+            awaitReal(5_000) { current.viewModel.linkedVersionsAhead.first { it != null } }!!
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            throw AssertionError(
+                "no answer: canOffer=${current.viewModel.canOfferAlternateSourceGapAction()} " +
+                    "chapter=${current.viewModel.currentChapter?.id} presentation=${current.viewModel.alternateSourcePresentation.value}",
+            )
         }
     }
 

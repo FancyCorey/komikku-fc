@@ -65,7 +65,7 @@ These captures come from a development build and will be redone on the release a
 <p align="center"><img src="v0.8.25/about-original-komikku.png" width="260" alt="About, Original Komikku section"></p>
 <p align="center"><em>About: Original Komikku.</em></p>
 
-<p align="center"><img src="v0.8.25/whats-new-cards.png" width="260" alt="What's new as one card per version"></p>
+<p align="center"><img src="v0.8.25/whats-new-cards.png" width="260" alt="What’s new in Komikku FC with a few highlights first, then one card per version"></p>
 <p align="center"><em>What's new cards.</em></p>
 
 <p align="center"><img src="v0.8.25/original-komikku-whats-new.png" width="260" alt="Original Komikku release notes as cards"></p>
@@ -104,7 +104,7 @@ These captures come from a development build and will be redone on the release a
 <p align="center"><img src="v0.8.25/for-you-feed-exploration.png" width="260" alt="For You feed settings with the More like what you loved switch"></p>
 <p align="center"><em>More like what you loved in For You feed settings.</em></p>
 
-<p align="center"><img src="v0.8.25/manage-linked-versions.png" width="260" alt="Manage linked manga versions with a group open and Share rating and progress"></p>
+<p align="center"><img src="v0.8.25/manage-linked-versions.png" width="260" alt="Manage linked manga versions with a group open and its menu showing Add title, Share rating and progress, Merge into group and Ungroup all"></p>
 <p align="center"><em>Manage linked manga versions with a group open.</em></p>
 
 <p align="center"><img src="v0.8.25/group-library-automatically.png" width="260" alt="Group your library with suggested groups"></p>

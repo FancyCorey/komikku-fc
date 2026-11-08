@@ -220,7 +220,7 @@ Enable **Ask for a rating after finishing** under **Recommendation Settings > Li
 
 ## About and the original Komikku
 
-In v0.8.25 (not yet released), **More > About** has two sections. **Komikku FC** has What's new, What's coming, the Komikku FC privacy notes, licenses and this repository. **Original Komikku** has Komikku's own What's new (its release notes, loaded from GitHub when you open it), Help translate, Komikku's privacy policy (written for the original app), Sponsor, the website, Discord and GitHub. The Sponsor item reads **Sponsor the original developer**.
+In v0.8.25 (not yet released), **More > About** has two sections. **Komikku FC** has **What's new in Komikku FC** (a few highlights first, then the full notes for each version), What's coming, the Komikku FC privacy notes, licenses and this repository. **Original Komikku** has **What's new in Komikku**, the original project's own release notes, loaded from GitHub when you open it, Help translate, Komikku's privacy policy (written for the original app), Sponsor, the website, Discord and GitHub. The Sponsor item reads **Sponsor the original developer**.
 
 <p align="center"><img src="visual-guide/v0.8.25/about-komikku-fc.png" width="260" alt="About page, Komikku FC section"></p>
 <p align="center"><em>About: the Komikku FC section.</em></p>
@@ -228,8 +228,8 @@ In v0.8.25 (not yet released), **More > About** has two sections. **Komikku FC**
 <p align="center"><img src="visual-guide/v0.8.25/about-original-komikku.png" width="260" alt="About page, Original Komikku section"></p>
 <p align="center"><em>About: the Original Komikku section.</em></p>
 
-<p align="center"><img src="visual-guide/v0.8.25/whats-new-cards.png" width="260" alt="Komikku FC What's new with one card per version"></p>
-<p align="center"><em>What's new, one card per version.</em></p>
+<p align="center"><img src="visual-guide/v0.8.25/whats-new-cards.png" width="260" alt="What’s new in Komikku FC with a few highlights first, then one card per version"></p>
+<p align="center"><em>What’s new in Komikku FC: highlights, then one card per version.</em></p>
 
 <p align="center"><img src="visual-guide/v0.8.25/original-komikku-whats-new.png" width="260" alt="Original Komikku release notes as cards"></p>
 <p align="center"><em>Original Komikku's release notes.</em></p>

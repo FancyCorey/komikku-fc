@@ -238,7 +238,7 @@
     <!-- KMK v0.8.25 Source evaluation split: Source match, Source diagnostics, Reset and clear -->
     <string name="source_match_title">Source match</string>
     <string name="rec_hub_source_match_summary">Check how well the sources you use match your taste. Never installs anything.</string>
-    <string name="source_match_empty">Nothing to check yet. Source match works on sources that already have results. Run Try sources before installing under Find new sources once, then come back.</string>
+    <string name="source_match_empty">Nothing to check yet. Source match uses the results of Try sources before installing, so run that once first.</string>
     <string name="rec_hub_source_diagnostics_title">Source diagnostics</string>
     <string name="rec_hub_source_diagnostics_summary">Sources that crashed or were blocked, loading problems, and a report you can copy.</string>
     <string name="reset_and_clear_header">Reset and clear</string>
@@ -271,7 +271,9 @@
     <string name="about_komikku_fc_privacy">Komikku FC privacy</string>
     <string name="about_komikku_fc_privacy_subtitle">How this app handles your data</string>
     <string name="about_original_whats_new_subtitle">Release notes from the original Komikku project</string>
-    <string name="about_original_whats_new_title">What\'s new in Komikku</string>
+    <string name="about_original_whats_new_title">What’s new in Komikku</string>
+    <!-- KMK v0.8.25 --> <string name="kmk_whats_new_title">What’s new in Komikku FC</string>
+    <!-- KMK v0.8.25 --> <string name="kmk_whats_new_highlights">Highlights</string>
     <string name="about_original_whats_new_error">Couldn\'t load the original Komikku release notes.</string>
     <string name="about_original_whats_new_open_release">Open release on GitHub</string>
     <string name="about_original_whats_new_open_releases">Open releases on GitHub</string>
@@ -1346,6 +1348,13 @@
     <!-- KMK v0.8.25 --> <string name="rec_row_includes_because_loved">Includes picks like a title you loved</string>
     <!-- KMK v0.8.25 --> <string name="rec_row_includes_something_different">Includes something different</string>
     <!-- KMK v0.8.25 --> <string name="link_group_management_sync">Share rating and progress</string>
+    <!-- KMK v0.8.25 --> <string name="link_group_sharing_incomplete">Linked. Sharing the rating and progress did not finish.</string>
+    <!-- KMK v0.8.25 --> <string name="link_group_conflict_title">Marked as not the same manga</string>
+    <!-- KMK v0.8.25 --> <string name="link_group_conflict_message">You said these are not the same manga, so they were not linked or shared with each other. Confirm only if they are the same manga.</string>
+    <!-- KMK v0.8.25 --> <string name="link_group_conflict_pair">%1$s and %2$s</string>
+    <!-- KMK v0.8.25 --> <string name="link_group_conflict_keep_apart">Keep apart</string>
+    <!-- KMK v0.8.25 --> <string name="link_group_management_group_actions">Group actions</string>
+    <!-- KMK v0.8.25 --> <string name="link_group_management_member_actions">Actions for %1$s</string>
     <!-- KMK v0.8.25 --> <string name="bulk_group_open">Group library automatically</string>
     <!-- KMK v0.8.25 --> <string name="bulk_group_title">Group your library</string>
     <!-- KMK v0.8.25 --> <string name="bulk_group_intro">These titles share a name with a manga you already group, or with each other. Check the ones that are right, change the ones that are close, then group them. Nothing is grouped until you tap Group selected.</string>
@@ -1801,6 +1810,9 @@
     <!-- KMK --> <string name="alternate_source_reader_search_more">Search more sources</string>
     <!-- KMK --> <string name="alternate_source_reader_chapters_ahead">%1$d ahead</string>
     <!-- KMK --> <string name="alternate_source_reader_sources_count">%1$d sources</string>
+    <!-- KMK --> <string name="alternate_source_reader_continue_title">Continue reading from</string>
+    <!-- KMK --> <string name="alternate_source_reader_next_and_latest">Next: Chapter %1$s · Latest: Chapter %2$s</string>
+    <!-- KMK --> <string name="alternate_source_reader_error_next_gone">This version no longer has a chapter after the one you finished.</string>
     <!-- KMK --> <string name="alternate_source_reader_search_in_app">Search another title</string>
     <!-- KMK --> <string name="alternate_source_reader_generic_source">Alternate source %1$d</string>
     <!-- KMK --> <string name="alternate_source_reader_generic_chapter">Alternate chapter %1$d</string>
@@ -1911,6 +1923,7 @@
     <string name="rec_hub_linked_versions_link_summary">Rate and track versions of a manga together</string>
     <string name="rec_hub_find_sources_summary">Check your sources against your taste</string>
     <string name="rec_hub_check_sources">Try sources before installing</string>
+    <!-- KMK v0.8.25 --> <string name="rec_hub_check_sources_short">Try before installing</string>
     <string name="rec_hub_check_sources_summary">See how sources you have not installed fit your taste. Nothing stays installed.</string>
     <string name="rec_hub_suggested_sources">Suggested for you</string>
     <string name="rec_hub_suggested_sources_summary">Install sources that match your taste</string>
