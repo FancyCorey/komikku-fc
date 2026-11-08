@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.util.formatChapterNumber
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderCandidateRow
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderGenericLabelKind
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderLoadState
@@ -344,6 +345,23 @@ private fun CandidateRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // KMK v0.8.25 -->
+                row.latestChapter?.let { latest ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(MR.strings.display_mode_chapter, formatChapterNumber(latest.toDouble())),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        if (row.chaptersAhead > 0) {
+                            Text(
+                                text = stringResource(KMR.strings.alternate_source_reader_chapters_ahead, row.chaptersAhead),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+                // KMK <--
             }
         }
     }

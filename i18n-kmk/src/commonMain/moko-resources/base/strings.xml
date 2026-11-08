@@ -1799,6 +1799,8 @@
     <!-- KMK --> <string name="alternate_source_reader_empty">No usable alternatives were found.</string>
     <!-- KMK --> <string name="alternate_source_reader_partial">Some sources could not be checked. Available results are shown.</string>
     <!-- KMK --> <string name="alternate_source_reader_search_more">Search more sources</string>
+    <!-- KMK --> <string name="alternate_source_reader_chapters_ahead">%1$d ahead</string>
+    <!-- KMK --> <string name="alternate_source_reader_sources_count">%1$d sources</string>
     <!-- KMK --> <string name="alternate_source_reader_search_in_app">Search another title</string>
     <!-- KMK --> <string name="alternate_source_reader_generic_source">Alternate source %1$d</string>
     <!-- KMK --> <string name="alternate_source_reader_generic_chapter">Alternate chapter %1$d</string>

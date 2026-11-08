@@ -1,9 +1,11 @@
 package eu.kanade.presentation.reader
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Warning
@@ -32,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.buildAnnotatedString
@@ -40,6 +44,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
+import eu.kanade.presentation.util.formatChapterNumber
 import eu.kanade.tachiyomi.data.database.models.toDomainChapter
 import eu.kanade.tachiyomi.ui.reader.model.ChapterTransition
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
@@ -65,6 +70,9 @@ fun ChapterTransition(
     offerAtGaps: Boolean = true,
     offerAtEnd: Boolean = true,
     // KMK <--
+    // KMK v0.8.25: a linked version has a chapter after this one
+    nextFromLinkedVersion: NextFromLinkedVersion? = null,
+    onNextFromLinkedVersion: (() -> Unit)? = null,
 ) {
     val currChapter = transition.from.chapter.toDomainChapter()
     val goingToChapter = transition.to?.chapter?.toDomainChapter()
@@ -97,11 +105,22 @@ fun ChapterTransition(
                     onChapterGapAction = onAlternateSourceGap,
                     offerAtGaps = offerAtGaps,
                     offerAtEnd = offerAtEnd,
+                    nextFromLinkedVersion = nextFromLinkedVersion.takeIf { offerAtEnd },
+                    onNextFromLinkedVersion = onNextFromLinkedVersion,
                 )
             }
         }
     }
 }
+
+// KMK v0.8.25 -->
+/** The chapter a linked version has after the one just finished; [versionCount] above one means a list opens first. */
+data class NextFromLinkedVersion(
+    val chapterNumber: Float,
+    val sourceLabel: String?,
+    val versionCount: Int,
+)
+// KMK <--
 
 @Composable
 private fun TransitionText(
@@ -116,6 +135,8 @@ private fun TransitionText(
     onChapterGapAction: (() -> Unit)?,
     offerAtGaps: Boolean = true,
     offerAtEnd: Boolean = true,
+    nextFromLinkedVersion: NextFromLinkedVersion? = null,
+    onNextFromLinkedVersion: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -164,11 +185,20 @@ private fun TransitionText(
             // already accepts a PRIMARY_MISSING mapping with only a preceding anchor
             // (ReaderViewModel.alternateSourceEntryRequest's followingChapterId is nullable), so the
             // continuity action must still be offered here when the caller supplied one.
-            NoChapterNotification(
-                text = fallbackLabel,
-                onAlternateSourceGap = onChapterGapAction.takeIf { offerAtEnd },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
+            if (nextFromLinkedVersion != null && onNextFromLinkedVersion != null) {
+                // KMK v0.8.25: a linked version has the next chapter, so it reads like any next chapter
+                NextFromLinkedVersionRow(
+                    header = bottomLabel,
+                    next = nextFromLinkedVersion,
+                    onClick = onNextFromLinkedVersion,
+                )
+            } else {
+                NoChapterNotification(
+                    text = fallbackLabel,
+                    onAlternateSourceGap = onChapterGapAction.takeIf { offerAtEnd },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+            }
             // KMK <--
         }
     }
@@ -424,6 +454,66 @@ private fun TransitionTextNoPreviousPreview() {
  * The alternate-source offer at the end of a chapter: a one-line explanation, the button, and a one-time explanation the
  * first time it is used, so the reader knows what will happen and how to come back before anything switches.
  */
+@Composable
+private fun NextFromLinkedVersionRow(
+    header: String,
+    next: NextFromLinkedVersion,
+    onClick: () -> Unit,
+) {
+    val introSeenPreference = remember { Injekt.get<ReaderPreferences>().alternateSourceIntroSeen() }
+    var showIntro by remember { mutableStateOf(false) }
+    val detail = if (next.versionCount > 1) {
+        stringResource(KMR.strings.alternate_source_reader_sources_count, next.versionCount)
+    } else {
+        next.sourceLabel
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
+            .clickable(role = Role.Button) { if (introSeenPreference.get()) onClick() else showIntro = true },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            ChapterText(
+                header = header,
+                name = stringResource(MR.strings.display_mode_chapter, formatChapterNumber(next.chapterNumber.toDouble())),
+                scanlator = detail,
+                downloaded = false,
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+        )
+    }
+    if (showIntro) {
+        AlternateSourceIntroDialog(
+            onDismiss = { showIntro = false },
+            onContinue = {
+                introSeenPreference.set(true)
+                showIntro = false
+                onClick()
+            },
+        )
+    }
+}
+
+@Composable
+private fun AlternateSourceIntroDialog(onDismiss: () -> Unit, onContinue: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(KMR.strings.alternate_source_intro_title)) },
+        text = { Text(stringResource(KMR.strings.alternate_source_intro_message)) },
+        confirmButton = {
+            TextButton(onClick = onContinue) { Text(stringResource(KMR.strings.alternate_source_intro_continue)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(KMR.strings.alternate_source_intro_not_now)) }
+        },
+    )
+}
+
 @Composable
 private fun AlternateSourceGapAction(action: () -> Unit, modifier: Modifier = Modifier) {
     val introSeenPreference = remember {

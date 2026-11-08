@@ -15,9 +15,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.AbstractComposeView
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.reader.ChapterTransition
+import eu.kanade.presentation.reader.NextFromLinkedVersion
 import eu.kanade.presentation.theme.TachiyomiTheme
 import eu.kanade.tachiyomi.data.download.DownloadManager
+import eu.kanade.tachiyomi.ui.reader.ReaderViewModel
+import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderAheadPolicy
 import eu.kanade.tachiyomi.ui.reader.model.ChapterTransition
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.source.local.isLocal
 import uy.kohesive.injekt.Injekt
@@ -33,6 +39,58 @@ class ReaderTransitionView @JvmOverloads constructor(
     AbstractComposeView(context, attrs) {
 
     private var data: Data? by mutableStateOf(null)
+
+    // KMK v0.8.25 -->
+    private var linkedVersionAhead: LinkedVersionAhead? by mutableStateOf(null)
+    private var linkedVersionAheadJob: Job? = null
+
+    /**
+     * On the last chapter, asks the confirmed linked versions what they have after it and shows the answer as the Next row when
+     * there is one. Until it answers, or when nothing is ahead, the end screen is what it always was.
+     */
+    fun observeLinkedVersionsAhead(scope: CoroutineScope, viewModel: ReaderViewModel, transition: ChapterTransition) {
+        linkedVersionAheadJob?.cancel()
+        linkedVersionAhead = null
+        val finishedId = (transition as? ChapterTransition.Next)
+            ?.takeIf { it.to == null }
+            ?.from?.chapter?.id
+            ?: return
+        viewModel.checkLinkedVersionsAhead(finishedId)
+        linkedVersionAheadJob = scope.launch {
+            viewModel.linkedVersionsAhead.collect { state ->
+                linkedVersionAhead = state?.takeIf { it.finishedChapterId == finishedId }?.let { answered ->
+                    when (val offer = answered.report.offer) {
+                        AlternateSourceReaderAheadPolicy.Offer.None -> null
+                        is AlternateSourceReaderAheadPolicy.Offer.One -> LinkedVersionAhead(
+                            next = NextFromLinkedVersion(
+                                chapterNumber = offer.ahead.nextChapter,
+                                sourceLabel = answered.report.candidatesByKey[offer.ahead.key]
+                                    ?.let(viewModel::linkedVersionLabel),
+                                versionCount = 1,
+                            ),
+                            open = { viewModel.openLinkedVersionsAhead(finishedId, offer.ahead.key) },
+                        )
+                        is AlternateSourceReaderAheadPolicy.Offer.Several -> LinkedVersionAhead(
+                            next = NextFromLinkedVersion(
+                                chapterNumber = offer.versions.minOf { it.nextChapter },
+                                sourceLabel = null,
+                                versionCount = offer.versions.size,
+                            ),
+                            open = { viewModel.openLinkedVersionsAhead(finishedId, null) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        linkedVersionAheadJob?.cancel()
+        super.onDetachedFromWindow()
+    }
+
+    private class LinkedVersionAhead(val next: NextFromLinkedVersion, val open: () -> Unit)
+    // KMK <--
 
     init {
         layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
@@ -101,6 +159,8 @@ class ReaderTransitionView @JvmOverloads constructor(
                         onAlternateSourceGap = it.onAlternateSourceGap,
                         offerAtGaps = readerPreferences.alternateSourceOfferAtGaps().get(),
                         offerAtEnd = readerPreferences.alternateSourceOfferAtEnd().get(),
+                        nextFromLinkedVersion = linkedVersionAhead?.next,
+                        onNextFromLinkedVersion = linkedVersionAhead?.open,
                     )
                 }
             }

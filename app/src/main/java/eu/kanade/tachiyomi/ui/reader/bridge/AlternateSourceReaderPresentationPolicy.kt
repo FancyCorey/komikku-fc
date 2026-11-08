@@ -12,6 +12,9 @@ data class AlternateSourceReaderCandidateRow(
     val primaryLabel: String? = null,
     val secondaryLabel: String? = null,
     val genericLabel: AlternateSourceReaderGenericLabel? = null,
+    // KMK v0.8.25: the newest chapter this version has and how far ahead of the finished chapter it is (0 = not ahead)
+    val latestChapter: Float? = null,
+    val chaptersAhead: Int = 0,
 ) {
     init {
         require((primaryLabel != null) xor (genericLabel != null))

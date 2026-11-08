@@ -36,6 +36,9 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.source.online.MetadataSource
 import eu.kanade.tachiyomi.source.online.all.MergedSource
 import eu.kanade.tachiyomi.source.rethrowIfFatal
+import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderAheadChecker
+import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderAheadPolicy
+import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderAheadState
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderCandidateGateway
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderCandidateRequest
 import eu.kanade.tachiyomi.ui.reader.bridge.AlternateSourceReaderCandidateRow
@@ -1326,8 +1329,11 @@ class ReaderViewModel @JvmOverloads constructor(
         followingChapterId: Long?,
         includeLiveSearch: Boolean = false,
         explicitRetry: Boolean = false,
+        // KMK v0.8.25: the Next row of a version that is ahead reads straight from that version
+        readNextFromKey: String? = null,
     ) {
         if (isChapterNavigationBlockedBySchedule()) return
+        pendingReadNextKey = readNextFromKey
         val request = currentAlternateSourceCandidateRequest(precedingChapterId, followingChapterId)
             ?: run {
                 mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.RecoverableFailure(
@@ -1351,6 +1357,16 @@ class ReaderViewModel @JvmOverloads constructor(
                 alternateSourceMangaTokens[token] = AlternateSourceMangaSelection(request, candidate)
                 candidate.toPresentationRow(token)
             }
+            // KMK v0.8.25 -->
+            readNextFromKey?.let { key ->
+                alternateSourceMangaTokens.entries
+                    .firstOrNull { AlternateSourceReaderAheadChecker.keyOf(it.value.candidate) == key }
+                    ?.key
+            }?.let { token ->
+                selectAlternateSourceCandidate(token)
+                return@launchAlternateSourceCandidateWork
+            }
+            // KMK <--
             val content = when {
                 rows.isNotEmpty() -> AlternateSourceReaderLoadState.Content(
                     items = rows,
@@ -1391,6 +1407,12 @@ class ReaderViewModel @JvmOverloads constructor(
                     }
                 },
             )
+            // KMK v0.8.25: at the end of a series the rows appear at once and each version's latest chapter fills in when it
+            // is known. Mid-series nothing extra is asked of the sources.
+            if (followingChapterId == null) {
+                val generation = alternateSourceCandidateGeneration
+                viewModelScope.launch { showLatestChapterOnRows(request, generation) }
+            }
         }
     }
 
@@ -1525,7 +1547,29 @@ class ReaderViewModel @JvmOverloads constructor(
                     val originChapter = getChapter.await(selection.request.precedingPrimaryChapterId)
                         ?: throw IllegalStateException("Reading chapter unavailable")
                     val originNumber = originChapter.chapterNumber.toFloat()
-                    val recommended = AlternateSourceReaderChapterPolicy.recommendedChapter(discovery.chapters, originNumber)
+                    // KMK v0.8.25: at the end of a series, continuing means the chapter after the one just finished,
+                    // not the same chapter again from another source.
+                    val continuesAfterFinished = selection.request.followingPrimaryChapterId == null &&
+                        selection.returnBridgeKey == null
+                    val nextAfterFinished = AlternateSourceReaderAheadPolicy
+                        .nextChapterAfter(discovery.chapters, originNumber)
+                        .takeIf { continuesAfterFinished }
+                    val readNextNow = pendingReadNextKey != null && nextAfterFinished != null
+                    pendingReadNextKey = null
+                    val recommended = nextAfterFinished
+                        ?: AlternateSourceReaderChapterPolicy.recommendedChapter(discovery.chapters, originNumber)
+                    if (readNextNow) {
+                        runAlternateSourceSelection(
+                            AlternateSourceChapterSelection(
+                                selection.request,
+                                selection.candidate,
+                                requireNotNull(nextAfterFinished).url,
+                                selection.returnBridgeKey,
+                                selection.returnSessionId,
+                            ),
+                        )
+                        return@launchAlternateSourceCandidateWork
+                    }
                     if (selection.returnBridgeKey != null &&
                         originNumber.isFinite() && originNumber >= 0f &&
                         discovery.chapters.count { it.chapterNumber == originNumber } == 1
@@ -1925,7 +1969,81 @@ class ReaderViewModel @JvmOverloads constructor(
             machineState.session == null
     }
 
+    // KMK v0.8.25 -->
+    private val aheadChecker = AlternateSourceReaderAheadChecker(
+        discover = { alternateSourceReaderCandidateGateway.discover(it, includeLiveSearch = false) },
+        chapters = { alternateSourceReaderCandidateGateway.chapters(it) },
+    )
+    private val mutableLinkedVersionsAhead = MutableStateFlow<AlternateSourceReaderAheadState?>(null)
+
+    /** What the linked versions have after the chapter that was just finished; null until known. */
+    val linkedVersionsAhead: StateFlow<AlternateSourceReaderAheadState?> = mutableLinkedVersionsAhead.asStateFlow()
+    private var aheadCheckJob: Job? = null
+    private var pendingReadNextKey: String? = null
+
+    /**
+     * Called when the last chapter's end screen is built. Asks the confirmed linked versions in the background, so the answer is
+     * ready when the end is reached. While saving data it waits until the chooser is opened instead.
+     */
+    fun checkLinkedVersionsAhead(finishedChapterId: Long) {
+        if (!canOfferAlternateSourceGapAction() || !readerPreferences.alternateSourceOfferAtEnd().get()) return
+        val savingData = try {
+            exh.recs.ForYouDataSavingPolicy.isActiveNow(
+                Injekt.get<Application>(),
+                sourcePreferencesForRatingPrompt.recommendationDataSaving().get(),
+            )
+        } catch (_: Exception) {
+            false
+        }
+        if (savingData) return
+        if (mutableLinkedVersionsAhead.value?.finishedChapterId == finishedChapterId) return
+        if (aheadCheckJob?.isActive == true) return
+        val request = currentAlternateSourceCandidateRequest(finishedChapterId, null) ?: return
+        aheadCheckJob = viewModelScope.launch {
+            val number = getChapter.await(finishedChapterId)?.chapterNumber?.toFloat() ?: return@launch
+            val report = aheadChecker.check(request, number)
+            mutableLinkedVersionsAhead.value = AlternateSourceReaderAheadState(finishedChapterId, report)
+        }
+    }
+
+    /** The source name shown on the Next row, hidden the same way as in the chooser when names are hidden. */
+    fun linkedVersionLabel(candidate: AlternateSourceReaderMangaCandidate): String? =
+        if (sourcePreferencesForRatingPrompt.evaluationMode().get()) {
+            EvaluationModeFormatter.sourceLabel(candidate.manga.source)
+        } else {
+            candidate.sourceLabel
+        }
+
+    /** The Next row of a version that is ahead: one version reads from it directly, several open the list. */
+    fun openLinkedVersionsAhead(finishedChapterId: Long, onlyVersionKey: String?) {
+        openAlternateSourceChooser(finishedChapterId, null, readNextFromKey = onlyVersionKey)
+    }
+
+    private suspend fun showLatestChapterOnRows(request: AlternateSourceReaderCandidateRequest, generation: Long) {
+        val number = getChapter.await(request.precedingPrimaryChapterId)?.chapterNumber?.toFloat() ?: return
+        val report = aheadChecker.check(request, number)
+        if (generation != alternateSourceCandidateGeneration) return
+        val current = alternateSourcePresentation.value as? AlternateSourceReaderPresentation.ChoosingSource ?: return
+        val content = current.content as? AlternateSourceReaderLoadState.Content ?: return
+        val keyByToken = alternateSourceMangaTokens.mapValues { AlternateSourceReaderAheadChecker.keyOf(it.value.candidate) }
+        val labelled = content.items.map { row ->
+            val key = keyByToken[row.token] ?: return@map row
+            val latest = report.latestByKey[key] ?: return@map row
+            row.copy(latestChapter = latest, chaptersAhead = report.aheadByKey[key]?.chaptersAhead ?: 0)
+        }
+        val ordered = AlternateSourceReaderAheadPolicy.orderAheadFirst(
+            labelled,
+            report.aheadByKey.keys.toList(),
+        ) { keyByToken[it.token].orEmpty() }
+        mutableAlternateSourcePresentation.value = current.copy(content = content.copy(items = ordered))
+    }
+    // KMK <--
+
     private fun invalidateAlternateSourceCandidateStateForRouteChange() {
+        // KMK v0.8.25: an answer about the old route must not be shown on the new one
+        aheadCheckJob?.cancel()
+        aheadCheckJob = null
+        mutableLinkedVersionsAhead.value = null
         alternateSourceCandidateGeneration++
         alternateSourceCandidateJob?.cancel()
         alternateSourceCandidateJob = null

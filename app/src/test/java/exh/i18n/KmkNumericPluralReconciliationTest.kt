@@ -104,6 +104,8 @@ class KmkNumericPluralReconciliationTest {
             "alternate_source_reader_generic_source",
             "best_version_preview_page_content_description",
             "best_version_preview_page_indicator",
+            "alternate_source_reader_chapters_ahead",
+            "alternate_source_reader_sources_count",
             "bulk_group_apply",
             "bulk_group_done",
             "bulk_group_partial",

@@ -37,8 +37,8 @@ class AlternateSourceContinuityPresentationEndOfSourceTest {
         assertTrue(
             chapterTransitionSource.contains(
                 "NoChapterNotification(\n" +
-                    "                text = fallbackLabel,\n" +
-                    "                onAlternateSourceGap = onChapterGapAction.takeIf { offerAtEnd },",
+                    "                    text = fallbackLabel,\n" +
+                    "                    onAlternateSourceGap = onChapterGapAction.takeIf { offerAtEnd },",
             ),
         )
     }

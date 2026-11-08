@@ -85,6 +85,9 @@ class PagerTransitionHolder(
             },
         )
 
+        // KMK v0.8.25: on the last chapter, show what the linked versions have after it
+        transitionView.observeLinkedVersionsAhead(scope, viewer.activity.viewModel, transition)
+
         transition.to?.let(::observeStatus)
     }
 
