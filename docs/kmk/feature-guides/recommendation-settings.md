@@ -41,7 +41,7 @@ The setting does not guarantee that every suggested manga has the requested numb
 
 ### Use recent reading
 
-**Use recent reading** is on by default. It favors tags from manga you read recently, alongside your saved ratings. Choose a **Recent reading window** from 1 to 30 days (7 by default). How much you read and how recently you read it affect the boost. Blocked and disliked tags are not boosted, and manga rated Dislike or Not interested are ignored.
+**Use recent reading** is on by default. It favors tags from manga you read recently, alongside your saved ratings. Choose a **Recent reading window** from 1 to 30 days (7 by default). How much you read and how recently you read it affect the boost, and in v0.8.25 (not yet released) a tag you read in the window keeps 60% of its older weight and counts its recent weight double. Blocked and disliked tags are not boosted, and manga rated Dislike or Not interested are ignored.
 
 **Minimum chapters counted** controls how strongly very short manga affect recent-reading suggestions. It ranges from 1 to 50 (3 by default). For example, at 3, reading a one-chapter manga counts as one third of a full read for this calculation, rather than a full read. It does not change your reading progress or hide short manga; **Minimum chapter count** above is the separate filter for that.
 

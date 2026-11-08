@@ -13,7 +13,7 @@ Open **Browse**, then select **For You**. The page shows topic shortcuts and a *
 
 For You is not a single popularity list. It gathers manga from your chosen sources, applies your filters, and combines matches for your taste with newer discoveries. Personalized results remain the majority when enough are available. Newer discoveries still use your blocked genres, languages, and source rules.
 
-Your taste comes from ratings and preferred and blocked tags. **Use recent reading**, on by default, also boosts tags from manga read within your chosen window. The boost depends on how much and how recently you read; it does not always outweigh an older rating. Your long-term ratings still contribute, and blocked or disliked tags are not boosted.
+Your taste comes from ratings and preferred and blocked tags. **Use recent reading**, on by default, also boosts tags from manga read within your chosen window. The boost depends on how much and how recently you read. **In v0.8.25 (not yet released):** a tag you read within the window keeps 60% of its older weight and its recent weight counts double, so what you read lately can outrank an older rating of the same tag. Your long-term ratings still contribute, and blocked or disliked tags are not boosted.
 
 When repeat rotation is enabled, the page remembers manga shown in recent results. A manga shown more than once within your chosen time window can move lower instead of disappearing. That effect fades as the last showing gets older and ends when it falls outside the window. Manga saved in your library, rated, tracked, or with another recorded interaction are exempt. The app does not treat a lack of interaction as a dislike.
 
@@ -184,7 +184,7 @@ These are **For You** rules, not a promise about every recommendation search. Ne
 
 ## How a title is scored
 
-**In v0.8.25 (not yet released):** each title's score still comes from how its tags match what you rated and read, and it still needs at least one tag you like to appear. Four details changed:
+**In v0.8.25 (not yet released):** each title's score still comes from how its tags match what you rated and read, and it still needs at least one tag you like to appear. Four details changed (and, separately, what you read lately counts for more; see [Use recent reading](recommendation-settings.md#use-recent-reading)):
 
 - **Many tags no longer win by default.** A title with more than five tags has its tag score scaled down, so a long tag list cannot outscore a focused title just by matching more of them. Titles with five tags or fewer are unchanged.
 - **Common tags count slightly less.** A tag found on almost all of the titles you rated says little about taste, so it counts a little less than a tag on only a few.
