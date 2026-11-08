@@ -30,6 +30,12 @@ import tachiyomi.domain.taste.model.normalizeTag
  */
 internal object PersonalRecommendationScorer {
 
+    /** KMK v0.8.25: share of a long-term liked tag's weight kept when the same tag was read recently. */
+    const val RECENT_LEARNED_SHARE = 0.6
+
+    /** KMK v0.8.25: recent-reading weight multiplier, so the latest reading outranks old ratings. */
+    const val RECENT_BOOST = 2.0
+
     /** A title with this many tags or fewer keeps its full tag score. */
     const val TAG_COUNT_REFERENCE = 5
 
@@ -86,7 +92,9 @@ internal object PersonalRecommendationScorer {
         var learnedScore = 0.0
         val learnedMatches = mutableListOf<String>()
         for (group in candidateGroups) {
-            val weight = profile.learnedTagWeights[group] ?: 0.0
+            var weight = profile.learnedTagWeights[group] ?: 0.0
+            // KMK v0.8.25: a tag read recently counts for more than the same tag rated long ago
+            if (weight > 0.0 && (profile.recentTagWeights[group] ?: 0.0) > 0.0) weight *= RECENT_LEARNED_SHARE
             if (weight != 0.0) {
                 learnedScore += weight
                 if (weight > 0.0) learnedMatches.add(group)
@@ -99,7 +107,7 @@ internal object PersonalRecommendationScorer {
         for (group in candidateGroups.distinct()) {
             val weight = profile.recentTagWeights[group] ?: 0.0
             if (weight > 0.0) {
-                recentScore += weight
+                recentScore += weight * RECENT_BOOST
                 recentMatches.add(group)
             }
         }

@@ -234,7 +234,7 @@ class SyncLocalTrackingFromExternalTest {
             repository.recordSourceProgress(
                 match { it.workId == work.id && it.source == manga.source && it.chapterNumber == 7.0 },
             )
-            chapterReadSync.synchronize()
+            chapterReadSync.synchronize(setOf(work.id))
         }
     }
 
@@ -318,7 +318,7 @@ class SyncLocalTrackingFromExternalTest {
             repository.recordSourceProgress(
                 match { it.workId == work.id && it.chapterNumber == 10.0 && it.chapterUrl == "/tracker/ch-10" },
             )
-            chapterReadSync.synchronize()
+            chapterReadSync.synchronize(setOf(work.id))
         }
     }
 

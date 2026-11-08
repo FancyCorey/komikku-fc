@@ -56,7 +56,7 @@ class RefreshTracksTest {
         coVerify(exactly = 0) { insertTrack.await(failingTrack) }
         coVerify(exactly = 1) { syncProgress.sync(42L, successfulTrack, successfulTracker) }
         coVerify(exactly = 1) { localSync.sync(successfulTrack, successfulTracker) }
-        coVerify(exactly = 1) { localSync.synchronize() }
+        coVerify(exactly = 1) { localSync.synchronizeForMangaId(42L) }
     }
 
     // KMK --> v0.8.24: manual pull with the sync-from-trackers setting off.

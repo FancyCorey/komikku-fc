@@ -930,7 +930,7 @@ data class TrackInfoDialogHomeScreen(
                 state.value.trackItems.forEach { item ->
                     item.track?.let { external -> syncLocalTrackingFromExternal.sync(external, item.tracker) }
                 }
-                syncLocalTrackingFromExternal.synchronize()
+                syncLocalTrackingFromExternal.synchronizeFor(manga)
                 // KMK v0.8.25: the versions tracked together take the group's rating, chapter and tracker entry right away
                 if (targets.size > 1) syncTrackedVersions(manga, targets)
             }
@@ -1117,7 +1117,7 @@ data class TrackInfoDialogHomeScreen(
             // after tracker refresh so the chapter list and the Local Tracking value agree.
             var reconciled = false
             try {
-                recordLocalTrackedChapterProgress.synchronize()
+                getMangaById.await(mangaId)?.let { recordLocalTrackedChapterProgress.synchronizeFor(it) }
                 reconciled = true
             } catch (e: CancellationException) {
                 throw e

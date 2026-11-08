@@ -63,7 +63,7 @@ class SyncLocalTrackingFromExternal(
                 chapterLabel = "Chapter ${track.lastChapterRead}",
                 progressAt = now,
             )
-            recordLocalTrackedChapterProgress?.synchronize()
+            recordLocalTrackedChapterProgress?.synchronize(setOf(workId))
             return
         }
         // The repository applies this update with a chapter/progress monotonic predicate. Keeping
@@ -92,7 +92,7 @@ class SyncLocalTrackingFromExternal(
         // Replay immediately so the refreshed tracker chapter is reflected in the source chapter
         // rows before the manga screen chooses its next unread chapter. The batch replay in
         // RefreshTracks remains as a recovery pass for multiple trackers and cross-source writes.
-        recordLocalTrackedChapterProgress?.synchronize()
+        recordLocalTrackedChapterProgress?.synchronize(setOf(workId))
     }
 
     /** Apply only safe automatic transitions; explicit paused/terminal local choices win. */
@@ -166,5 +166,23 @@ class SyncLocalTrackingFromExternal(
     suspend fun synchronize() {
         if (!trackPreferences.autoSyncLocalTrackingFromTrackers().get()) return
         recordLocalTrackedChapterProgress?.synchronize()
+    }
+
+    /** The same replay for one manga's work(s) only. Opening or refreshing one manga never needs the whole library replayed. */
+    suspend fun synchronizeFor(manga: Manga) {
+        if (!trackPreferences.autoSyncLocalTrackingFromTrackers().get()) return
+        recordLocalTrackedChapterProgress?.synchronizeFor(manga)
+    }
+
+    suspend fun synchronizeForMangaId(mangaId: Long) {
+        if (!trackPreferences.autoSyncLocalTrackingFromTrackers().get()) return
+        val manga = try {
+            mangaRepository.getMangaById(mangaId)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return
+        }
+        recordLocalTrackedChapterProgress?.synchronizeFor(manga)
     }
 }

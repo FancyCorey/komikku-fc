@@ -4,7 +4,9 @@ import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.tachiyomi.source.model.SManga
 import exh.recs.matching.CrossSourceIdentityAuthorizationResolver
 import kotlinx.coroutines.flow.first
+import logcat.LogPriority
 import tachiyomi.core.common.util.lang.withNonCancellableContext
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.model.ChapterUpdate
 import tachiyomi.domain.chapter.repository.ChapterRepository
@@ -147,11 +149,45 @@ class RecordLocalTrackedChapterProgress(
         )?.first
     }
 
-    /** Replays persisted local progress after refresh or after a new confirmed mapping is added. */
-    suspend fun synchronize() {
+    /**
+     * Replays the saved progress of the work(s) these manga belong to, not of every tracked work. Opening one manga or tracking
+     * its other versions only ever changes its own record, so replaying the whole library there only made each of them slow.
+     */
+    suspend fun synchronizeFor(manga: Collection<Manga>) {
+        val ids = manga.flatMap { m ->
+            listOfNotNull(localTrackerRepository.getWorkIdBySourceUrl(m.source, m.url), resolveConfirmedWorkId(m))
+        }.toSet()
+        synchronize(ids)
+    }
+
+    suspend fun synchronizeFor(manga: Manga) = synchronizeFor(listOf(manga))
+
+    /**
+     * Replays persisted local progress after refresh or after a new confirmed mapping is added: for every tracked work, or only
+     * for [onlyWorkIds] (see [synchronizeFor]). The whole library is replayed once per library update and after a restore.
+     */
+    suspend fun synchronize(onlyWorkIds: Set<String>? = null) {
+        if (onlyWorkIds != null && onlyWorkIds.isEmpty()) return
+        val startedAt = System.nanoTime()
+        val works = localTrackerRepository.getAllWorksAsFlow().first()
+            .let { all -> if (onlyWorkIds == null) all else all.filter { it.id in onlyWorkIds } }
+        if (works.isEmpty()) return
         val bridges = alternateSourceBridgeRepository.getAllBridges()
         val mappings = alternateSourceBridgeRepository.getAllMappings()
-        val works = localTrackerRepository.getAllWorksAsFlow().first()
+        try {
+            replayWorks(works, bridges, mappings)
+        } finally {
+            logcat(LogPriority.DEBUG) {
+                "KMK local tracking replay: ${works.size} work(s) in ${(System.nanoTime() - startedAt) / 1_000_000} ms"
+            }
+        }
+    }
+
+    private suspend fun replayWorks(
+        works: List<tachiyomi.domain.tracker.model.LocalTrackedWork>,
+        bridges: List<AlternateSourceBridge>,
+        mappings: List<tachiyomi.domain.taste.model.AlternateSourceBridgeMapping>,
+    ) {
         works.forEach { work ->
             var effectiveWork = work
             var progressRows = localTrackerRepository.getSourceProgressForWork(work.id)

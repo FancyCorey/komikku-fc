@@ -1366,6 +1366,44 @@ class RecordLocalTrackedChapterProgressTest {
         coVerify(exactly = 1) { repository.upsertInheritedWork(any()) }
     }
 
+    private fun scopedReplay(repository: LocalTrackerRepository): RecordLocalTrackedChapterProgress {
+        val bridges = mockk<AlternateSourceBridgeRepository>()
+        coEvery { bridges.getAllBridges() } returns emptyList()
+        coEvery { bridges.getAllMappings() } returns emptyList()
+        return RecordLocalTrackedChapterProgress(
+            repository,
+            TrackPreferences(FakePreferenceStore()),
+            getCrossSourceMangaLinks = mockk(),
+            identityAuthorizationResolver = mockk(),
+            alternateSourceBridgeRepository = bridges,
+            mangaRepository = mockk(relaxed = true),
+            chapterRepository = mockk(relaxed = true),
+        )
+    }
+
+    @Test
+    fun `replaying for one work leaves every other tracked work alone`() = runTest {
+        val repository = mockk<LocalTrackerRepository>(relaxed = true)
+        coEvery { repository.getAllWorksAsFlow() } returns flowOf(listOf(work("work-a", "A"), work("work-b", "B")))
+        coEvery { repository.getSourceProgressForWork(any()) } returns emptyList()
+        coEvery { repository.getSources(any()) } returns emptyList()
+        val replay = scopedReplay(repository)
+
+        replay.synchronize(setOf("work-a"))
+        coVerify(exactly = 1) { repository.getSourceProgressForWork("work-a") }
+        coVerify(exactly = 0) { repository.getSourceProgressForWork("work-b") }
+
+        replay.synchronize()
+        coVerify(exactly = 1) { repository.getSourceProgressForWork("work-b") }
+    }
+
+    @Test
+    fun `an empty set of works replays nothing and does not even read them`() = runTest {
+        val repository = mockk<LocalTrackerRepository>(relaxed = true)
+        scopedReplay(repository).synchronize(emptySet())
+        coVerify(exactly = 0) { repository.getAllWorksAsFlow() }
+    }
+
     private fun manga(source: Long, url: String) = Manga.create().copy(id = source, source = source, url = url, ogTitle = url)
 
     private fun source(workId: String, source: Long, url: String, title: String) = LocalTrackedWorkSource(

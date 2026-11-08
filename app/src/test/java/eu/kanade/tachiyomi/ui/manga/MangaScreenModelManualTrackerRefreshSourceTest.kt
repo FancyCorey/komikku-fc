@@ -15,7 +15,7 @@ class MangaScreenModelManualTrackerRefreshSourceTest {
 
     private val syncTrackersBody = source
         .substringAfter("private suspend fun syncTrackers(manualRefresh: Boolean = false)")
-        .substringBefore("recordLocalTrackedChapterProgress.synchronize()")
+        .substringBefore("recordLocalTrackedChapterProgress.synchronizeFor(it)")
 
     @Test
     fun `manual pull takes the upload-only branch only when sync from trackers is off`() {
@@ -48,7 +48,7 @@ class MangaScreenModelManualTrackerRefreshSourceTest {
     fun `opening or refreshing a manga gathers its linked versions into one local tracking record before replay`() {
         val sync = source.substringAfter("private suspend fun syncTrackers(").substringBefore("fun fetchAllFromSource(")
         val gather = sync.indexOf("propagateConfirmedLocalTracking(it)")
-        val replay = sync.indexOf("recordLocalTrackedChapterProgress.synchronize()")
+        val replay = sync.indexOf("recordLocalTrackedChapterProgress.synchronizeFor(it)")
         assertTrue(gather in 0 until replay, "linked versions must be gathered before local progress is replayed")
     }
 }

@@ -49,7 +49,7 @@ class TrackerOpenRefreshPolicyTest {
         val gate = sync.indexOf("TrackerOpenRefreshPolicy.claim(mangaId, manualRefresh, online = isOnlineSafely())")
         assertTrue(gate in 0 until sync.indexOf("refreshTrackers(enhancedTrackersOnly = false)"))
         assertTrue(sync.indexOf("propagateConfirmedLocalTracking(it)") > gate)
-        assertTrue(sync.indexOf("recordLocalTrackedChapterProgress.synchronize()") > gate)
+        assertTrue(sync.indexOf("recordLocalTrackedChapterProgress.synchronizeFor(it)") > gate)
     }
 }
 // KMK <--

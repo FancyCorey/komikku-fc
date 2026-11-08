@@ -100,7 +100,8 @@ class RefreshTracks(
                 .filterNotNull()
                 .also {
                     try {
-                        syncLocalTrackingFromExternal?.synchronize()
+                        // KMK v0.8.25: this manga's record only, not every tracked work in the library
+                        syncLocalTrackingFromExternal?.synchronizeForMangaId(mangaId)
                     } catch (error: CancellationException) {
                         throw error
                     } catch (error: Throwable) {

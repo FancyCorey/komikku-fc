@@ -30,7 +30,7 @@ class PersonalRecommendationScorerRecentReadingTest {
     fun `a recent weight adds to the score, counts as positive evidence and explains itself`() {
         val scored = PersonalRecommendationScorer.score(candidate(1, "romance"), profile(recent = mapOf("romance" to 3.0)), emptyMap())
 
-        assertEquals(3.0, scored.score, 0.0)
+        assertEquals(6.0, scored.score, 0.0) // 3.0 recent weight, doubled
         assertTrue("romance" in scored.matchedGroups)
         assertTrue(scored.reasons.any { it.startsWith("Recently read tags") })
         assertFalse(scored.blocked)
@@ -48,6 +48,17 @@ class PersonalRecommendationScorerRecentReadingTest {
         )
 
         assertEquals(listOf(2L, 1L), ranked.map { it.manga.id }, "recent first, long-term second, no evidence excluded")
+    }
+
+    @Test
+    fun `a tag read recently keeps only part of its long-term weight and the recent reading outranks it`() {
+        val prof = profile(learned = mapOf("action" to 10.0, "drama" to 10.0), recent = mapOf("action" to 4.0))
+
+        val action = PersonalRecommendationScorer.score(candidate(1, "action"), prof, emptyMap())
+        val drama = PersonalRecommendationScorer.score(candidate(2, "drama"), prof, emptyMap())
+
+        assertEquals(10.0 * PersonalRecommendationScorer.RECENT_LEARNED_SHARE + 4.0 * PersonalRecommendationScorer.RECENT_BOOST, action.score, 1e-9)
+        assertTrue(action.score > drama.score, "two equally loved tags: the one read this week comes first")
     }
 
     @Test
@@ -69,7 +80,7 @@ class PersonalRecommendationScorerRecentReadingTest {
             aliasMap,
         )
 
-        assertEquals(2.5, scored.score, 0.0)
+        assertEquals(5.0, scored.score, 0.0) // 2.5 recent weight, doubled, counted once
     }
 
     @Test

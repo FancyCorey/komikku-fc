@@ -48,7 +48,8 @@ class ConfirmedGroupJoinSynchronizer(
     private val ratingActions: ConfirmedGroupTasteRatingActions = ConfirmedGroupTasteRatingManager(),
     private val shareTrackerBinding: ShareTrackerBindingWithLinkedVersions = ShareTrackerBindingWithLinkedVersions(),
     private val sourcePreferences: SourcePreferences = Injekt.get(),
-    private val progressReplay: suspend () -> Unit = { Injekt.get<RecordLocalTrackedChapterProgress>().synchronize() },
+    // replays the saved progress of the group's own record, not of every tracked work
+    private val progressReplay: suspend (List<Manga>) -> Unit = { Injekt.get<RecordLocalTrackedChapterProgress>().synchronizeFor(it) },
     private val chapterCount: suspend (Manga) -> Int = { Injekt.get<GetChaptersByMangaId>().await(it.id).size },
     private val fetchChapters: suspend (Manga) -> Unit = { Injekt.get<UpdateMangaFromRemote>().invoke(it, fetchChapters = true) },
     // Loading chapter lists from sources is slow, so it runs here and not while the screen waits.
@@ -87,7 +88,7 @@ class ConfirmedGroupJoinSynchronizer(
                 for (track in getTracks.await(anchor.id)) shareTrackerBinding.await(track)
             } && ok
             // give every version that already has chapters the group's chapter progress right now
-            ok = step { progressReplay() } && ok
+            ok = step { progressReplay(allManga) } && ok
 
             // A version that was never opened has no chapter list, so there is nothing to attach the group's chapter to.
             // Loading it needs the source, so it happens in the background and the chapter appears when it is done.
@@ -104,7 +105,7 @@ class ConfirmedGroupJoinSynchronizer(
                                 logcat(LogPriority.WARN, e) { "KMK group: could not load the chapters of a new group member" }
                             }
                         }
-                        progressReplay()
+                        progressReplay(allManga)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {

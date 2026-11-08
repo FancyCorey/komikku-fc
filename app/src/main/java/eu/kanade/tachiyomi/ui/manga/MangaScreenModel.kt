@@ -680,7 +680,8 @@ class MangaScreenModel(
         // KMK <--
         // Local replay also runs on load and when external tracker syncing is disabled.
         try {
-            recordLocalTrackedChapterProgress.synchronize()
+            // KMK v0.8.25: this manga's record only; the whole library was replayed on every open before
+            successState?.manga?.let { recordLocalTrackedChapterProgress.synchronizeFor(it) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
