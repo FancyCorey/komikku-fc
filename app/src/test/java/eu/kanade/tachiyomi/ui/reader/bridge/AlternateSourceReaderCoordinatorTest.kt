@@ -5,6 +5,7 @@ import eu.kanade.tachiyomi.source.SourceRuntimeFailureKind
 import eu.kanade.tachiyomi.source.SourceRuntimeFailureRegistry
 import eu.kanade.tachiyomi.source.SourceRuntimeOperation
 import exh.recs.bridge.AlternateSourceBridgeController
+import exh.recs.bridge.AlternateSourceBridgeMutation
 import exh.recs.bridge.AlternateSourceBridgeMutationResult
 import exh.recs.matching.CrossSourceIdentityAuthorizationResolver
 import exh.recs.matching.CrossSourceIdentityDecisionController
@@ -204,6 +205,48 @@ class AlternateSourceReaderCoordinatorTest {
         )
         assertEquals(1, switchCount)
         coVerify(exactly = 0) { bridgeController.apply(any(), any()) }
+    }
+
+    @Test
+    fun `a chapter guessed by number for the Next row keeps the match the user already saved`() = runTest {
+        val store = sessionStore()
+        coEvery { identityResolver.isConfirmed(any(), any(), any(), any()) } returns true
+        coEvery { getBridge.await(readerBridgeKey()) } returns bridgeState()
+        coEvery {
+            routeResolver.resolve(
+                readerBridgeKey(),
+                AlternateSourceReaderRouteRole.ALTERNATE,
+                "/chapter/alternate",
+                0,
+            )
+        } returns AlternateSourceReaderRouteResolver.Result.Resolved(
+            readerRoute(AlternateSourceReaderRouteRole.ALTERNATE),
+        )
+        val coordinator = coordinator(store) { true }
+
+        assertEquals(
+            AlternateSourceReaderCommandResult.Entered(READER_TARGET_ID),
+            coordinator.select(
+                entryRequest(),
+                "/chapter/guessed-by-number",
+                confirmProvisional = false,
+                replaceSavedMatch = false,
+            ),
+        )
+        coVerify(exactly = 0) { bridgeController.apply(any(), any()) }
+    }
+
+    @Test
+    fun `an explicit choice in the chooser still replaces a saved match`() = runTest {
+        val store = sessionStore()
+        coEvery { identityResolver.isConfirmed(any(), any(), any(), any()) } returns true
+        coEvery { getBridge.await(readerBridgeKey()) } returns bridgeState()
+        coEvery { bridgeController.apply(any(), any()) } returns AlternateSourceBridgeMutationResult.FAILED
+        val coordinator = coordinator(store) { true }
+
+        coordinator.select(entryRequest(), "/chapter/chosen-by-the-user")
+
+        coVerify(exactly = 1) { bridgeController.apply(any(), AlternateSourceBridgeMutation.CORRECT_MAPPING) }
     }
 
     @Test

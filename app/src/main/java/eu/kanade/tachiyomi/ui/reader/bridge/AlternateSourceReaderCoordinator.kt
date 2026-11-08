@@ -162,6 +162,9 @@ class AlternateSourceReaderCoordinator(
         alternateChapterUrl: String,
         confirmProvisional: Boolean,
         onAdmittedRoute: (suspend (AlternateSourceReaderRoute) -> Unit)? = null,
+        // KMK v0.8.25: false when the chapter was only guessed by number (the Next row); a match already saved for this place is
+        // then kept and used, and only an explicit choice in the chooser may replace it.
+        replaceSavedMatch: Boolean = true,
     ): AlternateSourceReaderCommandResult = guarded {
         if (!validRequest(request)) return@guarded AlternateSourceReaderCommandResult.Invalid
         if (!isPairConfirmed(request.bridgeKey)) {
@@ -176,7 +179,12 @@ class AlternateSourceReaderCoordinator(
         )
         when (existing) {
             is AlternateSourceReaderBridgePolicy.EntryDecision.Confirmed -> {
-                if (existing.alternateChapterUrl == alternateChapterUrl) {
+                if (existing.alternateChapterUrl == alternateChapterUrl || !replaceSavedMatch) {
+                    return@guarded enterLocked(request, confirmProvisional, onAdmittedRoute)
+                }
+            }
+            is AlternateSourceReaderBridgePolicy.EntryDecision.RequiresConfirmation -> {
+                if (!replaceSavedMatch) {
                     return@guarded enterLocked(request, confirmProvisional, onAdmittedRoute)
                 }
             }

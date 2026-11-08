@@ -30,7 +30,7 @@ class PersonalRecommendationScorerRecentReadingTest {
     fun `a recent weight adds to the score, counts as positive evidence and explains itself`() {
         val scored = PersonalRecommendationScorer.score(candidate(1, "romance"), profile(recent = mapOf("romance" to 3.0)), emptyMap())
 
-        assertEquals(6.0, scored.score, 0.0) // 3.0 recent weight, doubled
+        assertEquals(9.0, scored.score, 0.0) // 3.0 recent weight, tripled
         assertTrue("romance" in scored.matchedGroups)
         assertTrue(scored.reasons.any { it.startsWith("Recently read tags") })
         assertFalse(scored.blocked)
@@ -57,8 +57,35 @@ class PersonalRecommendationScorerRecentReadingTest {
         val action = PersonalRecommendationScorer.score(candidate(1, "action"), prof, emptyMap())
         val drama = PersonalRecommendationScorer.score(candidate(2, "drama"), prof, emptyMap())
 
-        assertEquals(10.0 * PersonalRecommendationScorer.RECENT_LEARNED_SHARE + 4.0 * PersonalRecommendationScorer.RECENT_BOOST, action.score, 1e-9)
+        // the tag counts for the larger of its older weight and (half of it plus the tripled recent weight): 10 versus 5 + 12
+        assertEquals(17.0, action.score, 1e-9)
         assertTrue(action.score > drama.score, "two equally loved tags: the one read this week comes first")
+    }
+
+    @Test
+    fun `a little recent reading never lowers a strong older preference`() {
+        val older = PersonalRecommendationScorer.score(candidate(1, "action"), profile(learned = mapOf("action" to 10.0)), emptyMap())
+        listOf(0.1, 0.5, 1.0, 1.5, 1.67).forEach { recent ->
+            val both = PersonalRecommendationScorer.score(
+                candidate(1, "action"),
+                profile(learned = mapOf("action" to 10.0), recent = mapOf("action" to recent)),
+                emptyMap(),
+            )
+            assertTrue(both.score >= older.score, "recent weight $recent lowered the score: ${both.score} < ${older.score}")
+        }
+    }
+
+    @Test
+    fun `more recent reading never lowers a tag and a lot of it lifts a strong older preference`() {
+        fun score(recent: Double) = PersonalRecommendationScorer.score(
+            candidate(1, "action"),
+            profile(learned = mapOf("action" to 10.0), recent = mapOf("action" to recent)),
+            emptyMap(),
+        ).score
+        val steps = listOf(0.0, 0.5, 1.0, 2.0, 3.0, 4.0, 6.0).map(::score)
+        assertEquals(steps, steps.sorted(), "the score only goes up as the recent weight grows")
+        assertEquals(10.0, steps.first(), 0.0)
+        assertTrue(steps.last() > 10.0)
     }
 
     @Test
@@ -80,7 +107,7 @@ class PersonalRecommendationScorerRecentReadingTest {
             aliasMap,
         )
 
-        assertEquals(5.0, scored.score, 0.0) // 2.5 recent weight, doubled, counted once
+        assertEquals(7.5, scored.score, 0.0) // 2.5 recent weight, tripled, counted once
     }
 
     @Test

@@ -804,6 +804,163 @@ class ReaderViewModelAlternateSourceGenerationTest {
         }
     }
 
+    // KMK v0.8.25 -->
+    @Test
+    fun nextRowOnTheLastChapterAsksToConfirmTheUnconfirmedPairAndTheConfirmationActs() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var fixture: Fixture? = null
+        listOf(ORIGIN_SOURCE_ID, CANDIDATE_SOURCE_ID, SENTINEL_SOURCE_ID).forEach(SourceRuntimeFailureRegistry::clear)
+        try {
+            fixture = retainedFixture(endOfSeriesMapping = true)
+            val current = requireNotNull(fixture)
+            ReaderViewModelTestBindings.allowBridgeReplacement()
+            forgetPairConfirmation()
+            stubCandidateChapterThree(current)
+            assertTrue(current.viewModel.init(MANGA_ID, SECOND_CHAPTER_ID, page = null).getOrThrow())
+
+            current.viewModel.openLinkedVersionsAhead(SECOND_CHAPTER_ID, "$CANDIDATE_SOURCE_ID:$CANDIDATE_MANGA_URL")
+            val ask = awaitReal(5_000) {
+                current.viewModel.alternateSourcePresentation.first { it is AlternateSourceReaderPresentation.ConfirmPair }
+            }
+            assertTrue("an unconfirmed pair asks before reading on", ask is AlternateSourceReaderPresentation.ConfirmPair)
+
+            // Before the fix the selection had been cleared, so confirming did nothing and the reader sat on the question.
+            current.viewModel.confirmAlternateSourcePairSelection()
+            val moved = awaitReal(5_000) {
+                current.viewModel.alternateSourcePresentation.first { it !is AlternateSourceReaderPresentation.ConfirmPair }
+            }
+            assertTrue("confirming must act on the Next selection, got $moved", moved !is AlternateSourceReaderPresentation.ConfirmPair)
+        } finally {
+            closeRetainedFixture(fixture)
+        }
+    }
+
+    @Test
+    fun nextRowKeepsTheChapterMatchTheUserAlreadySaved() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var fixture: Fixture? = null
+        listOf(ORIGIN_SOURCE_ID, CANDIDATE_SOURCE_ID, SENTINEL_SOURCE_ID).forEach(SourceRuntimeFailureRegistry::clear)
+        try {
+            fixture = retainedFixture(endOfSeriesMapping = true)
+            val current = requireNotNull(fixture)
+            ReaderViewModelTestBindings.allowBridgeReplacement()
+            // the other edition numbers its chapters differently: by number the next chapter is another entry than the saved one
+            coEvery { current.candidateSource.getMangaUpdate(any(), any(), false, true) } coAnswers {
+                SMangaUpdate(firstArg(), listOf(sourceChapter("/candidate/chapter/guessed", "Chapter 3", 3f)))
+            }
+            assertTrue(current.viewModel.init(MANGA_ID, SECOND_CHAPTER_ID, page = null).getOrThrow())
+
+            current.viewModel.openLinkedVersionsAhead(SECOND_CHAPTER_ID, "$CANDIDATE_SOURCE_ID:$CANDIDATE_MANGA_URL")
+            confirmUntilAlternate(current)
+
+            assertEquals("the saved match is used, not the number guess", CANDIDATE_CHAPTER3_ID, current.viewModel.currentChapter?.id)
+        } finally {
+            closeRetainedFixture(fixture)
+        }
+    }
+
+    @Test
+    fun nextRowOnTheLastChapterReadsOnFromAConfirmedPair() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var fixture: Fixture? = null
+        listOf(ORIGIN_SOURCE_ID, CANDIDATE_SOURCE_ID, SENTINEL_SOURCE_ID).forEach(SourceRuntimeFailureRegistry::clear)
+        try {
+            fixture = retainedFixture(endOfSeriesMapping = true)
+            val current = requireNotNull(fixture)
+            ReaderViewModelTestBindings.allowBridgeReplacement()
+            stubCandidateChapterThree(current)
+            assertTrue(current.viewModel.init(MANGA_ID, SECOND_CHAPTER_ID, page = null).getOrThrow())
+
+            current.viewModel.openLinkedVersionsAhead(SECOND_CHAPTER_ID, "$CANDIDATE_SOURCE_ID:$CANDIDATE_MANGA_URL")
+            val confirmations = confirmUntilAlternate(current)
+
+            assertTrue("a confirmed pair must not ask again, saw $confirmations", "pair" !in confirmations)
+            assertEquals(CANDIDATE_CHAPTER3_ID, current.viewModel.currentChapter?.id)
+        } finally {
+            closeRetainedFixture(fixture)
+        }
+    }
+
+    @Test
+    fun pickingAVersionFromTheNextRowListReadsOnWithoutTheChapterPicker() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var fixture: Fixture? = null
+        listOf(ORIGIN_SOURCE_ID, CANDIDATE_SOURCE_ID, SENTINEL_SOURCE_ID).forEach(SourceRuntimeFailureRegistry::clear)
+        try {
+            fixture = retainedFixture(endOfSeriesMapping = true)
+            val current = requireNotNull(fixture)
+            ReaderViewModelTestBindings.allowBridgeReplacement()
+            stubCandidateChapterThree(current)
+            assertTrue(current.viewModel.init(MANGA_ID, SECOND_CHAPTER_ID, page = null).getOrThrow())
+
+            val existingJobs = scopeJobs(current)
+            current.viewModel.openLinkedVersionsAhead(SECOND_CHAPTER_ID, null)
+            val chooser = awaitReal(5_000) {
+                current.viewModel.alternateSourcePresentation.first {
+                    (it as? AlternateSourceReaderPresentation.ChoosingSource)?.content is AlternateSourceReaderLoadState.Content
+                }
+            } as AlternateSourceReaderPresentation.ChoosingSource
+            awaitNewWorkCompletion(current, existingJobs)
+            current.viewModel.toggleAlternateSourceCandidate((chooser.content as AlternateSourceReaderLoadState.Content).items.single().token)
+
+            var sawChapterPicker = false
+            current.viewModel.confirmAlternateSourceCandidate()
+            val confirmations = confirmUntilAlternate(current) {
+                if (it is AlternateSourceReaderPresentation.ChoosingChapter) sawChapterPicker = true
+            }
+
+            assertTrue("choosing a version from the Next row must not open the chapter picker, saw $confirmations", !sawChapterPicker)
+            assertEquals(CANDIDATE_CHAPTER3_ID, current.viewModel.currentChapter?.id)
+        } finally {
+            closeRetainedFixture(fixture)
+        }
+    }
+
+    private fun forgetPairConfirmation() {
+        coEvery { ReaderViewModelTestBindings.getIdentityDecisions.await(any()) } returns null
+        coEvery { ReaderViewModelTestBindings.getIdentityDecisions.awaitAll() } returns emptyList()
+    }
+
+    private fun stubCandidateChapterThree(current: Fixture) {
+        coEvery { current.candidateSource.getMangaUpdate(any(), any(), false, true) } coAnswers {
+            SMangaUpdate(firstArg(), listOf(sourceChapter(CANDIDATE_CHAPTER3_URL, "Chapter 3", 3f)))
+        }
+    }
+
+    /** Taps through whatever confirmation the reader asks for, once each, until it is reading from the other source. */
+    private suspend fun confirmUntilAlternate(
+        current: Fixture,
+        onPresentation: (AlternateSourceReaderPresentation) -> Unit = {},
+    ): List<String> {
+        val asked = mutableListOf<String>()
+        try {
+            awaitReal(10_000) {
+                while (current.viewModel.alternateSourceReaderState.value.phase != AlternateSourceReaderPhase.ALTERNATE) {
+                    val presentation = current.viewModel.alternateSourcePresentation.value
+                    onPresentation(presentation)
+                    when {
+                        presentation is AlternateSourceReaderPresentation.ConfirmPair && "pair" !in asked -> {
+                            asked += "pair"
+                            current.viewModel.confirmAlternateSourcePairSelection()
+                        }
+                        presentation is AlternateSourceReaderPresentation.ConfirmProvisional && "provisional" !in asked -> {
+                            asked += "provisional"
+                            current.viewModel.confirmProvisionalAlternateSourceSelection()
+                        }
+                    }
+                    kotlinx.coroutines.delay(20)
+                }
+            }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            throw AssertionError(
+                "stuck: asked=$asked presentation=${current.viewModel.alternateSourcePresentation.value} " +
+                    "state=${current.viewModel.alternateSourceReaderState.value.phase} chapter=${current.viewModel.currentChapter?.id}",
+            )
+        }
+        return asked
+    }
+    // KMK <--
+
     private suspend fun chooseRetainedChapter(current: Fixture) {
         chooseRetainedManga(current)
         val existingJobs = scopeJobs(current)
@@ -815,6 +972,8 @@ class ReaderViewModelAlternateSourceGenerationTest {
 
     private fun retainedFixture(
         mappingState: AlternateSourceBridgeMappingState = AlternateSourceBridgeMappingState.CONFIRMED,
+        // KMK v0.8.25: also save the match for the place after the last chapter (no following chapter)
+        endOfSeriesMapping: Boolean = false,
     ): Fixture {
         val current = fixture()
         val candidateManga = current.originManga.copy(
@@ -833,6 +992,18 @@ class ReaderViewModelAlternateSourceGenerationTest {
             coEvery { current.getChapter.await(chapter.url, MANGA_ID) } returns chapter
         }
         coEvery { current.getChaptersByMangaId.await(CANDIDATE_MANGA_ID, any()) } returns listOf(candidateChapter)
+        if (endOfSeriesMapping) {
+            val chapterThree = candidateChapter.copy(
+                id = CANDIDATE_CHAPTER3_ID,
+                sourceOrder = 0,
+                url = CANDIDATE_CHAPTER3_URL,
+                name = "Chapter 3",
+                chapterNumber = 3.0,
+            )
+            coEvery { current.getChapter.await(CANDIDATE_CHAPTER3_ID) } returns chapterThree
+            coEvery { current.getChapter.await(CANDIDATE_CHAPTER3_URL, CANDIDATE_MANGA_ID) } returns chapterThree
+            coEvery { current.getChaptersByMangaId.await(CANDIDATE_MANGA_ID, any()) } returns listOf(candidateChapter, chapterThree)
+        }
         coEvery { ReaderViewModelTestBindings.getMangaByUrlAndSourceId.await(CANDIDATE_MANGA_URL, CANDIDATE_SOURCE_ID) } returns candidateManga
         coEvery { ReaderViewModelTestBindings.getMangaByUrlAndSourceId.await(ORIGIN_MANGA_URL, ORIGIN_SOURCE_ID) } returns current.originManga
 
@@ -858,7 +1029,23 @@ class ReaderViewModelAlternateSourceGenerationTest {
                     createdAt = now,
                     updatedAt = now,
                 ),
-            ),
+            ) + if (endOfSeriesMapping) {
+                listOf(
+                    AlternateSourceBridgeMapping(
+                        key = AlternateSourceBridgeMappingKey(retainedBridgeKey(), END_OF_SERIES_TARGET_ID),
+                        alternateChapterUrl = CANDIDATE_CHAPTER3_URL,
+                        precedingPrimaryChapterUrl = current.originChapters[1].url,
+                        followingPrimaryChapterUrl = null,
+                        relation = AlternateSourceBridgeMappingRelation.PRIMARY_MISSING,
+                        state = AlternateSourceBridgeMappingState.CONFIRMED,
+                        version = AlternateSourceBridgePolicy.CURRENT_VERSION,
+                        createdAt = now,
+                        updatedAt = now,
+                    ),
+                )
+            } else {
+                emptyList()
+            },
         )
         coEvery { ReaderViewModelTestBindings.getAlternateSourceBridge.await(retainedBridgeKey()) } returns state
         coEvery { ReaderViewModelTestBindings.getAlternateSourceBridge.awaitAllBridges() } returns listOf(state.bridge)
@@ -1209,5 +1396,8 @@ class ReaderViewModelAlternateSourceGenerationTest {
         const val SENTINEL_SOURCE_ID = 81_028L
         const val CANDIDATE_CHAPTER_URL = "/candidate/chapter/1"
         const val RETAINED_TARGET_ID = "223e4567-e89b-42d3-a456-426614174000"
+        const val END_OF_SERIES_TARGET_ID = "323e4567-e89b-42d3-a456-426614174000"
+        const val CANDIDATE_CHAPTER3_ID = 81_029L
+        const val CANDIDATE_CHAPTER3_URL = "/candidate/chapter/3"
     }
 }

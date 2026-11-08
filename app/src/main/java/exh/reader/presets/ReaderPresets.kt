@@ -150,19 +150,29 @@ class ReaderPresets(
         val assigned = assignments()
         if (assigned.isEmpty()) return null
         assigned[keyOf(manga)]?.let { return it }
-        val own = getCrossSourceMangaLinks.awaitBySourceUrl(manga.source, manga.url) ?: return null
-        val members = identityResolver.confirmedGroupMembers(
-            manga.source,
-            manga.url,
-            getCrossSourceMangaLinks.awaitByGroupId(own.groupId),
-        )
-        return members.firstNotNullOfOrNull { assigned["${it.source}|${it.url}"] }
+        return confirmedVersionKeys(manga).firstNotNullOfOrNull { assigned[it] }
     }
 
     suspend fun assign(manga: Manga, name: String?) {
         val updated = assignments().toMutableMap()
-        if (name == null) updated.remove(keyOf(manga)) else updated[keyOf(manga)] = name
+        if (name == null) {
+            // Usual settings means no preset for the series, so it is cleared on every confirmed version too; clearing only
+            // this title would let the lookup find a sibling's preset again straight away.
+            updated.remove(keyOf(manga))
+            confirmedVersionKeys(manga).forEach(updated::remove)
+        } else {
+            updated[keyOf(manga)] = name
+        }
         assignmentsPref.set(Json.encodeToString(assignmentSerializer, updated))
+    }
+
+    private suspend fun confirmedVersionKeys(manga: Manga): List<String> {
+        val own = getCrossSourceMangaLinks.awaitBySourceUrl(manga.source, manga.url) ?: return emptyList()
+        return identityResolver.confirmedGroupMembers(
+            manga.source,
+            manga.url,
+            getCrossSourceMangaLinks.awaitByGroupId(own.groupId),
+        ).map { "${it.source}|${it.url}" }
     }
 
     /** Called while a reader opens a series, before its viewer is built. Never throws. */

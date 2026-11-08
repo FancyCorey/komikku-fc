@@ -57,7 +57,7 @@ When local tracking starts, it begins at the chapter you read most recently on a
 
 <img src="../diagrams/local-tracking/add-version.svg" width="300" alt="Adding a version confirms it as the same manga, joins the group's local-tracking record, gives a version with no rating the group's rating, shares the tracker entry, applies your chapter to versions that have chapters, and loads chapters in the background for versions you never opened.">
 
-Opening a manga, using **Track other versions** and refreshing a tracker update only that manga's own record, so they stay quick however large your library is. A library update and a restore refresh every group once.
+Opening a manga, using **Track other versions** and refreshing a tracker update only that manga's own record, not every tracked manga in your library. A library update and a restore refresh every group once.
 
 Copying a chapter from another version never changes a status you chose. **On hold** and **Dropped** stay set; only you change them, or reading on this device.
 

@@ -324,6 +324,8 @@ class ReaderViewModel @JvmOverloads constructor(
         val returnBridgeKey: AlternateSourceBridgeKey? = null,
         val returnSessionId: String? = null,
         val confirmProvisional: Boolean = false,
+        // KMK v0.8.25: the chapter was picked by number for the Next row, so it never replaces a match the user saved
+        val keepSavedMatch: Boolean = false,
     )
 
     /**
@@ -1331,9 +1333,12 @@ class ReaderViewModel @JvmOverloads constructor(
         explicitRetry: Boolean = false,
         // KMK v0.8.25: the Next row of a version that is ahead reads straight from that version
         readNextFromKey: String? = null,
+        // KMK v0.8.25: choosing a version from the Next row's list also reads straight on, without a chapter picker
+        continueAfterFinished: Boolean = false,
     ) {
         if (isChapterNavigationBlockedBySchedule()) return
         pendingReadNextKey = readNextFromKey
+        pendingContinueAfterFinished = continueAfterFinished || readNextFromKey != null
         val request = currentAlternateSourceCandidateRequest(precedingChapterId, followingChapterId)
             ?: run {
                 mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.RecoverableFailure(
@@ -1554,20 +1559,24 @@ class ReaderViewModel @JvmOverloads constructor(
                     val nextAfterFinished = AlternateSourceReaderAheadPolicy
                         .nextChapterAfter(discovery.chapters, originNumber)
                         .takeIf { continuesAfterFinished }
-                    val readNextNow = pendingReadNextKey != null && nextAfterFinished != null
+                    val readNextNow = pendingContinueAfterFinished && nextAfterFinished != null
                     pendingReadNextKey = null
+                    pendingContinueAfterFinished = false
                     val recommended = nextAfterFinished
                         ?: AlternateSourceReaderChapterPolicy.recommendedChapter(discovery.chapters, originNumber)
                     if (readNextNow) {
-                        runAlternateSourceSelection(
-                            AlternateSourceChapterSelection(
-                                selection.request,
-                                selection.candidate,
-                                requireNotNull(nextAfterFinished).url,
-                                selection.returnBridgeKey,
-                                selection.returnSessionId,
-                            ),
+                        val nextSelection = AlternateSourceChapterSelection(
+                            selection.request,
+                            selection.candidate,
+                            requireNotNull(nextAfterFinished).url,
+                            selection.returnBridgeKey,
+                            selection.returnSessionId,
+                            keepSavedMatch = true,
                         )
+                        // Keep the choice: when the two sources are not yet confirmed as the same manga, or a saved match still
+                        // needs confirming, the confirmation dialogs act on this selection and then read on.
+                        retainedAlternateSourceSelection = nextSelection
+                        runAlternateSourceSelection(nextSelection)
                         return@launchAlternateSourceCandidateWork
                     }
                     if (selection.returnBridgeKey != null &&
@@ -1808,6 +1817,7 @@ class ReaderViewModel @JvmOverloads constructor(
                 selection.chapterUrl,
                 confirmProvisional = selection.confirmProvisional,
                 onAdmittedRoute = onAdmittedRoute,
+                replaceSavedMatch = !selection.keepSavedMatch,
             )
         }
     }
@@ -1972,7 +1982,7 @@ class ReaderViewModel @JvmOverloads constructor(
     // KMK v0.8.25 -->
     private val aheadChecker = AlternateSourceReaderAheadChecker(
         discover = { alternateSourceReaderCandidateGateway.discover(it, includeLiveSearch = false) },
-        chapters = { alternateSourceReaderCandidateGateway.chapters(it) },
+        chapters = { alternateSourceReaderCandidateGateway.chaptersWithoutSaving(it) },
     )
     private val mutableLinkedVersionsAhead = MutableStateFlow<AlternateSourceReaderAheadState?>(null)
 
@@ -1980,6 +1990,7 @@ class ReaderViewModel @JvmOverloads constructor(
     val linkedVersionsAhead: StateFlow<AlternateSourceReaderAheadState?> = mutableLinkedVersionsAhead.asStateFlow()
     private var aheadCheckJob: Job? = null
     private var pendingReadNextKey: String? = null
+    private var pendingContinueAfterFinished = false
 
     /**
      * Called when the last chapter's end screen is built. Asks the confirmed linked versions in the background, so the answer is
@@ -2016,7 +2027,12 @@ class ReaderViewModel @JvmOverloads constructor(
 
     /** The Next row of a version that is ahead: one version reads from it directly, several open the list. */
     fun openLinkedVersionsAhead(finishedChapterId: Long, onlyVersionKey: String?) {
-        openAlternateSourceChooser(finishedChapterId, null, readNextFromKey = onlyVersionKey)
+        openAlternateSourceChooser(
+            finishedChapterId,
+            null,
+            readNextFromKey = onlyVersionKey,
+            continueAfterFinished = true,
+        )
     }
 
     private suspend fun showLatestChapterOnRows(request: AlternateSourceReaderCandidateRequest, generation: Long) {

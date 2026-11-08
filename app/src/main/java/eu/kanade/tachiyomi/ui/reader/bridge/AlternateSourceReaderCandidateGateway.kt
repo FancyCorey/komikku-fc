@@ -96,6 +96,9 @@ internal interface AlternateSourceReaderCandidateReads {
     fun cancelLiveSearch() {}
     suspend fun chapters(manga: Manga): AlternateSourceReaderChapterDiscovery
     suspend fun retryChapters(manga: Manga): AlternateSourceReaderChapterDiscovery = chapters(manga)
+
+    // KMK v0.8.25: the same lookup that writes nothing to the library
+    suspend fun chaptersWithoutSaving(manga: Manga): AlternateSourceReaderChapterDiscovery = chapters(manga)
     suspend fun prepareManualRetry(sourceId: Long) {}
 }
 
@@ -253,6 +256,13 @@ class AlternateSourceReaderCandidateGateway internal constructor(
     ): AlternateSourceReaderChapterDiscovery =
         if (explicitRetry) reads.retryChapters(candidate.manga) else reads.chapters(candidate.manga)
 
+    /**
+     * KMK v0.8.25: a version's chapter numbers for the "is anything ahead" check. Unlike [chapters] this never saves the list, so
+     * checking in the background cannot add or remove chapters of, or change the update timing of, a manga the user did not open.
+     */
+    suspend fun chaptersWithoutSaving(candidate: AlternateSourceReaderMangaCandidate): AlternateSourceReaderChapterDiscovery =
+        reads.chaptersWithoutSaving(candidate.manga)
+
     suspend fun prepareManualRetry(sourceId: Long) = reads.prepareManualRetry(sourceId)
 
     fun cancelLiveSearch() = reads.cancelLiveSearch()
@@ -381,6 +391,12 @@ internal class DefaultAlternateSourceReaderCandidateReads(
         return discoverChapters(source, manga)
     }
 
+    override suspend fun chaptersWithoutSaving(manga: Manga): AlternateSourceReaderChapterDiscovery {
+        val source: Source = sourceManager.get(manga.source)
+            ?: return AlternateSourceReaderChapterDiscovery.SourceUnavailable
+        return discoverChapters(source, manga, save = false)
+    }
+
     override suspend fun retryChapters(manga: Manga): AlternateSourceReaderChapterDiscovery {
         val source: Source = sourceManager.get(manga.source)
             ?: return AlternateSourceReaderChapterDiscovery.SourceUnavailable
@@ -398,6 +414,7 @@ internal class DefaultAlternateSourceReaderCandidateReads(
     private suspend fun discoverChapters(
         source: Source,
         manga: Manga,
+        save: Boolean = true,
     ): AlternateSourceReaderChapterDiscovery {
         return SourceRuntime.run(source, SourceRuntimeOperation.MangaUpdate, dispatcher) {
             getMangaUpdate(
@@ -406,7 +423,7 @@ internal class DefaultAlternateSourceReaderCandidateReads(
                 fetchDetails = false,
                 fetchChapters = true,
             ).chapters.also { chapters ->
-                syncChaptersWithSource.await(chapters, manga, source, manualFetch = true)
+                if (save) syncChaptersWithSource.await(chapters, manga, source, manualFetch = true)
             }
         }.fold(
             onSuccess = { chapters ->

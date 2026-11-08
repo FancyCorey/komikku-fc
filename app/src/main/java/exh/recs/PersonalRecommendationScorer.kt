@@ -30,11 +30,24 @@ import tachiyomi.domain.taste.model.normalizeTag
  */
 internal object PersonalRecommendationScorer {
 
-    /** KMK v0.8.25: share of a long-term liked tag's weight kept when the same tag was read recently. */
-    const val RECENT_LEARNED_SHARE = 0.6
+    /**
+     * KMK v0.8.25: when a tag you rated well was also read lately, its older weight counts for this share of itself, so that
+     * enough recent reading can outrank it. A little recent reading never lowers it: see [recentContribution].
+     */
+    const val RECENT_LEARNED_SHARE = 0.5
 
     /** KMK v0.8.25: recent-reading weight multiplier, so the latest reading outranks old ratings. */
-    const val RECENT_BOOST = 2.0
+    const val RECENT_BOOST = 3.0
+
+    /**
+     * What a tag's recent weight adds on top of its older [learnedWeight]. The tag as a whole counts for the larger of its older
+     * weight and (its older weight times [RECENT_LEARNED_SHARE] plus the boosted recent weight), so reading more can only raise
+     * it: a strong older weight of 10 with a recent weight of 0.5 stays 10, and with a recent weight of 4 becomes 17.
+     */
+    fun recentContribution(learnedWeight: Double, recentWeight: Double): Double {
+        val boosted = recentWeight * RECENT_BOOST
+        return if (learnedWeight > 0.0) maxOf(boosted - learnedWeight * (1.0 - RECENT_LEARNED_SHARE), 0.0) else boosted
+    }
 
     /** A title with this many tags or fewer keeps its full tag score. */
     const val TAG_COUNT_REFERENCE = 5
@@ -92,9 +105,7 @@ internal object PersonalRecommendationScorer {
         var learnedScore = 0.0
         val learnedMatches = mutableListOf<String>()
         for (group in candidateGroups) {
-            var weight = profile.learnedTagWeights[group] ?: 0.0
-            // KMK v0.8.25: a tag read recently counts for more than the same tag rated long ago
-            if (weight > 0.0 && (profile.recentTagWeights[group] ?: 0.0) > 0.0) weight *= RECENT_LEARNED_SHARE
+            val weight = profile.learnedTagWeights[group] ?: 0.0
             if (weight != 0.0) {
                 learnedScore += weight
                 if (weight > 0.0) learnedMatches.add(group)
@@ -107,7 +118,7 @@ internal object PersonalRecommendationScorer {
         for (group in candidateGroups.distinct()) {
             val weight = profile.recentTagWeights[group] ?: 0.0
             if (weight > 0.0) {
-                recentScore += weight * RECENT_BOOST
+                recentScore += recentContribution(profile.learnedTagWeights[group] ?: 0.0, weight)
                 recentMatches.add(group)
             }
         }

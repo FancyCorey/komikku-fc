@@ -66,6 +66,31 @@ class ChapterEndLinkedVersionsSourceTest {
     }
 
     @Test
+    fun `the background check saves nothing to the library`() {
+        assertTrue(viewModel.contains("chapters = { alternateSourceReaderCandidateGateway.chaptersWithoutSaving(it) }"))
+        val gateway = source("src/main/java/eu/kanade/tachiyomi/ui/reader/bridge/AlternateSourceReaderCandidateGateway.kt")
+        assertTrue(gateway.contains("discoverChapters(source, manga, save = false)"))
+        assertTrue(gateway.contains("if (save) syncChaptersWithSource.await("))
+        // opening a source from the chooser still saves its chapter list, as before
+        assertTrue(gateway.contains("return discoverChapters(source, manga)\n"))
+    }
+
+    @Test
+    fun `the Next shortcut keeps its selection for the confirmations and never replaces a saved match`() {
+        val shortcut = viewModel.substringAfter("if (readNextNow) {").substringBefore("return@launchAlternateSourceCandidateWork")
+        assertTrue(shortcut.contains("keepSavedMatch = true"))
+        assertTrue(shortcut.contains("retainedAlternateSourceSelection = nextSelection"), "the pair and match confirmations need the selection")
+        assertTrue(viewModel.contains("replaceSavedMatch = !selection.keepSavedMatch"))
+        assertTrue(source("src/main/java/eu/kanade/tachiyomi/ui/reader/bridge/AlternateSourceReaderCoordinator.kt").contains("replaceSavedMatch: Boolean = true"))
+    }
+
+    @Test
+    fun `choosing a version from the Next row's list carries the intent to read on`() {
+        assertTrue(viewModel.contains("continueAfterFinished = true,"))
+        assertTrue(viewModel.contains("val readNextNow = pendingContinueAfterFinished && nextAfterFinished != null"))
+    }
+
+    @Test
     fun `no second comparison screen and no new explanatory text`() {
         val strings = source("../i18n-kmk/src/commonMain/moko-resources/base/strings.xml")
         val added = Regex("""name="(alternate_source_reader_chapters_ahead|alternate_source_reader_sources_count)">([^<]*)<""")
