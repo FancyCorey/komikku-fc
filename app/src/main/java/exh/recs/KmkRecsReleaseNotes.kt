@@ -72,6 +72,10 @@ object KmkRecsReleaseNotes {
 
         ##### Fix
 
+        - **Minimum chapter count everywhere it can apply:** For You now checks every displayed title whose chapter count is unknown, not only the first 20, and while saving data it checks the first 20 instead of none. A manga's and a group's Recommendations use and check the same counts. The library recommendation search lists titles from sites such as MangaUpdates and AniList, which have no chapter list, so it is not filtered. The Focus panel on For You has a Minimum chapter count row, the same setting as under Your taste.
+        - **Covers survive a dead source:** A rated title with linked versions shows the next version's cover when the shown version's source is down or gone.
+        - **Primary version in Manage linked manga versions:** The primary version is listed first and marked, and Set as primary in a title's menu chooses it.
+        - **Track other versions finds your existing group:** Already in your groups lists the groups with this title or another of its names. Add here joins one, and the versions you pick then join it instead of a new group.
         - **Browse tabs fit a phone:** With For You, Browse has five tabs, and on a phone Sources and Extensions were cut short. The tab row now scrolls instead, so every name is whole; For You is at the end of the row.
         - **Dropped and On hold stay set:** Copying a chapter from another version no longer changes a status you chose. Before, Dropped went back to Reading the next time a library update ran or you opened another version.
         - **Reading schedule:** The schedule editor you open from the reader now has its own Enable reading schedule switch, the same setting as Settings, Reader. A schedule you set up from a manga is no longer left switched off without saying so. The switch is applied when you tap Save, and Cancel or Back keeps what you had. Adding the first time window while the schedule is off now switches it on, and you can switch it off again before saving.

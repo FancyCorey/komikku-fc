@@ -414,7 +414,8 @@ open class RecommendsScreenModel(
                                     }
                                     val chapterCounts = if (minChapterCount > 0) {
                                         try {
-                                            getChapterCounts.await(list.map { it.id })
+                                            // KMK v0.8.25: counts For You already checked count here too
+                                            chapterCountChecker.knownCounts(list.map { it.id }, getChapterCounts.await(list.map { it.id }))
                                         } catch (e: CancellationException) {
                                             throw e
                                         } catch (e: Exception) {
@@ -536,6 +537,11 @@ open class RecommendsScreenModel(
                 }
             }.awaitAll()
 
+            // KMK v0.8.25: as on For You, check the chapter counts the rows do not know yet and take out what is too short
+            if (minChapterCount > 0 && isActive && generationGuard.isCurrent(myGeneration)) {
+                removeTooShort(minChapterCount) { generationGuard.isCurrent(myGeneration) }
+            }
+
             // KMK v0.8.6: total-elapsed and max-observed-concurrency diagnostics for this load.
             logcat(LogPriority.DEBUG, tag = TAG) {
                 "load complete generation=$myGeneration groupPreview=${recommendationSources.size} " +
@@ -553,6 +559,41 @@ open class RecommendsScreenModel(
                 .collectLatest { manga ->
                     value = manga
                 }
+        }
+    }
+
+    private val chapterCountChecker by lazy { RecommendationChapterCountChecker() }
+
+    private suspend fun removeTooShort(minChapterCount: Int, stillCurrent: () -> Boolean) {
+        val rows = state.value.items.values.mapNotNull { (it as? RecommendationItemResult.Success)?.result }
+        val byId = rows.flatten().filter { it.id != 0L }.associateBy { it.id }
+        val known = try {
+            chapterCountChecker.knownCounts(byId.keys, getChapterCounts.await(byId.keys)).keys
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return
+        }
+        val dataSaving = try {
+            ForYouDataSavingPolicy.isActiveNow(Injekt.get<android.app.Application>(), sourcePreferences.recommendationDataSaving().get())
+        } catch (_: Exception) {
+            false
+        }
+        val limit = if (dataSaving) ForYouChapterCountCheck.MAX_CHECKS_PER_REFRESH else ForYouChapterCountCheck.MAX_CHECKS_ALL_SHOWN
+        val toCheck = ForYouChapterCountCheck.pick(rows.map { row -> row.map { it.id } }, known, limit).mapNotNull(byId::get)
+        val counts = chapterCountChecker.check(toCheck)
+        val tooShort = counts.filterValues { it < minChapterCount }.keys
+        if (tooShort.isEmpty() || !stillCurrent()) return
+        mutableState.update { current ->
+            current.copy(
+                items = current.items.mutate { map ->
+                    map.entries.toList().forEach { (source, result) ->
+                        if (result is RecommendationItemResult.Success && result.result.any { it.id in tooShort }) {
+                            map[source] = result.copy(result = result.result.filterNot { it.id in tooShort })
+                        }
+                    }
+                },
+            )
         }
     }
 

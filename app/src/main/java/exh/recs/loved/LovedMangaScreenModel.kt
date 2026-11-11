@@ -78,6 +78,9 @@ data class LovedDisplayItem(
     val memberKeys: List<RatedMangaKey> = emptyList(),
     val hasConfirmedGroup: Boolean = false,
     // KMK <--
+    // KMK v0.8.25: the versions whose cover can stand for this item, the shown one first; when its source is down the next
+    // version's cover is used instead of a broken picture
+    val coverCandidates: List<Manga> = emptyList(),
 ) {
     val key: RatedMangaKey get() = RatedMangaKey(taste.source, taste.url)
 }
@@ -907,6 +910,10 @@ internal fun mergeLinkWritesIntoMap(
 }
 // KMK <--
 
+// KMK v0.8.25: the shown version first, then the group's other versions in their listed order, each once
+internal fun ratedCoverCandidates(shown: LovedMangaEntry, members: List<LovedMangaEntry>): List<Manga> =
+    (listOf(shown) + members).mapNotNull { it.manga }.distinctBy { it.source to it.url }
+
 // KMK --> v0.7.14: sort entries according to the chosen sort mode
 private fun sortEntries(entries: List<LovedMangaEntry>, mode: LoveSortMode): List<LovedMangaEntry> = when (mode) {
     LoveSortMode.RECENT -> entries // already sorted desc by updatedAt at load time
@@ -938,6 +945,7 @@ internal fun buildFlatItems(
             confirmedGroupId = groupId,
             memberKeys = memberKeys,
             hasConfirmedGroup = groupId != null && (groupSizeById[groupId] ?: 0) >= 2,
+            coverCandidates = ratedCoverCandidates(entry, groupId?.let { membersByGroupId[it] }.orEmpty()),
         )
     }
 }
@@ -1000,6 +1008,7 @@ internal fun buildGroupedItems(
             confirmedGroupId = confirmedGroupId,
             memberKeys = group.memberKeys.mapNotNull { keyToEntry[it]?.let { e -> RatedMangaKey.of(e.taste) } },
             hasConfirmedGroup = isConfirmedLinkGroup && group.versionCount >= 2,
+            coverCandidates = ratedCoverCandidates(primary, group.memberKeys.mapNotNull { keyToEntry[it] }),
         )
     }
 }

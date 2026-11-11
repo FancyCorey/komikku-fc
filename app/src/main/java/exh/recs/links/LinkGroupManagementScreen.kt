@@ -1,5 +1,6 @@
 package exh.recs.links
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -146,6 +147,9 @@ class LinkGroupManagementScreen(private val focusedGroupId: String? = null) : Sc
                                     onRemove = { member ->
                                         model.ungroupMember(member.link.source, member.link.url) { result -> handle(result) {} }
                                     },
+                                    onSetPrimary = { member ->
+                                        model.setPrimaryVersion(group.groupId, member.link.source, member.link.url) { result -> handle(result) {} }
+                                    },
                                 )
                             }
                         }
@@ -282,7 +286,17 @@ class LinkGroupManagementScreen(private val focusedGroupId: String? = null) : Sc
     }
 
     @Composable
-    private fun GroupCard(group: LinkGroup, groups: List<LinkGroup>, onAdd: () -> Unit, onSync: () -> Unit, onMerge: () -> Unit, onUngroup: () -> Unit, onMove: (LinkGroupMember) -> Unit, onRemove: (LinkGroupMember) -> Unit) {
+    private fun GroupCard(
+        group: LinkGroup,
+        groups: List<LinkGroup>,
+        onAdd: () -> Unit,
+        onSync: () -> Unit,
+        onMerge: () -> Unit,
+        onUngroup: () -> Unit,
+        onMove: (LinkGroupMember) -> Unit,
+        onRemove: (LinkGroupMember) -> Unit,
+        onSetPrimary: (LinkGroupMember) -> Unit,
+    ) {
         var expanded by rememberSaveable(group.groupId) { mutableStateOf(false) }
         val toggleAction = stringResource(
             if (expanded) KMR.strings.accessibility_collapse_link_group else KMR.strings.accessibility_expand_link_group,
@@ -331,7 +345,8 @@ class LinkGroupManagementScreen(private val focusedGroupId: String? = null) : Sc
                 }
                 if (expanded) {
                     group.members.forEach { member ->
-                        val name = member.manga?.title ?: member.link.title
+                        val name = member.manga?.title?.takeIf { it.isNotBlank() } ?: member.link.title
+                        val isPrimary = member == group.primary
                         Row(Modifier.fillMaxWidth().padding(top = MaterialTheme.padding.extraSmall), verticalAlignment = Alignment.CenterVertically) {
                             member.manga?.let { MangaCover.Book(data = it.asMangaCover(), modifier = Modifier.width(36.dp).height(52.dp)) }
                             Column(Modifier.weight(1f).padding(start = MaterialTheme.padding.small)) {
@@ -341,7 +356,27 @@ class LinkGroupManagementScreen(private val focusedGroupId: String? = null) : Sc
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                             }
+                            // KMK v0.8.25: the version that gives the group its title and cover
+                            if (isPrimary) {
+                                Text(
+                                    text = stringResource(KMR.strings.linked_version_list_primary_marker),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier
+                                        .background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.small)
+                                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                                )
+                            }
                             OverflowMenu(stringResource(KMR.strings.link_group_management_member_actions, name)) { close ->
+                                if (!isPrimary && group.members.size > 1) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(KMR.strings.linked_version_list_set_primary)) },
+                                        onClick = {
+                                            close()
+                                            onSetPrimary(member)
+                                        },
+                                    )
+                                }
                                 if (groups.size > 1) {
                                     DropdownMenuItem(text = { Text(stringResource(KMR.strings.link_group_management_move_member)) }, onClick = {
                                         close()

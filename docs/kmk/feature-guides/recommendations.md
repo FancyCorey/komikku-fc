@@ -91,7 +91,7 @@ A note also appears when the extension has an update available or is no longer o
 
 ## Minimum chapter count
 
-**Minimum chapter count** under **Your taste** hides manga with a known count below your choice. A new result's count is usually unknown until its chapter list loads. After showing its rows, For You checks up to 20 displayed titles with unknown counts, a few at a time. Once checked, titles below your minimum are removed. Counts are remembered for two weeks so later refreshes can filter them straight away.
+**Minimum chapter count** under **Your taste** hides manga with a known count below your choice. A new result's count is usually unknown until its chapter list loads. After showing its rows, For You checks the displayed titles with unknown counts, a few at a time. **In v0.8.25 (not yet released)** it checks every displayed title (before, only the first 20), and while saving data it still checks the first 20 instead of none. Once checked, titles below your minimum are removed. Counts are remembered for two weeks so later refreshes, and a manga's or a group's **Recommendations**, can filter them straight away; those screens check their own rows the same way. The library recommendation search lists titles from sites such as MangaUpdates and AniList, which have no chapter list to check, so the minimum does not apply there.
 
 <p align="center"><img src="../visual-guide/v0.8.24/your-taste.png" width="260" alt="Minimum chapter count set to 40 under Your taste"></p>
 <p align="center"><em>Minimum chapter count under Your taste.</em></p>
@@ -116,7 +116,7 @@ A manga's Recommendations and the library recommendation search look in at most 
 
 ## Focus on what you want now
 
-**Focus** narrows For You to a few tags for the moment without changing your saved taste. Open it and choose tags:
+**Focus** narrows For You to a few tags for the moment without changing your saved taste. **In v0.8.25 (not yet released)** it also starts with a **Minimum chapter count** row (Off, 5, 10, 20, 30 or 50); it is the same setting as under Your taste, and it is saved when you choose **Apply** or **Clear focus**. Open it and choose tags:
 
 - Tap a tag once to include it, a second time to exclude it, and a third time to clear it.
 - **Match All** shows only manga that have every included tag. **Match Any** shows manga that have at least one of them.

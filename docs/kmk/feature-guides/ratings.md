@@ -11,6 +11,8 @@ On a manga page, choose **Love**, **Like**, **Dislike**, or **Not interested**. 
 
 ## Choose or clear a rating
 
+**In v0.8.25 (not yet released):** a rated title with linked versions shows the first cover that loads, starting with the version shown. If that version's source is down, abandoned or gone, the next version's cover appears instead of a blank picture.
+
 Each manga has one current rating. Choosing Like after Love replaces Love; choosing Not interested replaces the previous rating too. **Clear rating** removes the choice and returns the manga to an unrated state. Not interested has its own collection and visible marker, just like the other choices.
 
 <p align="center"><img src="../visual-guide/not-interested-other-versions.png" width="260" alt="Preference actions with Not interested selected"></p>

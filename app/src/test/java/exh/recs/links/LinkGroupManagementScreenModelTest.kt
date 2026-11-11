@@ -47,6 +47,7 @@ class LinkGroupManagementScreenModelTest {
         val links: MutableList<CrossSourceMangaLink>,
         val primaries: MutableList<tachiyomi.domain.taste.model.CrossSourceGroupPrimary>,
         val confirmations: exh.recs.matching.GroupJoinConfirmations,
+        val setPrimary: tachiyomi.domain.taste.interactor.SetCrossSourceGroupPrimary,
     )
 
     private fun model(
@@ -67,6 +68,7 @@ class LinkGroupManagementScreenModelTest {
         coEvery { manga.getMangaByUrlAndSourceId(any(), any()) } returns null
         coEvery { manga.getFavorites() } returns emptyList()
         val confirmations = mockk<exh.recs.matching.GroupJoinConfirmations>(relaxed = true)
+        val setPrimary = mockk<tachiyomi.domain.taste.interactor.SetCrossSourceGroupPrimary>(relaxed = true)
         coEvery { confirmations.rejectedAmong(any(), any()) } returns emptyList()
         val screen = LinkGroupManagementScreenModel(
             getCrossSourceMangaLinks = linkReader,
@@ -76,8 +78,10 @@ class LinkGroupManagementScreenModelTest {
             restoreCrossSourceGroupState = restore,
             groupUndoService = GroupUndoService(linkReader, primaryReader, restore),
             groupConfirmations = lazy { confirmations },
+            setCrossSourceGroupPrimary = lazy { setPrimary },
+            sourcePreferences = lazy { eu.kanade.domain.source.service.SourcePreferences(exh.util.FakePreferenceStore()) },
         )
-        return Fixture(screen, links, primaries, confirmations)
+        return Fixture(screen, links, primaries, confirmations, setPrimary)
     }
 
     // KMK v0.8.25 -->
@@ -182,6 +186,29 @@ class LinkGroupManagementScreenModelTest {
         assertTrue(result!!.succeeded, "the link is saved")
         assertEquals(LinkGroupSharing.INCOMPLETE, result!!.sharing)
         assertEquals("existing", result!!.groupId, "so the screen can offer Retry for this group")
+    }
+
+    @Test
+    fun `the primary version is listed first and Set as primary saves it with an undo`() = runTest {
+        val a = link("g", 1L, "a")
+        val b = link("g", 2L, "b")
+        val restore = mockk<RestoreCrossSourceGroupState>(relaxed = true)
+        val fixture = model(
+            listOf(a, b),
+            restore,
+            initialPrimaries = listOf(tachiyomi.domain.taste.model.CrossSourceGroupPrimary("g", 2L, "b", 5L)),
+        )
+        advanceUntilIdle()
+        val group = (fixture.model.state.value as LinkGroupManagementScreenModel.State.Success).groups.single()
+        assertEquals("b", group.members.first().link.url, "the primary version comes first")
+        var result: LinkGroupMutationResult? = null
+
+        fixture.model.setPrimaryVersion("g", 1L, "a") { result = it }
+        advanceUntilIdle()
+
+        coVerify { fixture.setPrimary.await("g", 1L, "a") }
+        assertTrue(result!!.succeeded)
+        assertEquals(exh.util.GroupJournalActionType.SET_PRIMARY, GroupUndoJournal.snapshot().single().actionType)
     }
     // KMK <--
 

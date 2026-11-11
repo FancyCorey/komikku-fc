@@ -63,11 +63,14 @@ Copying a chapter from another version never changes a status you chose. **On ho
 
 After a library update, the app also refreshes the tracker of each linked group once when **Sync reading progress from connected trackers** is on, so progress made on any version reaches the others without opening them.
 
+**In v0.8.25 (not yet released):** when the manga you are on is not in a group yet, **Track other versions** first shows **Already in your groups**: the groups you have with this title or one of its other names, the way Group library automatically matches them. **Add here** adds the manga to that group at once, with the group's rating and progress, and the versions you pick below then join the same group instead of starting a new one. A title you marked **Not the same manga** as one in that group is not added, and the screen says so.
+
 ### Manage groups you already have
 
 On a rated list (Loved, Liked, Disliked, Not interested), the link icon opens **Manage linked manga versions**.
 
 - **Share rating and progress**, in a group card's menu, does the same for a group you made before v0.8.25: it confirms the group's versions as the same manga and gives the ones that lack them the rating, tracking, chapter progress and tracker entry.
+- In an open group card the **Primary** version comes first and is marked; it gives the group its title and cover here, on the rated lists and in **Move** and **Merge into group**. Any other title's menu has **Set as primary**, which **Undo** can reverse.
 - A group card's menu holds **Add title**, **Share rating and progress**, **Merge into group** and **Ungroup all**. Open the card to see its titles; each title has its own menu with **Move** and **Remove**. **Move** and **Merge into group** list the other groups with their cover and number of versions; choose one and the button says what happens.
 - If you marked two titles **Not the same manga**, grouping never overrules it. Adding, moving or merging them asks first: **Confirm same manga** if they are the same after all, **Keep apart** if not, and nothing is linked until you choose. **Share rating and progress** skips them and says which.
 - If a title is linked but its rating and progress were not shared, for example because a source did not answer, the screen says so and offers **Retry**.

@@ -59,6 +59,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -236,6 +237,8 @@ fun Screen.personalRecommendationsTab(): TabContent {
     var saveAsDialogOpen by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<SavedFocusMode?>(null) }
     var deleteTarget by remember { mutableStateOf<SavedFocusMode?>(null) }
+    // KMK v0.8.25: the minimum chapter count from Your taste, chosen here and saved with Apply like the rest of the panel
+    var pendingMinChapters by remember(focusDialogOpen) { mutableIntStateOf(screenModel.minChapterCount()) }
     if (focusDialogOpen) {
         AlertDialog(
             onDismissRequest = {
@@ -250,6 +253,7 @@ fun Screen.personalRecommendationsTab(): TabContent {
             title = { Text(stringResource(KMR.strings.rec_for_you_focus_title)) },
             text = {
                 Column {
+                    ForYouMinChapterRow(selected = pendingMinChapters, onSelect = { pendingMinChapters = it })
                     OutlinedTextField(
                         value = focusSearchQuery,
                         onValueChange = { focusSearchQuery = it },
@@ -419,6 +423,7 @@ fun Screen.personalRecommendationsTab(): TabContent {
                 TextButton(onClick = {
                     focusSearchQuery = ""
                     showBroaderResults = false
+                    screenModel.setMinChapterCount(pendingMinChapters)
                     screenModel.setActiveFocus(focusCriteria)
                     focusDialogOpen = false
                 }) {
@@ -432,6 +437,8 @@ fun Screen.personalRecommendationsTab(): TabContent {
                     focusMatchAll = true
                     focusSearchQuery = ""
                     showBroaderResults = false
+                    // Clear focus clears the tags; a chapter minimum chosen here is kept like with Apply
+                    screenModel.setMinChapterCount(pendingMinChapters)
                     screenModel.setActiveFocus(RecommendationFocusPolicy.FocusCriteria.EMPTY)
                     focusDialogOpen = false
                 }) {
@@ -1631,4 +1638,40 @@ private fun FailureNote(text: String) {
         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
     )
 }
+// KMK <--
+
+// KMK v0.8.25 -->
+/** The For You chapter minimum: the same setting as Your taste > Minimum chapter count, shown where For You is narrowed. */
+@Composable
+private fun ForYouMinChapterRow(selected: Int, onSelect: (Int) -> Unit) {
+    Text(
+        text = stringResource(KMR.strings.rec_min_chapter_count),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+    )
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = MaterialTheme.padding.small),
+    ) {
+        val options = (FOR_YOU_MIN_CHAPTER_CHOICES + selected).distinct().sorted()
+        options.forEach { value ->
+            androidx.compose.material3.FilterChip(
+                selected = value == selected,
+                onClick = { onSelect(value) },
+                label = {
+                    Text(
+                        if (value == RecommendationMinChapterCountPolicy.OFF) {
+                            stringResource(KMR.strings.rec_min_chapter_count_off)
+                        } else {
+                            value.toString()
+                        },
+                    )
+                },
+            )
+        }
+    }
+}
+
+/** A few common choices; a different value set in Your taste is shown too, so the current one is always visible. */
+internal val FOR_YOU_MIN_CHAPTER_CHOICES = listOf(0, 5, 10, 20, 30, 50)
 // KMK <--

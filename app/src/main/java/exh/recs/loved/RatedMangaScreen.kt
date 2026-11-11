@@ -56,6 +56,8 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import coil3.imageLoader
+import coil3.request.ImageRequest
 import eu.kanade.core.preference.asState
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.presentation.browse.components.MangaItem
@@ -629,7 +631,7 @@ internal fun RatedMangaCollectionContent(
                                         // KMK v0.8.19: evaluation mode never changes manga titles -- only
                                         // source/repo names are obfuscated (see sourceNameById above).
                                         title = item.manga?.title ?: item.taste.title,
-                                        cover = item.manga?.asMangaCover() ?: ratedFallbackCover(item),
+                                        cover = rememberRatedCover(item),
                                         isFavorite = item.manga?.favorite ?: false,
                                         isSelected = item.key in s.selectedKeys,
                                         onClick = {
@@ -1412,6 +1414,32 @@ private fun RatedSortRow(
             )
         }
     }
+}
+
+/**
+ * KMK v0.8.25: the cover shown for a rated item. With linked versions, the shown version's cover is tried first and, if it does
+ * not load (its source is down, orphaned or gone), the next version's, so one dead source does not leave a blank picture.
+ * Loads go through the app's image loader, so a cover that already loaded comes from its cache.
+ */
+@Composable
+private fun rememberRatedCover(item: LovedDisplayItem): MangaCover {
+    val candidates = remember(item.key, item.coverCandidates) {
+        item.coverCandidates.map { it.asMangaCover() }.ifEmpty { listOf(item.manga?.asMangaCover() ?: ratedFallbackCover(item)) }
+    }
+    var chosen by remember(candidates) { mutableStateOf(candidates.first()) }
+    if (candidates.size > 1) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.runtime.LaunchedEffect(candidates) {
+            for (candidate in candidates) {
+                val result = context.imageLoader.execute(ImageRequest.Builder(context).data(candidate).build())
+                if (result is coil3.request.SuccessResult) {
+                    chosen = candidate
+                    return@LaunchedEffect
+                }
+            }
+        }
+    }
+    return chosen
 }
 
 private fun ratedFallbackCover(item: LovedDisplayItem): MangaCover = MangaCover(

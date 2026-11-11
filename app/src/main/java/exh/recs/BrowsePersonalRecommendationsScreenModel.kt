@@ -516,6 +516,14 @@ class BrowsePersonalRecommendationsScreenModel(
                 ActiveFocusStore.parse(sourcePreferences.activeForYouFocus().get()),
             )
 
+    // KMK v0.8.25: the minimum chapter count from Your taste, also chosen on the For You focus panel. Saving it does not refresh by
+    // itself; the panel's Apply or Clear refreshes once for both changes.
+    internal fun minChapterCount(): Int = RecommendationMinChapterCountPolicy.resolve(sourcePreferences.recommendationMinChapterCount().get())
+
+    internal fun setMinChapterCount(value: Int) {
+        sourcePreferences.recommendationMinChapterCount().set(RecommendationMinChapterCountPolicy.resolve(value))
+    }
+
     internal fun setActiveFocus(criteria: RecommendationFocusPolicy.FocusCriteria) {
         sourcePreferences.activeForYouFocus().set(ActiveFocusStore.serialize(criteria))
         // Applying or clearing focus is a new discovery request, not only a presentation filter.
@@ -1350,9 +1358,11 @@ class BrowsePersonalRecommendationsScreenModel(
                         state
                     }
                 }
-                // KMK v0.8.24: after the page is shown, check the chapter counts of a few shown picks (not when saving data)
-                if (minChapterCount > 0 && !dataSaving) {
-                    launch { checkShownChapterCounts(refreshGeneration, minChapterCount) }
+                // KMK v0.8.25: after the page is shown, check the chapter counts of every shown pick whose count is unknown,
+                // or only the ones on screen while saving data, and take out the ones that are too short
+                if (minChapterCount > 0) {
+                    val limit = if (dataSaving) ForYouChapterCountCheck.MAX_CHECKS_PER_REFRESH else ForYouChapterCountCheck.MAX_CHECKS_ALL_SHOWN
+                    launch { checkShownChapterCounts(refreshGeneration, minChapterCount, limit) }
                 }
                 ForYouStartupTrace.mark("refresh_finished")
                 ForYouRefreshTelemetry.finish(
@@ -3839,7 +3849,7 @@ class BrowsePersonalRecommendationsScreenModel(
      * remembers the counts and removes picks below [minChapterCount] from this refresh's rows and Top Picks. Only touches
      * the refresh that showed them; any failure leaves the pick as it is.
      */
-    private suspend fun checkShownChapterCounts(refreshGeneration: Long, minChapterCount: Int) {
+    private suspend fun checkShownChapterCounts(refreshGeneration: Long, minChapterCount: Int, limit: Int) {
         val shown = mutableState.value
         if (shown.resultGeneration != refreshGeneration) return
         val rows = shown.sourceOrder.mapNotNull { source ->
@@ -3847,7 +3857,7 @@ class BrowsePersonalRecommendationsScreenModel(
         }
         val mangaById = rows.flatten().associateBy { it.id }
         val known = knownChapterCounts(mangaById.keys).keys
-        val toCheck = ForYouChapterCountCheck.pick(rows.map { row -> row.map { it.id } }, known)
+        val toCheck = ForYouChapterCountCheck.pick(rows.map { row -> row.map { it.id } }, known, limit)
         if (toCheck.isEmpty()) return
 
         val slots = Semaphore(ForYouChapterCountCheck.CONCURRENT_CHECKS)

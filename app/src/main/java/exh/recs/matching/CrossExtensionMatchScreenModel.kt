@@ -27,6 +27,8 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import logcat.LogPriority
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.category.interactor.GetCategories
 import tachiyomi.domain.category.interactor.SetMangaCategories
 import tachiyomi.domain.chapter.interactor.GetChapter
@@ -144,6 +146,8 @@ class CrossExtensionMatchScreenModel(
             originManga = manga
             mutableState.update { it.copy(searchQuery = manga.title) }
             if (mode is CrossExtensionMatchMode.LocalTracking) loadGroupRating(manga)
+            // KMK v0.8.25: groups you already have for this title come first, so a version joins them instead of a new group
+            launch { loadExistingGroups(manga) }
             // KMK --> v0.7.0: Phase 2 – multi-query alternate-title matching
             search(CrossExtensionMatchQueryPlanner.buildQueries(manga))
             // KMK <--
@@ -654,6 +658,91 @@ class CrossExtensionMatchScreenModel(
         }
     }
 
+    // KMK v0.8.25
+    @androidx.compose.runtime.Immutable
+    data class ExistingGroup(val groupId: String, val label: String, val versionCount: Int, val exactName: Boolean)
+
+    /**
+     * Groups that already hold this title under the same name (or one of its other names), then close names. Shown only while
+     * the manga is not in a group, the way Group library automatically matches titles.
+     */
+    private suspend fun loadExistingGroups(manga: Manga) {
+        try {
+            if (getCrossSourceMangaLinks.awaitBySourceUrl(manga.source, manga.url) != null) return
+            val links = getCrossSourceMangaLinks.awaitAll()
+            if (links.isEmpty()) return
+            val byGroup = links.groupBy { it.groupId }
+            val names = byGroup.map { (groupId, groupLinks) ->
+                exh.recs.links.LibraryGroupSuggestionPlanner.GroupNames(
+                    groupId = groupId,
+                    label = groupLinks.map { it.title }.firstOrNull { it.isNotBlank() } ?: groupId,
+                    names = groupLinks.map { it.title }.filter { it.isNotBlank() }.toSet(),
+                )
+            }
+            val suggestion = exh.recs.links.LibraryGroupSuggestionPlanner.plan(listOf(manga), names).firstOrNull() ?: return
+            val exact = (suggestion.target as? exh.recs.links.LibraryGroupSuggestionPlanner.Target.Group)
+                ?.takeIf { suggestion.confidence == exh.recs.links.LibraryGroupSuggestionPlanner.Confidence.EXACT }
+            val shown = (listOfNotNull(exact) + suggestion.alternatives).distinctBy { it.groupId }.take(MAX_EXISTING_GROUPS)
+            val exactIds = if (suggestion.confidence == exh.recs.links.LibraryGroupSuggestionPlanner.Confidence.EXACT) {
+                listOfNotNull(exact?.groupId)
+            } else {
+                // several groups share the name exactly: all of them are exact, and none is picked for the user
+                suggestion.alternatives.filter { group ->
+                    val normalized = exh.recs.links.LibraryGroupSuggestionPlanner.normalize(manga.title)
+                    names.firstOrNull { it.groupId == group.groupId }?.names
+                        ?.any { exh.recs.links.LibraryGroupSuggestionPlanner.normalize(it) == normalized } == true
+                }.map { it.groupId }
+            }
+            mutableState.update { state ->
+                state.copy(
+                    existingGroups = shown.map { group ->
+                        ExistingGroup(group.groupId, group.label, byGroup[group.groupId].orEmpty().size, group.groupId in exactIds)
+                    },
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN, e) { "KMK group: could not look for existing groups" }
+        }
+    }
+
+    /**
+     * Adds the manga being viewed to [groupId] at once and shares the group's rating and progress with it. A title the user
+     * marked "Not the same manga" as one already in the group is not added. Versions picked afterwards join the same group,
+     * because the manga is then in it.
+     */
+    fun joinExistingGroup(group: ExistingGroup) {
+        screenModelScope.launch {
+            val origin = originManga ?: return@launch
+            try {
+                val originKey = tachiyomi.domain.taste.model.CrossSourceRecordKey(origin.source, origin.url)
+                val members = getCrossSourceMangaLinks.awaitByGroupId(group.groupId)
+                val rejected = exh.recs.matching.GroupJoinConfirmations().rejectedAmong(
+                    listOf(originKey),
+                    members.map { tachiyomi.domain.taste.model.CrossSourceRecordKey(it.source, it.url) },
+                )
+                if (rejected.isNotEmpty()) {
+                    mutableState.update { it.copy(joinRejectedLabel = group.label) }
+                    return@launch
+                }
+                val now = System.currentTimeMillis()
+                upsertCrossSourceMangaLinks.await(
+                    listOf(CrossSourceMangaLink(origin.source, origin.url, group.groupId, origin.title, now, now)),
+                )
+                ConfirmedGroupJoinSynchronizer().join(group.groupId, listOf(origin.source to origin.url))
+                mutableState.update { it.copy(existingGroups = emptyList(), joinedGroupLabel = group.label, joinRejectedLabel = null) }
+                if (mode is CrossExtensionMatchMode.LocalTracking) loadGroupRating(origin)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logcat(LogPriority.WARN, e) { "KMK group: could not add the manga to an existing group" }
+                mutableState.update { it.copy(identityFeedback = CrossSourceIdentityMutationResult.FAILED) }
+            }
+        }
+    }
+    // KMK <--
+
     data class State(
         val searchQuery: String = "",
         val items: PersistentMap<Source, MatchItemResult> = persistentMapOf(),
@@ -665,6 +754,10 @@ class CrossExtensionMatchScreenModel(
         val isGroupRatingLoaded: Boolean = false,
         val isGroupRatingUpdating: Boolean = false,
         val groupRatingUpdateFailed: Boolean = false,
+        // KMK v0.8.25: groups with this title or one of its other names, while the manga is not in a group yet
+        val existingGroups: List<ExistingGroup> = emptyList(),
+        val joinedGroupLabel: String? = null,
+        val joinRejectedLabel: String? = null,
     ) {
         val progress: Int = items.count { it.value !is MatchItemResult.Loading }
         val total: Int = items.size
@@ -674,3 +767,6 @@ class CrossExtensionMatchScreenModel(
     }
 }
 // KMK <--
+
+// KMK v0.8.25: how many existing groups are offered above the search results
+private const val MAX_EXISTING_GROUPS = 4

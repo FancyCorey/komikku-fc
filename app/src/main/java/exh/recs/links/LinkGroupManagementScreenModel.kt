@@ -86,6 +86,9 @@ class LinkGroupManagementScreenModel(
     private val joinSynchronizer: Lazy<ConfirmedGroupJoinSynchronizer> = lazy { ConfirmedGroupJoinSynchronizer() },
     // KMK v0.8.25: "Not the same manga" checks, and taking back the confirmations grouping made when the grouping is undone
     private val groupConfirmations: Lazy<GroupJoinConfirmations> = lazy { GroupJoinConfirmations() },
+    // KMK v0.8.25: the same primary-version write the rated lists use
+    private val setCrossSourceGroupPrimary: Lazy<tachiyomi.domain.taste.interactor.SetCrossSourceGroupPrimary> = lazy { Injekt.get() },
+    private val sourcePreferences: Lazy<eu.kanade.domain.source.service.SourcePreferences> = lazy { Injekt.get() },
 ) : StateScreenModel<LinkGroupManagementScreenModel.State>(State.Loading) {
     // KMK <--
 
@@ -117,7 +120,11 @@ class LinkGroupManagementScreenModel(
                     val primaryMember = primaryRow?.let { row ->
                         groupMembers.firstOrNull { it.link.source == row.source && it.link.url == row.url }
                     } ?: groupMembers.firstOrNull()
-                    LinkGroup(groupId, groupLinks, groupMembers, primaryMember)
+                    // KMK v0.8.25: the primary version first, then the others by source name, so the order never jumps around
+                    val ordered = groupMembers.sortedWith(
+                        compareBy<LinkGroupMember>({ it != primaryMember }, { it.sourceName.lowercase(Locale.ROOT) }, { it.link.url }),
+                    )
+                    LinkGroup(groupId, groupLinks, ordered, primaryMember)
                 }
                 .sortedBy { it.primaryTitle.lowercase(Locale.ROOT) }
             val favorites = mangaRepository.getFavorites()
@@ -324,6 +331,25 @@ class LinkGroupManagementScreenModel(
             ).also { entry ->
                 if (entry != null) members.forEach { member -> takeBack(member.key(), members.map { it.key() }, entry.id) }
             }.saved()
+        }
+    }
+
+    /**
+     * KMK v0.8.25: the version that gives the group its title and cover here, on the rated lists and in Move and Merge. Can be
+     * undone like the other group changes.
+     */
+    fun setPrimaryVersion(groupId: String, source: Long, url: String, onResult: (LinkGroupMutationResult) -> Unit = {}) {
+        mutate(onResult) {
+            val previous = getCrossSourceGroupPrimary.awaitByGroupId(groupId)
+            val entry = exh.util.GroupUndoRecorder.buildSetPrimaryEntry(
+                sourcePreferences.value,
+                groupId,
+                previous,
+                RatedLinkKey(source, url),
+            )
+            setCrossSourceGroupPrimary.value.await(groupId, source, url)
+            entry?.let(GroupUndoJournal::record)
+            LinkGroupMutationResult(true, entry?.id)
         }
     }
 

@@ -9,8 +9,14 @@ package exh.recs
  */
 internal object ForYouChapterCountCheck {
 
-    /** Provisional: chapter lists loaded per refresh, across all sources. */
+    /** Chapter lists loaded per refresh while saving data: about the picks on screen. */
     const val MAX_CHECKS_PER_REFRESH = 20
+
+    /**
+     * KMK v0.8.25: otherwise every shown pick is checked, so the minimum chapter count holds for the whole page and not only
+     * its first cards. This is only a safety ceiling; a remembered count is reused for two weeks.
+     */
+    const val MAX_CHECKS_ALL_SHOWN = 200
 
     /** Provisional: chapter lists loaded at the same time. */
     const val CONCURRENT_CHECKS = 3
@@ -50,14 +56,14 @@ internal object ForYouChapterCountCheck {
      * Which shown picks to check: rows in their shown order, the first picks of every row before the later ones, only
      * picks whose count is unknown, each manga once, at most [MAX_CHECKS_PER_REFRESH].
      */
-    fun pick(rows: List<List<Long>>, knownCounts: Set<Long>): List<Long> {
+    fun pick(rows: List<List<Long>>, knownCounts: Set<Long>, limit: Int = MAX_CHECKS_PER_REFRESH): List<Long> {
         val result = LinkedHashSet<Long>()
         val longest = rows.maxOfOrNull { it.size } ?: 0
         for (position in 0 until longest) {
             for (row in rows) {
                 val id = row.getOrNull(position) ?: continue
                 if (id != 0L && id !in knownCounts) result += id
-                if (result.size >= MAX_CHECKS_PER_REFRESH) return result.toList()
+                if (result.size >= limit) return result.toList()
             }
         }
         return result.toList()

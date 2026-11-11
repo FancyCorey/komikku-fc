@@ -272,6 +272,17 @@ class CrossExtensionMatchScreen(
                         MangaIdentityKey(it.source, it.url) in state.selectedKeys
                     }
                     LazyColumn {
+                        // KMK v0.8.25: groups you already have for this title, before the sources' results
+                        if (state.existingGroups.isNotEmpty() || state.joinedGroupLabel != null || state.joinRejectedLabel != null) {
+                            item(key = "existing_groups") {
+                                ExistingGroupsSection(
+                                    groups = state.existingGroups,
+                                    joinedLabel = state.joinedGroupLabel,
+                                    rejectedLabel = state.joinRejectedLabel,
+                                    onJoin = screenModel::joinExistingGroup,
+                                )
+                            }
+                        }
                         items(
                             items = state.items.entries.toList(),
                             key = { (source, _) -> source.id },
@@ -323,6 +334,61 @@ class CrossExtensionMatchScreen(
                     }
                 }
             }
+        }
+    }
+}
+// KMK <--
+
+// KMK v0.8.25 -->
+@Composable
+private fun ExistingGroupsSection(
+    groups: List<CrossExtensionMatchScreenModel.ExistingGroup>,
+    joinedLabel: String?,
+    rejectedLabel: String?,
+    onJoin: (CrossExtensionMatchScreenModel.ExistingGroup) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small)) {
+        when {
+            joinedLabel != null -> Text(
+                text = stringResource(KMR.strings.rec_match_existing_group_joined, joinedLabel),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            else -> {
+                Text(
+                    text = stringResource(KMR.strings.rec_match_existing_groups_header),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                groups.forEach { group ->
+                    androidx.compose.foundation.layout.Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = MaterialTheme.padding.extraSmall),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = group.label, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = tachiyomi.presentation.core.i18n.pluralStringResource(
+                                    KMR.plurals.link_group_management_source_count,
+                                    group.versionCount,
+                                    group.versionCount,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        androidx.compose.material3.TextButton(onClick = { onJoin(group) }) {
+                            Text(stringResource(KMR.strings.rec_match_existing_group_add))
+                        }
+                    }
+                }
+            }
+        }
+        rejectedLabel?.let { label ->
+            Text(
+                text = stringResource(KMR.strings.rec_match_existing_group_rejected, label),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }

@@ -1355,6 +1355,10 @@
     <!-- KMK v0.8.25 --> <string name="link_group_conflict_keep_apart">Keep apart</string>
     <!-- KMK v0.8.25 --> <string name="link_group_management_group_actions">Group actions</string>
     <!-- KMK v0.8.25 --> <string name="link_group_management_member_actions">Actions for %1$s</string>
+    <!-- KMK v0.8.25 --> <string name="rec_match_existing_groups_header">Already in your groups</string>
+    <!-- KMK v0.8.25 --> <string name="rec_match_existing_group_add">Add here</string>
+    <!-- KMK v0.8.25 --> <string name="rec_match_existing_group_joined">Added to %1$s. Versions you pick below join it too.</string>
+    <!-- KMK v0.8.25 --> <string name="rec_match_existing_group_rejected">You marked this as not the same manga as a title in %1$s, so it was not added.</string>
     <!-- KMK v0.8.25 --> <string name="bulk_group_open">Group library automatically</string>
     <!-- KMK v0.8.25 --> <string name="bulk_group_title">Group your library</string>
     <!-- KMK v0.8.25 --> <string name="bulk_group_intro">These titles share a name with a manga you already group, or with each other. Check the ones that are right, change the ones that are close, then group them. Nothing is grouped until you tap Group selected.</string>
