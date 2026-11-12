@@ -48,6 +48,7 @@ class LocalTrackedChapterReadSyncTest {
         val chapterRepository = repositories.chapter
         val links = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
+        coEvery { identityResolver.isRejected(any(), any(), any(), any()) } returns false
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
         val preferences = TrackPreferences(FakePreferenceStore()).also {
             it.autoSyncLocalTrackingFromTrackers().set(true)
@@ -152,6 +153,7 @@ class LocalTrackedChapterReadSyncTest {
         val chapterRepository = mockk<ChapterRepository>(relaxed = true)
         val links = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
+        coEvery { identityResolver.isRejected(any(), any(), any(), any()) } returns false
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
         val preferences = TrackPreferences(FakePreferenceStore()).also {
             it.autoInheritLocalProgress().set(false)
@@ -232,6 +234,7 @@ class LocalTrackedChapterReadSyncTest {
         val chapterRepository = mockk<ChapterRepository>(relaxed = true)
         val links = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
+        coEvery { identityResolver.isRejected(any(), any(), any(), any()) } returns false
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
         val preferences = TrackPreferences(FakePreferenceStore()).also {
             it.autoInheritLocalProgress().set(false)
@@ -310,6 +313,7 @@ class LocalTrackedChapterReadSyncTest {
         val chapterRepository = mockk<ChapterRepository>(relaxed = true)
         val links = mockk<GetCrossSourceMangaLinks>()
         val identityResolver = mockk<CrossSourceIdentityAuthorizationResolver>()
+        coEvery { identityResolver.isRejected(any(), any(), any(), any()) } returns false
         val bridgeRepository = mockk<AlternateSourceBridgeRepository>()
         val preferences = TrackPreferences(FakePreferenceStore()).also {
             it.autoInheritLocalProgress().set(false)

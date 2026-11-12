@@ -221,6 +221,7 @@ fun MangaComfortableGridItem(
     coverRatio: MutableFloatState = remember { mutableFloatStateOf(1f) },
     usePanoramaCover: Boolean,
     fitToPanoramaCover: Boolean = false,
+    onCoverError: (() -> Unit)? = null,
     // KMK <--
 ) {
     // KMK -->
@@ -253,6 +254,7 @@ fun MangaComfortableGridItem(
                                     // KMK <--
                                     .fillMaxWidth(),
                                 data = coverData,
+                                onCoverError = onCoverError,
                                 // KMK -->
                                 alpha = if (isSelected) GRID_SELECTED_COVER_ALPHA else coverAlpha,
                                 bgColor = bgColor ?: MaterialTheme.colorScheme.surface.takeIf { isSelected },
@@ -272,6 +274,7 @@ fun MangaComfortableGridItem(
                                     // KMK <--
                                     .fillMaxWidth(),
                                 data = coverData,
+                                onCoverError = onCoverError,
                                 // KMK -->
                                 alpha = if (isSelected) GRID_SELECTED_COVER_ALPHA else coverAlpha,
                                 bgColor = bgColor ?: MaterialTheme.colorScheme.surface.takeIf { isSelected },

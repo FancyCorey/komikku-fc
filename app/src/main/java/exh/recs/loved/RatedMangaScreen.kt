@@ -19,10 +19,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
@@ -31,6 +28,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,13 +54,10 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import coil3.imageLoader
-import coil3.request.ImageRequest
 import eu.kanade.core.preference.asState
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.presentation.browse.components.MangaItem
 import eu.kanade.presentation.components.AppBar
-import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.SafArtifactCleanupDialog
 import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.util.Screen
@@ -129,7 +124,7 @@ data class RatedMangaScreen(val ratingValue: Int) : Screen() {
  * bottom-nav tab, not a drill-down.
  *
  * Implemented as a compact icon-triggered [DropdownMenu] (the same trigger-Icon-then-DropdownMenu
- * shape [AppBarActions]'s own overflow menu already uses in AppBar.kt) rather than a
+ * shape [AppBar]'s own overflow menu already uses) rather than a
  * [androidx.compose.material3.TabRow]/[androidx.compose.foundation.pager.HorizontalPager] pair:
  * a tab strip would require keeping all four [LovedMangaScreenModel] instances (and their own
  * independent DB queries/selection state) alive concurrently to page between them, which is neither
@@ -337,6 +332,10 @@ internal fun RatedMangaCollectionContent(
     // KMK v0.8.11: explicit merge success/failure feedback -- see MergeIntoGroup below.
     val mergeSuccessMessage = pluralStringResource(KMR.plurals.rated_manga_merge_success, count = selectedCount, selectedCount)
     val mergeFailedMessage = stringResource(KMR.strings.rated_manga_merge_failed)
+    val sharingIncompleteMessage = stringResource(KMR.strings.link_group_sharing_incomplete)
+    val sharingDoneMessage = stringResource(KMR.strings.link_group_sharing_complete)
+    var incompleteSharing by remember { mutableStateOf<LovedMangaScreenModel.MergeResult.PartialSharing?>(null) }
+    var retryingSharing by remember { mutableStateOf(false) }
     // KMK v0.8.20: group-action Undo — same Snackbar-with-action-label convention as Clear
     // Rating/Not Interested above, wired to GroupUndoService via LovedMangaScreenModel.undoLastGroupAction().
     val removeFromGroupSuccessMessage = pluralStringResource(KMR.plurals.rated_manga_remove_from_group_success, count = selectedCount, selectedCount)
@@ -344,6 +343,7 @@ internal fun RatedMangaCollectionContent(
     val groupUndoRestoredMessage = stringResource(KMR.strings.rated_manga_group_undo_restored)
     val groupUndoConflictMessage = stringResource(KMR.strings.rated_manga_group_undo_conflict)
     val groupUndoFailedMessage = stringResource(KMR.strings.rated_manga_group_undo_failed)
+    val groupActionFailedMessage = stringResource(KMR.strings.link_group_management_operation_failed)
     fun showGroupActionResult(message: String, entryId: String?) {
         scope.launch {
             val result = snackbarHostState.showSnackbar(
@@ -353,6 +353,9 @@ internal fun RatedMangaCollectionContent(
             )
             if (result == SnackbarResult.ActionPerformed && entryId != null) {
                 screenModel.undoLastGroupAction(entryId) { outcome ->
+                    if (outcome.result == exh.util.GroupUndoResult.RESTORED && incompleteSharing?.undoEntryId == entryId) {
+                        incompleteSharing = null
+                    }
                     scope.launch {
                         val undoResultMessage = when (outcome.result) {
                             exh.util.GroupUndoResult.RESTORED -> groupUndoRestoredMessage
@@ -363,6 +366,24 @@ internal fun RatedMangaCollectionContent(
                     }
                 }
             }
+        }
+    }
+
+    fun showMergeResult(result: LovedMangaScreenModel.MergeResult) {
+        val wasRetry = retryingSharing
+        retryingSharing = false
+        when (result) {
+            is LovedMangaScreenModel.MergeResult.Success -> {
+                incompleteSharing = null
+                showGroupActionResult(if (wasRetry) sharingDoneMessage else mergeSuccessMessage, result.undoEntryId)
+            }
+            is LovedMangaScreenModel.MergeResult.PartialSharing -> {
+                incompleteSharing = result
+                showGroupActionResult(sharingIncompleteMessage, result.undoEntryId)
+            }
+            LovedMangaScreenModel.MergeResult.Failed ->
+                scope.launch { snackbarHostState.showSnackbar(mergeFailedMessage) }
+            LovedMangaScreenModel.MergeResult.TooFewSelected -> Unit
         }
     }
 
@@ -429,34 +450,31 @@ internal fun RatedMangaCollectionContent(
                             // the AppBar is swapped for the selection-count bar), so it can never
                             // conflict with bulk-selection state.
                             RatedCollectionSwitcher(current = rating, navigator = navigator)
-                            AppBarActions(
-                                persistentListOf<AppBar.AppBarAction>().builder().apply {
-                                    // KMK --> v0.8.0: visible top-right select action for discoverability
+                            RatedMangaActionPlacementMenu(
+                                actions = persistentListOf<AppBar.OverflowAction>().builder().apply {
+                                    // Keep secondary actions in one menu so the collection title stays readable.
                                     // KMK v0.8.1-fix1: enters selection mode without auto-selecting the
                                     // first item — silently selecting an unintended manga was a safety
                                     // gap since bulk actions (clear rating, mark not interested, etc.)
                                     // would then apply to it. Long-press still selects the pressed item.
                                     if (useSelectionActions) {
                                         add(
-                                            AppBar.Action(
+                                            AppBar.OverflowAction(
                                                 title = stringResource(KMR.strings.rated_manga_select),
-                                                icon = Icons.Outlined.Checklist,
                                                 onClick = { screenModel.enterSelectionMode() },
                                             ),
                                         )
                                     }
                                     // KMK <--
                                     add(
-                                        AppBar.Action(
+                                        AppBar.OverflowAction(
                                             title = stringResource(KMR.strings.link_group_management_title),
-                                            icon = Icons.Outlined.Link,
                                             onClick = { navigator.push(LinkGroupManagementScreen()) },
                                         ),
                                     )
                                     add(
-                                        AppBar.Action(
+                                        AppBar.OverflowAction(
                                             title = stringResource(exportActionRes),
-                                            icon = Icons.Outlined.Share,
                                             onClick = {
                                                 val s = screenModel.state.value
                                                 if (s is LovedMangaScreenModel.State.Success && s.displayItems.isNotEmpty()) {
@@ -475,8 +493,6 @@ internal fun RatedMangaCollectionContent(
                                         ),
                                     )
                                 }.build(),
-                            )
-                            RatedMangaActionPlacementMenu(
                                 useSelectionActions = useSelectionActions,
                                 onUseSelectionActionsChanged = { useSelectionActions = it },
                             )
@@ -575,6 +591,23 @@ internal fun RatedMangaCollectionContent(
                         columns = GridCells.Adaptive(96.dp + MaterialTheme.padding.small),
                         contentPadding = contentPadding,
                     ) {
+                        incompleteSharing?.let { pending ->
+                            item(key = "incomplete-sharing", span = { GridItemSpan(maxLineSpan) }) {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.padding.medium),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(sharingIncompleteMessage, Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
+                                    TextButton(
+                                        enabled = !retryingSharing,
+                                        onClick = {
+                                            retryingSharing = true
+                                            screenModel.retryGroupSharing(pending.groupId, pending.undoEntryId, ::showMergeResult)
+                                        },
+                                    ) { Text(stringResource(MR.strings.action_retry)) }
+                                }
+                            }
+                        }
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             RatedGroupDuplicatesToggleRow(
                                 checked = s.groupDuplicates,
@@ -626,12 +659,15 @@ internal fun RatedMangaCollectionContent(
                             // dp guess that would only happen to work for today's data.
                             androidx.compose.foundation.layout.BoxWithConstraints {
                                 val cellWidth = maxWidth
+                                val coverSelection = rememberRatedCover(item)
+                                val displayedCover = coverSelection.current
                                 Box {
                                     MangaItem(
                                         // KMK v0.8.19: evaluation mode never changes manga titles -- only
                                         // source/repo names are obfuscated (see sourceNameById above).
                                         title = item.manga?.title ?: item.taste.title,
-                                        cover = rememberRatedCover(item),
+                                        cover = displayedCover,
+                                        onCoverError = { coverSelection.onError(displayedCover) },
                                         isFavorite = item.manga?.favorite ?: false,
                                         isSelected = item.key in s.selectedKeys,
                                         onClick = {
@@ -834,15 +870,7 @@ internal fun RatedMangaCollectionContent(
                     // shows an explicit non-fatal message either way.
                     // KMK v0.8.20: on success, also offers Undo when the action was journaled (Evaluation
                     // Mode on) via the entry id MergeResult.Success now carries.
-                    screenModel.mergeSelectedIntoGroup { result ->
-                        when (result) {
-                            is LovedMangaScreenModel.MergeResult.Success ->
-                                showGroupActionResult(mergeSuccessMessage, result.undoEntryId)
-                            LovedMangaScreenModel.MergeResult.Failed ->
-                                scope.launch { snackbarHostState.showSnackbar(mergeFailedMessage) }
-                            LovedMangaScreenModel.MergeResult.TooFewSelected -> {}
-                        }
-                    }
+                    screenModel.mergeSelectedIntoGroup(::showMergeResult)
                 },
                 onDismiss = { confirmAction = null },
             )
@@ -852,8 +880,11 @@ internal fun RatedMangaCollectionContent(
                 onConfirm = {
                     // KMK v0.8.20: now reports a real result and offers Undo (previously fired with no
                     // feedback at all, unlike every other bulk action on this screen).
-                    screenModel.removeSelectedFromGroup { entry ->
-                        showGroupActionResult(removeFromGroupSuccessMessage, entry?.id)
+                    screenModel.removeSelectedFromGroup { result ->
+                        showGroupActionResult(
+                            if (result.succeeded) removeFromGroupSuccessMessage else groupActionFailedMessage,
+                            result.undoEntryId,
+                        )
                     }
                 },
                 onDismiss = { confirmAction = null },
@@ -863,8 +894,11 @@ internal fun RatedMangaCollectionContent(
                 message = stringResource(KMR.strings.rated_manga_confirm_ungroup),
                 onConfirm = {
                     // KMK v0.8.20: now reports a real result and offers Undo (previously silent).
-                    screenModel.ungroup(action.groupId) { entry ->
-                        showGroupActionResult(ungroupSuccessMessage, entry?.id)
+                    screenModel.ungroup(action.groupId) { result ->
+                        showGroupActionResult(
+                            if (result.succeeded) ungroupSuccessMessage else groupActionFailedMessage,
+                            result.undoEntryId,
+                        )
                     }
                 },
                 onDismiss = { confirmAction = null },
@@ -1016,6 +1050,7 @@ private fun RatedSelectionBottomBar(
 
 @Composable
 private fun RatedMangaActionPlacementMenu(
+    actions: List<AppBar.OverflowAction>,
     useSelectionActions: Boolean,
     onUseSelectionActionsChanged: (Boolean) -> Unit,
 ) {
@@ -1028,8 +1063,18 @@ private fun RatedMangaActionPlacementMenu(
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            actions.forEach { action ->
+                DropdownMenuItem(
+                    text = { Text(action.title) },
+                    onClick = {
+                        expanded = false
+                        action.onClick()
+                    },
+                )
+            }
+            HorizontalDivider()
             DropdownMenuItem(
-                text = { Text(stringResource(KMR.strings.rated_manga_select)) },
+                text = { Text(stringResource(KMR.strings.rated_manga_actions_in_selection)) },
                 leadingIcon = { RadioButton(selected = useSelectionActions, onClick = null) },
                 onClick = {
                     onUseSelectionActionsChanged(true)
@@ -1037,7 +1082,7 @@ private fun RatedMangaActionPlacementMenu(
                 },
             )
             DropdownMenuItem(
-                text = { Text(stringResource(KMR.strings.rated_manga_item_menu)) },
+                text = { Text(stringResource(KMR.strings.rated_manga_actions_on_cards)) },
                 leadingIcon = { RadioButton(selected = !useSelectionActions, onClick = null) },
                 onClick = {
                     onUseSelectionActionsChanged(false)
@@ -1422,24 +1467,11 @@ private fun RatedSortRow(
  * Loads go through the app's image loader, so a cover that already loaded comes from its cache.
  */
 @Composable
-private fun rememberRatedCover(item: LovedDisplayItem): MangaCover {
+private fun rememberRatedCover(item: LovedDisplayItem): RatedCoverSelection {
     val candidates = remember(item.key, item.coverCandidates) {
         item.coverCandidates.map { it.asMangaCover() }.ifEmpty { listOf(item.manga?.asMangaCover() ?: ratedFallbackCover(item)) }
     }
-    var chosen by remember(candidates) { mutableStateOf(candidates.first()) }
-    if (candidates.size > 1) {
-        val context = androidx.compose.ui.platform.LocalContext.current
-        androidx.compose.runtime.LaunchedEffect(candidates) {
-            for (candidate in candidates) {
-                val result = context.imageLoader.execute(ImageRequest.Builder(context).data(candidate).build())
-                if (result is coil3.request.SuccessResult) {
-                    chosen = candidate
-                    return@LaunchedEffect
-                }
-            }
-        }
-    }
-    return chosen
+    return remember(candidates) { RatedCoverSelection(candidates) }
 }
 
 private fun ratedFallbackCover(item: LovedDisplayItem): MangaCover = MangaCover(

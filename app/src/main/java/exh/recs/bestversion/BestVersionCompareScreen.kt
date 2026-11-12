@@ -288,22 +288,30 @@ class BestVersionCompareScreen(
                             sourceName = screenModel::sourceName,
                             onStartPreview = screenModel::startPreview,
                             onOpenReader = { manga, chapter ->
-                                readerScope.launch {
-                                    val localChapter = getChapterByUrlAndMangaId.await(chapter.url, manga.id)
-                                        ?: updateMangaFromRemote(manga = manga, fetchChapters = true)
-                                            .getOrNull()
-                                            ?.newChapters
-                                            ?.find { it.url == chapter.url }
-                                    if (localChapter != null) {
-                                        context.startActivity(
-                                            ReaderActivity.newIntent(context, manga.id, localChapter.id, preview = true),
-                                        )
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            chapterUnavailableText,
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                if (returnSelection) {
+                                    val key = MangaIdentityKey(manga.source, manga.url)
+                                    screenModel.selectManualChapter(key, chapter)
+                                    fullscreenCandidateSource = key.source
+                                    fullscreenCandidateUrl = key.url
+                                    screenModel.openFullscreenCandidate(key)
+                                } else {
+                                    readerScope.launch {
+                                        val localChapter = getChapterByUrlAndMangaId.await(chapter.url, manga.id)
+                                            ?: updateMangaFromRemote(manga = manga, fetchChapters = true)
+                                                .getOrNull()
+                                                ?.newChapters
+                                                ?.find { it.url == chapter.url }
+                                        if (localChapter != null) {
+                                            context.startActivity(
+                                                ReaderActivity.newIntent(context, manga.id, localChapter.id, preview = true),
+                                            )
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                chapterUnavailableText,
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                        }
                                     }
                                 }
                             },
@@ -353,20 +361,28 @@ class BestVersionCompareScreen(
                                 screenModel.openFullscreenCandidate(key)
                             },
                             onOpenReader = { manga, chapter ->
-                                readerScope.launch {
-                                    val localChapter = getChapterByUrlAndMangaId.await(chapter.url, manga.id)
-                                        ?: updateMangaFromRemote(manga = manga, fetchChapters = true)
-                                            .getOrNull()
-                                            ?.newChapters
-                                            ?.find { it.url == chapter.url }
-                                    if (localChapter != null) {
-                                        context.startActivity(ReaderActivity.newIntent(context, manga.id, localChapter.id, preview = true))
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            chapterUnavailableText,
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                if (returnSelection) {
+                                    val key = MangaIdentityKey(manga.source, manga.url)
+                                    screenModel.selectManualChapter(key, chapter)
+                                    fullscreenCandidateSource = key.source
+                                    fullscreenCandidateUrl = key.url
+                                    screenModel.openFullscreenCandidate(key)
+                                } else {
+                                    readerScope.launch {
+                                        val localChapter = getChapterByUrlAndMangaId.await(chapter.url, manga.id)
+                                            ?: updateMangaFromRemote(manga = manga, fetchChapters = true)
+                                                .getOrNull()
+                                                ?.newChapters
+                                                ?.find { it.url == chapter.url }
+                                        if (localChapter != null) {
+                                            context.startActivity(ReaderActivity.newIntent(context, manga.id, localChapter.id, preview = true))
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                chapterUnavailableText,
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                        }
                                     }
                                 }
                             },

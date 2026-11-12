@@ -56,7 +56,7 @@ class PreferenceRestorer(
         }
     }
 
-    private suspend fun restorePreferences(
+    internal suspend fun restorePreferences(
         toRestore: List<BackupPreference>,
         preferenceStore: PreferenceStore,
         backupCategories: List<BackupCategory>? = null,
@@ -66,6 +66,8 @@ class PreferenceRestorer(
         val backupCategoriesById = backupCategories?.associateBy { it.id.toString() }.orEmpty()
         val prefs = preferenceStore.getAll()
         toRestore.forEach { (key, value) ->
+            // Old backups included this device-local journal as an ordinary preference.
+            if (exh.recs.matching.GroupJoinConfirmations.isOwnershipPreference(key)) return@forEach
             try {
                 when (value) {
                     is IntPreferenceValue -> {

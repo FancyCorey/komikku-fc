@@ -52,7 +52,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.SharingStarted
@@ -3830,19 +3829,12 @@ class BrowsePersonalRecommendationsScreenModel(
 
     // KMK --> v0.8.24
     /** Chapter counts known for [ids]: the local chapter rows first, then counts For You checked earlier. */
-    private suspend fun knownChapterCounts(ids: Collection<Long>): Map<Long, Long> {
-        val local = getChapterCounts.await(ids)
-        val checked = try {
-            ForYouChapterCountCheck.fresh(
-                ForYouChapterCountCheck.parse(sourcePreferences.recommendationCheckedChapterCounts().get()),
-                System.currentTimeMillis(),
-            )
-        } catch (_: Exception) {
-            emptyMap()
-        }
-        if (checked.isEmpty()) return local
-        return ids.mapNotNull { id -> (local[id] ?: checked[id])?.let { id to it } }.toMap()
+    private val chapterCountChecker by lazy {
+        RecommendationChapterCountChecker(sourceManager, sourcePreferences, coroutineDispatcher)
     }
+
+    private suspend fun knownChapterCounts(ids: Collection<Long>): Map<Long, Long> =
+        chapterCountChecker.knownCounts(ids, getChapterCounts.await(ids))
 
     /**
      * Loads the chapter lists of a few shown picks whose chapter count is unknown (see [ForYouChapterCountCheck]),
@@ -3855,47 +3847,13 @@ class BrowsePersonalRecommendationsScreenModel(
         val rows = shown.sourceOrder.mapNotNull { source ->
             (shown.items[source] as? PersonalRecommendationResult.Success)?.result?.map { it.manga }
         }
-        val mangaById = rows.flatten().associateBy { it.id }
-        val known = knownChapterCounts(mangaById.keys).keys
-        val toCheck = ForYouChapterCountCheck.pick(rows.map { row -> row.map { it.id } }, known, limit)
-        if (toCheck.isEmpty()) return
-
-        val slots = Semaphore(ForYouChapterCountCheck.CONCURRENT_CHECKS)
-        val counts = coroutineScope {
-            toCheck.map { id ->
-                async {
-                    slots.withPermit {
-                        val manga = mangaById[id] ?: return@withPermit null
-                        val source = sourceManager.get(manga.source) ?: return@withPermit null
-                        val count = try {
-                            withTimeoutOrNull(ForYouChapterCountCheck.CHECK_TIMEOUT_MS) {
-                                SourceRuntime.run(source, SourceRuntimeOperation.MangaUpdate, coroutineDispatcher) {
-                                    getMangaUpdate(manga.toSManga(), emptyList(), fetchDetails = false, fetchChapters = true)
-                                        .chapters.size.toLong()
-                                }.getOrThrowSourceRuntimeException()
-                            }
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (_: Throwable) {
-                            null
-                        }
-                        // An empty list more likely means the source could not read its chapters: treat as unknown.
-                        count?.takeIf { it > 0 }?.let { id to it }
-                    }
-                }
-            }.map { it.await() }.filterNotNull().toMap()
+        val local = getChapterCounts.await(rows.flatten().map { it.id }.filter { it > 0 })
+        chapterCountChecker.checkShown(rows, local, limit) { counts ->
+            removeTooShort(refreshGeneration, minChapterCount, counts)
         }
-        if (counts.isEmpty()) return
+    }
 
-        val now = System.currentTimeMillis()
-        try {
-            val preference = sourcePreferences.recommendationCheckedChapterCounts()
-            val merged = ForYouChapterCountCheck.parse(preference.get()) +
-                counts.mapValues { ForYouChapterCountCheck.Checked(it.value, now) }
-            preference.set(ForYouChapterCountCheck.serialize(merged, now))
-        } catch (_: Exception) {
-        }
-
+    private fun removeTooShort(refreshGeneration: Long, minChapterCount: Int, counts: Map<Long, Long>) {
         val tooShort = counts.filterValues { it < minChapterCount }.keys
         if (tooShort.isEmpty()) return
         fun PersonalRecommendationResult?.without(): PersonalRecommendationResult? =

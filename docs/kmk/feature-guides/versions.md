@@ -41,9 +41,9 @@ These are older captures and do not show **View in Reader**, which current build
 
 ## Read a chapter before choosing
 
-Choose **View in Reader** on the current version or another version to open its selected chapter in the full reader. This action is available even when the small previews fail. You can check text size, image clarity, page order, and scrolling using your usual reader controls.
+Choose **View in Reader** on the current version or another version to inspect its selected chapter. This action is available even when the small previews fail. When you start Best Version from a manga page, it opens the full reader. In v0.8.25, when you start the comparison from an already-open reader, it uses a full-screen preview with page navigation and zoom instead. This keeps your original reader and the comparison available when you go back.
 
-Press **Back** to return to the comparison screen. Opening the reader does not select a best version or start migration. It is ordinary reading, so reading a chapter can update your saved reading progress.
+Press **Back** to return to the comparison screen. Opening the reader does not select a best version or start migration. In v0.8.24 this counts as ordinary reading and can update progress. In the upcoming v0.8.25 it is a preview: it leaves your reading history, chapter progress and trackers unchanged.
 
 If a candidate's chapter list cannot be loaded, use **Retry** for the failed candidates; successful and unavailable candidates keep their own results. If a chapter cannot be found, choose a chapter from that candidate's own list. A failed thumbnail alone does not mean that the full reader will fail.
 

@@ -121,6 +121,11 @@ class LovedMangaScreenModel(
     // KMK v0.8.25: titles merged into a group get its tracking, rating and tracker entries
     private val joinSynchronizer: Lazy<exh.recs.matching.ConfirmedGroupJoinSynchronizer> =
         lazy { exh.recs.matching.ConfirmedGroupJoinSynchronizer() },
+    private val groupConfirmations: Lazy<exh.recs.matching.GroupJoinConfirmations> =
+        lazy { exh.recs.matching.GroupJoinConfirmations(controller = identityController) },
+    private val trackingLifecycle: Lazy<exh.recs.matching.GroupTrackingLifecycle> = lazy {
+        exh.recs.matching.GroupTrackingLifecycle(getCrossSourceMangaLinks, getCrossSourceGroupPrimary, joinSynchronizer)
+    },
     // KMK <--
 ) : StateScreenModel<LovedMangaScreenModel.State>(State.Loading) {
 
@@ -607,64 +612,55 @@ class LovedMangaScreenModel(
         }
         screenModelScope.launch {
             val result = runCatching {
-                val selected = selectedEntries.map { entry ->
-                    val key = RatedMangaKey.of(entry.taste)
-                    RatedGroupMergePlanner.SelectedEntry(
-                        key = key,
-                        title = entry.manga?.title ?: entry.taste.title,
-                        existingGroupId = current.linkGroupByKey["${key.source}|${key.url}"],
+                val (plan, undoEntry) = exh.recs.matching.GroupTrackingMembershipCoordinator.withMembershipLock {
+                    val selected = selectedEntries.map { entry ->
+                        val key = RatedMangaKey.of(entry.taste)
+                        RatedGroupMergePlanner.SelectedEntry(
+                            key = key,
+                            title = entry.manga?.title ?: entry.taste.title,
+                            existingGroupId = getCrossSourceMangaLinks.awaitBySourceUrl(key.source, key.url)?.groupId,
+                        )
+                    }
+                    val distinctGroupIds = selected.mapNotNull { it.existingGroupId }.distinct()
+                    val existingGroupMembers = distinctGroupIds.associateWith { groupId ->
+                        getCrossSourceMangaLinks.awaitByGroupId(groupId)
+                    }
+                    val plan = planRatedGroupMerge(
+                        selected = selected,
+                        existingGroupMembers = existingGroupMembers,
+                        now = System.currentTimeMillis(),
+                        newGroupIdProvider = { UUID.randomUUID().toString() },
                     )
+                        ?: error("RatedGroupMergePlanner.plan() returned null for ${selected.size} selected entries")
+                    // KMK v0.8.20: build the not-yet-committed group-undo entry BEFORE the write (so it
+                    // captures the correct pre-merge state), but only record it into the journal after the
+                    // write below actually succeeds -- see GroupUndoRecorder's class doc.
+                    val undoEntry = exh.util.GroupUndoRecorder.buildMergeEntry(sourcePreferences, plan, existingGroupMembers)
+                    val keys = plan.writes.map { tachiyomi.domain.taste.model.CrossSourceRecordKey(it.source, it.url) }
+                    // A rated-list merge is not permission to overturn a prior identity rejection.
+                    check(groupConfirmations.value.rejectedAmong(keys, emptyList()).isEmpty())
+                    upsertCrossSourceMangaLinks.await(plan.writes)
+                    undoEntry?.let { exh.util.GroupUndoJournal.record(it) }
+                    plan to undoEntry
                 }
-                val distinctGroupIds = selected.mapNotNull { it.existingGroupId }.distinct()
-                val existingGroupMembers = distinctGroupIds.associateWith { groupId ->
-                    getCrossSourceMangaLinks.awaitByGroupId(groupId)
-                }
-                val plan = planRatedGroupMerge(
-                    selected = selected,
-                    existingGroupMembers = existingGroupMembers,
-                    now = System.currentTimeMillis(),
-                    newGroupIdProvider = { UUID.randomUUID().toString() },
-                )
-                    ?: error("RatedGroupMergePlanner.plan() returned null for ${selected.size} selected entries")
-                // KMK v0.8.20: build the not-yet-committed group-undo entry BEFORE the write (so it
-                // captures the correct pre-merge state), but only record it into the journal after the
-                // write below actually succeeds -- see GroupUndoRecorder's class doc.
-                val undoEntry = exh.util.GroupUndoRecorder.buildMergeEntry(sourcePreferences, plan, existingGroupMembers)
-                // Confirm the complete post-merge membership, including members that were not
-                // individually selected but were pulled in from a selected group. This keeps the
-                // identity decision set aligned with the transactional link write and the Undo
-                // snapshot rather than silently confirming only the visible selection.
-                val identityAnchor = plan.writes.first().let { RatedMangaKey(it.source, it.url) }
-                val identityResult = identityController.mutateAll(
-                    plan.writes.map { link -> RatedMangaKey(link.source, link.url) }
-                        .filter { it != identityAnchor }
-                        .map { candidate ->
-                            tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.canonicalPair(
-                                tachiyomi.domain.taste.model.CrossSourceRecordKey(identityAnchor.source, identityAnchor.url),
-                                tachiyomi.domain.taste.model.CrossSourceRecordKey(candidate.source, candidate.url),
-                            )
-                        },
-                    exh.recs.matching.CrossSourceIdentityMutation.CONFIRM,
-                )
-                check(
-                    identityResult != exh.recs.matching.CrossSourceIdentityMutationResult.CONFLICT &&
-                        identityResult != exh.recs.matching.CrossSourceIdentityMutationResult.FAILED,
-                )
-                upsertCrossSourceMangaLinks.await(plan.writes)
-                undoEntry?.let { exh.util.GroupUndoJournal.record(it) }
                 // KMK v0.8.25: the link is saved; now give the merged titles the group's tracking, rating and tracker entries
-                try {
-                    joinSynchronizer.value.onMembersJoined(plan.targetGroupId, plan.writes.map { it.source to it.url })
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    // never undoes the merge
-                }
-                plan to undoEntry?.id
+                val sharingComplete = shareMergedGroup(plan.targetGroupId, plan.writes, undoEntry?.id)
+                Triple(plan, undoEntry?.id, sharingComplete)
             }
-            result.onSuccess { (plan, undoEntryId) ->
-                applyLinkWrites(plan.writes, plan.writes.mapTo(mutableSetOf()) { RatedMangaKey(it.source, it.url) })
-                onResult(MergeResult.Success(undoEntryId))
+            result.onSuccess { (plan, undoEntryId, sharingComplete) ->
+                val confirmedKeys = if (sharingComplete) {
+                    plan.writes.mapTo(mutableSetOf()) { RatedMangaKey(it.source, it.url) }
+                } else {
+                    emptySet()
+                }
+                applyLinkWrites(plan.writes, confirmedKeys)
+                onResult(
+                    if (sharingComplete) {
+                        MergeResult.Success(undoEntryId)
+                    } else {
+                        MergeResult.PartialSharing(undoEntryId, plan.targetGroupId)
+                    },
+                )
                 clearSelection()
             }.onFailure { e ->
                 if (e is CancellationException) throw e
@@ -675,14 +671,52 @@ class LovedMangaScreenModel(
 
     sealed interface MergeResult {
         data class Success(val undoEntryId: String?) : MergeResult
+        data class PartialSharing(val undoEntryId: String?, val groupId: String) : MergeResult
         data object TooFewSelected : MergeResult
         data object Failed : MergeResult
+    }
+
+    /** Retries sharing for current members without repeating the merge or creating another undo entry. */
+    fun retryGroupSharing(groupId: String, undoEntryId: String?, onResult: (MergeResult) -> Unit = {}) {
+        screenModelScope.launch {
+            val result = try {
+                val members = getCrossSourceMangaLinks.awaitByGroupId(groupId)
+                if (members.isEmpty()) {
+                    MergeResult.Failed
+                } else {
+                    val actionId = undoEntryId?.takeIf { id -> exh.util.GroupUndoJournal.snapshot().any { it.id == id } }
+                    if (shareMergedGroup(groupId, members, actionId)) {
+                        applyLinkWrites(members, members.mapTo(mutableSetOf()) { RatedMangaKey(it.source, it.url) })
+                        MergeResult.Success(actionId)
+                    } else {
+                        MergeResult.PartialSharing(actionId, groupId)
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                MergeResult.PartialSharing(undoEntryId, groupId)
+            }
+            onResult(result)
+        }
+    }
+
+    private suspend fun shareMergedGroup(
+        groupId: String,
+        members: List<tachiyomi.domain.taste.model.CrossSourceMangaLink>,
+        actionId: String?,
+    ): Boolean = try {
+        joinSynchronizer.value.join(groupId, members.map { it.source to it.url }, actionId).sharingComplete
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        false
     }
 
     /** Undoes the most recent reversible group action (merge / remove-from-group / ungroup), if any. */
     fun undoLastGroupAction(entryId: String, onResult: (exh.util.GroupUndoOutcome) -> Unit = {}) {
         screenModelScope.launch {
-            val outcome = groupUndoService.undo(entryId)
+            val outcome = trackingLifecycle.value.undo(entryId, groupUndoService, groupConfirmations.value)
             onResult(outcome)
         }
     }
@@ -707,99 +741,103 @@ class LovedMangaScreenModel(
 
     /**
      * Removes the current selection from their current confirmed group(s). Does not clear ratings.
-     * @param onResult receives the committed [exh.util.GroupJournalEntry] (for an Undo action) or
-     * `null` if nothing was removed. The journal is local and available to ordinary users; its
+     * @param onResult reports success and the undo entry ID, or failure without claiming the removal completed. The journal is local and available to ordinary users; its
      * developer-only details remain separately gated.
      */
-    fun removeSelectedFromGroup(onResult: (exh.util.GroupJournalEntry?) -> Unit = {}) {
-        val current = mutableState.value as? State.Success ?: return
+    fun removeSelectedFromGroup(onResult: (exh.recs.links.LinkGroupMutationResult) -> Unit = {}) {
+        val current = mutableState.value as? State.Success ?: return onResult(exh.recs.links.LinkGroupMutationResult(false))
         val targets = current.selectedKeys.filter { current.linkGroupByKey.containsKey("${it.source}|${it.url}") }
-        if (targets.isEmpty()) return
+        if (targets.isEmpty()) return onResult(exh.recs.links.LinkGroupMutationResult(false))
         screenModelScope.launch {
-            // KMK v0.8.20: read each link's full pre-removal row before deleting it, and only include
-            // a key in the group-undo snapshot if its delete actually succeeded -- see
-            // GroupUndoRecorder's build-before/commit-after contract.
-            val removed = mutableListOf<Pair<exh.util.RatedLinkKey, tachiyomi.domain.taste.model.CrossSourceMangaLink>>()
-            targets.forEach { key ->
-                val previous = try {
-                    getCrossSourceMangaLinks.awaitBySourceUrl(key.source, key.url)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    null
+            val result = try {
+                exh.recs.matching.GroupTrackingMembershipCoordinator.withMembershipLock {
+                    val linksBefore = getCrossSourceMangaLinks.awaitAll()
+                    val selected = linksBefore.filter { link -> targets.any { it.source == link.source && it.url == link.url } }
+                    check(selected.size == targets.size)
+                    trackingLifecycle.value.separate(selected.map { it.source to it.url }.toSet())
+                    val removed = mutableListOf<Pair<exh.util.RatedLinkKey, tachiyomi.domain.taste.model.CrossSourceMangaLink>>()
+                    selected.forEach { previous ->
+                        try {
+                            deleteCrossSourceMangaLink.awaitBySourceUrl(previous.source, previous.url)
+                            removed += exh.util.RatedLinkKey(previous.source, previous.url) to previous
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            // Preserve the successful subset for Undo, but report an incomplete removal below.
+                        }
+                    }
+                    val entry = exh.util.GroupUndoRecorder.buildRemoveFromGroupEntry(sourcePreferences, removed)
+                    entry?.let { exh.util.GroupUndoJournal.record(it) }
+                    cleanupGroupConfirmations {
+                        removed.forEach { (_, previous) ->
+                            groupConfirmations.value.reverseBetween(
+                                tachiyomi.domain.taste.model.CrossSourceRecordKey(previous.source, previous.url),
+                                linksBefore.filter { it.groupId == previous.groupId }
+                                    .map { tachiyomi.domain.taste.model.CrossSourceRecordKey(it.source, it.url) },
+                                entry?.id,
+                            )
+                        }
+                    }
+                    val after = mutableState.value as? State.Success
+                    if (after != null) {
+                        val updated = after.linkGroupByKey.toMutableMap()
+                        removed.forEach { (key, _) -> updated.remove("${key.source}|${key.url}") }
+                        mutableState.value = after.copy(linkGroupByKey = updated)
+                    }
+                    if (removed.isNotEmpty()) clearSelection()
+                    exh.recs.links.LinkGroupMutationResult(removed.size == targets.size, entry?.id)
                 }
-                val deleted = try {
-                    deleteCrossSourceMangaLink.awaitBySourceUrl(key.source, key.url)
-                    true
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    false
-                }
-                if (deleted && previous != null) {
-                    removed += exh.util.RatedLinkKey(key.source, key.url) to previous
-                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                exh.recs.links.LinkGroupMutationResult(false)
             }
-            val undoEntry = exh.util.GroupUndoRecorder.buildRemoveFromGroupEntry(sourcePreferences, removed)
-            undoEntry?.let { exh.util.GroupUndoJournal.record(it) }
-            // KMK v0.8.11: reflect the removal immediately -- see the class-level note above
-            // mergeSelectedIntoGroup().
-            val after = mutableState.value as? State.Success
-            if (after != null) {
-                val updated = after.linkGroupByKey.toMutableMap()
-                removed.forEach { (key, _) -> updated.remove("${key.source}|${key.url}") }
-                mutableState.value = after.copy(linkGroupByKey = updated)
-            }
-            if (removed.isNotEmpty()) clearSelection()
-            onResult(undoEntry)
+            onResult(result)
         }
     }
 
-    /**
-     * Deletes every link in [groupId] and its stored primary version, atomically. Does not clear
-     * ratings.
-     * @param onResult receives the committed [exh.util.GroupJournalEntry] (for an Undo action) or
-     * `null` if the group was already empty or the delete failed. The local journal is not gated by
-     * Evaluation Mode.
-     */
-    fun ungroup(groupId: String, onResult: (exh.util.GroupJournalEntry?) -> Unit = {}) {
+    /** Separates trackers and removes every link/primary in the group; copied ratings and history remain intact. */
+    fun ungroup(groupId: String, onResult: (exh.recs.links.LinkGroupMutationResult) -> Unit = {}) {
         screenModelScope.launch {
-            // KMK v0.8.20: snapshot the complete pre-ungroup state before the atomic delete, and only
-            // commit the group-undo entry after that delete actually succeeds.
-            val previousLinks = try {
-                getCrossSourceMangaLinks.awaitByGroupId(groupId)
+            val result = try {
+                exh.recs.matching.GroupTrackingMembershipCoordinator.withMembershipLock {
+                    val previousLinks = getCrossSourceMangaLinks.awaitByGroupId(groupId)
+                    if (previousLinks.isEmpty()) return@withMembershipLock exh.recs.links.LinkGroupMutationResult(false)
+                    val previousPrimary = getCrossSourceGroupPrimary.awaitByGroupId(groupId)
+                    trackingLifecycle.value.separate(previousLinks.map { it.source to it.url }.toSet())
+                    deleteCrossSourceGroupCompletely.await(groupId)
+                    val entry = exh.util.GroupUndoRecorder.buildUngroupEntry(sourcePreferences, groupId, previousLinks, previousPrimary)
+                    entry?.let { exh.util.GroupUndoJournal.record(it) }
+                    cleanupGroupConfirmations {
+                        val keys = previousLinks.map { tachiyomi.domain.taste.model.CrossSourceRecordKey(it.source, it.url) }
+                        keys.forEach { groupConfirmations.value.reverseBetween(it, keys, entry?.id) }
+                    }
+                    val after = mutableState.value as? State.Success
+                    if (after != null) {
+                        mutableState.value = after.copy(
+                            linkGroupByKey = after.linkGroupByKey.filterValues { it != groupId },
+                            primaryByGroupId = after.primaryByGroupId - groupId,
+                        )
+                    }
+                    clearSelection()
+                    exh.recs.links.LinkGroupMutationResult(true, entry?.id)
+                }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
-                emptyList()
+            } catch (_: Exception) {
+                exh.recs.links.LinkGroupMutationResult(false)
             }
-            val previousPrimary = try {
-                getCrossSourceGroupPrimary.awaitByGroupId(groupId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                null
-            }
-            var deleted = false
-            val undoEntry = try {
-                deleteCrossSourceGroupCompletely.await(groupId)
-                deleted = true
-                exh.util.GroupUndoRecorder.buildUngroupEntry(sourcePreferences, groupId, previousLinks, previousPrimary)
-                    ?.also { exh.util.GroupUndoJournal.record(it) }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                null
-            }
-            // KMK v0.8.11: reflect the ungroup immediately -- see the class-level note above
-            // mergeSelectedIntoGroup().
-            val after = mutableState.value as? State.Success
-            if (after != null && deleted) {
-                val updated = after.linkGroupByKey.filterValues { it != groupId }
-                mutableState.value = after.copy(linkGroupByKey = updated, primaryByGroupId = after.primaryByGroupId - groupId)
-            }
-            if (deleted) clearSelection()
-            onResult(undoEntry)
+            onResult(result)
+        }
+    }
+
+    private suspend fun cleanupGroupConfirmations(block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Link changes already committed. Failed conditional clears retain their ownership records.
         }
     }
 

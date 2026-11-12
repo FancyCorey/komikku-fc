@@ -252,172 +252,180 @@ fun Screen.personalRecommendationsTab(): TabContent {
             },
             title = { Text(stringResource(KMR.strings.rec_for_you_focus_title)) },
             text = {
-                Column {
-                    ForYouMinChapterRow(selected = pendingMinChapters, onSelect = { pendingMinChapters = it })
-                    OutlinedTextField(
-                        value = focusSearchQuery,
-                        onValueChange = { focusSearchQuery = it },
-                        label = { Text(stringResource(KMR.strings.rec_for_you_focus_search_hint)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    // KMK v0.8.24
-                    Text(
-                        text = stringResource(KMR.strings.rec_focus_chip_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                    if (savedFocusModes.isNotEmpty()) {
-                        Text(
-                            text = stringResource(KMR.strings.rec_for_you_focus_saved_modes_title),
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                        savedFocusModes.forEachIndexed { index, mode ->
-                            // KMK v0.8.21-fix4: a preset whose stored criteria no longer fully
-                            // resolve against the live focus-dialog options must say so, not
-                            // silently apply a smaller-than-saved selection or vanish -- per
-                            // SavedFocusModeStore.resolveApply's own contract.
-                            val resolved = SavedFocusModeStore.resolveApply(mode, focusOptions.toSet())
-                            val isStale = resolved.include.size < mode.includeGroups.size ||
-                                resolved.exclude.size < mode.excludeGroups.size
-                            var manageMenuOpen by remember(mode.id) { mutableStateOf(false) }
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = mode.name,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .clickable {
-                                                focusInclude = resolved.include
-                                                focusExclude = resolved.exclude
-                                                focusMatchAll = resolved.matchAll
-                                                screenModel.setActiveFocus(resolved)
-                                                showBroaderResults = false
-                                                focusDialogOpen = false
+                FocusTagPicker(
+                    layout = focusLayout,
+                    include = focusInclude,
+                    exclude = focusExclude,
+                    searching = focusSearchQuery.isNotBlank(),
+                    onCycle = { group ->
+                        val (newInclude, newExclude) = cycleFocusGroup(group, focusInclude, focusExclude)
+                        focusInclude = newInclude
+                        focusExclude = newExclude
+                    },
+                    beforeTags = {
+                        item(key = "focus-controls") {
+                            ForYouMinChapterRow(selected = pendingMinChapters, onSelect = { pendingMinChapters = it })
+                            OutlinedTextField(
+                                value = focusSearchQuery,
+                                onValueChange = { focusSearchQuery = it },
+                                label = { Text(stringResource(KMR.strings.rec_for_you_focus_search_hint)) },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            // KMK v0.8.24
+                            Text(
+                                text = stringResource(KMR.strings.rec_focus_chip_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                        if (savedFocusModes.isNotEmpty()) {
+                            item(key = "saved-heading") {
+                                Text(text = stringResource(KMR.strings.rec_for_you_focus_saved_modes_title), style = MaterialTheme.typography.labelMedium)
+                            }
+                            savedFocusModes.forEachIndexed { index, mode ->
+                                item(key = "saved-${mode.id}") {
+                                    // KMK v0.8.21-fix4: a preset whose stored criteria no longer fully
+                                    // resolve against the live focus-dialog options must say so, not
+                                    // silently apply a smaller-than-saved selection or vanish -- per
+                                    // SavedFocusModeStore.resolveApply's own contract.
+                                    val resolved = SavedFocusModeStore.resolveApply(mode, focusOptions.toSet())
+                                    val isStale = resolved.include.size < mode.includeGroups.size ||
+                                        resolved.exclude.size < mode.excludeGroups.size
+                                    var manageMenuOpen by remember(mode.id) { mutableStateOf(false) }
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = mode.name,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .clickable {
+                                                        focusInclude = resolved.include
+                                                        focusExclude = resolved.exclude
+                                                        focusMatchAll = resolved.matchAll
+                                                        screenModel.setActiveFocus(resolved)
+                                                        showBroaderResults = false
+                                                        focusDialogOpen = false
+                                                    }
+                                                    .padding(vertical = MaterialTheme.padding.small),
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    val ids = savedFocusModes.map { it.id }.toMutableList()
+                                                    ids.add(index - 1, ids.removeAt(index))
+                                                    screenModel.reorderFocusModes(ids)
+                                                },
+                                                enabled = index > 0,
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.KeyboardArrowUp,
+                                                    contentDescription = stringResource(KMR.strings.rec_for_you_focus_move_up),
+                                                )
                                             }
-                                            .padding(vertical = MaterialTheme.padding.small),
-                                    )
-                                    IconButton(
-                                        onClick = {
-                                            val ids = savedFocusModes.map { it.id }.toMutableList()
-                                            ids.add(index - 1, ids.removeAt(index))
-                                            screenModel.reorderFocusModes(ids)
-                                        },
-                                        enabled = index > 0,
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.KeyboardArrowUp,
-                                            contentDescription = stringResource(KMR.strings.rec_for_you_focus_move_up),
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            val ids = savedFocusModes.map { it.id }.toMutableList()
-                                            ids.add(index + 1, ids.removeAt(index))
-                                            screenModel.reorderFocusModes(ids)
-                                        },
-                                        enabled = index < savedFocusModes.lastIndex,
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.KeyboardArrowDown,
-                                            contentDescription = stringResource(KMR.strings.rec_for_you_focus_move_down),
-                                        )
-                                    }
-                                    Box {
-                                        IconButton(onClick = { manageMenuOpen = true }) {
-                                            Icon(
-                                                imageVector = Icons.Outlined.MoreVert,
-                                                contentDescription = stringResource(KMR.strings.rec_for_you_focus_manage),
-                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    val ids = savedFocusModes.map { it.id }.toMutableList()
+                                                    ids.add(index + 1, ids.removeAt(index))
+                                                    screenModel.reorderFocusModes(ids)
+                                                },
+                                                enabled = index < savedFocusModes.lastIndex,
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.KeyboardArrowDown,
+                                                    contentDescription = stringResource(KMR.strings.rec_for_you_focus_move_down),
+                                                )
+                                            }
+                                            Box {
+                                                IconButton(onClick = { manageMenuOpen = true }) {
+                                                    Icon(
+                                                        imageVector = Icons.Outlined.MoreVert,
+                                                        contentDescription = stringResource(KMR.strings.rec_for_you_focus_manage),
+                                                    )
+                                                }
+                                                DropdownMenu(expanded = manageMenuOpen, onDismissRequest = { manageMenuOpen = false }) {
+                                                    DropdownMenuItem(
+                                                        text = { Text(stringResource(KMR.strings.rec_for_you_focus_rename)) },
+                                                        onClick = {
+                                                            manageMenuOpen = false
+                                                            renameTarget = mode
+                                                        },
+                                                    )
+                                                    DropdownMenuItem(
+                                                        text = { Text(stringResource(KMR.strings.rec_for_you_focus_update)) },
+                                                        enabled = focusCriteria.isActive,
+                                                        onClick = {
+                                                            manageMenuOpen = false
+                                                            screenModel.updateFocusModeCriteria(mode.id, focusInclude, focusExclude, focusMatchAll)
+                                                        },
+                                                    )
+                                                    DropdownMenuItem(
+                                                        text = { Text(stringResource(MR.strings.action_delete)) },
+                                                        onClick = {
+                                                            manageMenuOpen = false
+                                                            deleteTarget = mode
+                                                        },
+                                                    )
+                                                }
+                                            }
                                         }
-                                        DropdownMenu(expanded = manageMenuOpen, onDismissRequest = { manageMenuOpen = false }) {
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(KMR.strings.rec_for_you_focus_rename)) },
-                                                onClick = {
-                                                    manageMenuOpen = false
-                                                    renameTarget = mode
-                                                },
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(KMR.strings.rec_for_you_focus_update)) },
-                                                enabled = focusCriteria.isActive,
-                                                onClick = {
-                                                    manageMenuOpen = false
-                                                    screenModel.updateFocusModeCriteria(mode.id, focusInclude, focusExclude, focusMatchAll)
-                                                },
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(MR.strings.action_delete)) },
-                                                onClick = {
-                                                    manageMenuOpen = false
-                                                    deleteTarget = mode
-                                                },
+                                        if (isStale) {
+                                            Text(
+                                                text = stringResource(KMR.strings.rec_for_you_focus_stale),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.error,
                                             )
                                         }
                                     }
                                 }
-                                if (isStale) {
-                                    Text(
-                                        text = stringResource(KMR.strings.rec_for_you_focus_stale),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error,
-                                    )
+                            }
+                            item(key = "saved-divider") { HorizontalDivider() }
+                        }
+                    },
+                    afterTags = {
+                        item(key = "focus-footer") {
+                            if (focusOptions.isEmpty()) {
+                                Text(stringResource(KMR.strings.rec_for_you_focus_empty))
+                            } else if (visibleFocusOptions.isEmpty()) {
+                                Text(stringResource(KMR.strings.rec_for_you_focus_search_empty))
+                            } else {
+                                // KMK v0.8.21-fix5: R4/AUG-14 completion -- Match All vs Match Any governs
+                                // only focusInclude, and only matters with more than one include criterion;
+                                // Match All is the default. Excludes always work as "match none", regardless.
+                                if (focusInclude.size > 1) {
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            RadioButton(
+                                                selected = focusMatchAll,
+                                                onClick = { focusMatchAll = true },
+                                            )
+                                            Text(
+                                                text = stringResource(KMR.strings.rec_for_you_focus_match_all),
+                                                modifier = Modifier.clickable { focusMatchAll = true },
+                                            )
+                                        }
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            RadioButton(
+                                                selected = !focusMatchAll,
+                                                onClick = { focusMatchAll = false },
+                                            )
+                                            Text(
+                                                text = stringResource(KMR.strings.rec_for_you_focus_match_any),
+                                                modifier = Modifier.clickable { focusMatchAll = false },
+                                            )
+                                        }
+                                    }
+                                }
+                                TextButton(
+                                    onClick = { saveAsDialogOpen = true },
+                                    enabled = focusCriteria.isActive,
+                                ) {
+                                    Text(stringResource(KMR.strings.rec_for_you_focus_save_as))
                                 }
                             }
                         }
-                        HorizontalDivider()
-                    }
-                    if (focusOptions.isEmpty()) {
-                        Text(stringResource(KMR.strings.rec_for_you_focus_empty))
-                    } else if (visibleFocusOptions.isEmpty()) {
-                        Text(stringResource(KMR.strings.rec_for_you_focus_search_empty))
-                    } else {
-                        // KMK v0.8.24: tag chips in sections (see FocusTagPicker) instead of one row per tag
-                        FocusTagPicker(
-                            layout = focusLayout,
-                            include = focusInclude,
-                            exclude = focusExclude,
-                            searching = focusSearchQuery.isNotBlank(),
-                            onCycle = { group ->
-                                val (newInclude, newExclude) = cycleFocusGroup(group, focusInclude, focusExclude)
-                                focusInclude = newInclude
-                                focusExclude = newExclude
-                            },
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        // KMK v0.8.21-fix5: R4/AUG-14 completion -- Match All vs Match Any governs
-                        // only focusInclude, and only matters with more than one include criterion;
-                        // Match All is the default. Excludes always work as "match none", regardless.
-                        if (focusInclude.size > 1) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(
-                                    selected = focusMatchAll,
-                                    onClick = { focusMatchAll = true },
-                                )
-                                Text(
-                                    text = stringResource(KMR.strings.rec_for_you_focus_match_all),
-                                    modifier = Modifier.clickable { focusMatchAll = true },
-                                )
-                                Spacer(Modifier.width(MaterialTheme.padding.medium))
-                                RadioButton(
-                                    selected = !focusMatchAll,
-                                    onClick = { focusMatchAll = false },
-                                )
-                                Text(
-                                    text = stringResource(KMR.strings.rec_for_you_focus_match_any),
-                                    modifier = Modifier.clickable { focusMatchAll = false },
-                                )
-                            }
-                        }
-                        TextButton(
-                            onClick = { saveAsDialogOpen = true },
-                            enabled = focusCriteria.isActive,
-                        ) {
-                            Text(stringResource(KMR.strings.rec_for_you_focus_save_as))
-                        }
-                    }
-                }
+                    },
+                )
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -1643,7 +1651,7 @@ private fun FailureNote(text: String) {
 // KMK v0.8.25 -->
 /** The For You chapter minimum: the same setting as Your taste > Minimum chapter count, shown where For You is narrowed. */
 @Composable
-private fun ForYouMinChapterRow(selected: Int, onSelect: (Int) -> Unit) {
+internal fun ForYouMinChapterRow(selected: Int, onSelect: (Int) -> Unit) {
     Text(
         text = stringResource(KMR.strings.rec_min_chapter_count),
         style = MaterialTheme.typography.labelLarge,

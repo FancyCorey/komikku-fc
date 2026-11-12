@@ -25,7 +25,7 @@ class BestVersionPreviewSourceTest {
 
     @Test
     fun `the reader treats a preview like incognito`() {
-        assertTrue(viewModel.contains("savedState.get<Boolean>(ReaderActivity.EXTRA_PREVIEW) == true || getIncognitoState.await(manga.source)"))
+        assertTrue(viewModel.contains("preview || getIncognitoState.await(manga.source)"))
         // the incognito path is what stops history, progress and tracker updates
         assertTrue(viewModel.contains("if (route.incognitoMode) return@let"))
         assertTrue(viewModel.contains("if (!route.incognitoMode && page.status !is Page.State.Error)"))

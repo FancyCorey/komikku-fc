@@ -3,6 +3,7 @@ package eu.kanade.domain.track.interactor
 import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.tachiyomi.source.model.SManga
 import exh.recs.matching.CrossSourceIdentityAuthorizationResolver
+import exh.recs.matching.GroupTrackingMembershipCoordinator
 import kotlinx.coroutines.flow.first
 import logcat.LogPriority
 import tachiyomi.core.common.util.lang.withNonCancellableContext
@@ -40,91 +41,93 @@ class RecordLocalTrackedChapterProgress(
 
     suspend fun await(manga: Manga, chapter: Chapter, progressAt: Long = System.currentTimeMillis()) =
         withNonCancellableContext {
-            val exactWorkId = localTrackerRepository.getWorkIdBySourceUrl(manga.source, manga.url)
-            // A confirmed sibling may own the local work before the source being read has been
-            // attached to it. Resolve that work before recording progress so reading the sibling
-            // does not silently become untracked.
-            if (exactWorkId == null && !trackPreferences.autoInheritLocalProgress().get()) {
-                return@withNonCancellableContext
-            }
-            val workId = exactWorkId ?: resolveConfirmedWorkId(manga) ?: return@withNonCancellableContext
-            val existingWork = localTrackerRepository.getWork(workId)
-            if (exactWorkId == null && existingWork != null) {
-                localTrackerRepository.upsertSource(
-                    LocalTrackedWorkSource(
-                        workId = existingWork.id,
-                        source = manga.source,
-                        url = manga.url,
-                        title = manga.title,
-                        confidence = 100,
-                        confirmation = LocalTrackedWorkSourceConfirmation.USER_CONFIRMED,
-                        createdAt = existingWork.createdAt,
-                        updatedAt = progressAt,
-                    ),
-                )
-            }
-            val chapterNumber = chapter.chapterNumber.takeIf { chapter.isRecognizedNumber }
-            existingWork?.takeIf {
-                LocalTrackedProgressInheritancePolicy.acceptsAggregateProgress(
-                    target = it,
-                    chapterNumber = chapterNumber,
-                    progressAt = progressAt,
-                )
-            }?.let { work ->
-                val completedAtFinalChapter = manga.status == SManga.COMPLETED.toLong() &&
-                    chapter.isRecognizedNumber &&
-                    chapterRepository.getChapterByMangaId(manga.id)
-                        .filter { it.isRecognizedNumber }
-                        .maxOfOrNull { it.chapterNumber }
-                        ?.let { finalChapter -> chapter.chapterNumber >= finalChapter } == true
-                val status = when {
-                    work.status == LocalTrackedWorkStatus.ON_HOLD || work.status == LocalTrackedWorkStatus.DROPPED -> work.status
-                    completedAtFinalChapter -> LocalTrackedWorkStatus.COMPLETED
-                    else -> LocalTrackedProgressInheritancePolicy.statusAfterProgress(work.status)
+            GroupTrackingMembershipCoordinator.withMembershipLock {
+                val exactWorkId = localTrackerRepository.getWorkIdBySourceUrl(manga.source, manga.url)
+                // A confirmed sibling may own the local work before the source being read has been
+                // attached to it. Resolve that work before recording progress so reading the sibling
+                // does not silently become untracked.
+                if (exactWorkId == null && !trackPreferences.autoInheritLocalProgress().get()) {
+                    return@withMembershipLock
                 }
-                if (status != work.status || work.startDate == null ||
-                    (status != LocalTrackedWorkStatus.COMPLETED && work.finishDate != null)
-                ) {
-                    localTrackerRepository.upsertWork(
-                        work.copy(
-                            status = status,
-                            startDate = work.startDate ?: progressAt,
-                            finishDate = work.finishDate.takeIf { status == LocalTrackedWorkStatus.COMPLETED }
-                                ?: progressAt.takeIf { status == LocalTrackedWorkStatus.COMPLETED },
-                            updatedAt = maxOf(work.updatedAt, progressAt),
+                val workId = exactWorkId ?: resolveConfirmedWorkId(manga) ?: return@withMembershipLock
+                val existingWork = localTrackerRepository.getWork(workId)
+                if (exactWorkId == null && existingWork != null) {
+                    localTrackerRepository.upsertSource(
+                        LocalTrackedWorkSource(
+                            workId = existingWork.id,
+                            source = manga.source,
+                            url = manga.url,
+                            title = manga.title,
+                            confidence = 100,
+                            confirmation = LocalTrackedWorkSourceConfirmation.USER_CONFIRMED,
+                            createdAt = existingWork.createdAt,
+                            updatedAt = progressAt,
                         ),
                     )
                 }
-            }
-            // Metadata uses the pre-progress snapshot; save it before recording the new chapter.
-            localTrackerRepository.recordProgress(
-                workId = workId,
-                source = manga.source,
-                chapterNumber = chapterNumber,
-                chapterUrl = chapter.url,
-                chapterLabel = chapter.name,
-                progressAt = progressAt,
-            )
-            localTrackerRepository.recordSourceProgress(
-                LocalTrackedWorkSourceProgress(
+                val chapterNumber = chapter.chapterNumber.takeIf { chapter.isRecognizedNumber }
+                existingWork?.takeIf {
+                    LocalTrackedProgressInheritancePolicy.acceptsAggregateProgress(
+                        target = it,
+                        chapterNumber = chapterNumber,
+                        progressAt = progressAt,
+                    )
+                }?.let { work ->
+                    val completedAtFinalChapter = manga.status == SManga.COMPLETED.toLong() &&
+                        chapter.isRecognizedNumber &&
+                        chapterRepository.getChapterByMangaId(manga.id)
+                            .filter { it.isRecognizedNumber }
+                            .maxOfOrNull { it.chapterNumber }
+                            ?.let { finalChapter -> chapter.chapterNumber >= finalChapter } == true
+                    val status = when {
+                        work.status == LocalTrackedWorkStatus.ON_HOLD || work.status == LocalTrackedWorkStatus.DROPPED -> work.status
+                        completedAtFinalChapter -> LocalTrackedWorkStatus.COMPLETED
+                        else -> LocalTrackedProgressInheritancePolicy.statusAfterProgress(work.status)
+                    }
+                    if (status != work.status || work.startDate == null ||
+                        (status != LocalTrackedWorkStatus.COMPLETED && work.finishDate != null)
+                    ) {
+                        localTrackerRepository.upsertWork(
+                            work.copy(
+                                status = status,
+                                startDate = work.startDate ?: progressAt,
+                                finishDate = work.finishDate.takeIf { status == LocalTrackedWorkStatus.COMPLETED }
+                                    ?: progressAt.takeIf { status == LocalTrackedWorkStatus.COMPLETED },
+                                updatedAt = maxOf(work.updatedAt, progressAt),
+                            ),
+                        )
+                    }
+                }
+                // Metadata uses the pre-progress snapshot; save it before recording the new chapter.
+                localTrackerRepository.recordProgress(
                     workId = workId,
                     source = manga.source,
-                    url = manga.url,
                     chapterNumber = chapterNumber,
                     chapterUrl = chapter.url,
                     chapterLabel = chapter.name,
                     progressAt = progressAt,
-                    updatedAt = progressAt,
-                ),
-            )
-            if (!trackPreferences.autoInheritLocalProgress().get()) return@withNonCancellableContext
-            propagate(
-                origin = manga,
-                originWork = localTrackerRepository.getWork(workId),
-                originChapterUrl = chapter.url,
-                originChapterNumber = chapterNumber,
-                progressAt = progressAt,
-            )
+                )
+                localTrackerRepository.recordSourceProgress(
+                    LocalTrackedWorkSourceProgress(
+                        workId = workId,
+                        source = manga.source,
+                        url = manga.url,
+                        chapterNumber = chapterNumber,
+                        chapterUrl = chapter.url,
+                        chapterLabel = chapter.name,
+                        progressAt = progressAt,
+                        updatedAt = progressAt,
+                    ),
+                )
+                if (!trackPreferences.autoInheritLocalProgress().get()) return@withMembershipLock
+                propagate(
+                    origin = manga,
+                    originWork = localTrackerRepository.getWork(workId),
+                    originChapterUrl = chapter.url,
+                    originChapterNumber = chapterNumber,
+                    progressAt = progressAt,
+                )
+            }
         }
 
     /** On hold and Dropped are choices; only the user changes them, and reading on this device already respects that. */
@@ -153,11 +156,11 @@ class RecordLocalTrackedChapterProgress(
      * Replays the saved progress of the work(s) these manga belong to, not of every tracked work. Opening one manga or tracking
      * its other versions only ever changes its own record, so replaying the whole library there only made each of them slow.
      */
-    suspend fun synchronizeFor(manga: Collection<Manga>) {
+    suspend fun synchronizeFor(manga: Collection<Manga>) = GroupTrackingMembershipCoordinator.withMembershipLock {
         val ids = manga.flatMap { m ->
             listOfNotNull(localTrackerRepository.getWorkIdBySourceUrl(m.source, m.url), resolveConfirmedWorkId(m))
         }.toSet()
-        synchronize(ids)
+        synchronizeLocked(ids)
     }
 
     suspend fun synchronizeFor(manga: Manga) = synchronizeFor(listOf(manga))
@@ -166,7 +169,13 @@ class RecordLocalTrackedChapterProgress(
      * Replays persisted local progress after refresh or after a new confirmed mapping is added: for every tracked work, or only
      * for [onlyWorkIds] (see [synchronizeFor]). The whole library is replayed once per library update and after a restore.
      */
-    suspend fun synchronize(onlyWorkIds: Set<String>? = null) {
+    suspend fun synchronize(onlyWorkIds: Set<String>? = null) = GroupTrackingMembershipCoordinator.withMembershipLock {
+        synchronizeLocked(onlyWorkIds)
+    }
+
+    // All work/source snapshots and writes stay in the same membership section as a split.
+    // These repositories are local; no join or network operation runs here.
+    private suspend fun synchronizeLocked(onlyWorkIds: Set<String>?) {
         if (onlyWorkIds != null && onlyWorkIds.isEmpty()) return
         val startedAt = System.nanoTime()
         val works = localTrackerRepository.getAllWorksAsFlow().first()
@@ -240,9 +249,16 @@ class RecordLocalTrackedChapterProgress(
                 }
             }
             val excludedProgress = progressRows.filter { progress ->
-                progress.inheritedFromSource != null && sourceRows.any {
+                val inheritedSource = progress.inheritedFromSource
+                val inheritedUrl = progress.inheritedFromUrl
+                val optedOut = inheritedSource != null && sourceRows.any {
                     it.source == progress.source && it.url == progress.url && it.inheritanceOptedOut
                 }
+                // Retained inherited rows must not bypass a later rejection during refresh.
+                // Filter only this replay; direct progress and already copied history remain untouched.
+                val rejectedOrigin = inheritedSource != null && inheritedUrl != null &&
+                    identityAuthorizationResolver.isRejected(inheritedSource, inheritedUrl, progress.source, progress.url)
+                optedOut || rejectedOrigin
             }
             progressRows = progressRows - excludedProgress.toSet()
             progressRows.forEach { progress ->
@@ -359,6 +375,8 @@ class RecordLocalTrackedChapterProgress(
         val targets = (confirmedMembers.map { it.source to it.url } + sharedSources.map { it.source to it.url })
             .distinct()
             .filterNot { (source, url) -> source == origin.source && url == origin.url }
+            // Explicit identity rejection overrides shared-work membership, without detaching sources or deleting history.
+            .filterNot { (source, url) -> identityAuthorizationResolver.isRejected(origin.source, origin.url, source, url) }
         if (targets.isEmpty()) return
         val resolvedBridges = bridges ?: alternateSourceBridgeRepository.getAllBridges()
         val resolvedMappings = mappings ?: alternateSourceBridgeRepository.getAllMappings()

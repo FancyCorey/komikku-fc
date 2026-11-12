@@ -34,6 +34,8 @@ class ConfirmedGroupLocalTrackingPropagator(
     private val getChapterOverride: GetChapter? = null,
     private val getChaptersByMangaIdOverride: GetChaptersByMangaId? = null,
     private val ratingActionsOverride: ConfirmedGroupTasteRatingActions? = null,
+    private val getLinksOverride: tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks? = null,
+    private val identityResolverOverride: CrossSourceIdentityAuthorizationResolver? = null,
 ) {
     private data class LatestRead(
         val manga: Manga,
@@ -48,12 +50,49 @@ class ConfirmedGroupLocalTrackingPropagator(
     private val getChaptersByMangaId: GetChaptersByMangaId by lazy { getChaptersByMangaIdOverride ?: Injekt.get() }
     private val ratingActions: ConfirmedGroupTasteRatingActions by lazy { ratingActionsOverride ?: ConfirmedGroupTasteRatingManager() }
 
+    private val getLinks: tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks by lazy { getLinksOverride ?: Injekt.get() }
+    private val identityResolver by lazy { identityResolverOverride ?: CrossSourceIdentityAuthorizationResolver() }
+
+    private data class MembershipResult(
+        val tracked: Boolean,
+        val workId: String? = null,
+        val members: List<Manga> = emptyList(),
+        val attached: List<Manga> = emptyList(),
+    )
+
+    /** Captured targets are hints: current group membership and confirmation authorize each mutation. Called under the coordinator. */
+    private suspend fun currentTargets(targets: List<Manga>): List<Manga> {
+        val requested = targets.distinctBy { it.source to it.url }
+        val primary = requested.firstOrNull() ?: return emptyList()
+        if (requested.size == 1) return requested
+        val link = getLinks.awaitBySourceUrl(primary.source, primary.url) ?: return listOf(primary)
+        val members = identityResolver.confirmedGroupMembers(primary.source, primary.url, getLinks.awaitByGroupId(link.groupId))
+        val keys = members.map { it.source to it.url }.toSet()
+        val current = requested.filter { it == primary || (it.source to it.url) in keys }
+        // A non-anchor rejection must not be bypassed by consolidating the entire connected group.
+        for ((index, left) in current.withIndex()) {
+            for (right in current.drop(index + 1)) {
+                if (identityResolver.isRejected(left.source, left.url, right.source, right.url)) return listOf(primary)
+            }
+        }
+        return current
+    }
+
+    private suspend fun finish(result: MembershipResult): Boolean {
+        result.workId?.let { shareGroupRating(it, result.members, result.attached) }
+        return result.tracked
+    }
+
     /** Creates the first local-tracking work when a rating is intended to mean follow this title. */
-    suspend fun ensureTrackedForRating(targets: List<Manga>): Boolean {
-        val resolved = targets.distinctBy { it.source to it.url }
-        if (resolved.isEmpty()) return false
-        val primary = resolved.first()
+    suspend fun ensureTrackedForRating(targets: List<Manga>): Boolean = finish(
+        GroupTrackingMembershipCoordinator.withMembershipLock { ensureTrackedForRatingLocked(targets) },
+    )
+
+    private suspend fun ensureTrackedForRatingLocked(targets: List<Manga>): MembershipResult {
         val propagationEnabled = sourcePreferences.confirmedTrackedVersionLocalTrackingPropagationEnabled().get()
+        val resolved = if (propagationEnabled) currentTargets(targets) else targets.take(1)
+        if (resolved.isEmpty()) return MembershipResult(false)
+        val primary = resolved.first()
         val existingByKey = resolved.associateWith { manga ->
             repository.getWorkIdBySourceUrl(manga.source, manga.url)
         }
@@ -61,10 +100,10 @@ class ConfirmedGroupLocalTrackingPropagator(
         // choices. Turning off automatic creation must not disable propagation for a group that is
         // already tracked.
         if (existingByKey.values.any { it != null }) {
-            if (propagationEnabled) return propagateIfAnyTracked(resolved, enabled = true)
-            if (existingByKey[primary] != null) return true
+            if (propagationEnabled) return propagateLocked(resolved)
+            if (existingByKey[primary] != null) return MembershipResult(true)
         }
-        if (!trackPreferences.autoCreateLocalTrackingFromRating().get()) return false
+        if (!trackPreferences.autoCreateLocalTrackingFromRating().get()) return MembershipResult(false)
         val creationTargets = if (propagationEnabled) resolved else listOf(primary)
 
         val now = System.currentTimeMillis()
@@ -136,7 +175,7 @@ class ConfirmedGroupLocalTrackingPropagator(
                 )
             }
         }
-        return true
+        return MembershipResult(true)
     }
 
     suspend fun propagateIfAnyTracked(
@@ -144,14 +183,17 @@ class ConfirmedGroupLocalTrackingPropagator(
         enabled: Boolean = sourcePreferences.confirmedTrackedVersionLocalTrackingPropagationEnabled().get(),
     ): Boolean {
         if (!enabled) return false
-        val resolved = targets.distinctBy { it.source to it.url }
+        return finish(GroupTrackingMembershipCoordinator.withMembershipLock { propagateLocked(currentTargets(targets)) })
+    }
+
+    private suspend fun propagateLocked(resolved: List<Manga>): MembershipResult {
         val existingWorkIds = resolved.mapNotNull { manga ->
             repository.getWorkIdBySourceUrl(manga.source, manga.url)
         }.distinct()
         // The oldest work owns the canonical identity; target ordering must not affect it.
         val existing = existingWorkIds.mapNotNull { repository.getWork(it) }
             .minWithOrNull(compareBy<tachiyomi.domain.tracker.model.LocalTrackedWork> { it.createdAt }.thenBy { it.id })
-            ?: return false
+            ?: return MembershipResult(false)
 
         val now = System.currentTimeMillis()
         val sharedWorkId = existing.id
@@ -189,8 +231,7 @@ class ConfirmedGroupLocalTrackingPropagator(
             )
             attachedNow += manga
         }
-        shareGroupRating(sharedWorkId, resolved, attachedNow)
-        return true
+        return MembershipResult(true, sharedWorkId, resolved, attachedNow)
     }
 
     /**

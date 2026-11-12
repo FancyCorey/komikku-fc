@@ -75,12 +75,24 @@ class ReaderPresetSession(
     private val mapSerializer = MapSerializer(String.serializer(), String.serializer())
 
     fun begin(values: Map<String, String>) {
-        restore()
-        val known = settings.associateBy { it.id }
-        val snapshot = values.keys.mapNotNull { id -> known[id]?.let { id to it.read() } }.toMap()
-        if (snapshot.isEmpty()) return
-        setPending(Json.encodeToString(mapSerializer, snapshot))
-        values.forEach { (id, value) -> known[id]?.write?.invoke(value) }
+        val previousValues = settings.associate { it.id to it.read() }
+        val previousPending = getPending()
+        try {
+            restore()
+            val known = settings.associateBy { it.id }
+            val snapshot = values.keys.mapNotNull { id -> known[id]?.let { id to it.read() } }.toMap()
+            if (snapshot.isEmpty()) return
+            setPending(Json.encodeToString(mapSerializer, snapshot))
+            values.forEach { (id, value) -> known[id]?.write?.invoke(value) }
+        } catch (e: Exception) {
+            // A failed commit must retain the old reader's live values AND its original recovery snapshot.
+            settings.forEach { setting ->
+                runCatching { setting.write(previousValues.getValue(setting.id)) }
+                    .exceptionOrNull()?.let(e::addSuppressed)
+            }
+            runCatching { setPending(previousPending) }.exceptionOrNull()?.let(e::addSuppressed)
+            throw e
+        }
     }
 
     fun end() = restore()
@@ -177,13 +189,23 @@ class ReaderPresets(
         ).map { "${it.source}|${it.url}" }
     }
 
-    /** Called while a reader opens a series, before its viewer is built. Never throws. */
+    /** Resolve a candidate without changing the active reader or its recovery snapshot. */
+    suspend fun valuesFor(manga: Manga): Map<String, String> = try {
+        val name = presetNameFor(manga)
+        presets().firstOrNull { it.name == name }?.values.orEmpty()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        emptyMap()
+    }
+
+    /** Called only at the serialized route commit, before publishing the new viewer. */
+    fun applyValues(values: Map<String, String>) = session.begin(values)
+
+    /** Settings changes apply immediately; route construction uses valuesFor/applyValues instead. */
     suspend fun beginFor(manga: Manga) {
         try {
-            session.end()
-            val name = presetNameFor(manga) ?: return
-            val preset = presets().firstOrNull { it.name == name } ?: return
-            session.begin(preset.values)
+            applyValues(valuesFor(manga))
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {

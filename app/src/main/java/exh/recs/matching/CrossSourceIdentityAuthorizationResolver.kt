@@ -45,7 +45,7 @@ class CrossSourceIdentityAuthorizationResolver(
     }
 
     // KMK --> v0.8.24
-    private suspend fun isRejected(firstSource: Long, firstUrl: String, secondSource: Long, secondUrl: String): Boolean {
+    suspend fun isRejected(firstSource: Long, firstUrl: String, secondSource: Long, secondUrl: String): Boolean {
         val pair = CrossSourceIdentityDecisionPolicy.canonicalPair(
             CrossSourceRecordKey(firstSource, firstUrl),
             CrossSourceRecordKey(secondSource, secondUrl),

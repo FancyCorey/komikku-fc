@@ -25,6 +25,14 @@ interface LocalTrackerRepository {
         error("Local tracker work consolidation is not supported by this repository")
     }
 
+    /**
+     * Atomically gives selected versions of shared works independent trackers, preserving saved
+     * aggregate and source progress, metadata and lists. Untracked and single-source works are no-ops.
+     */
+    suspend fun separateSources(sources: Set<Pair<Long, String>>, now: Long) {
+        error("Local tracker source separation is not supported by this repository")
+    }
+
     suspend fun getSources(workId: String): List<LocalTrackedWorkSource>
 
     suspend fun getWorkIdBySourceUrl(source: Long, url: String): String?

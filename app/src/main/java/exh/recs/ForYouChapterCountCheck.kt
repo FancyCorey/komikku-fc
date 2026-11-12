@@ -57,12 +57,13 @@ internal object ForYouChapterCountCheck {
      * picks whose count is unknown, each manga once, at most [MAX_CHECKS_PER_REFRESH].
      */
     fun pick(rows: List<List<Long>>, knownCounts: Set<Long>, limit: Int = MAX_CHECKS_PER_REFRESH): List<Long> {
+        if (limit <= 0) return emptyList()
         val result = LinkedHashSet<Long>()
         val longest = rows.maxOfOrNull { it.size } ?: 0
         for (position in 0 until longest) {
             for (row in rows) {
                 val id = row.getOrNull(position) ?: continue
-                if (id != 0L && id !in knownCounts) result += id
+                if (id > 0L && id !in knownCounts) result += id
                 if (result.size >= limit) return result.toList()
             }
         }

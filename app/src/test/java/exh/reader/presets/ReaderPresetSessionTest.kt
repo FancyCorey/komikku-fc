@@ -1,6 +1,7 @@
 package exh.reader.presets
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -58,7 +59,9 @@ class ReaderPresetSessionTest {
     @Test
     fun `the reader builds its viewer after the preset is applied and cleans up when it closes`() {
         val vm = File("src/main/java/eu/kanade/tachiyomi/ui/reader/ReaderViewModel.kt").readText()
-        assertTrue(vm.indexOf("readerPresetsHolder.value?.beginFor(manga)") in 1 until vm.indexOf("sourceManager.isInitialized.first { it }\n        val source = sourceManager.getOrStub(manga.source)"))
+        val commit = vm.substringAfter("commit = { candidate, generation ->").substringBefore("private suspend fun switchReaderRoute")
+        assertTrue(commit.indexOf("applyValues(presetValues)") in 1 until commit.indexOf("commitReaderRoute(candidate, generation)"))
+        assertTrue(!vm.contains("beginFor(manga)"), "candidate construction must not change live preferences")
         assertTrue(vm.contains("readerPresetsHolder.value?.endSession()"))
         assertTrue(File("src/main/java/eu/kanade/tachiyomi/App.kt").readText().contains("ReaderPresets().restorePending()"))
         val dialog = File("src/main/java/eu/kanade/presentation/reader/settings/ReaderSettingsDialog.kt").readText()
@@ -71,5 +74,40 @@ class ReaderPresetSessionTest {
             "the preset row is first under For this series, above reading mode",
         )
         assertTrue(File("src/main/java/eu/kanade/presentation/reader/settings/ReaderPresetSection.kt").readText().contains("SettingsChipRow("), "same chip format as reading mode")
+    }
+
+    @Test
+    fun `failed preset write restores active values and its recovery snapshot`() {
+        val session = ReaderPresetSession(
+            listOf(
+                setting("crop"),
+                ReaderPresetSetting("theme", { store.getValue("theme") }, {
+                    if (it == "broken") error("controlled write failure")
+                    store["theme"] = it
+                }),
+            ),
+            { pending },
+            { pending = it },
+        )
+        session.begin(mapOf("crop" to "true", "theme" to "2"))
+        val originalPending = pending
+        assertThrows(IllegalStateException::class.java) {
+            session.begin(mapOf("crop" to "false", "theme" to "broken"))
+        }
+        assertEquals("true", store["crop"])
+        assertEquals("2", store["theme"])
+        assertEquals(originalPending, pending)
+        session.end()
+        assertEquals("false", store["crop"])
+        assertEquals("1", store["theme"])
+    }
+
+    @Test
+    fun `committing usual settings restores the prior preset baseline`() {
+        val session = session()
+        session.begin(mapOf("theme" to "2"))
+        session.begin(emptyMap())
+        assertEquals("1", store["theme"])
+        assertEquals("", pending)
     }
 }

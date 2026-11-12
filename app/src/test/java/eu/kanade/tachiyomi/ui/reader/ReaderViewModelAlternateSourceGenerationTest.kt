@@ -45,8 +45,10 @@ import exh.recs.matching.ConfirmedMangaGroupTargets
 import exh.util.FakePreferenceStore
 import io.mockk.clearMocks
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -72,6 +74,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.core.common.storage.UniFileTempFileManager
 import tachiyomi.domain.chapter.interactor.GetChapter
 import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
@@ -129,6 +132,156 @@ import java.util.concurrent.atomic.AtomicInteger
 class ReaderViewModelAlternateSourceGenerationTest {
 
     private val store = ViewModelStore()
+
+    @Test
+    fun nextDiscoveryRetryKeepsTheSingleVersionAndDoesNotOpenAChapterPicker() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var fixture: Fixture? = null
+        try {
+            fixture = retainedFixture(endOfSeriesMapping = true)
+            val current = requireNotNull(fixture)
+            stubCandidateChapterThree(current)
+            assertTrue(current.viewModel.init(MANGA_ID, SECOND_CHAPTER_ID, null).getOrThrow())
+            awaitAheadAnswer(current)
+            coEvery { current.getLinks.awaitAll() } throws IllegalStateException("discovery failed")
+            current.viewModel.openLinkedVersionsAhead(SECOND_CHAPTER_ID, "$CANDIDATE_SOURCE_ID:$CANDIDATE_MANGA_URL")
+            awaitReal(5_000) {
+                current.viewModel.alternateSourcePresentation.first { it is AlternateSourceReaderPresentation.RecoverableFailure }
+            }
+            coEvery { current.getLinks.awaitAll() } returns emptyList()
+            current.viewModel.retryAlternateSourcePresentation()
+            confirmUntilAlternate(current) { assertFalse(it is AlternateSourceReaderPresentation.ChoosingChapter) }
+            assertEquals(CANDIDATE_CHAPTER3_ID, current.viewModel.currentChapter?.id)
+            assertEquals(0, current.searchCalls.get())
+        } finally {
+            closeRetainedFixture(fixture)
+        }
+    }
+
+    @Test
+    fun newIntentPreviewModeBelongsToTheCommittedRequest() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var fixture: Fixture? = null
+        try {
+            fixture = fixture()
+            val current = requireNotNull(fixture)
+            assertTrue(current.viewModel.init(MANGA_ID, FIRST_CHAPTER_ID, null).getOrThrow())
+            assertFalse(current.viewModel.incognitoMode)
+            assertTrue(current.viewModel.openFromIntent(MANGA_ID, SECOND_CHAPTER_ID, null, preview = true).getOrThrow())
+            assertTrue(current.viewModel.incognitoMode)
+            current.viewModel.updateHistory()
+            coVerify(exactly = 0) { current.upsertHistory.await(any()) }
+            // A failed normal request cannot change the surviving preview's recording mode.
+            coEvery { current.getChaptersByMangaId.await(MANGA_ID, any()) } throws IllegalStateException("controlled failure")
+            assertTrue(current.viewModel.openFromIntent(MANGA_ID, FIRST_CHAPTER_ID, null).isFailure)
+            assertTrue(current.viewModel.incognitoMode)
+            coEvery { current.getChaptersByMangaId.await(MANGA_ID, any()) } returns current.originChapters
+            assertTrue(current.viewModel.openFromIntent(MANGA_ID, FIRST_CHAPTER_ID, null).getOrThrow())
+            assertFalse(current.viewModel.incognitoMode)
+            current.viewModel.updateHistory()
+            coVerify(exactly = 1) { current.upsertHistory.await(any()) }
+        } finally {
+            closeRetainedFixture(fixture)
+        }
+    }
+
+    @Test
+    fun failedAndCancelledCandidatesPreserveTheActivePresetUntilAWinningCommit() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var fixture: Fixture? = null
+        try {
+            fixture = retainedFixture()
+            val current = requireNotNull(fixture)
+            val presets = exh.reader.presets.ReaderPresets()
+            val candidate = requireNotNull(current.getManga.await(CANDIDATE_MANGA_ID))
+            coEvery { current.getLinks.awaitBySourceUrl(any(), any()) } returns null
+            current.readerPreferences.readerTheme().set(1)
+            presets.saveAs("Origin", mapOf("readerTheme" to "2"))
+            presets.saveAs("Candidate", mapOf("readerTheme" to "3"))
+            presets.assign(current.originManga, "Origin")
+            presets.assign(candidate, "Candidate")
+            assertTrue(current.viewModel.init(MANGA_ID, FIRST_CHAPTER_ID, null).getOrThrow())
+            val pendingPref = current.preferenceStore.getString(
+                tachiyomi.core.common.preference.Preference.appStateKey("reader_preset_pending_restore"),
+                "",
+            )
+            val pending = pendingPref.get()
+            assertEquals(2, current.readerPreferences.readerTheme().get())
+            coEvery { current.getChaptersByMangaId.await(CANDIDATE_MANGA_ID, any()) } throws IllegalStateException("load failed")
+            assertTrue(current.viewModel.openFromIntent(CANDIDATE_MANGA_ID, CANDIDATE_CHAPTER_ID, null).isFailure)
+            assertEquals(FIRST_CHAPTER_ID, current.viewModel.currentChapter?.id)
+            assertEquals(2, current.readerPreferences.readerTheme().get())
+            assertEquals(pending, pendingPref.get())
+
+            val entered = CompletableDeferred<Unit>()
+            coEvery { current.getChaptersByMangaId.await(CANDIDATE_MANGA_ID, any()) } coAnswers {
+                entered.complete(Unit)
+                awaitCancellation()
+            }
+            val loading = launch { current.viewModel.openFromIntent(CANDIDATE_MANGA_ID, CANDIDATE_CHAPTER_ID, null) }
+            awaitReal(5_000) { entered.await() }
+            assertEquals(2, current.readerPreferences.readerTheme().get())
+            // A newer route cancels the candidate; its cleanup must never overwrite the winner.
+            assertTrue(current.viewModel.openFromIntent(MANGA_ID, SECOND_CHAPTER_ID, null).getOrThrow())
+            loading.join()
+            assertEquals(SECOND_CHAPTER_ID, current.viewModel.currentChapter?.id)
+            assertEquals(2, current.readerPreferences.readerTheme().get())
+            assertEquals(pending, pendingPref.get())
+            presets.endSession()
+            assertEquals(1, current.readerPreferences.readerTheme().get())
+        } finally {
+            closeRetainedFixture(fixture)
+        }
+    }
+
+    @Test
+    fun nextDiscoveryRetryKeepsTheEligibleListAndSavedMapping() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        var fixture: Fixture? = null
+        try {
+            fixture = retainedFixture(endOfSeriesMapping = true)
+            val current = requireNotNull(fixture)
+            // Keep the valid saved mapping. The source's number-based guess is a different chapter URL;
+            // reusing chapter 1 for the end target would conflict with the fixture's earlier gap target.
+            coEvery { current.candidateSource.getMangaUpdate(any(), any(), false, true) } coAnswers {
+                SMangaUpdate(firstArg(), listOf(sourceChapter("/candidate/chapter/guessed", "Chapter 3", 3f)))
+            }
+            val saved = requireNotNull(ReaderViewModelTestBindings.getAlternateSourceBridge.await(retainedBridgeKey()))
+            assertFalse(
+                AlternateSourceBridgePolicy.projectConflicts(saved.mappings).any {
+                    it.state == AlternateSourceBridgeMappingState.CONFLICT
+                },
+            )
+            assertTrue(current.viewModel.init(MANGA_ID, SECOND_CHAPTER_ID, null).getOrThrow())
+            assertEquals(AlternateSourceReaderPhase.PRIMARY, current.viewModel.alternateSourceReaderState.value.phase)
+            assertEquals(null, current.viewModel.alternateSourceReaderState.value.session)
+            awaitAheadAnswer(current)
+            coEvery { current.getLinks.awaitAll() } throws IllegalStateException("discovery failed")
+            current.viewModel.openLinkedVersionsAhead(SECOND_CHAPTER_ID, null)
+            awaitReal(5_000) {
+                current.viewModel.alternateSourcePresentation.first { it is AlternateSourceReaderPresentation.RecoverableFailure }
+            }
+            coEvery { current.getLinks.awaitAll() } returns emptyList()
+            current.viewModel.retryAlternateSourcePresentation()
+            val chooser = awaitReal(5_000) {
+                current.viewModel.alternateSourcePresentation.first {
+                    (it as? AlternateSourceReaderPresentation.ChoosingSource)?.content is AlternateSourceReaderLoadState.Content
+                }
+            } as AlternateSourceReaderPresentation.ChoosingSource
+            assertTrue(chooser.continuation)
+            val row = (chooser.content as AlternateSourceReaderLoadState.Content).items.single()
+            assertEquals(3f, row.nextChapter)
+            assertEquals(0, current.searchCalls.get())
+            current.viewModel.toggleAlternateSourceCandidate(row.token)
+            current.viewModel.confirmAlternateSourceCandidate()
+            confirmUntilAlternate(current) { assertFalse(it is AlternateSourceReaderPresentation.ChoosingChapter) }
+            assertEquals("the saved match wins over the guessed URL after Retry", CANDIDATE_CHAPTER3_ID, current.viewModel.currentChapter?.id)
+            assertEquals(saved, ReaderViewModelTestBindings.getAlternateSourceBridge.await(retainedBridgeKey()))
+            coVerify(exactly = 0) { ReaderViewModelTestBindings.replaceAlternateSourceBridge.await(any()) }
+        } finally {
+            closeRetainedFixture(fixture)
+        }
+    }
 
     @Test
     fun publicRetryReachesSourceAfterOrdinaryChooserOpenRemainsSuppressed() = runTest {
@@ -1243,7 +1396,8 @@ class ReaderViewModelAlternateSourceGenerationTest {
         val preferenceStore = FakePreferenceStore()
         val readerPreferences = ReaderPreferences(preferenceStore)
         val sourcePreferences = SourcePreferences(preferenceStore)
-        ReaderViewModelTestBindings.install(application, readerPreferences, sourcePreferences)
+        val getLinks = mockk<GetCrossSourceMangaLinks>(relaxed = true)
+        ReaderViewModelTestBindings.install(application, readerPreferences, sourcePreferences, preferenceStore, getLinks)
         val manga = Manga.create().copy(
             id = MANGA_ID,
             source = ORIGIN_SOURCE_ID,
@@ -1315,7 +1469,7 @@ class ReaderViewModelAlternateSourceGenerationTest {
         coEvery { getChaptersByMangaId.await(MANGA_ID, any()) } returns chapters
         val chapterCache = ReaderViewModelTestBindings.chapterCache
         every { chapterCache.getPageListFromCache(any()) } throws IllegalStateException("synthetic page-list cache miss")
-        val getLinks = mockk<GetCrossSourceMangaLinks>(relaxed = true)
+        val upsertHistory = mockk<UpsertHistory>(relaxed = true)
 
         val viewModel = ReaderViewModel(
             savedState = SavedStateHandle(),
@@ -1335,7 +1489,7 @@ class ReaderViewModelAlternateSourceGenerationTest {
             getChapter = getChapter,
             getChaptersByMangaId = getChaptersByMangaId,
             getNextChapters = mockk<GetNextChapters>(relaxed = true),
-            upsertHistory = mockk<UpsertHistory>(relaxed = true),
+            upsertHistory = upsertHistory,
             updateChapter = mockk<UpdateChapter>(relaxed = true),
             setMangaViewerFlags = mockk<SetMangaViewerFlags>(relaxed = true),
             getIncognitoState = mockk<GetIncognitoState>(relaxed = true),
@@ -1372,6 +1526,9 @@ class ReaderViewModelAlternateSourceGenerationTest {
             getChapter,
             getChaptersByMangaId,
             sourceManager,
+            preferenceStore,
+            readerPreferences,
+            upsertHistory,
         )
     }
 
@@ -1404,12 +1561,15 @@ class ReaderViewModelAlternateSourceGenerationTest {
         val getChapter: GetChapter,
         val getChaptersByMangaId: GetChaptersByMangaId,
         val sourceManager: SourceManager,
+        val preferenceStore: FakePreferenceStore,
+        val readerPreferences: ReaderPreferences,
+        val upsertHistory: UpsertHistory,
     )
 
     private object ReaderViewModelTestBindings {
         val chapterCache = mockk<ChapterCache>(relaxed = true)
         val getAlternateSourceBridge = mockk<GetAlternateSourceBridge>(relaxed = true)
-        private val replaceAlternateSourceBridge = mockk<ReplaceAlternateSourceBridge>(relaxed = true)
+        val replaceAlternateSourceBridge = mockk<ReplaceAlternateSourceBridge>(relaxed = true)
         val getMangaByUrlAndSourceId = mockk<GetMangaByUrlAndSourceId>(relaxed = true)
         val getIdentityDecisions = mockk<GetCrossSourceIdentityDecisions>(relaxed = true)
         private val replaceIdentityDecisions = mockk<ReplaceCrossSourceIdentityDecisions>(relaxed = true)
@@ -1421,6 +1581,8 @@ class ReaderViewModelAlternateSourceGenerationTest {
             application: Application,
             readerPreferences: ReaderPreferences,
             sourcePreferences: SourcePreferences,
+            preferenceStore: PreferenceStore,
+            getLinks: GetCrossSourceMangaLinks,
         ) {
             check(previousScope == null) { "ReaderViewModel Injekt scope already installed" }
             clearMocks(
@@ -1439,6 +1601,8 @@ class ReaderViewModelAlternateSourceGenerationTest {
             isolatedScope.importModule(
                 object : InjektModule {
                     override fun InjektRegistrar.registerInjectables() {
+                        addSingletonFactory<PreferenceStore> { preferenceStore }
+                        addSingletonFactory<GetCrossSourceMangaLinks> { getLinks }
                         addSingletonFactory<Application> { application }
                         addSingletonFactory<ChapterCache> { chapterCache }
                         addSingletonFactory<GetAlternateSourceBridge> { getAlternateSourceBridge }

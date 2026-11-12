@@ -28,7 +28,8 @@ class ReaderActivityRouteSourceTest {
         assertTrue(replacement.contains("parseReaderRouteIntent("))
         assertTrue(replacement.contains("setIntent(intent)"))
         assertTrue(replacement.contains("NotificationReceiver.dismissNotification(this, route.mangaId.hashCode(), Notifications.ID_NEW_CHAPTERS)"))
-        assertTrue(replacement.contains("viewModel.openFromIntent(route.mangaId, route.chapterId, route.page)"))
+        assertTrue(replacement.contains("viewModel.openFromIntent("))
+        assertTrue(replacement.contains("preview = intent.getBooleanExtra(EXTRA_PREVIEW, false)"))
     }
 
     @Test

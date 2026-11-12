@@ -1102,8 +1102,9 @@ class ReaderViewModel @JvmOverloads constructor(
         mangaId: Long,
         chapterId: Long,
         page: Int?,
+        preview: Boolean = false,
     ): Result<Boolean> {
-        return when (val replacement = replaceReaderRoute(mangaId, chapterId, page)) {
+        return when (val replacement = replaceReaderRoute(mangaId, chapterId, page, preview = preview)) {
             is ReaderRouteReplacementResult.Applied -> {
                 restoreAlternateSourceReaderSession()
                 Result.success(true)
@@ -1127,10 +1128,28 @@ class ReaderViewModel @JvmOverloads constructor(
         requestedChapterId: Long,
         page: Int?,
         restoredPage: Int? = null,
-    ): ReaderRouteReplacementResult = routeOwner.replace(
-        build = { generation -> buildReaderRoute(mangaId, requestedChapterId, page, generation, restoredPage) },
-        commit = ::commitReaderRoute,
-    )
+        preview: Boolean = savedState.get<Boolean>(ReaderActivity.EXTRA_PREVIEW) == true,
+    ): ReaderRouteReplacementResult {
+        var presetValues: Map<String, String> = emptyMap()
+        return routeOwner.replace(
+            build = { generation ->
+                val candidate = buildReaderRoute(mangaId, requestedChapterId, page, generation, restoredPage, preview)
+                try {
+                    presetValues = readerPresetsHolder.value?.valuesFor(candidate.manga).orEmpty()
+                    candidate
+                } catch (e: Throwable) {
+                    candidate.release()
+                    throw e
+                }
+            },
+            commit = { candidate, generation ->
+                // Only the winning generation may change global settings, before the viewer observes the new route.
+                readerPresetsHolder.value?.applyValues(presetValues)
+                commitReaderRoute(candidate, generation)
+                savedState[ReaderActivity.EXTRA_PREVIEW] = preview
+            },
+        )
+    }
 
     private suspend fun switchReaderRoute(route: AlternateSourceReaderRoute): Boolean =
         when (replaceReaderRoute(route.mangaId, route.chapterId, route.pageIndex)) {
@@ -1148,10 +1167,9 @@ class ReaderViewModel @JvmOverloads constructor(
         page: Int?,
         generation: Long,
         restoredPage: Int? = null,
+        preview: Boolean,
     ): ReaderRouteState {
         val manga = getManga.await(mangaId) ?: throw ReaderMangaUnavailableException()
-        // KMK v0.8.25: this series' reader preset applies before its viewer is built; the usual settings return when it closes
-        readerPresetsHolder.value?.beginFor(manga)
         sourceManager.isInitialized.first { it }
         val source = sourceManager.getOrStub(manga.source)
         val metadataSource = source.getMainSource<MetadataSource<*, *>>()
@@ -1262,7 +1280,7 @@ class ReaderViewModel @JvmOverloads constructor(
                 },
             ),
             // KMK v0.8.25: a preview from Best Version is read like incognito: nothing is recorded
-            incognitoMode = savedState.get<Boolean>(ReaderActivity.EXTRA_PREVIEW) == true || getIncognitoState.await(manga.source),
+            incognitoMode = preview || getIncognitoState.await(manga.source),
             selectedChapterId = selectedChapter.id,
             dateRelativeTime = uiPreferences.relativeTime().get(),
             autoScrollFrequency = readerPreferences.autoscrollInterval().get(),
@@ -1352,6 +1370,7 @@ class ReaderViewModel @JvmOverloads constructor(
                 return
             }
         lastAlternateSourceCandidateRequest = request
+        pendingContinuation = continueAfterFinished
         launchAlternateSourceCandidateWork {
             clearAlternateSourceSelectionTokens(keepRequest = true)
             mutableAlternateSourcePresentation.value = AlternateSourceReaderPresentation.ChoosingSource(
@@ -1374,7 +1393,7 @@ class ReaderViewModel @JvmOverloads constructor(
                     .firstOrNull { AlternateSourceReaderAheadChecker.keyOf(it.value.candidate) == key }
                     ?.key
             }?.let { token ->
-                selectAlternateSourceCandidate(token)
+                selectAlternateSourceCandidate(token, explicitUserRetry = explicitRetry, fromDiscovery = true)
                 return@launchAlternateSourceCandidateWork
             }
             if (continueAfterFinished) {
@@ -1525,8 +1544,9 @@ class ReaderViewModel @JvmOverloads constructor(
     private fun selectAlternateSourceCandidate(
         token: AlternateSourceReaderOpaqueToken,
         explicitUserRetry: Boolean = false,
+        fromDiscovery: Boolean = false,
     ) {
-        if (explicitUserRetry && alternateSourceCandidateJob?.isCompleted == false) return
+        if (explicitUserRetry && !fromDiscovery && alternateSourceCandidateJob?.isCompleted == false) return
         val selection = alternateSourceMangaTokens[token] ?: return
         retainedAlternateSourceMangaSelection = selection
         launchAlternateSourceCandidateWork {
@@ -1797,8 +1817,10 @@ class ReaderViewModel @JvmOverloads constructor(
         openAlternateSourceChooser(
             request.precedingPrimaryChapterId,
             request.followingPrimaryChapterId,
-            includeLiveSearch = true,
+            includeLiveSearch = !pendingContinuation,
             explicitRetry = true,
+            readNextFromKey = pendingReadNextKey,
+            continueAfterFinished = pendingContinuation,
         )
     }
 
@@ -2004,7 +2026,11 @@ class ReaderViewModel @JvmOverloads constructor(
         retainedAlternateSourceSelection = null
         alternateSourceConflictRetryUsed = false
         selectedAlternateSourceToken = null
-        if (!keepRequest) lastAlternateSourceCandidateRequest = null
+        if (!keepRequest) {
+            lastAlternateSourceCandidateRequest = null
+            pendingReadNextKey = null
+            pendingContinuation = false
+        }
     }
 
     fun canOfferAlternateSourceGapAction(): Boolean {
@@ -2025,6 +2051,7 @@ class ReaderViewModel @JvmOverloads constructor(
     val linkedVersionsAhead: StateFlow<AlternateSourceReaderAheadState?> = mutableLinkedVersionsAhead.asStateFlow()
     private var aheadCheckJob: Job? = null
     private var pendingReadNextKey: String? = null
+    private var pendingContinuation = false
 
     /**
      * Called when the last chapter's end screen is built. Asks the confirmed linked versions in the background, so the answer is
@@ -2071,11 +2098,15 @@ class ReaderViewModel @JvmOverloads constructor(
 
     /** The list the Next row opens when several versions are ahead: only those, each with its next and latest chapter. */
     private suspend fun showContinuationList(request: AlternateSourceReaderCandidateRequest, finishedChapterId: Long) {
-        val ahead = mutableLinkedVersionsAhead.value
+        val report = mutableLinkedVersionsAhead.value
             ?.takeIf { it.finishedChapterId == finishedChapterId }
             ?.report
-            ?.aheadByKey
-            .orEmpty()
+            ?: aheadChecker.check(
+                request,
+                getChapter.await(finishedChapterId)?.chapterNumber?.toFloat() ?: return nextChapterGone(),
+            )
+        currentCoroutineContext().ensureActive()
+        val ahead = report.aheadByKey
         val rows = alternateSourceMangaTokens.entries
             .mapNotNull { (token, selection) ->
                 ahead[AlternateSourceReaderAheadChecker.keyOf(selection.candidate)]?.let { Triple(token, selection, it) }

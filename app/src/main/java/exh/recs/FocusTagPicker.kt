@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -124,6 +125,8 @@ internal fun FocusTagPicker(
     searching: Boolean,
     onCycle: (String) -> Unit,
     modifier: Modifier = Modifier,
+    beforeTags: LazyListScope.() -> Unit = {},
+    afterTags: LazyListScope.() -> Unit = {},
 ) {
     @Composable
     fun Chips(groups: List<String>) {
@@ -149,6 +152,7 @@ internal fun FocusTagPicker(
     var expanded by remember { mutableStateOf(emptySet<FocusTagCategory>()) }
 
     LazyColumn(modifier = modifier) {
+        beforeTags()
         layout.dimensions.forEach { (dimension, groups) ->
             item(key = "dim-${dimension.name}") {
                 Header(stringResource(dimension.focusLabelRes()))
@@ -160,43 +164,44 @@ internal fun FocusTagPicker(
                 Header(stringResource(KMR.strings.rec_for_you_focus_dimension_genre))
                 Chips(layout.allGenres)
             }
-            return@LazyColumn
-        }
-        if (layout.yourTags.isNotEmpty()) {
-            item(key = "yours") {
-                Header(stringResource(KMR.strings.rec_focus_your_tags))
-                Chips(layout.yourTags)
+        } else {
+            if (layout.yourTags.isNotEmpty()) {
+                item(key = "yours") {
+                    Header(stringResource(KMR.strings.rec_focus_your_tags))
+                    Chips(layout.yourTags)
+                }
             }
-        }
-        layout.categories.forEach { (category, groups) ->
-            val isOther = category == FocusTagCategory.OTHER
-            val open = category in expanded
-            item(key = "cat-${category.name}") {
-                if (isOther) {
-                    FoldHeader(
-                        text = stringResource(KMR.strings.rec_focus_more_tags, groups.size),
-                        open = open,
-                        onToggle = { expanded = if (open) expanded - category else expanded + category },
-                    )
-                    if (open) Chips(groups)
-                } else {
-                    Header(stringResource(category.titleRes))
-                    val shown = if (open) groups else groups.take(FocusPickerLayout.CATEGORY_PREVIEW)
-                    Chips(shown)
-                    if (groups.size > FocusPickerLayout.CATEGORY_PREVIEW) {
+            layout.categories.forEach { (category, groups) ->
+                val isOther = category == FocusTagCategory.OTHER
+                val open = category in expanded
+                item(key = "cat-${category.name}") {
+                    if (isOther) {
                         FoldHeader(
-                            text = if (open) {
-                                stringResource(KMR.strings.rec_focus_show_fewer)
-                            } else {
-                                stringResource(KMR.strings.rec_focus_show_all, groups.size)
-                            },
+                            text = stringResource(KMR.strings.rec_focus_more_tags, groups.size),
                             open = open,
                             onToggle = { expanded = if (open) expanded - category else expanded + category },
                         )
+                        if (open) Chips(groups)
+                    } else {
+                        Header(stringResource(category.titleRes))
+                        val shown = if (open) groups else groups.take(FocusPickerLayout.CATEGORY_PREVIEW)
+                        Chips(shown)
+                        if (groups.size > FocusPickerLayout.CATEGORY_PREVIEW) {
+                            FoldHeader(
+                                text = if (open) {
+                                    stringResource(KMR.strings.rec_focus_show_fewer)
+                                } else {
+                                    stringResource(KMR.strings.rec_focus_show_all, groups.size)
+                                },
+                                open = open,
+                                onToggle = { expanded = if (open) expanded - category else expanded + category },
+                            )
+                        }
                     }
                 }
             }
         }
+        afterTags()
     }
 }
 

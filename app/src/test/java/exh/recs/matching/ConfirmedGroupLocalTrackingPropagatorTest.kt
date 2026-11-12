@@ -14,6 +14,7 @@ import tachiyomi.domain.chapter.interactor.GetChapter
 import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
 import tachiyomi.domain.history.interactor.GetHistory
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.domain.taste.model.CrossSourceMangaLink
 import tachiyomi.domain.tracker.model.LocalTrackedWork
 import tachiyomi.domain.tracker.model.LocalTrackedWorkSource
 import tachiyomi.domain.tracker.model.LocalTrackedWorkSourceConfirmation
@@ -22,7 +23,25 @@ import tachiyomi.domain.tracker.repository.LocalTrackerRepository
 
 class ConfirmedGroupLocalTrackingPropagatorTest {
     private val repository = mockk<LocalTrackerRepository>(relaxed = true)
-    private val propagator = ConfirmedGroupLocalTrackingPropagator(repository)
+    private val links = mockk<tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks>()
+    private val identity = mockk<CrossSourceIdentityAuthorizationResolver>()
+    private val members = listOf(
+        CrossSourceMangaLink(1L, "/origin", "group", "Origin", 1L, 1L),
+        CrossSourceMangaLink(2L, "/target", "group", "Target", 1L, 1L),
+    )
+
+    init {
+        coEvery { links.awaitBySourceUrl(any(), any()) } answers { members.first { it.source == firstArg<Long>() } }
+        coEvery { links.awaitByGroupId("group") } returns members
+        coEvery { identity.confirmedGroupMembers(any(), any(), any()) } returns members
+        coEvery { identity.isRejected(any(), any(), any(), any()) } returns false
+    }
+
+    private val propagator = ConfirmedGroupLocalTrackingPropagator(
+        repository,
+        getLinksOverride = links,
+        identityResolverOverride = identity,
+    )
 
     @Test
     fun `no existing local work leaves group unchanged`() = runTest {
@@ -66,7 +85,12 @@ class ConfirmedGroupLocalTrackingPropagatorTest {
         val origin = manga(1, "/origin")
         val target = manga(2, "/target")
         val ratingActions = mockk<ConfirmedGroupTasteRatingActions>(relaxed = true)
-        val withRating = ConfirmedGroupLocalTrackingPropagator(repository, ratingActionsOverride = ratingActions)
+        val withRating = ConfirmedGroupLocalTrackingPropagator(
+            repository,
+            ratingActionsOverride = ratingActions,
+            getLinksOverride = links,
+            identityResolverOverride = identity,
+        )
         coEvery { repository.getWorkIdBySourceUrl(1, "/origin") } returns "work-1"
         coEvery { repository.getWorkIdBySourceUrl(2, "/target") } returns null
         coEvery { repository.getWork("work-1") } returns work("work-1", "Origin", updatedAt = 10L)
@@ -118,7 +142,11 @@ class ConfirmedGroupLocalTrackingPropagatorTest {
 
         suspend fun consolidateInOrder(targets: List<Manga>) {
             val orderRepository = mockk<LocalTrackerRepository>(relaxed = true)
-            val orderPropagator = ConfirmedGroupLocalTrackingPropagator(orderRepository)
+            val orderPropagator = ConfirmedGroupLocalTrackingPropagator(
+                orderRepository,
+                getLinksOverride = links,
+                identityResolverOverride = identity,
+            )
             coEvery { orderRepository.getWorkIdBySourceUrl(1, "/origin") } returns "work-older"
             coEvery { orderRepository.getWorkIdBySourceUrl(2, "/target") } returns "work-newer"
             coEvery { orderRepository.getWork("work-older") } returns older

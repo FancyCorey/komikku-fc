@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import logcat.LogPriority
+import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.taste.interactor.GetCrossSourceIdentityDecisions
@@ -47,7 +48,13 @@ class GroupJoinConfirmations(
         val pair get() = CrossSourceIdentityPair(CrossSourceRecordKey(leftSource, leftUrl), CrossSourceRecordKey(rightSource, rightUrl))
     }
 
-    private val pref = preferenceStore.getString(PREFERENCE_KEY, "")
+    private val pref = preferenceStore.getString(PREFERENCE_KEY, "").also { current ->
+        synchronized(lock) {
+            val legacy = preferenceStore.getString(LEGACY_PREFERENCE_KEY, "")
+            if (!current.isSet() && legacy.isSet()) current.set(legacy.get())
+            legacy.delete()
+        }
+    }
     private val serializer = ListSerializer(Record.serializer())
 
     private fun records(): List<Record> = pref.get().takeIf { it.isNotBlank() }?.let {
@@ -123,15 +130,16 @@ class GroupJoinConfirmations(
     private suspend fun reverse(matches: (Record) -> Boolean): List<CrossSourceIdentityPair> {
         val candidates = synchronized(lock) { records().filter(matches) }
         if (candidates.isEmpty()) return emptyList()
-        val stillOurs = candidates.filter { record ->
-            val current = getDecisions.await(record.pair)
-            CrossSourceIdentityDecisionPolicy.isAuthoritativeConfirmation(current) && current?.updatedAt == record.updatedAt
+        val stillOurs = candidates.mapNotNull { record ->
+            getDecisions.await(record.pair)?.takeIf { current ->
+                CrossSourceIdentityDecisionPolicy.isAuthoritativeConfirmation(current) && current.updatedAt == record.updatedAt
+            }
         }
         val cleared = if (stillOurs.isEmpty()) {
             emptyList()
         } else {
             val result = try {
-                controller.mutateAll(stillOurs.map { it.pair }, CrossSourceIdentityMutation.CLEAR)
+                controller.clearExpected(stillOurs)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -143,12 +151,16 @@ class GroupJoinConfirmations(
         // A record whose confirmation the user changed since is no longer grouping's; a failed clear keeps its record to retry later.
         val keep = stillOurs.filter { it.pair !in cleared }.map { it.pair }.toSet()
         val drop = candidates.map { it.pair }.toSet() - keep
-        synchronized(lock) { save(records().filterNot { it.pair in drop }) }
+        val obsolete = candidates.filter { it.pair in drop }.toSet()
+        synchronized(lock) { save(records().filterNot { it in obsolete }) }
         return cleared
     }
 
     companion object {
-        const val PREFERENCE_KEY = "kmk_group_join_confirmations"
+        const val LEGACY_PREFERENCE_KEY = "kmk_group_join_confirmations"
+        val PREFERENCE_KEY = Preference.appStateKey(LEGACY_PREFERENCE_KEY)
+
+        fun isOwnershipPreference(key: String): Boolean = key == LEGACY_PREFERENCE_KEY || key == PREFERENCE_KEY
         const val MAX_RECORDS = 2_000
         private val lock = Any()
 

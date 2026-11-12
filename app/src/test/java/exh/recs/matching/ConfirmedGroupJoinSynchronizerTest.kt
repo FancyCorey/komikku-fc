@@ -74,7 +74,7 @@ class ConfirmedGroupJoinSynchronizerTest {
         val ok = synchronizer().onMembersJoined("g", listOf(added.source to added.url, addedToo.source to addedToo.url))
         assertTrue(ok)
         coVerifyOrder {
-            identity.confirmUnlessRejected(match { it.size == 2 })
+            identity.confirmUnlessRejected(match { it.size == 3 })
             tracking.propagateIfAnyTracked(any(), any())
             rating.applyGroupRatingToJoinedMember(rows, added)
             rating.applyGroupRatingToJoinedMember(rows, addedToo)
@@ -99,8 +99,10 @@ class ConfirmedGroupJoinSynchronizerTest {
 
         assertEquals(listOf(rejectedPair), outcome.rejected)
         coVerify(exactly = 0) { rating.applyGroupRatingToJoinedMember(any(), added) }
-        coVerify { rating.applyGroupRatingToJoinedMember(listOf(link(existing), link(addedToo)), addedToo) }
-        coVerify { tracking.propagateIfAnyTracked(match { list -> list.none { it.id == added.id } }, any()) }
+        assertFalse(outcome.sharingComplete)
+        coVerify(exactly = 0) { rating.applyGroupRatingToJoinedMember(any(), any()) }
+        coVerify(exactly = 0) { tracking.propagateIfAnyTracked(any(), any()) }
+        assertEquals(0, replays)
     }
     // KMK <--
 
@@ -145,7 +147,7 @@ class ConfirmedGroupJoinSynchronizerTest {
         assertTrue(manager.contains("joinSynchronizer.value.join(groupId, joined, actionId)"))
         listOf("ADD_MEMBER", "MOVE_MEMBER", "MERGE").forEach { assertTrue(manager.contains("actionType = GroupJournalActionType.$it")) }
         assertTrue(Regex("\\.joined\\(").findAll(manager).count() >= 4, "add, create, move and merge each sync")
-        assertTrue(rated.contains("joinSynchronizer.value.onMembersJoined(plan.targetGroupId"))
+        assertTrue(rated.contains("joinSynchronizer.value.join(groupId, members.map"))
     }
 
     @Test
@@ -157,6 +159,39 @@ class ConfirmedGroupJoinSynchronizerTest {
         assertTrue(match.contains("ConfirmedGroupJoinSynchronizer().onMembersJoined(groupId"))
         assertTrue(dialog.contains("if (targets.size > 1) syncTrackedVersions(manga, targets)"))
         assertTrue(dialog.contains("ConfirmedGroupJoinSynchronizer()"))
+    }
+
+    @Test
+    fun `non-anchor rejection stops all sharing and includes the rejected pair in confirmation input`() = runTest {
+        stub()
+        val pair = tachiyomi.domain.taste.model.CrossSourceIdentityDecisionPolicy.canonicalPair(
+            tachiyomi.domain.taste.model.CrossSourceRecordKey(added.source, added.url),
+            tachiyomi.domain.taste.model.CrossSourceRecordKey(addedToo.source, addedToo.url),
+        )
+        coEvery { identity.confirmUnlessRejected(match { pair in it }) } returns
+            CrossSourceIdentityConfirmOutcome(CrossSourceIdentityMutationResult.UNCHANGED, rejected = listOf(pair))
+        val outcome = synchronizer().join("g", listOf(added.source to added.url))
+        assertFalse(outcome.sharingComplete)
+        assertEquals(listOf(pair), outcome.rejected)
+        coVerify(exactly = 0) { tracking.propagateIfAnyTracked(any(), any()) }
+        coVerify(exactly = 0) { rating.applyGroupRatingToJoinedMember(any(), any()) }
+        coVerify(exactly = 0) { getTracks.await(any<Long>()) }
+        assertEquals(0, replays)
+        assertTrue(order.isEmpty())
+    }
+
+    @Test
+    fun `failed or conflicting confirmation never reaches sharing or chapter loading`() = runTest {
+        stub()
+        for (result in listOf(CrossSourceIdentityMutationResult.FAILED, CrossSourceIdentityMutationResult.CONFLICT)) {
+            coEvery { identity.confirmUnlessRejected(any()) } returns CrossSourceIdentityConfirmOutcome(result)
+            assertFalse(synchronizer().join("g", listOf(added.source to added.url)).sharingComplete)
+        }
+        coVerify(exactly = 0) { tracking.propagateIfAnyTracked(any(), any()) }
+        coVerify(exactly = 0) { rating.applyGroupRatingToJoinedMember(any(), any()) }
+        coVerify(exactly = 0) { getTracks.await(any<Long>()) }
+        assertEquals(0, replays)
+        assertTrue(order.isEmpty())
     }
 
     private fun manga(source: Long, url: String) = Manga.create().copy(id = source, source = source, url = url, ogTitle = url)

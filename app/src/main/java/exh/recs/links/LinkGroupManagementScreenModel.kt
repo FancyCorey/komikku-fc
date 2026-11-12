@@ -89,6 +89,9 @@ class LinkGroupManagementScreenModel(
     // KMK v0.8.25: the same primary-version write the rated lists use
     private val setCrossSourceGroupPrimary: Lazy<tachiyomi.domain.taste.interactor.SetCrossSourceGroupPrimary> = lazy { Injekt.get() },
     private val sourcePreferences: Lazy<eu.kanade.domain.source.service.SourcePreferences> = lazy { Injekt.get() },
+    private val trackingLifecycle: Lazy<exh.recs.matching.GroupTrackingLifecycle> = lazy {
+        exh.recs.matching.GroupTrackingLifecycle(getCrossSourceMangaLinks, getCrossSourceGroupPrimary, joinSynchronizer)
+    },
 ) : StateScreenModel<LinkGroupManagementScreenModel.State>(State.Loading) {
     // KMK <--
 
@@ -355,15 +358,7 @@ class LinkGroupManagementScreenModel(
 
     fun undo(entryId: String, onResult: (GroupUndoOutcome) -> Unit = {}) {
         screenModelScope.launch {
-            val outcome = groupUndoService.undo(entryId)
-            if (outcome.result == exh.util.GroupUndoResult.RESTORED) {
-                // KMK v0.8.25: identity follows the grouping back: an undone join takes back what it confirmed, an undone removal
-                // confirms again what it took back. Decisions the user made since are kept.
-                guarded {
-                    groupConfirmations.value.reverseForAction(entryId)
-                    groupConfirmations.value.restoreClearedBy(entryId)
-                }
-            }
+            val outcome = trackingLifecycle.value.undo(entryId, groupUndoService, groupConfirmations.value)
             load()
             onResult(outcome)
         }
@@ -530,8 +525,19 @@ class LinkGroupManagementScreenModel(
             previousPrimaries = previousPrimaries,
             expectedPostPrimaries = expectedPostPrimaries,
         )
-        restoreCrossSourceGroupState.await(linkUpserts, linkDeletes, primaryUpserts, primaryDeletes)
-        GroupUndoJournal.record(entry)
+        exh.recs.matching.GroupTrackingMembershipCoordinator.withMembershipLock {
+            // Refuse a stale membership write after another group action changed these keys.
+            check(
+                touchedKeys.all { key ->
+                    getCrossSourceMangaLinks.awaitBySourceUrl(key.source, key.url)?.groupId == priorLinks[key]?.groupId
+                },
+            )
+            if (actionType in setOf(GroupJournalActionType.REMOVE_FROM_GROUP, GroupJournalActionType.MOVE_MEMBER, GroupJournalActionType.UNGROUP)) {
+                trackingLifecycle.value.separate(touchedKeys.map { it.source to it.url }.toSet())
+            }
+            restoreCrossSourceGroupState.await(linkUpserts, linkDeletes, primaryUpserts, primaryDeletes)
+            GroupUndoJournal.record(entry)
+        }
         return entry
     }
 

@@ -48,6 +48,8 @@ class LinkGroupManagementScreenModelTest {
         val primaries: MutableList<tachiyomi.domain.taste.model.CrossSourceGroupPrimary>,
         val confirmations: exh.recs.matching.GroupJoinConfirmations,
         val setPrimary: tachiyomi.domain.taste.interactor.SetCrossSourceGroupPrimary,
+        val tracker: tachiyomi.domain.tracker.repository.LocalTrackerRepository,
+        val synchronizer: exh.recs.matching.ConfirmedGroupJoinSynchronizer,
     )
 
     private fun model(
@@ -70,6 +72,11 @@ class LinkGroupManagementScreenModelTest {
         val confirmations = mockk<exh.recs.matching.GroupJoinConfirmations>(relaxed = true)
         val setPrimary = mockk<tachiyomi.domain.taste.interactor.SetCrossSourceGroupPrimary>(relaxed = true)
         coEvery { confirmations.rejectedAmong(any(), any()) } returns emptyList()
+        val tracker = mockk<tachiyomi.domain.tracker.repository.LocalTrackerRepository>(relaxed = true)
+        coEvery { tracker.separateSources(any(), any()) } returns Unit
+        val synchronizer = mockk<exh.recs.matching.ConfirmedGroupJoinSynchronizer>()
+        coEvery { synchronizer.join(any(), any(), any()) } returns exh.recs.matching.ConfirmedGroupJoinSynchronizer.JoinOutcome(true)
+        val lifecycle = exh.recs.matching.GroupTrackingLifecycle(linkReader, primaryReader, lazy { synchronizer }, lazy { tracker }) { 42L }
         val screen = LinkGroupManagementScreenModel(
             getCrossSourceMangaLinks = linkReader,
             mangaRepository = manga,
@@ -78,10 +85,12 @@ class LinkGroupManagementScreenModelTest {
             restoreCrossSourceGroupState = restore,
             groupUndoService = GroupUndoService(linkReader, primaryReader, restore),
             groupConfirmations = lazy { confirmations },
+            joinSynchronizer = lazy { synchronizer },
+            trackingLifecycle = lazy { lifecycle },
             setCrossSourceGroupPrimary = lazy { setPrimary },
             sourcePreferences = lazy { eu.kanade.domain.source.service.SourcePreferences(exh.util.FakePreferenceStore()) },
         )
-        return Fixture(screen, links, primaries, confirmations, setPrimary)
+        return Fixture(screen, links, primaries, confirmations, setPrimary, tracker, synchronizer)
     }
 
     // KMK v0.8.25 -->
@@ -179,7 +188,7 @@ class LinkGroupManagementScreenModelTest {
         advanceUntilIdle()
         var result: LinkGroupMutationResult? = null
 
-        // no synchronizer can be built in this test, which is exactly a sharing step failing after the link was saved
+        coEvery { fixture.synchronizer.join(any(), any(), any()) } throws IllegalStateException("sharing failed after saving links")
         fixture.model.addMangaToGroup("existing", listOf(manga(2L, "a"))) { result = it }
         advanceUntilIdle()
 
@@ -434,5 +443,57 @@ class LinkGroupManagementScreenModelTest {
         assertTrue(GroupUndoJournal.isEmpty())
         val state = fixture.model.state.value as LinkGroupManagementScreenModel.State.Success
         assertEquals(setOf("a", "b"), state.allGroups.single().links.map { it.url }.toSet())
+    }
+
+    @Test
+    fun `remove move and ungroup separate exactly their departing sources before link writes`() = runTest {
+        for (action in listOf("remove", "move", "ungroup")) {
+            GroupUndoJournal.clear()
+            val original = listOf(link("g1", 1L, "a"), link("g1", 2L, "b"), link("g2", 3L, "c"))
+            val restore = mockk<RestoreCrossSourceGroupState>()
+            val fixture = model(original, restore)
+            val expected = if (action == "ungroup") setOf(1L to "a", 2L to "b") else setOf(1L to "a")
+            var separated = false
+            coEvery { fixture.tracker.separateSources(expected, 42L) } answers {
+                assertEquals(original, fixture.links)
+                separated = true
+            }
+            coEvery { restore.await(any(), any(), any(), any()) } answers {
+                assertTrue(separated, "separation must finish before the first link mutation")
+            }
+            var result: LinkGroupMutationResult? = null
+            when (action) {
+                "remove" -> fixture.model.ungroupMember(1L, "a") { result = it }
+                "move" -> fixture.model.moveMember(1L, "a", "g2") { result = it }
+                else -> fixture.model.ungroupGroup("g1") { result = it }
+            }
+            advanceUntilIdle()
+            assertTrue(requireNotNull(result).succeeded)
+            coVerify(exactly = 1) { fixture.tracker.separateSources(expected, 42L) }
+        }
+    }
+
+    @Test
+    fun `separation failure makes remove move and ungroup fail without changing links or identity`() = runTest {
+        for (action in listOf("remove", "move", "ungroup")) {
+            GroupUndoJournal.clear()
+            val original = listOf(link("g1", 1L, "a"), link("g1", 2L, "b"), link("g2", 3L, "c"))
+            val restore = mockk<RestoreCrossSourceGroupState>(relaxed = true)
+            val fixture = model(original, restore)
+            coEvery { fixture.tracker.separateSources(any(), any()) } throws IllegalStateException("split failed")
+            var result: LinkGroupMutationResult? = null
+            when (action) {
+                "remove" -> fixture.model.ungroupMember(1L, "a") { result = it }
+                "move" -> fixture.model.moveMember(1L, "a", "g2") { result = it }
+                else -> fixture.model.ungroupGroup("g1") { result = it }
+            }
+            advanceUntilIdle()
+            assertFalse(requireNotNull(result).succeeded)
+            assertEquals(original, fixture.links)
+            assertTrue(GroupUndoJournal.snapshot().isEmpty())
+            coVerify(exactly = 0) { restore.await(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { fixture.confirmations.reverseBetween(any(), any(), any()) }
+            coVerify(exactly = 0) { fixture.synchronizer.join(any(), any(), any()) }
+        }
     }
 }

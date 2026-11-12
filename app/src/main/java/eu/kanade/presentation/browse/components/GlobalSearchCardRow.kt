@@ -80,6 +80,7 @@ internal fun MangaItem(
     isSelected: Boolean = false,
     usePanoramaCover: Boolean? = null,
     showLibraryState: Boolean = true,
+    onCoverError: (() -> Unit)? = null,
     // KMK <--
 ) {
     // KMK -->
@@ -97,6 +98,7 @@ internal fun MangaItem(
             title = title,
             titleMaxLines = 3,
             coverData = cover,
+            onCoverError = onCoverError,
             coverBadgeStart = {
                 InLibraryBadge(enabled = showLibraryState && isFavorite)
             },

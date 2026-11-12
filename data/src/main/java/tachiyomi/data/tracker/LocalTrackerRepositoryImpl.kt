@@ -9,6 +9,7 @@ import tachiyomi.domain.tracker.model.LocalTrackedWorkSourceConfirmation
 import tachiyomi.domain.tracker.model.LocalTrackedWorkSourceProgress
 import tachiyomi.domain.tracker.model.LocalTrackedWorkStatus
 import tachiyomi.domain.tracker.repository.LocalTrackerRepository
+import java.util.UUID
 
 class LocalTrackerRepositoryImpl(
     private val handler: DatabaseHandler,
@@ -201,6 +202,95 @@ class LocalTrackerRepositoryImpl(
             local_trackerQueries.deleteWorkSourceProgress(duplicateId)
             local_trackerQueries.deleteLists(duplicateId)
             local_trackerQueries.deleteWork(duplicateId)
+        }
+    }
+
+    override suspend fun separateSources(sources: Set<Pair<Long, String>>, now: Long) {
+        if (sources.isEmpty()) return
+        require(now > 0L)
+        handler.await(inTransaction = true) {
+            val workIds = sources.mapNotNull { (source, url) ->
+                local_trackerQueries.getWorkIdBySourceUrl(source, url).executeAsOneOrNull()
+            }.distinct()
+            workIds.forEach { workId ->
+                val attached = local_trackerQueries.getSources(workId, localTrackedWorkSourceMapper).executeAsList()
+                if (attached.size <= 1) return@forEach
+                val work = local_trackerQueries.getWork(workId, localTrackedWorkMapper).executeAsOne()
+                val lists = local_trackerQueries.getListEntries(workId).executeAsList()
+                val selected = attached.filter { (it.source to it.url) in sources }
+                // Snapshot the original membership so selecting every version also splits the last one.
+                selected.forEach { source ->
+                    val progress = local_trackerQueries.getSourceProgress(
+                        workId,
+                        source.source,
+                        source.url,
+                        localTrackedWorkSourceProgressMapper,
+                    ).executeAsOneOrNull()
+                    var independentId: String
+                    do {
+                        independentId = UUID.randomUUID().toString()
+                    } while (local_trackerQueries.getWork(independentId).executeAsOneOrNull() != null)
+                    local_trackerQueries.upsertWork(
+                        id = independentId,
+                        title = work.title,
+                        normalizedTitle = work.normalizedTitle,
+                        status = work.status.name,
+                        lastChapterSource = work.lastChapterSource,
+                        lastChapterUrl = work.lastChapterUrl,
+                        lastChapterNumber = work.lastChapterNumber,
+                        lastChapterLabel = work.lastChapterLabel,
+                        lastProgressAt = work.lastProgressAt,
+                        score = work.score,
+                        startDate = work.startDate,
+                        finishDate = work.finishDate,
+                        createdAt = work.createdAt,
+                        updatedAt = maxOf(work.updatedAt, now),
+                    )
+                    // Release the globally unique source identity before inserting its new owner.
+                    // Progress references the work, not the source row: remove the old row explicitly.
+                    local_trackerQueries.deleteSourceProgress(workId, source.source, source.url)
+                    local_trackerQueries.deleteSource(workId, source.source, source.url)
+                    local_trackerQueries.upsertSource(
+                        workId = independentId,
+                        source = source.source,
+                        url = source.url,
+                        title = source.title,
+                        confidence = source.confidence.toLong(),
+                        confirmation = source.confirmation.name,
+                        inheritanceOptedOut = if (source.inheritanceOptedOut) 1L else 0L,
+                        createdAt = source.createdAt,
+                        updatedAt = source.updatedAt,
+                    )
+                    progress?.let {
+                        local_trackerQueries.upsertSourceProgress(
+                            workId = independentId,
+                            source = it.source,
+                            url = it.url,
+                            chapterNumber = it.chapterNumber,
+                            chapterUrl = it.chapterUrl,
+                            chapterLabel = it.chapterLabel,
+                            progressAt = it.progressAt,
+                            inheritedFromSource = it.inheritedFromSource,
+                            inheritedFromUrl = it.inheritedFromUrl,
+                            updatedAt = it.updatedAt,
+                        )
+                    }
+                    lists.forEach { entry ->
+                        local_trackerQueries.insertList(
+                            workId = independentId,
+                            listName = entry.list_name,
+                            normalizedName = entry.list_name.lowercase(),
+                            createdAt = entry.created_at,
+                        )
+                    }
+                }
+                if (selected.size == attached.size) {
+                    // No version retains this work. All saved state now belongs to the new works.
+                    local_trackerQueries.deleteWorkSourceProgress(workId)
+                    local_trackerQueries.deleteLists(workId)
+                    local_trackerQueries.deleteWork(workId)
+                }
+            }
         }
     }
 

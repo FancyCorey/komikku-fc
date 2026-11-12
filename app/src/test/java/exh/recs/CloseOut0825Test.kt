@@ -99,8 +99,9 @@ class CloseOut0825Test {
     @Test
     fun `the rated grid shows the first cover that loads`() {
         val screen = File("src/main/java/exh/recs/loved/RatedMangaScreen.kt").readText()
-        assertTrue(screen.contains("cover = rememberRatedCover(item),"))
-        assertTrue(screen.contains("if (result is coil3.request.SuccessResult) {"))
+        assertTrue(screen.contains("cover = displayedCover,"))
+        assertTrue(screen.contains("onCoverError = { coverSelection.onError(displayedCover) }"))
+        assertTrue(!screen.contains("imageLoader.execute"), "the displayed request owns fallback without a second image probe")
     }
 }
 // KMK <--

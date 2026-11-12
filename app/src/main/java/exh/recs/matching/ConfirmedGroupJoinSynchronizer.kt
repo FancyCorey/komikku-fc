@@ -61,7 +61,7 @@ class ConfirmedGroupJoinSynchronizer(
 
     /**
      * KMK v0.8.25: what joining did. [sharingComplete] is false when a sharing step failed (the link itself is saved either way);
-     * [rejected] are pairs the user marked as not the same manga, which were neither confirmed nor shared with.
+     * [rejected] are pairs the user marked as not the same manga. Any rejection stops sharing for the complete batch.
      */
     data class JoinOutcome(
         val sharingComplete: Boolean,
@@ -84,18 +84,15 @@ class ConfirmedGroupJoinSynchronizer(
                 ?: members.firstOrNull()
                 ?: return JoinOutcome(true)
 
-            val confirmed = confirmAgainstAnchor(anchorLink, members, actionId)
+            val confirmed = confirmMembers(members, actionId)
             ok = confirmed.first && ok
             rejected = confirmed.second
-            // A version the user said is not the same manga gets nothing from the group.
-            val rejectedKeys = rejected.flatMap { listOf(it.left, it.right) }
-                .filterNot { it.source == anchorLink.source && it.url == anchorLink.url }
-                .map { it.source to it.url }
-                .toSet()
-
-            val anchor = anchorLink.toManga() ?: return JoinOutcome(ok, rejected)
-            val allManga = members.mapNotNull { it.toManga() }.filterNot { (it.source to it.url) in rejectedKeys }
-            val sharingMembers = members.filterNot { (it.source to it.url) in rejectedKeys }
+            // Sharing and tracker consolidation must not bypass a rejection between non-anchor members.
+            // Failed/conflicting confirmation writes grant no authority to share.
+            if (!confirmed.first || rejected.isNotEmpty()) return JoinOutcome(false, rejected)
+            val anchor = anchorLink.toManga() ?: return JoinOutcome(false)
+            val allManga = members.mapNotNull { it.toManga() }
+            val sharingMembers = members
 
             ok = step {
                 localTrackingPropagator.propagateIfAnyTracked(
@@ -147,19 +144,14 @@ class ConfirmedGroupJoinSynchronizer(
         return JoinOutcome(ok, rejected)
     }
 
-    private suspend fun confirmAgainstAnchor(
-        anchor: CrossSourceMangaLink,
+    private suspend fun confirmMembers(
         members: List<CrossSourceMangaLink>,
         actionId: String?,
     ): Pair<Boolean, List<CrossSourceIdentityPair>> {
-        val pairs = members
-            .filterNot { it.source == anchor.source && it.url == anchor.url }
-            .map {
-                CrossSourceIdentityDecisionPolicy.canonicalPair(
-                    CrossSourceRecordKey(anchor.source, anchor.url),
-                    CrossSourceRecordKey(it.source, it.url),
-                )
-            }
+        val keys = members.map { CrossSourceRecordKey(it.source, it.url) }.distinct()
+        val pairs = keys.flatMapIndexed { index, left ->
+            keys.drop(index + 1).map { right -> CrossSourceIdentityDecisionPolicy.canonicalPair(left, right) }
+        }
         if (pairs.isEmpty()) return true to emptyList()
         // Grouping implies "same manga", but never over the user's own "Not the same manga".
         val outcome = identityController.confirmUnlessRejected(pairs)

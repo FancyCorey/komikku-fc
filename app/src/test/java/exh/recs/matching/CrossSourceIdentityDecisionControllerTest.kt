@@ -109,6 +109,29 @@ class CrossSourceIdentityDecisionControllerTest {
         assertTrue(CrossSourceIdentityUndoJournal.isEmpty())
     }
 
+    @Test
+    fun `conditional grouping clear preserves a rejection written after ownership was checked`() = runTest {
+        val pair = pair(1, "/a", 2, "/b")
+        controller.mutate(pair, CrossSourceIdentityMutation.CONFIRM)
+        val checked = requireNotNull(get.await(pair))
+        controller.mutate(pair, CrossSourceIdentityMutation.REJECT)
+        val newer = get.await(pair)
+        assertEquals(CrossSourceIdentityMutationResult.CONFLICT, controller.clearExpected(listOf(checked)))
+        assertEquals(newer, get.await(pair))
+    }
+
+    @Test
+    fun `conditional grouping clear preserves a newer manual confirmation`() = runTest {
+        val pair = pair(1, "/a", 2, "/b")
+        controller.mutate(pair, CrossSourceIdentityMutation.CONFIRM)
+        val checked = requireNotNull(get.await(pair))
+        controller.mutate(pair, CrossSourceIdentityMutation.REJECT)
+        controller.mutate(pair, CrossSourceIdentityMutation.CONFIRM)
+        val newer = get.await(pair)
+        assertEquals(CrossSourceIdentityMutationResult.CONFLICT, controller.clearExpected(listOf(checked)))
+        assertEquals(newer, get.await(pair))
+    }
+
     private fun pair(firstSource: Long, firstUrl: String, secondSource: Long, secondUrl: String) =
         CrossSourceIdentityDecisionPolicy.canonicalPair(
             CrossSourceRecordKey(firstSource, firstUrl),

@@ -69,10 +69,11 @@ enum class MangaCover(val ratio: Float) {
         onCoverLoaded: ((DomainMangaCover, result: AsyncImagePainter.State.Success) -> Unit)? = null,
         size: Size = Size.Normal,
         scale: ContentScale = ContentScale.Crop,
+        onCoverError: (() -> Unit)? = null,
         // KMK <--
     ) {
         // KMK -->
-        var succeed by remember { mutableStateOf(false) }
+        var succeed by remember(data) { mutableStateOf(false) }
         // KMK <--
 
         val modifierColored = modifier
@@ -139,6 +140,10 @@ enum class MangaCover(val ratio: Float) {
                         ),
                     )
                 }
+            },
+            onError = {
+                succeed = false
+                onCoverError?.invoke()
             },
             onSuccess = { result ->
                 succeed = true

@@ -52,9 +52,9 @@ class GroupJoinConfirmationsTest {
         val outcome = groupJoin("join", pair(a, b), pair(a, c))
 
         assertTrue(rejected(a, b), "the user's rejection stands")
-        assertTrue(confirmed(a, c))
+        assertTrue(!confirmed(a, c), "a rejected batch creates no new confirmation paths")
         assertEquals(listOf(pair(a, b)), outcome.rejected)
-        assertEquals(listOf(pair(a, c)), outcome.written.map { it.pair })
+        assertTrue(outcome.written.isEmpty())
         assertEquals(listOf(pair(a, b)), confirmations.rejectedAmong(listOf(b), listOf(a, c)))
     }
 
@@ -91,6 +91,46 @@ class GroupJoinConfirmationsTest {
 
         assertTrue(confirmed(a, b), "put back as it was before the removal")
         assertTrue(rejected(a, c), "a rejection made after the removal is kept")
+    }
+
+    @Test
+    fun `reversal cannot clear a user decision made after its ownership read`() = runTest {
+        val outcome = groupJoin("join", pair(a, b))
+        val racingReader = io.mockk.mockk<GetCrossSourceIdentityDecisions>()
+        io.mockk.coEvery { racingReader.await(pair(a, b)) } coAnswers {
+            val checked = get.await(pair(a, b))
+            controller.mutate(pair(a, b), CrossSourceIdentityMutation.REJECT)
+            checked
+        }
+        val racingConfirmations = GroupJoinConfirmations(FakePreferenceStore(), racingReader, controller)
+        racingConfirmations.recordWritten(outcome.written, "join")
+        assertTrue(racingConfirmations.reverseForAction("join").isEmpty())
+        assertTrue(rejected(a, b))
+    }
+
+    @Test
+    fun `legacy local ownership migrates and still reverses after reconstruction`() = runTest {
+        val store = FakePreferenceStore()
+        val first = GroupJoinConfirmations(store, get, controller)
+        val outcome = controller.confirmUnlessRejected(listOf(pair(a, b)))
+        first.recordWritten(outcome.written, "join")
+        val serialized = store.getString(GroupJoinConfirmations.PREFERENCE_KEY, "").get()
+        val oldStore = FakePreferenceStore()
+        oldStore.getString(GroupJoinConfirmations.LEGACY_PREFERENCE_KEY, "").set(serialized)
+        val migrated = GroupJoinConfirmations(oldStore, get, controller)
+        assertEquals(serialized, oldStore.getString(GroupJoinConfirmations.PREFERENCE_KEY, "").get())
+        assertEquals("", oldStore.getString(GroupJoinConfirmations.LEGACY_PREFERENCE_KEY, "").get())
+        migrated.reverseForAction("join")
+        assertTrue(!confirmed(a, b))
+    }
+
+    @Test
+    fun `current ownership wins over stale legacy ownership`() = runTest {
+        val store = FakePreferenceStore()
+        store.getString(GroupJoinConfirmations.PREFERENCE_KEY, "").set("[]")
+        store.getString(GroupJoinConfirmations.LEGACY_PREFERENCE_KEY, "").set("stale")
+        GroupJoinConfirmations(store, get, controller)
+        assertEquals("[]", store.getString(GroupJoinConfirmations.PREFERENCE_KEY, "").get())
     }
 
     @Test

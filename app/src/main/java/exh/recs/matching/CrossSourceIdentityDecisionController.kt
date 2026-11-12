@@ -64,7 +64,7 @@ class CrossSourceIdentityDecisionController(
 
     /**
      * KMK v0.8.25: confirms what grouping implies without overruling the user. A pair the user marked "Not the same manga" is
-     * never turned into a confirmation here; it is returned in [CrossSourceIdentityConfirmOutcome.rejected] so the caller can ask.
+     * never turned into a confirmation here; any rejected pair leaves the complete batch unchanged so the caller can ask.
      */
     suspend fun confirmUnlessRejected(pairs: List<CrossSourceIdentityPair>): CrossSourceIdentityConfirmOutcome {
         return try {
@@ -79,6 +79,10 @@ class CrossSourceIdentityDecisionController(
                     replacementFor(pair, previous, CrossSourceIdentityMutation.CONFIRM)
                         ?.let { CrossSourceIdentityReplacement(previous, it) }
                 }
+            }
+            // Do not create indirect confirmation paths around a rejected pair in this batch.
+            if (rejected.isNotEmpty()) {
+                return CrossSourceIdentityConfirmOutcome(CrossSourceIdentityMutationResult.UNCHANGED, rejected = rejected)
             }
             if (replacements.isEmpty()) {
                 return CrossSourceIdentityConfirmOutcome(CrossSourceIdentityMutationResult.UNCHANGED, rejected = rejected)
@@ -97,6 +101,23 @@ class CrossSourceIdentityDecisionController(
             throw e
         } catch (e: Exception) {
             CrossSourceIdentityConfirmOutcome(CrossSourceIdentityMutationResult.FAILED)
+        }
+    }
+
+    /** Clears only the exact decisions whose grouping ownership the caller checked. */
+    suspend fun clearExpected(decisions: List<CrossSourceIdentityDecision>): CrossSourceIdentityMutationResult {
+        if (decisions.isEmpty()) return CrossSourceIdentityMutationResult.UNCHANGED
+        return try {
+            val replacements = decisions.map { previous ->
+                CrossSourceIdentityReplacement(previous, CrossSourceIdentityDecisionPolicy.clearedDecision(previous, clock()))
+            }
+            if (!replaceDecisions.await(replacements)) return CrossSourceIdentityMutationResult.CONFLICT
+            CrossSourceIdentityUndoJournal.record(CrossSourceIdentityUndoRecorder.build(replacements, CrossSourceIdentityMutation.CLEAR))
+            CrossSourceIdentityMutationResult.APPLIED
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            CrossSourceIdentityMutationResult.FAILED
         }
     }
 

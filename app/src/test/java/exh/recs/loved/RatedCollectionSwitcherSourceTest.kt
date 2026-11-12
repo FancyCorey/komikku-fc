@@ -56,10 +56,10 @@ class RatedCollectionSwitcherSourceTest {
     fun `the switcher is wired into the non-selection-mode AppBar actions, not the selection-mode AppBar`() {
         val actionsSlotStart = screenText.indexOf("actions = {\n")
         assertTrue(actionsSlotStart >= 0, "actions slot not found")
-        val actionsSlotEnd = screenText.indexOf("AppBarActions(", actionsSlotStart)
-        assertTrue(actionsSlotEnd > actionsSlotStart, "AppBarActions( call not found after actions slot start")
+        val actionsSlotEnd = screenText.indexOf("RatedMangaActionPlacementMenu(", actionsSlotStart)
+        assertTrue(actionsSlotEnd > actionsSlotStart, "RatedMangaActionPlacementMenu( call not found after actions slot start")
         val window = screenText.substring(actionsSlotStart, actionsSlotEnd)
-        assertTrue(window.contains("RatedCollectionSwitcher("), "RatedCollectionSwitcher must be called inside the non-selection-mode actions slot, immediately before AppBarActions()")
+        assertTrue(window.contains("RatedCollectionSwitcher("), "RatedCollectionSwitcher must be called inside the non-selection-mode actions slot, immediately before the collection actions menu")
     }
 
     private fun stripComments(text: String): String {

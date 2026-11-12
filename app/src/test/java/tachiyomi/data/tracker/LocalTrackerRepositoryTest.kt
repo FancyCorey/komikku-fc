@@ -1,6 +1,7 @@
 package tachiyomi.data.tracker
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -25,8 +26,9 @@ import tachiyomi.domain.tracker.model.LocalTrackedWorkStatus
 
 class LocalTrackerRepositoryTest {
 
-    private fun repository(): LocalTrackerRepositoryImpl {
-        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+    private fun repository(
+        driver: JdbcSqliteDriver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY),
+    ): LocalTrackerRepositoryImpl {
         Database.Schema.create(driver)
         val database = Database(
             driver = driver,
@@ -186,6 +188,232 @@ class LocalTrackerRepositoryTest {
         assertEquals(merged, repository.getWork("work-1"))
         assertEquals(setOf("/canonical", "/duplicate"), repository.getSources("work-1").map { it.url }.toSet())
         assertEquals(listOf(duplicateList), repository.getListEntries("work-1"))
+    }
+
+    @Test
+    fun `separating several sources preserves all saved fields and subsequent updates are independent`() = runTest {
+        val repository = repository()
+        val original = work().copy(
+            status = LocalTrackedWorkStatus.COMPLETED,
+            lastChapterSource = 9,
+            lastChapterNumber = 42.5,
+            lastChapterUrl = "/retained/ch-42",
+            lastChapterLabel = "Chapter 42.5",
+            lastProgressAt = 4_000,
+            score = 8.5,
+            startDate = 1_100,
+            finishDate = 4_100,
+            updatedAt = 5_000,
+        )
+        repository.upsertWork(original)
+        val versions = listOf(
+            source(url = "/a").copy(title = "Version A", confidence = 73, inheritanceOptedOut = true),
+            source(url = "/b").copy(source = 2, confirmation = LocalTrackedWorkSourceConfirmation.SUGGESTED),
+            source(url = "/retained").copy(source = 9),
+        )
+        val progress = versions.mapIndexed { index, version ->
+            LocalTrackedWorkSourceProgress(
+                workId = original.id,
+                source = version.source,
+                url = version.url,
+                chapterNumber = if (index == 1) null else 12.5 + index,
+                chapterUrl = "${version.url}/saved",
+                chapterLabel = if (index == 1) "Special" else "Saved chapter",
+                progressAt = 2_000 + index.toLong(),
+                inheritedFromSource = 9,
+                inheritedFromUrl = "/retained",
+                updatedAt = 3_000 + index.toLong(),
+            )
+        }
+        versions.forEach { repository.upsertSource(it) }
+        progress.forEach { repository.upsertSourceProgress(it) }
+        val lists = listOf(LocalTrackedWorkList("Favorites", 1_234), LocalTrackedWorkList("Finished", 2_345))
+        repository.replaceListEntries(original.id, lists)
+        val selected = versions.take(2).map { it.source to it.url }.toSet()
+
+        repository.separateSources(selected, now = 6_000)
+
+        val ids = versions.map { repository.getWorkIdBySourceUrl(it.source, it.url)!! }
+        assertEquals(3, ids.toSet().size)
+        assertEquals(original.id, ids.last())
+        assertEquals(3, repository.getAllWorksAsFlow().first().size)
+        versions.take(2).forEachIndexed { index, version ->
+            val id = ids[index]
+            assertEquals(original.copy(id = id, updatedAt = 6_000), repository.getWork(id))
+            assertEquals(listOf(version.copy(workId = id)), repository.getSources(id))
+            assertEquals(progress[index].copy(workId = id), repository.getSourceProgress(id, version.source, version.url))
+            assertNull(repository.getSourceProgress(original.id, version.source, version.url))
+            assertEquals(lists, repository.getListEntries(id))
+        }
+        assertEquals(original, repository.getWork(original.id))
+        assertEquals(listOf(versions.last()), repository.getSources(original.id))
+        assertEquals(progress.last(), repository.getSourceProgress(original.id, 9, "/retained"))
+        assertEquals(lists, repository.getListEntries(original.id))
+
+        val separated = repository.getAllWorksAsFlow().first()
+        repository.separateSources(selected, now = 7_000)
+        assertEquals(separated, repository.getAllWorksAsFlow().first())
+        assertEquals(ids, versions.map { repository.getWorkIdBySourceUrl(it.source, it.url) })
+
+        repository.recordProgress(ids[0], 1, 50.0, "/a/new", "Chapter 50", 8_000)
+        repository.recordSourceProgress(
+            progress[0].copy(workId = ids[0], chapterNumber = 50.0, progressAt = 8_000, updatedAt = 8_000),
+        )
+        repository.upsertWork(repository.getWork(ids[0])!!.copy(score = 9.0))
+        repository.replaceListEntries(ids[0], emptyList())
+        assertEquals(50.0, repository.getWork(ids[0])!!.lastChapterNumber)
+        assertEquals(original.copy(id = ids[1], updatedAt = 6_000), repository.getWork(ids[1]))
+        assertEquals(progress[1].copy(workId = ids[1]), repository.getSourceProgress(ids[1], 2, "/b"))
+        assertEquals(lists, repository.getListEntries(ids[1]))
+        assertEquals(original, repository.getWork(original.id))
+        assertEquals(lists, repository.getListEntries(original.id))
+        repository.recordProgress(original.id, 9, 60.0, "/retained/new", "Chapter 60", 9_000)
+        assertEquals(50.0, repository.getWork(ids[0])!!.lastChapterNumber)
+        assertEquals(42.5, repository.getWork(ids[1])!!.lastChapterNumber)
+    }
+
+    @Test
+    fun `separating all sources preserves progress with foreign keys enabled or disabled`() = runTest {
+        for (foreignKeys in listOf("ON", "OFF")) {
+            val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+            try {
+                driver.execute(null, "PRAGMA foreign_keys = $foreignKeys", 0)
+                val repository = repository(driver)
+                val original = work().copy(lastChapterNumber = 25.0, lastChapterLabel = "Chapter 25", lastProgressAt = 4_000)
+                repository.upsertWork(original)
+                // Same provider, different URLs must still become separate works.
+                val versions = listOf(source(url = "/a"), source(url = "/b"), source(url = "/c"))
+                versions.forEach { repository.upsertSource(it) }
+                val saved = LocalTrackedWorkSourceProgress(
+                    workId = original.id,
+                    source = 1,
+                    url = "/a",
+                    chapterNumber = 12.0,
+                    chapterUrl = "/a/ch-12",
+                    chapterLabel = "Chapter 12",
+                    progressAt = 2_000,
+                    updatedAt = 2_000,
+                )
+                repository.upsertSourceProgress(saved)
+                val lists = listOf(LocalTrackedWorkList("Favorites", 1_234))
+                repository.replaceListEntries(original.id, lists)
+                val selected = versions.map { it.source to it.url }.toSet()
+
+                repository.separateSources(selected, now = 500)
+
+                assertNull(repository.getWork(original.id))
+                assertTrue(repository.getSources(original.id).isEmpty())
+                assertTrue(repository.getListEntries(original.id).isEmpty())
+                assertNull(repository.getSourceProgress(original.id, 1, "/a"))
+                val ids = versions.map { repository.getWorkIdBySourceUrl(it.source, it.url)!! }
+                assertEquals(3, ids.toSet().size)
+                assertFalse(original.id in ids)
+                versions.forEachIndexed { index, version ->
+                    assertEquals(original.copy(id = ids[index]), repository.getWork(ids[index]))
+                    assertEquals(listOf(version.copy(workId = ids[index])), repository.getSources(ids[index]))
+                    assertEquals(lists, repository.getListEntries(ids[index]))
+                }
+                assertEquals(saved.copy(workId = ids[0]), repository.getSourceProgress(ids[0], 1, "/a"))
+                assertNull(repository.getSourceProgress(ids[1], 1, "/b"))
+                assertNull(repository.getSourceProgress(ids[2], 1, "/c"))
+                val works = repository.getAllWorksAsFlow().first()
+                repository.separateSources(selected, now = 9_000)
+                assertEquals(works, repository.getAllWorksAsFlow().first())
+                assertEquals(3, works.size)
+            } finally {
+                driver.close()
+            }
+        }
+    }
+
+    @Test
+    fun `separating single source untracked and empty selections is a no op`() = runTest {
+        val repository = repository()
+        val original = work()
+        repository.upsertWork(original)
+        repository.upsertSource(source())
+        repository.separateSources(emptySet(), now = 2_000)
+        repository.separateSources(setOf(1L to "/example", 99L to "/untracked"), now = 3_000)
+        assertEquals(listOf(original), repository.getAllWorksAsFlow().first())
+        assertEquals(listOf(source()), repository.getSources(original.id))
+        assertNull(repository.getWorkIdBySourceUrl(99, "/untracked"))
+    }
+
+    @Test
+    fun `separation failure rolls back earlier work and moved progress across the entire selection`() = runTest {
+        for (foreignKeys in listOf("ON", "OFF")) {
+            val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+            try {
+                driver.execute(null, "PRAGMA foreign_keys = $foreignKeys", 0)
+                val repository = repository(driver)
+                val originals = listOf(work("work-1"), work("work-2"))
+                val versions = originals.flatMap { original ->
+                    listOf(source(original.id, "/${original.id}/move"), source(original.id, "/${original.id}/keep"))
+                }
+                originals.forEach { repository.upsertWork(it) }
+                versions.forEach { repository.upsertSource(it) }
+                val progress = versions.map { version ->
+                    LocalTrackedWorkSourceProgress(
+                        workId = version.workId,
+                        source = version.source,
+                        url = version.url,
+                        chapterNumber = 12.0,
+                        chapterUrl = "${version.url}/chapter",
+                        chapterLabel = "Chapter 12",
+                        progressAt = 2_000,
+                        updatedAt = 2_000,
+                    )
+                }
+                progress.forEach { repository.upsertSourceProgress(it) }
+                val lists = listOf(LocalTrackedWorkList("Favorites", 1_234))
+                originals.forEach { repository.replaceListEntries(it.id, lists) }
+                // Fail after the first work has been separated and the second source's old rows deleted.
+                driver.execute(
+                    null,
+                    """
+                    CREATE TRIGGER fail_second_separation BEFORE INSERT ON local_tracked_work_source
+                    WHEN NEW.url = '/work-2/move' AND NEW.work_id != 'work-2'
+                    BEGIN SELECT RAISE(ABORT, 'injected separation failure'); END
+                    """.trimIndent(),
+                    0,
+                )
+                val failure = runCatching {
+                    repository.separateSources(linkedSetOf(1L to "/work-1/move", 1L to "/work-2/move"), now = 3_000)
+                }.exceptionOrNull()
+                assertTrue(failure != null)
+                assertTrue(
+                    generateSequence(failure) { it.cause }
+                        .any { it.message.orEmpty().contains("injected separation failure") },
+                )
+                assertEquals(originals, repository.getAllWorksAsFlow().first())
+                originals.forEach { original ->
+                    assertEquals(
+                        versions.filter { it.workId == original.id }.toSet(),
+                        repository.getSources(original.id).toSet(),
+                    )
+                    assertEquals(lists, repository.getListEntries(original.id))
+                }
+                progress.forEach {
+                    assertEquals(it, repository.getSourceProgress(it.workId, it.source, it.url))
+                    assertEquals(it.workId, repository.getWorkIdBySourceUrl(it.source, it.url))
+                }
+                driver.execute(null, "DROP TRIGGER fail_second_separation", 0)
+                repository.separateSources(linkedSetOf(1L to "/work-1/move", 1L to "/work-2/move"), now = 3_000)
+                assertEquals(4, repository.getAllWorksAsFlow().first().size)
+                progress.forEach {
+                    val id = repository.getWorkIdBySourceUrl(it.source, it.url)!!
+                    assertEquals(it.copy(workId = id), repository.getSourceProgress(id, it.source, it.url))
+                    if (it.url.endsWith("/move")) {
+                        assertFalse(id == it.workId)
+                        assertNull(repository.getSourceProgress(it.workId, it.source, it.url))
+                    } else {
+                        assertEquals(it.workId, id)
+                    }
+                }
+            } finally {
+                driver.close()
+            }
+        }
     }
 
     @Test

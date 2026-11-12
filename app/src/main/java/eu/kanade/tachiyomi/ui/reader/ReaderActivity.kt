@@ -893,7 +893,12 @@ class ReaderActivity : BaseActivity() {
         NotificationReceiver.dismissNotification(this, route.mangaId.hashCode(), Notifications.ID_NEW_CHAPTERS)
 
         lifecycleScope.launchNonCancellable {
-            val result = viewModel.openFromIntent(route.mangaId, route.chapterId, route.page)
+            val result = viewModel.openFromIntent(
+                route.mangaId,
+                route.chapterId,
+                route.page,
+                preview = intent.getBooleanExtra(EXTRA_PREVIEW, false),
+            )
             if (!result.getOrDefault(false)) {
                 val exception = result.exceptionOrNull() ?: IllegalStateException("Unknown err")
                 withUIContext {
