@@ -314,49 +314,34 @@ jobs:
       - name: Create draft release
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
-          name: Komikku FC ${{ steps.release.outputs.tag }} — updated to the latest Komikku
+          name: Komikku FC ${{ steps.release.outputs.tag }}
           tag_name: ${{ steps.release.outputs.tag }}
           target_commitish: ${{ steps.identity.outputs.commit }}
           body: |
             Komikku FC is an independently maintained manga reader based on Komikku.
 
-            ### Updated to the latest Komikku
+            ### What's new in v0.8.25
 
-            This release includes every change on Komikku's main branch up to 12 October 2026: everything in Komikku v1.14.1, plus the later changes made before that date. That includes a new database engine with fixes for "database is locked" errors, cleanup of leftover database rows, screen transition and back gesture fixes, and newer libraries. Your library carries over when you update.
+            - [**For You feed**](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/feature-guides/recommendation-settings.md#for-you-feed) opens more smoothly on first use, lets you arrange sources from the feed, and can show more titles like the ones you loved. Focus controls, saved modes, and tags scroll together.
+            - [**Your taste**](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/feature-guides/recommendation-settings.md#your-taste) gives recent reading more influence. The minimum chapter count now applies across For You and manga and group recommendations. Source match checks sources you already use, while Find new sources evaluates extensions you haven't installed.
+            - With [**Speed and data**](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/feature-guides/recommendation-settings.md#speed-and-data) set to use less data, For You skips the extra searches for titles like the ones you loved.
+            - [**Linked versions and ratings**](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/feature-guides/recommendation-settings.md#linked-versions-and-ratings) lets a group rating update every version you confirmed as the same manga, including versions outside local tracking. A newly confirmed version keeps any rating you already gave it.
+            - [**Local tracking**](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/feature-guides/local-tracking.md) gives a version its own tracker when you remove it from a group and preserves its saved progress. Track other versions can add a title to an existing group.
+            - [**Reading**](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/feature-guides/reading.md) adds presets and a reading schedule switch in the reader. At the last chapter, Next can continue from a confirmed version with a later chapter. Best Version previews leave reading history and progress alone.
+            - **Rated lists and About** are easier to scan. Search and collection switching stay on the rated-list toolbar. About distinguishes the fork's links and What's new from the original Komikku's, and the sponsor link names the original developer.
 
-            ### Added in v0.8.24
-
-            - **Recent-reading recommendations:** For You can give extra weight to the tags of manga you read in the last 1 to 30 days.
-            - **Group rating for linked versions:** rate every locally tracked confirmed version of a manga at once from Track Other Versions.
-            - **Use less data on recommendations:** choose Automatic, Always, or Never under Speed and data.
-            - **Looser matches:** a source whose results do not match your taste can show up to four labelled looser matches instead of an empty row.
-            - **Help for failing sources:** a failing For You row explains the likely cause and offers Try again, Open site, Check source, Manage extension, and Don't use in For You.
-            - **Automatic source check:** re-check your sources on a schedule you choose. It is off until you turn it on.
-            - **Alternate sources in Reader settings:** choose when reading from another source is offered.
-
-            ### Improved and fixed in v0.8.24
-
-            - Recommendation Settings is rebuilt with one entry per feature, and Source evaluation can also be opened from the For You menu.
-            - Focus tags are grouped chips without numbered duplicates.
-            - The minimum chapter count applies to titles you have never opened.
-            - A source far slower than the others ends as an error row with Try again.
-            - A source whose searches found nothing falls back to its Popular page.
-            - One failed image no longer makes the rest of a large download fail.
-            - Tracker progress, privacy, and local tracking stay in step across linked versions.
-            - Trackers are asked for progress at most once every 15 minutes when you open a manga.
-
-            See [What's changed](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/release-notes.md) for the complete list.
+            See the [full release notes](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/release-notes.md) for details.
 
             ### Known limitations
 
-            Encrypted-database upgrades and external-tracker updates on a signed-in device are not yet confirmed for this candidate. Keep a current backup and check progress on your tracker. MangaBaka sign-in is unavailable. Name hiding covers supported labels, not every screen; the download queue can still show source names. Confirmed versions descriptions can show Markdown markers, and the timer's 60 min button can wrap on narrow screens.
+            Encrypted-database upgrades and signed-in external tracker updates have not been verified for this build. Keep a current backup and check progress on your tracker. MangaBaka sign-in is unavailable. The download queue can still show source names when **Hide source names** is enabled. Confirmed version descriptions can show Markdown markers, and the timer's **60 min** button can wrap on narrow screens.
 
-            Requires Android 8.0 (API 26) or newer. GitHub shows each APK's download size. Choose the universal APK for broad compatibility, or match your device ABI: arm64-v8a (64-bit ARM), armeabi-v7a (32-bit ARM), x86, or x86_64. If you are unsure, choose universal.
+            Requires Android 8.0 (API 26) or newer. Choose the universal APK for broad compatibility, or choose the APK that matches your device architecture.
 
             Verify a downloaded APK against SHA256SUMS.txt. The APKs are signed with the same public release certificate as the previous release; check its fingerprint in CERTIFICATE_SHA256.txt and RELEASE_MANIFEST.json. Back up your library before updating. Install over your existing public Komikku FC app to keep its data; development builds are separate installations.
 
             See the [user guide](https://github.com/FancyCorey/komikku-fc/blob/${{ steps.release.outputs.tag }}/docs/kmk/user-guide.md).
-          generate_release_notes: true
+          generate_release_notes: false
           files: |
             Komikku-KMK-*.apk
             SHA256SUMS.txt

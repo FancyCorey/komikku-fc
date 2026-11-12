@@ -1026,7 +1026,7 @@
     <string name="chapter_completion_rating_other_versions_prompt_title">Ask about other versions</string>
     <string name="chapter_completion_rating_other_versions_prompt_summary">After you rate a manga, ask whether you want to give the same rating to versions from other sources.</string>
     <string name="confirmed_tracked_version_rating_propagation_title">Rate linked versions together</string>
-    <string name="confirmed_tracked_version_rating_propagation_summary">When you rate one version, also give that rating to its linked versions from other sources that you track.</string>
+    <string name="confirmed_tracked_version_rating_propagation_summary">When you rate one version, also give that rating to the versions you confirmed as the same manga on other sources.</string>
     <string name="confirmed_tracked_version_local_tracking_propagation_title">Track linked versions together</string>
     <string name="confirmed_tracked_version_local_tracking_propagation_summary">When you start tracking one version, locally or with a tracker such as AniList, also track its linked versions from other sources with the same entry.</string>
     <string name="automatic_local_tracking_status_inference_title">Choose reading status automatically</string>

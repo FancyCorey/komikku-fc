@@ -53,11 +53,11 @@ Open a manga's **Trackers**, then choose **Track other versions** in its **Local
 <p align="center"><em>Track other versions, with Group rating above the Track button.</em></p>
 
 <p align="center"><img src="../visual-guide/v0.8.24/group-rating-menu.png" width="260" alt="Group rating choices"></p>
-<p align="center"><em>Choose a rating, or Not rated, for every locally tracked confirmed version.</em></p>
+<p align="center"><em>Choose a rating, or Not rated, for every confirmed version.</em></p>
 
-Select it to choose Love, Like, Dislike, or Not interested, or **Not rated** to clear the rating, for every locally tracked confirmed version at once. This includes eligible versions you have not opened yet. If existing versions have different ratings, the button uses the most recently updated rating. Loading or saving errors appear on the screen so you can try again.
+Select it to choose Love, Like, Dislike, or Not interested, or **Not rated** to clear the rating, for every version you confirmed as the same manga at once. **In v0.8.25 (not yet released)** that includes confirmed versions that are not in local tracking; before, only locally tracked ones changed. This includes versions you have not opened yet; versions that are not confirmed are never changed. If existing versions have different ratings, the button uses the most recently updated rating. Loading or saving errors appear on the screen so you can try again.
 
-Confirming a version through **Best Version** also gives the chosen version the confirmed group's rating when it is locally tracked and **Rate linked versions together** is on, without replacing a rating you set yourself.
+In v0.8.25, confirming a version through **Best Version** gives it the group's rating when **Rate linked versions together** is on, even if the version is outside local tracking. A rating you set yourself stays in place.
 
 ## What Action History can restore
 

@@ -52,9 +52,8 @@ class ConfirmedGroupTasteRatingManager(
         if (!sourcePreferences.confirmedTrackedVersionRatingPropagationEnabled().get()) return
 
         val confirmedMembers = confirmedGroupLinks(origin)
+        // v0.8.25: every confirmed version takes part, tracked locally or not
         if (confirmedMembers.none { it.source == member.source && it.url == member.url }) return
-        val trackedMembers = trackedTargets.await(origin)
-        if (trackedMembers.none { it.sameRecord(member) }) return
 
         val groupTastes = confirmedMembers
             .filterNot { it.source == member.source && it.url == member.url }
@@ -103,10 +102,9 @@ class ConfirmedGroupTasteRatingManager(
         return ConfirmedGroupTasteRatingPolicy.effectiveRating(tastes)
     }
 
+    /** v0.8.25: sets or clears the rating of every version confirmed as the same manga, not only the locally tracked ones. */
     override suspend fun setGroupRating(origin: Manga, rating: MangaRating?) {
-        val targets = trackedTargets.await(origin).filter { manga ->
-            localTrackerRepository.getWorkIdBySourceUrl(manga.source, manga.url) != null
-        }
+        val targets = trackedTargets.await(origin)
         if (targets.isEmpty()) return
         val journalEntries = exh.util.EvaluationModeJournalRecorder.buildRatingChange(
             getMangaTaste = getMangaTaste,
@@ -148,6 +146,4 @@ class ConfirmedGroupTasteRatingManager(
             getCrossSourceMangaLinks.awaitByGroupId(originLink.groupId),
         )
     }
-
-    private fun Manga.sameRecord(other: Manga): Boolean = source == other.source && url == other.url
 }

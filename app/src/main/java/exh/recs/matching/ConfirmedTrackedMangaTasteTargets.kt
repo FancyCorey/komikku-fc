@@ -6,8 +6,10 @@ import tachiyomi.domain.taste.interactor.GetCrossSourceMangaLinks
 import tachiyomi.domain.tracker.repository.LocalTrackerRepository
 
 /**
- * Resolves only confirmed, already locally tracked members of the origin's link group.
- * Unconfirmed or merely discovered candidates must remain explicit user selections.
+ * The versions a rating reaches: every member of the origin's link group that is confirmed as the same manga, tracked locally or
+ * not (v0.8.25; before, only locally tracked ones, so a confirmed version outside local tracking kept an old rating). Unconfirmed
+ * or merely discovered candidates must remain explicit user selections. [localTrackerRepository] is kept for the existing
+ * construction sites.
  */
 class ConfirmedTrackedMangaTasteTargets(
     private val getCrossSourceMangaLinks: GetCrossSourceMangaLinks,
@@ -27,9 +29,7 @@ class ConfirmedTrackedMangaTasteTargets(
             for (member in members) {
                 val manga = getManga.await(member.url, member.source)
                     ?: Manga.create().copy(source = member.source, url = member.url, ogTitle = member.title)
-                val isOrigin = manga.source == origin.source && manga.url == origin.url
-                val isTracked = isOrigin || localTrackerRepository.getWorkIdBySourceUrl(manga.source, manga.url) != null
-                if (isTracked) add(manga)
+                add(manga)
             }
         }
         return targets.distinctBy { it.source to it.url }.ifEmpty { listOf(origin) }

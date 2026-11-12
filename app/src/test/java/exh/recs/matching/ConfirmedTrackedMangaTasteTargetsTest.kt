@@ -27,7 +27,7 @@ class ConfirmedTrackedMangaTasteTargetsTest {
     }
 
     @Test
-    fun `only confirmed locally tracked members are returned`() = runTest {
+    fun `every confirmed member is returned, tracked locally or not`() = runTest {
         val origin = manga(1, "/origin")
         val confirmedTracked = manga(2, "/confirmed")
         val untracked = manga(3, "/untracked")
@@ -42,7 +42,7 @@ class ConfirmedTrackedMangaTasteTargetsTest {
         coEvery { localTracker.getWorkIdBySourceUrl(2, "/confirmed") } returns "work-2"
         coEvery { localTracker.getWorkIdBySourceUrl(3, "/untracked") } returns null
 
-        assertEquals(listOf(origin, confirmedTracked), target.await(origin))
+        assertEquals(listOf(origin, confirmedTracked, untracked), target.await(origin))
     }
 
     @Test

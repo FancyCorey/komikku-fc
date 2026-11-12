@@ -160,42 +160,39 @@ class ConfirmedGroupTasteRatingActionsTest {
     }
 
     @Test
-    fun `confirmed but not locally tracked member is not given automatic group rating`() = runTest {
+    fun `a confirmed member that is not locally tracked still gets the group rating (v0_8_25)`() = runTest {
         setupGroup()
         coEvery { getManga.await(member.url, member.source) } returns null
-        coEvery { tracker.getWorkIdBySourceUrl(member.source, member.url) } returns null
-
-        actions().propagateToConfirmedMember(origin, member)
-
-        coVerify(exactly = 0) { getTaste.await(any(), any()) }
-        coVerify(exactly = 0) { setTaste.await(any(), any()) }
-        coVerify(exactly = 0) { insertTaste.await(any(), any()) }
-    }
-
-    @Test
-    fun `confirmed member receives inherited rating only after local tracking exists`() = runTest {
-        setupGroup()
         coEvery { tracker.getWorkIdBySourceUrl(member.source, member.url) } returns null
         coEvery { getTaste.await(origin.source, origin.url) } returns taste(origin, MangaRating.LIKE, 100)
         coEvery { getTaste.await(sibling.source, sibling.url) } returns null
         coEvery { getTaste.await(member.source, member.url) } returns null
         coEvery { insertTaste.await(member, MangaRating.LIKE) } returns true
-        val actions = actions()
 
-        actions.propagateToConfirmedMember(origin, member)
-        coVerify(exactly = 0) { insertTaste.await(any(), any()) }
-
-        coEvery { tracker.getWorkIdBySourceUrl(member.source, member.url) } returns "migration-created-work"
-        actions.propagateToConfirmedMember(origin, member)
+        actions().propagateToConfirmedMember(origin, member)
 
         coVerify(exactly = 1) { insertTaste.await(member, MangaRating.LIKE) }
+        coVerify(exactly = 0) { setTaste.await(any(), any()) }
     }
 
     @Test
-    fun `group set and clear affect only confirmed locally tracked members`() = runTest {
+    fun `a confirmed member that already has its own rating keeps it`() = runTest {
+        setupGroup()
+        coEvery { tracker.getWorkIdBySourceUrl(member.source, member.url) } returns null
+        coEvery { getTaste.await(origin.source, origin.url) } returns taste(origin, MangaRating.LIKE, 100)
+        coEvery { getTaste.await(sibling.source, sibling.url) } returns null
+        coEvery { getTaste.await(member.source, member.url) } returns taste(member, MangaRating.DISLIKE, 50)
+
+        actions().propagateToConfirmedMember(origin, member)
+
+        coVerify(exactly = 0) { insertTaste.await(any(), any()) }
+    }
+
+    @Test
+    fun `group set and clear affect every confirmed member, tracked locally or not, and never an unconfirmed one`() = runTest {
         setupGroup()
         coEvery { getTaste.await(any(), any()) } returns null
-        coEvery { tracker.getWorkIdBySourceUrl(origin.source, origin.url) } returns "origin-work"
+        coEvery { tracker.getWorkIdBySourceUrl(any(), any()) } returns null
 
         actions().setGroupRating(origin, MangaRating.DISLIKE)
         actions().setGroupRating(origin, null)
