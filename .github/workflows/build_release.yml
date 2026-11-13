@@ -336,7 +336,7 @@ jobs:
 
             Encrypted-database upgrades and signed-in external tracker updates have not been verified for this build. Keep a current backup and check progress on your tracker. MangaBaka sign-in is unavailable. The download queue can still show source names when **Hide source names** is enabled. Confirmed version descriptions can show Markdown markers, and the timer's **60 min** button can wrap on narrow screens.
 
-            Requires Android 8.0 (API 26) or newer. Choose the universal APK for broad compatibility, or choose the APK that matches your device architecture.
+            Requires Android 8.0 (API 26) or newer. Choose the universal APK if you're unsure which one to download. If you know your device architecture, choose arm64-v8a (64-bit ARM), armeabi-v7a (32-bit ARM), x86, or x86_64.
 
             Verify a downloaded APK against SHA256SUMS.txt. The APKs are signed with the same public release certificate as the previous release; check its fingerprint in CERTIFICATE_SHA256.txt and RELEASE_MANIFEST.json. Back up your library before updating. Install over your existing public Komikku FC app to keep its data; development builds are separate installations.
 

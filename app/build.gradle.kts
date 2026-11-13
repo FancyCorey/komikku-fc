@@ -6,7 +6,7 @@ import mihon.buildlogic.getGitSha
 import java.time.Instant
 
 private val defaultAndroidVersionName = "1.14.1"
-private val defaultAndroidVersionCode = 97
+private val defaultAndroidVersionCode = 98
 
 plugins {
     id("mihon.android.application")
