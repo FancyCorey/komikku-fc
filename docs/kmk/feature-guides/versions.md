@@ -22,7 +22,7 @@ The matching screen answers “are these the same manga?” The Best Version scr
 
 ## From the reader
 
-**In v0.8.25 (not yet released):** the reader's alternate-source chooser has **Compare versions**, which opens this comparison for the manga you are reading. Each other version shows **Read from this version** instead of Select as best. Choosing it goes back to the reader to pick a chapter on that source. Nothing is migrated, and the comparison does not change your library. **Open in reader** on a comparison card is a preview: it leaves no reading history, no read progress and no tracker update.
+**In v0.8.25:** the reader's alternate-source chooser has **Compare versions**, which opens this comparison for the manga you are reading. Each other version shows **Read from this version** instead of Select as best. Choosing it goes back to the reader to pick a chapter on that source. Nothing is migrated, and the comparison does not change your library. **Open in reader** on a comparison card is a preview: it leaves no reading history, no read progress and no tracker update.
 
 <p align="center"><img src="../visual-guide/v0.8.25/best-version-from-reader.png" width="260" alt="Best Version opened from the reader with a note that nothing is migrated"></p>
 <p align="center"><em>Best Version opened from the reader; it says nothing is migrated.</em></p>
@@ -43,7 +43,7 @@ These are older captures and do not show **View in Reader**, which current build
 
 Choose **View in Reader** on the current version or another version to inspect its selected chapter. This action is available even when the small previews fail. When you start Best Version from a manga page, it opens the full reader. In v0.8.25, when you start the comparison from an already-open reader, it uses a full-screen preview with page navigation and zoom instead. This keeps your original reader and the comparison available when you go back.
 
-Press **Back** to return to the comparison screen. Opening the reader does not select a best version or start migration. In v0.8.24 this counts as ordinary reading and can update progress. In the upcoming v0.8.25 it is a preview: it leaves your reading history, chapter progress and trackers unchanged.
+Press **Back** to return to the comparison screen. Opening the reader does not select a best version or start migration. In v0.8.24 this counts as ordinary reading and can update progress. In v0.8.25 it is a preview: it leaves your reading history, chapter progress and trackers unchanged.
 
 If a candidate's chapter list cannot be loaded, use **Retry** for the failed candidates; successful and unavailable candidates keep their own results. If a chapter cannot be found, choose a chapter from that candidate's own list. A failed thumbnail alone does not mean that the full reader will fail.
 

@@ -13,7 +13,7 @@ Open **Browse**, then select **For You**. The page shows topic shortcuts and a *
 
 For You is not a single popularity list. It gathers manga from your chosen sources, applies your filters, and combines matches for your taste with newer discoveries. Personalized results remain the majority when enough are available. Newer discoveries still use your blocked genres, languages, and source rules.
 
-Your taste comes from ratings and preferred and blocked tags. **Use recent reading**, on by default, also boosts tags from manga read within your chosen window. The boost depends on how much and how recently you read. **In v0.8.25 (not yet released):** a tag you rated well and also read within the window counts for the larger of its older weight and (half of it plus three times its recent weight). A little recent reading adds nothing and never lowers the tag; a lot of it can lift the tag above an older rating. Your long-term ratings still contribute, and blocked or disliked tags are not boosted.
+Your taste comes from ratings and preferred and blocked tags. **Use recent reading**, on by default, also boosts tags from manga read within your chosen window. The boost depends on how much and how recently you read. **In v0.8.25:** a tag you rated well and also read within the window counts for the larger of its older weight and (half of it plus three times its recent weight). A little recent reading adds nothing and never lowers the tag; a lot of it can lift the tag above an older rating. Your long-term ratings still contribute, and blocked or disliked tags are not boosted.
 
 When repeat rotation is enabled, the page remembers manga shown in recent results. A manga shown more than once within your chosen time window can move lower instead of disappearing. That effect fades as the last showing gets older and ends when it falls outside the window. Manga saved in your library, rated, tracked, or with another recorded interaction are exempt. The app does not treat a lack of interaction as a dislike.
 
@@ -31,7 +31,7 @@ The order can change as new results arrive and previously shown manga move lower
 
 ## Arrange sources on the page
 
-**In v0.8.25 (not yet released):** **More options > Arrange sources** opens the source list on the For You page. Drag the handles to reorder, and use the switches to enable or disable a source. **Done** refreshes For You only if the order changed. It is the same list and order as Recommendation Settings, so there is one source order, not two.
+**In v0.8.25:** **More options > Arrange sources** opens the source list on the For You page. Drag the handles to reorder, and use the switches to enable or disable a source. **Done** refreshes For You only if the order changed. It is the same list and order as Recommendation Settings, so there is one source order, not two.
 
 <p align="center"><img src="../visual-guide/v0.8.25/arrange-sources.png" width="260" alt="Arrange sources panel on the For You page with draggable source rows and a Done button"></p>
 <p align="center"><em>Arrange sources: drag the handles, then choose Done.</em></p>
@@ -91,7 +91,7 @@ A note also appears when the extension has an update available or is no longer o
 
 ## Minimum chapter count
 
-**Minimum chapter count** under **Your taste** hides manga with a known count below your choice. A new result's count is usually unknown until its chapter list loads. After showing its rows, For You checks the displayed titles with unknown counts, a few at a time. **In v0.8.25 (not yet released)** it checks every displayed title (before, only the first 20), and while saving data it still checks the first 20 instead of none. Each completed check removes titles below your minimum immediately, even if another source is still loading. Counts are remembered for two weeks so later refreshes, and a manga's or a group's **Recommendations**, can filter them straight away; those screens check their own rows the same way. The library recommendation search lists titles from sites such as MangaUpdates and AniList, which have no chapter list to check, so the minimum does not apply there.
+**Minimum chapter count** under **Your taste** hides manga with a known count below your choice. A new result's count is usually unknown until its chapter list loads. After showing its rows, For You checks the displayed titles with unknown counts, a few at a time. **In v0.8.25** it checks every displayed title (before, only the first 20), and while saving data it still checks the first 20 instead of none. Each completed check removes titles below your minimum immediately, even if another source is still loading. Counts are remembered for two weeks so later refreshes, and a manga's or a group's **Recommendations**, can filter them straight away; those screens check their own rows the same way. The library recommendation search lists titles from sites such as MangaUpdates and AniList, which have no chapter list to check, so the minimum does not apply there.
 
 <p align="center"><img src="../visual-guide/v0.8.24/your-taste.png" width="260" alt="Minimum chapter count set to 40 under Your taste"></p>
 <p align="center"><em>Minimum chapter count under Your taste.</em></p>
@@ -116,7 +116,7 @@ A manga's Recommendations and the library recommendation search look in at most 
 
 ## Focus on what you want now
 
-**Focus** narrows For You to a few tags for the moment without changing your saved taste. **In v0.8.25 (not yet released)** it also starts with a **Minimum chapter count** row (Off, 5, 10, 20, 30 or 50); it is the same setting as under Your taste, and it is saved when you choose **Apply** or **Clear focus**. Open it and choose tags:
+**Focus** narrows For You to a few tags for the moment without changing your saved taste. **In v0.8.25** it also starts with a **Minimum chapter count** row (Off, 5, 10, 20, 30 or 50); it is the same setting as under Your taste, and it is saved when you choose **Apply** or **Clear focus**. Open it and choose tags:
 
 - Tap a tag once to include it, a second time to exclude it, and a third time to clear it.
 - **Match All** shows only manga that have every included tag. **Match Any** shows manga that have at least one of them.
@@ -184,7 +184,7 @@ These are **For You** rules, not a promise about every recommendation search. Ne
 
 ## How a title is scored
 
-**In v0.8.25 (not yet released):** each title's score still comes from how its tags match what you rated and read, and it still needs at least one tag you like to appear. Four details changed (and, separately, what you read lately counts for more; see [Use recent reading](recommendation-settings.md#use-recent-reading)):
+**In v0.8.25:** each title's score still comes from how its tags match what you rated and read, and it still needs at least one tag you like to appear. Four details changed (and, separately, what you read lately counts for more; see [Use recent reading](recommendation-settings.md#use-recent-reading)):
 
 - **Many tags no longer win by default.** A title with more than five tags has its tag score scaled down, so a long tag list cannot outscore a focused title just by matching more of them. Titles with five tags or fewer are unchanged.
 - **Common tags count slightly less.** A tag found on almost all of the titles you rated says little about taste, so it counts a little less than a tag on only a few.
@@ -199,7 +199,7 @@ They were also checked once against a real library of about 500 ratings, hiding 
 
 ## More like what you loved
 
-**In v0.8.25 (not yet released):** tags are a weak signal on their own, so For You can add a few cards another way. Each refresh may spend up to three extra searches, each on a different source:
+**In v0.8.25:** tags are a weak signal on their own, so For You can add a few cards another way. Each refresh may spend up to three extra searches, each on a different source:
 
 - **A title you loved:** a plain search on the source for one of the titles you loved most recently. The source knows its own titles, so it can offer sequels and similar series that shared tags would miss. The title it asks about changes every few minutes.
 - **Something different:** a text search for tags that often appear with your strongest tags but that you have not shown a clear opinion on yet, to keep For You from narrowing.

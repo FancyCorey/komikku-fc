@@ -48,32 +48,32 @@ When local tracking starts, it begins at the chapter you read most recently on a
 
 ### When you add another version
 
-**In v0.8.25 (not yet released):** choosing **Track other versions** on a manga screen, adding a title to a group, creating a group, or merging titles into a group gives every version what the group already has, without opening each one. All of this happens on your device and sends nothing to a tracker account:
+**In v0.8.25:** choosing **Track other versions** on a manga screen, adding a title to a group, creating a group, or merging titles into a group can share the group’s saved data without opening each version. The app links existing tracker entries locally. A separate sync can still contact the tracker, and loading missing chapters requires the manga source:
 
-- The versions are confirmed as the same manga and join the same local-tracking record.
-- A version without a rating of its own takes the group's most recent rating, including the manga you are on. A version you rated yourself keeps its rating. **Rate linked versions together** turns this off.
-- A tracker entry linked to one version is linked to the others that have none, when **Track linked versions together** is on.
-- The chapter you read furthest is applied to every version that already has a chapter list. A version you never opened has no chapter list yet, so the app loads it in the background and the chapter appears a moment later. This uses the version's source, so it needs a connection.
+- Grouping confirms the versions as the same manga. If local tracking sharing is enabled and a version is already tracked, the confirmed versions can join that local record.
+- With **Rate linked versions together** on, a newly joined version without a rating can receive the group’s rating. A rating you already set is kept.
+- An existing tracker entry can be shared with versions that do not have an entry on that service, when **Track linked versions together** is on.
+- Saved progress is applied where the app can match it to available chapters. For newly linked versions with no chapter list, the app tries to fetch chapters in the background and then applies progress. A source error or a missing match can leave progress unset on that version.
 
-<img src="../diagrams/local-tracking/add-version.svg" width="300" alt="Adding a version confirms it as the same manga, joins the group's local-tracking record, gives a version with no rating the group's rating, shares the tracker entry, applies your chapter to versions that have chapters, and loads chapters in the background for versions you never opened.">
+<img src="../diagrams/local-tracking/add-version.svg" width="300" alt="After confirmation, sharing follows your settings. Existing records can be shared, and versions need a chapter match to show saved progress.">
 
-Opening a manga, using **Track other versions** and refreshing a tracker update only that manga's own record, not every tracked manga in your library. A library update and a restore refresh every group once.
+Opening a manga, using **Track other versions** and refreshing a tracker apply saved progress to that manga’s linked record. Library updates and restores can reconcile records across the library.
 
 Copying a chapter from another version never changes a status you chose. **On hold** and **Dropped** stay set; only you change them, or reading on this device.
 
 After a library update, the app also refreshes the tracker of each linked group once when **Sync reading progress from connected trackers** is on, so progress made on any version reaches the others without opening them.
 
-**In v0.8.25 (not yet released):** when the manga you are on is not in a group yet, **Track other versions** first shows **Already in your groups**: the groups you have with this title or one of its other names, the way Group library automatically matches them. **Add here** adds the manga to that group at once, with the group's rating and progress, and the versions you pick below then join the same group instead of starting a new one. A title you marked **Not the same manga** as one in that group is not added, and the screen says so.
+**In v0.8.25:** when the manga you are on is not in a group yet, **Track other versions** first shows **Already in your groups**: the groups you have with this title or one of its other names, the way Group library automatically matches them. **Add here** adds the manga to that group at once, with the group's rating and progress, and the versions you pick below then join the same group instead of starting a new one. A title you marked **Not the same manga** as one in that group is not added, and the screen says so.
 
 ### Manage groups you already have
 
-On a rated list (Loved, Liked, Disliked, Not interested), the link icon opens **Manage linked manga versions**.
+On a rated list (Loved, Liked, Disliked, Not interested), open **More actions > Manage linked manga versions**.
 
-- **Share rating and progress**, in a group card's menu, does the same for a group you made before v0.8.25: it confirms the group's versions as the same manga and gives the ones that lack them the rating, tracking, chapter progress and tracker entry.
+- **Share rating and progress**, in a group card's menu, does the same for a group you made before v0.8.25: it confirms the group’s versions and applies the same sharing rules and settings.
 - In an open group card the **Primary** version comes first and is marked; it gives the group its title and cover here, on the rated lists and in **Move** and **Merge into group**. Any other title's menu has **Set as primary**, which **Undo** can reverse.
 - A group card's menu holds **Add title**, **Share rating and progress**, **Merge into group** and **Ungroup all**. Open the card to see its titles; each title has its own menu with **Move** and **Remove**. **Move** and **Merge into group** list the other groups with their cover and number of versions; choose one and the button says what happens.
 - If you marked two titles **Not the same manga**, grouping never overrules it. Adding, moving or merging them asks first: **Confirm same manga** if they are the same after all, **Keep apart** if not, and nothing is linked until you choose. **Share rating and progress** stops for that group until you resolve the mismatch; it does not share with only part of the group.
-- If a title is linked but its rating and progress were not shared, for example because a source did not answer, the screen says so and offers **Retry**.
+- If the sharing action reports a failure, use **Retry**. If progress still has not caught up after a background fetch, open the version to check whether its chapter list is available.
 - **Remove**, **Move**, **Ungroup all** and **Undo** take back the "same manga" confirmation that grouping made. A confirmation you made yourself, or a decision you changed since, is kept.
 - Removing a version gives it a separate local tracker with its saved progress, rating, dates and lists. Moving it first separates it from the old group, then joins it to the new one. **Undo** brings the groups back together using their current progress, including reading done since removal. Already-read chapters and copied ratings remain. A linked external tracker entry also remains: if two versions still point to the same entry on that service, that service's progress is still shared.
 

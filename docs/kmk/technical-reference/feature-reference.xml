@@ -111,16 +111,16 @@
     <owner>domain/src/main/java/tachiyomi/domain/tracker/repository/LocalTrackerRepository.kt</owner>
     <dispatch>app/src/main/java/eu/kanade/domain/track/interactor/RecordLocalTrackedChapterProgress.kt</dispatch>
     <states>untracked tracked edited progress-applied sharing-disabled conflict</states>
-    <privacy screenshot="withheld">Local progress and linked manga are saved on the device. External-account reconciliation is a separate user action; sharing local progress does not change tracker accounts.</privacy>
+    <privacy screenshot="withheld">Local progress and linked manga are saved on the device. Sharing local progress writes to the device. Separate tracker sync can contact a connected service and can run automatically or when you refresh.</privacy>
   </feature>
   <feature id="linked-version-sync" route="rated-lists/manage-linked-versions">
-    <purpose>When a version joins a group, confirm it as the same manga, attach the group's local tracking, give it the group's rating if it has none, share the tracker entry and apply the chapter; suggest groups for ungrouped library titles by name.</purpose>
+    <purpose>When a version joins a group, confirm it as the same manga. Apply the enabled sharing rules for saved local tracking, ratings, tracker entries and chapter progress. Suggest groups for ungrouped library titles by name.</purpose>
     <documentation>docs/kmk/feature-guides/local-tracking.md</documentation>
     <owner>app/src/main/java/exh/recs/matching/ConfirmedGroupJoinSynchronizer.kt</owner>
     <presentation>app/src/main/java/exh/recs/links/LinkGroupManagementScreen.kt</presentation>
     <dispatch>app/src/main/java/exh/recs/links/LibraryGroupSuggestionPlanner.kt</dispatch>
     <states>confirmed tracked rating-shared chapters-loading suggested applied partial-failure</states>
-    <constraints>own-rating-kept on-hold-and-dropped-kept chapter-lists-load-in-background</constraints>
+    <constraints>sharing-settings-honored existing-member-rating-kept on-hold-and-dropped-kept available-chapter-match-required missing-chapter-lists-fetched-in-background</constraints>
     <privacy screenshot="approved">Group cards show manga titles and artwork. Evaluation mode replaces source names with neutral labels, including on the grouping screen.</privacy>
   </feature>
   <feature id="reader-source-switching" route="reader/alternate-source">
@@ -169,7 +169,7 @@
     <privacy screenshot="approved">Recognized page text and search results can reveal reading content. OCR text stays local and is excluded from backup and sync.</privacy>
   </feature>
   <feature id="backup-portability" route="settings/data/backup-restore">
-    <purpose>Back up selected Komikku FC ratings, recommendation preferences, links, source evaluations, and local tracking alongside ordinary library data; restore supported items with partial-failure reporting.</purpose>
+    <purpose>Back up selected Komikku FC ratings, recommendation preferences, links, saved source-quality choices, and local tracking alongside ordinary library data. Evaluation results and run history are excluded. Restore reports partial failures.</purpose>
     <documentation>docs/kmk/feature-guides/backups.md</documentation>
     <owner>app/src/main/java/eu/kanade/tachiyomi/data/backup/restore/restorers/TasteRestorer.kt</owner>
     <states>selected encoded restored partial failed</states>

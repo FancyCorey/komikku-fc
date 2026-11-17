@@ -31,6 +31,7 @@ Komikku FC helps you find manga, compare sources, track reading, and manage your
 The [Technical reference](technical-reference/README.md) explains these XML indexes:
 
 - [Feature reference](technical-reference/feature-reference.xml): feature routes, states, privacy rules, and code locations.
+- [v0.8.25 screenshot index](technical-reference/screenshot-manifest-v0.8.25.xml) with development-build illustrations and SHA-256 hashes.
 - [v0.8.24 screenshot index](technical-reference/screenshot-manifest-v0.8.24.xml): illustrations and their SHA-256 file hashes.
 - [v0.8.23 screenshot index](technical-reference/screenshot-manifest-v0.8.23.xml): the What's New illustration, not every workflow in that version.
 - [Earlier screenshot index](technical-reference/screenshot-manifest.xml): older illustrations, their locations, and their limits.

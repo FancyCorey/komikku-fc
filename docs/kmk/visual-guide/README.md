@@ -55,9 +55,9 @@ Name hiding also hides source names in Browse. The rest of Komikku's navigation 
 
 Name hiding (**Hide technical names in screenshots** under **Settings > Advanced > Developer tools**) replaces source, extension, and selected taste labels with neutral names. It does not change saved manga, requests, identifiers, or actions. Manga titles, artwork, reading context, and some genre suggestions can remain visible. Check the whole screen before sharing it; see [Sharing screenshots and exported files safely](../feature-guides/sharing.md).
 
-## In development: v0.8.25 (not yet released)
+## v0.8.25 illustrations
 
-These captures come from a development build and will be redone on the release artifact. See [the manifest](../technical-reference/screenshot-manifest-v0.8.25.xml).
+These illustrations were captured on a development build. Screen labels and layouts can differ from the published APK. See [the capture manifest](../technical-reference/screenshot-manifest-v0.8.25.xml).
 
 <p align="center"><img src="v0.8.25/about-komikku-fc.png" width="260" alt="About, Komikku FC section"></p>
 <p align="center"><em>About: Komikku FC.</em></p>

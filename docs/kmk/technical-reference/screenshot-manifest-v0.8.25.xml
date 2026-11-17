@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<kmk-screenshot-manifest version="1" release="0.8.25" status="in-development" inventory="development-illustration-inventory" hash-algorithm="SHA-256">
+<kmk-screenshot-manifest version="1" release="0.8.25" inventory="development-illustration-inventory" hash-algorithm="SHA-256">
   <candidate-binding>
     <package>app.komikku.dev</package>
     <variant>debug</variant>
     <capture-environment>Android emulator, API 30, 1080x1920, dark theme, development build from the v0.8.25 branch; Hide technical names in screenshots on, so source, extension and tag names are placeholders; status and navigation bars cropped; scaled to 720 pixels wide</capture-environment>
-    <limits>Development build, not a release candidate or a production-signed artifact; these captures must be redone on the release artifact before v0.8.25 is published. Sources are test fixtures, so source rows show failures and Source match has no results to check. The reader flow uses a local sample manga with generated pages. These images illustrate behavior and do not assert that every state is shown.</limits>
+    <limits>These illustrations show a development build and may differ from the production-signed APK. Sources are test fixtures, so source rows show failures and Source match has no results to check. The reader flow uses a local sample manga with generated pages. These images illustrate behavior and do not assert that every state is shown.</limits>
   </candidate-binding>
   <artifact id="whats-new-cards-v0.8.25" type="screenshot" path="../visual-guide/v0.8.25/whats-new-cards.png" sha256="13D61CB4C560E93042FEF2821925ADDE13C74349404DBDBC1FD2606DC17285C9" width="720" height="1154">
     <route>more/about/whats-new</route>

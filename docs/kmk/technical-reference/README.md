@@ -6,6 +6,7 @@ These XML files list features, related code, and existing screenshots. They are 
 
 - [`feature-reference.xml`](feature-reference.xml) links feature areas to screens, behavior, privacy notes, guides, and source files. It is a maintenance map, not a complete list of current controls.
 - [`screenshot-manifest-v0.8.23.xml`](screenshot-manifest-v0.8.23.xml) lists the v0.8.23 illustrations (What's New, Local Tracking decimal progress, Local Tracking refresh, and the source-switching chooser) with their SHA-256 hashes. The images were captured from the v0.8.23 public-test build using synthetic test content; the What's New image shows the beginning of scrollable release notes.
+- [`screenshot-manifest-v0.8.25.xml`](screenshot-manifest-v0.8.25.xml) lists the development-build illustrations and their SHA-256 hashes.
 - [`screenshot-manifest-v0.8.24.xml`](screenshot-manifest-v0.8.24.xml) lists the v0.8.24 illustrations of Recommendation Settings, For You, Focus, Source evaluation, tracking, the reader and What's New, with their SHA-256 hashes. They were captured from the v0.8.24 public-test build with source, extension and tag names replaced by placeholders.
 - [`screenshot-manifest.xml`](screenshot-manifest.xml) records the earlier illustrations, the states they show, their privacy checks, and their SHA-256 hashes.
 

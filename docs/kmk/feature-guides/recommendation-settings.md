@@ -35,13 +35,13 @@ Set **Minimum chapter count** to a number from 0 to 50. **0** means **Off**, whi
 <p align="center"><img src="../visual-guide/v0.8.24/your-taste.png" width="260" alt="Your taste page with known-manga choices, minimum chapter count and recent reading"></p>
 <p align="center"><em>Your taste: known manga, minimum chapter count, and recent reading.</em></p>
 
-Some sources do not give a chapter count with their search results. For You checks the chapter lists of up to 20 displayed titles after loading, removes those below your minimum, and remembers their counts for two weeks. Titles whose counts are still unknown may remain visible. This extra check is skipped while data saving is active.
+Some sources do not give a chapter count with their search results. For You checks the chapter lists of displayed titles with unknown counts and removes titles below your minimum as results arrive. With data saving active, it checks up to 20 titles. Checked counts are remembered for up to two weeks. Titles with unknown counts can still appear.
 
 The setting does not guarantee that every suggested manga has the requested number of chapters. Lower the number or turn it off if too few results remain.
 
 ### Use recent reading
 
-**Use recent reading** is on by default. It favors tags from manga you read recently, alongside your saved ratings. Choose a **Recent reading window** from 1 to 30 days (7 by default). How much you read and how recently you read it affect the boost, and in v0.8.25 (not yet released) a tag you rated well and read in the window counts for the larger of its older weight and (half of it plus three times its recent weight), so a little recent reading changes nothing and a lot can lift it. Blocked and disliked tags are not boosted, and manga rated Dislike or Not interested are ignored.
+**Use recent reading** is on by default. It favors tags from manga you read recently, alongside your saved ratings. Choose a **Recent reading window** from 1 to 30 days (7 by default). How much you read and how recently you read it affect the boost, and in v0.8.25 a tag you rated well and read in the window counts for the larger of its older weight and (half of it plus three times its recent weight), so a little recent reading changes nothing and a lot can lift it. Blocked and disliked tags are not boosted, and manga rated Dislike or Not interested are ignored.
 
 **Minimum chapters counted** controls how strongly very short manga affect recent-reading suggestions. It ranges from 1 to 50 (3 by default). For example, at 3, reading a one-chapter manga counts as one third of a full read for this calculation, rather than a full read. It does not change your reading progress or hide short manga; **Minimum chapter count** above is the separate filter for that.
 
@@ -58,7 +58,7 @@ Add a genre or tag as **Preferred** to favor matching manga, or as **Blocked** t
 
 ### Source match
 
-**In v0.8.25 (not yet released):** at the bottom of Your taste, **Source match** checks whether For You's searches work on the sources you use, so you can see how your taste meets your sources in one place. It never installs anything and works on sources that already have a result; if there are none it says so, with a **Try sources before installing** button that opens that page. See [Source match](source-evaluation.md#source-match).
+**In v0.8.25:** at the bottom of Your taste, **Source match** checks whether For You's searches work on the sources you use, so you can see how your taste meets your sources in one place. It never installs anything and works on sources that already have a result; if there are none it says so, with a **Try sources before installing** button that opens that page. See [Source match](source-evaluation.md#source-match).
 
 ## For You feed
 
@@ -79,7 +79,7 @@ Add a genre or tag as **Preferred** to favor matching manga, or as **Blocked** t
 <p align="center"><em>Each source row shows one-line tags. Boosted is outlined because it is your own choice.</em></p>
 
 <p align="center"><img src="../visual-guide/v0.8.25/for-you-feed-exploration.png" width="260" alt="For You feed settings with Explore new releases, New-release coverage, and the More like what you loved switch"></p>
-<p align="center"><em>More like what you loved, below the new-release settings (v0.8.25, not yet released).</em></p>
+<p align="center"><em>More like what you loved, below the new-release settings (v0.8.25).</em></p>
 
 Each source row shows one-line tags for its current state. **Boosted** is outlined because it is your own choice, while tags such as **Great fit** and **Top Picks** describe results. The number beside **Great fit** describes the source's earlier contribution to Top Picks, not how many manga must appear now. The **Shown** count describes the latest refresh after filters and duplicate handling.
 
@@ -186,8 +186,8 @@ These settings change the small comparison samples, not the chapter itself. **Vi
 
 | Section | What it shows |
 | --- | --- |
-| Source diagnostics | **In v0.8.25 (not yet released):** at the top of the page itself, not behind another screen. Sources that failed to load since the app started, with **Details** to retry, update, reinstall, uninstall or disable loading; crashed or blocked extensions; **Copy diagnostics**; and **View evaluation warning**. When nothing has failed, the page shows **No issues found**. Before v0.8.25 a **Sources with problems** row opened the Source evaluation page for these. |
-| Reset and clear | **In v0.8.25 (not yet released):** four actions, each with a line saying what it does and a confirmation that names it: Forget disliked sources, Show hidden suggestions again, Clear Not interested titles, and Reset the ratings baseline. See [Reset and clear](source-evaluation.md#reset-and-clear). |
+| Source diagnostics | **In v0.8.25:** at the top of the page itself, not behind another screen. Sources that failed to load since the app started, with **Details** to retry, update, reinstall, uninstall or disable loading; crashed or blocked extensions; **Copy diagnostics**; and **View evaluation warning**. When nothing has failed, the page shows **No issues found**. Before v0.8.25 a **Sources with problems** row opened the Source evaluation page for these. |
+| Reset and clear | **In v0.8.25:** four actions, each with a line saying what it does and a confirmation that names it: Forget disliked sources, Show hidden suggestions again, Clear Not interested titles, and Reset the ratings baseline. See [Reset and clear](source-evaluation.md#reset-and-clear). |
 | Skipped on For You | Sources that **Use results on For You** is currently skipping, and why. This section appears only when the automatic check and that switch are both on. |
 | Taste diagnostics | How your ratings and tags were turned into a taste profile. |
 | Source details and tag checks | How well each source's tags match the genres For You understands. The first 20 sources are listed straight away, with **Show all** for the rest. |

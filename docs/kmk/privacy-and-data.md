@@ -8,9 +8,9 @@ Komikku FC keeps your recommendation preferences and reading data on your device
 - Source evaluations, source-quality choices, linked versions, and feature settings.
 - Reading progress and local tracking information.
 - Text recognized from downloaded chapter pages by OCR.
-- The automatic source check's schedule, network and battery choices, and last-run time. In v0.8.25 (not yet released) it also keeps one number, how many titles you had rated at its last check, so it can tell when your ratings have changed a lot. It is a count only and stays on your device.
+- The automatic source check's schedule, network and battery choices, and last-run time. In v0.8.25 it also keeps one number, how many titles you had rated at its last check, so it can tell when your ratings have changed a lot. It is a count only and stays on your device.
 - Small **Action History** records used to undo supported changes.
-- In v0.8.25 (not yet released), reader presets (named sets of reader settings) and which series uses which. They are saved with your settings.
+- In v0.8.25, reader presets (named sets of reader settings) and which series uses which. They are saved with your settings.
 
 For You also remembers checked chapter counts for up to two weeks, with a limit of 3,000 titles. This avoids loading the same chapter lists again just to apply your minimum chapter count.
 
@@ -18,7 +18,7 @@ For You also remembers checked chapter counts for up to two weeks, with a limit 
 
 Browsing, For You, source checks, finding other versions, loading manga details, checking chapter counts, installing extensions, and external tracking can contact their sources or services.
 
-In v0.8.25 (not yet released), For You can run up to three extra searches per refresh, one of which asks a source about the name of a title you loved. Turn **More like what you loved** off under **For You feed** to stop them; they are also skipped while saving data. Tracking other versions can load a version's chapter list from its source in the background.
+In v0.8.25, For You can run up to three extra searches per refresh, one of which asks a source about the name of a title you loved. Turn **More like what you loved** off under **For You feed** to stop them; they are also skipped while saving data. Tracking other versions can load a version's chapter list from its source in the background.
 
 **Use less data on recommendations** reduces optional searching; it does not make recommendations work offline or stop every network request. See [Speed and data](feature-guides/recommendation-settings.md#speed-and-data).
 
@@ -39,7 +39,7 @@ That disclosure covers Google's latest SDKs. This app uses text recognition vers
 
 The inherited analytics and crash-reporting code is not enabled for the public Komikku FC app, `app.komikku.kmk`. This is separate from ML Kit's technical metrics and requests made by extensions or trackers.
 
-Google Drive sync needs a build configured with this fork's own Google sign-in details. The build configuration identifies the app to Google; your authorization token is stored in the app's local storage. It does not enable the inherited analytics or crash reporting.
+The published v0.8.25 APKs do not include Google Drive sync. Builds that provide it need this fork’s own Google sign-in configuration. The build configuration identifies the app to Google; your authorization token is stored in the app's local storage. It does not enable the inherited analytics or crash reporting.
 
 The updater is available only in builds that enable it. When enabled, it checks this fork's repository, not the original app's repository.
 

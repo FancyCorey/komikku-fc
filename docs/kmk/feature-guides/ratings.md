@@ -11,7 +11,7 @@ On a manga page, choose **Love**, **Like**, **Dislike**, or **Not interested**. 
 
 ## Choose or clear a rating
 
-**In v0.8.25 (not yet released):** a rated title with linked versions shows the first cover that loads, starting with the version shown. If that version's source is down, abandoned or gone, the next version's cover appears instead of a blank picture.
+**In v0.8.25:** a rated title with linked versions tries its displayed cover first, then tries other available covers for the group if it fails. If none loads, the app shows a placeholder.
 
 Each manga has one current rating. Choosing Like after Love replaces Love; choosing Not interested replaces the previous rating too. **Clear rating** removes the choice and returns the manga to an unrated state. Not interested has its own collection and visible marker, just like the other choices.
 
@@ -24,7 +24,7 @@ Open the Loved, Liked, Disliked, or Not interested collection from For You to re
 
 | Setting | What it does |
 | --- | --- |
-| Rate linked versions together | Setting or clearing a rating can also apply to confirmed versions of the same manga from other sources that you track locally. Turn it off when you want to rate them separately. |
+| Rate linked versions together | Setting or clearing a rating can also apply to confirmed versions of the same manga from other sources, including versions outside local tracking. Turn it off when you want to rate them separately. |
 | Start tracking when you rate a manga | Starts local tracking when you save Love, Like, or Dislike. Not interested does not start tracking this way. This does not turn on updates to outside tracker accounts. |
 | Track linked versions together | Lets other confirmed versions join local tracking when one version is tracked. This is separate from giving those versions the same rating. |
 | Ask for a rating after finishing | Offers a rating after you finish the latest available chapter. You do not have to rate it. |
@@ -36,8 +36,8 @@ The recommendation settings contain the linked-version, prompt, action-placement
 
 These settings do different jobs:
 
-- **Rating sharing:** setting or clearing a rating includes confirmed versions already tracked locally when **Rate linked versions together** is on.
-- **New confirmations:** a locally tracked version you newly confirm, including through Best Version, can receive the group's rating with rating sharing on. An existing rating you gave that version is kept. A similar title alone is not confirmation.
+- **Rating sharing:** setting or clearing a rating includes confirmed versions, even those outside local tracking, when **Rate linked versions together** is on.
+- **New confirmations:** a version you newly confirm, including through Best Version, can receive the group's rating with rating sharing on. An existing rating you gave that version is kept. A similar title alone is not confirmation.
 - **Starting tracking:** saving Love, Like, or Dislike can create local tracking when **Start tracking when you rate a manga** is on.
 - **Linking tracking:** **Track linked versions together** can attach other confirmed versions to that record. This attachment alone does not give them the rating you just saved. A later rating action can include them, or you can select them explicitly through **Find other versions**.
 
@@ -55,7 +55,7 @@ Open a manga's **Trackers**, then choose **Track other versions** in its **Local
 <p align="center"><img src="../visual-guide/v0.8.24/group-rating-menu.png" width="260" alt="Group rating choices"></p>
 <p align="center"><em>Choose a rating, or Not rated, for every confirmed version.</em></p>
 
-Select it to choose Love, Like, Dislike, or Not interested, or **Not rated** to clear the rating, for every version you confirmed as the same manga at once. **In v0.8.25 (not yet released)** that includes confirmed versions that are not in local tracking; before, only locally tracked ones changed. This includes versions you have not opened yet; versions that are not confirmed are never changed. If existing versions have different ratings, the button uses the most recently updated rating. Loading or saving errors appear on the screen so you can try again.
+Select it to choose Love, Like, Dislike, or Not interested, or **Not rated** to clear the rating, for every version you confirmed as the same manga at once. **In v0.8.25** that includes confirmed versions that are not in local tracking; before, only locally tracked ones changed. This includes versions you have not opened yet; versions that are not confirmed are never changed. If existing versions have different ratings, the button uses the most recently updated rating. Loading or saving errors appear on the screen so you can try again.
 
 In v0.8.25, confirming a version through **Best Version** gives it the group's rating when **Rate linked versions together** is on, even if the version is outside local tracking. A rating you set yourself stays in place.
 

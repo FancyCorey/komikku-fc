@@ -513,7 +513,7 @@ class KmkRecsReleaseNotesTest {
     }
 
     @Test
-    fun `the v0_8_23 entry describes product behavior and keeps pre-release status accurate`() {
+    fun `the v0_8_23 entry describes product behavior and public notes identify the current release`() {
         val currentSection = KmkRecsReleaseNotes.MARKDOWN
             .substringAfter("## KMK-Recs v0.8.23.1")
             .substringBefore("## KMK-Recs v0.8.22")
@@ -521,7 +521,7 @@ class KmkRecsReleaseNotesTest {
         assertTrue(currentSection.contains("The v0.8.23 feature set, with follow-up fixes for updates, reading, and extension recovery"))
         assertFalse(currentSection.contains("release-readiness"))
         assertFalse(currentSection.contains("Release workflow"))
-        assertTrue(publicReleaseNotes.contains("The latest published Komikku FC feature version is **v0.8.24**"))
+        assertTrue(publicReleaseNotes.contains("The latest published Komikku FC feature version is **v0.8.25**"))
         assertFalse(publicReleaseNotes.contains("unreleased candidate"))
     }
 

@@ -164,7 +164,7 @@ Present current and historical Komikku FC changes in grouped, readable release f
 
 ## Settings
 
-Recommendation settings use the app's normal list and section patterns. The first page lists one entry per feature: Your taste, For You feed, Focus modes, Find new sources, Source evaluation, Speed and data, Linked versions and ratings, and Troubleshooting. Recommendation and repeat-display choices are saved as settings and checked before use.
+Recommendation settings use the app's normal list and section patterns. The first page lists one entry per feature: Your taste, For You feed, Focus modes, Find new sources, Try sources before installing, Speed and data, Linked versions and ratings, and Troubleshooting. Recommendation and repeat-display choices are saved as settings and checked before use.
 
 ## Failure behavior
 

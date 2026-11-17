@@ -4,7 +4,7 @@ Use this guide for the main steps, then follow a feature link when you need more
 
 Jump to:
 
-- **Discover:** [For You](#for-you), [recommendation settings](#recommendation-settings), [source evaluation](#source-evaluation), [sources to try](#sources-to-try).
+- **Discover:** [For You](#for-you), [recommendation settings](#recommendation-settings), [trying sources before installing](#trying-sources-before-installing-source-evaluation), [sources to try](#sources-to-try).
 - **Rate and track:** [manga preferences](#manga-preferences), [local tracking](#local-tracking), [other versions and Best Version](#find-other-versions-and-best-version).
 - **Read:** [reader controls](#reader-controls), [OCR search](#ocr-search-for-downloads).
 - **Manage and recover:** [name hiding and Action History](#name-hiding-and-action-history), [exports](#export-and-cleanup), [backups](#backup-and-restore), [extensions](#extension-operations), [troubleshooting](#privacy-and-troubleshooting).
@@ -24,7 +24,7 @@ Jump to:
 What affects the results:
 
 - **Your filters:** language, blocked genres and tags, source choices, and exclusions apply before a manga is shown.
-- **Minimum chapters:** a known count below your minimum hides the manga. After loading, For You checks up to 20 displayed titles with unknown counts and removes those below the minimum. This extra check is skipped while data saving is active; unchecked titles can remain visible.
+- **Minimum chapters:** a known count below your minimum hides the manga. For You checks the displayed titles with unknown counts and removes those below the minimum as results arrive. With data saving active, it checks up to 20. Titles whose counts remain unknown can still appear.
 - **Variety:** personalized matches remain the majority when enough are available. A smaller selection from each source's recent catalogue can add variety, but must pass the same filters.
 - **Repeat display:** untouched cards you have seen repeatedly can move lower, not disappear. Library manga and rated or tracked manga are not lowered by this rule.
 
@@ -118,11 +118,11 @@ For example, progress at chapter 15 can mark available chapters through the matc
 
 ## Trying sources before installing (Source evaluation)
 
-In v0.8.25 (not yet released) this page is called **Try sources before installing**. **Source match** moved to the bottom of **Your taste**, and the diagnostics and the reset buttons moved to **Troubleshooting**, so none of them is behind another screen. The steps below are for this page.
+In v0.8.25 this page is called **Try sources before installing**. **Source match** moved to the bottom of **Your taste**, and the diagnostics and the reset buttons moved to **Troubleshooting**, so none of them is behind another screen. The steps below are for this page.
 
 1. Open **Recommendation Settings** and select **Try sources before installing** (called **Source evaluation** before v0.8.25), or choose it from the For You menu.
 2. Under **Sources to check at once**, choose 10 for a short first check, or 25, 50, or 100. The app checks up to that many before pausing for **Continue**.
-3. Open **More setup options** to decide whether to skip already checked sources or include explicit sources. Read [Source evaluation](feature-guides/source-evaluation.md#before-starting-a-check) for these choices and any installer setup.
+3. Under **More setup options**, you can skip sources with saved results or allow the check to try sources marked as sexually explicit. Read [Source evaluation](feature-guides/source-evaluation.md#before-starting-a-check) for these choices and any installer setup.
 4. Select **Start** when the page says it is ready. You can leave this screen while the check runs.
 5. Review completed, skipped, failed, or partial outcomes. Too little information does not prove a source's manga are a poor match. Select **Continue** if more sources are waiting.
 6. Reassess when your tastes or installed extensions change, or when saved results are out of date.
@@ -207,7 +207,7 @@ The action is unavailable when no valid read position exists.
 2. Configure the optional reading schedule, mode, weekdays, and time windows.
 3. The reader evaluates the local schedule when it opens and when it returns to the foreground.
 
-In v0.8.25 (not yet released) the reader's schedule dialog also has an **Enable reading schedule** switch, so you can turn it on without leaving the manga.
+In v0.8.25 the reader's schedule dialog also has an **Enable reading schedule** switch, so you can turn it on without leaving the manga.
 
 The schedule is off by default. If you open the reader during a restricted time, reading is blocked immediately. If the restriction begins while you are reading, the visible grace message explains whether you may finish the current chapter. Switching chapters cannot bypass the restriction.
 
@@ -220,7 +220,7 @@ Enable **Ask for a rating after finishing** under **Recommendation Settings > Li
 
 ## About and the original Komikku
 
-In v0.8.25 (not yet released), **More > About** has two sections. **Komikku FC** has **What's new in Komikku FC** (a few highlights first, then the full notes for each version), What's coming, the Komikku FC privacy notes, licenses and this repository. **Original Komikku** has **What's new in Komikku**, the original project's own release notes, loaded from GitHub when you open it, Help translate, Komikku's privacy policy (written for the original app), Sponsor, the website, Discord and GitHub. The Sponsor item reads **Sponsor the original developer**.
+In v0.8.25, **More > About** has two sections. **Komikku FC** has **What's new in Komikku FC** (a few highlights first, then the full notes for each version), What's coming, the Komikku FC privacy notes, licenses and this repository. **Original Komikku** has **What's new in Komikku**, the original project's release notes, fetched from GitHub, Help translate, Komikku's privacy policy (written for the original app), Sponsor, the website, Discord and GitHub. The Sponsor item reads **Sponsor the original developer**.
 
 <p align="center"><img src="visual-guide/v0.8.25/about-komikku-fc.png" width="260" alt="About page, Komikku FC section"></p>
 <p align="center"><em>About: the Komikku FC section.</em></p>

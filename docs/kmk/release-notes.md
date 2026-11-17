@@ -1,40 +1,36 @@
 # Komikku FC public release notes
 
-This page describes the latest published release. **v0.8.24** is the latest published version; the previous release was **v0.8.23.1**. The in-app **Komikku FC What's new** screen keeps the detailed history of changes.
+The in-app **What’s new in Komikku FC** screen keeps the version history. Use the guides linked here for steps and settings.
 
 ## Release status
 
-The latest published Komikku FC feature version is **v0.8.24**, titled **Komikku FC v0.8.24 — updated to the latest Komikku**. It replaces **v0.8.23.1**.
+The latest published Komikku FC feature version is **v0.8.25**. It follows **v0.8.24**.
 
-v0.8.24 includes every change on Komikku's main branch up to 12 October 2026: everything in Komikku v1.14.1, plus the later changes made before that date. The Komikku FC additions listed below are separate from those Komikku changes.
-
-## In development: v0.8.25 (not yet released)
-
-These changes are in the source for the next version and are not part of the published v0.8.24 download. The list may change before release.
+## What changed in v0.8.25
 
 - **Sponsor wording:** the sponsor button on the More screen and the Sponsor item in About now read **Sponsor the original developer**. Where it opens is unchanged.
 - **Reading schedule switch:** the reading schedule dialog in the Reader has an **Enable reading schedule** switch, so a schedule can be turned on without leaving the manga, and adding the first time window while it is off switches it on. Back returns to the Reader. Settings > Reader keeps its own switch.
 - **About page:** **More > About** has a **Komikku FC** section (What's new, What's coming, privacy, licenses, and this repository) and an **Original Komikku** section (Komikku's own What's new, Help translate, its privacy policy written for the original app, Sponsor, website, Discord, and GitHub).
 - **What's new as cards:** each version is a card you open, and only the newest starts open.
-- **For You opens more smoothly on first use:** its first load now runs off the main thread, so Browse stays responsive while it loads. This was measured on an emulator with software rendering, not on a low-memory phone, and no speed claim is made for your device.
+- **For You’s first load:** more of the initial work runs in the background so Browse can respond while recommendations load. The check used an emulator with software rendering. Performance on low-memory phones remains unmeasured.
 - **Arrange sources on For You:** **More options > Arrange sources** reorders, enables and disables sources right on the page. **Done** refreshes For You only if the order changed.
 - **Source evaluation split by job:** it now only tries sources you have not installed. Its **Installer and cleanup** settings and its reassess buttons, now one **Update results** button, moved up to **Find new sources**. **Source match**, the check of the sources you already use, is at the bottom of **Your taste**. The diagnostics (crashed or blocked sources, loading problems, Copy diagnostics) are at the top of **Troubleshooting** itself, above a **Reset and clear** group of four actions that each say what they do and ask before they run; two old reset buttons that did the same thing are now one.
 - **For You ranking:** a title with many tags no longer outscores a focused one just by matching more of them, tags on almost all your rated titles count slightly less, a tag's weight levels off smoothly instead of stopping at a hard cap, and a single Dislike on a tag counts for half. On generated data it ranks your loved titles higher. Checked once against a real library, it ranked about the same as before, so no improvement is claimed for real libraries. Rating age decay is built but stays off, because it made no measurable difference there. See [How a title is scored](feature-guides/recommendations.md#how-a-title-is-scored).
 - **Preview from Best Version:** Open in reader is now a preview that leaves no reading history, progress or tracker update.
 - **Automatic check triggers:** besides missing or outdated results, the automatic check also runs when your ratings changed by 100 or more since the last check or when an extension was updated. It never installs or removes anything. This stores one extra number, the rated-title count at the last check, on your device.
-- **Linked versions share everything when you add one:** adding a version to a group, creating a group, or choosing Track other versions on a manga screen confirms the versions as the same manga and gives each one the group's tracking entry, its tracker entry and its rating if it has none of its own, including the manga you are on. A version you never opened loads its chapter list in the background, so its chapter follows a moment later. Each group card has **Share rating and progress** for groups you made before. See [Linked versions](feature-guides/versions.md).
+- **New members of a linked group:** adding a confirmed version can share the existing rating, local tracking, tracker entry and matched chapter progress, according to your settings. If a newly linked version has no chapter list, the app tries to load it from its source. **Share rating and progress** applies the same rules to an existing group. See [Local tracking](feature-guides/local-tracking.md#when-you-add-another-version).
 - **Group library automatically:** **Manage linked manga versions** can list the library titles that are not in a group yet next to the group they most likely belong to, found by name and by the other names group members use. Exact matches are pre-checked and nothing is grouped until you choose **Group selected**.
 - **Reader presets:** the first tab of the reader settings has a **Preset** row. Save the reader as it is now for a series, switch between presets, update or delete one. A preset applies when the reader opens, your usual settings come back when you leave, and it follows the series to its linked versions. See [Reading](feature-guides/reading.md).
 - **More like what you loved:** For You can add a few cards from a search for a title you loved and from tags that sit next to your favorites, and a row says when it includes them. It uses up to three extra searches per refresh, is skipped while saving data, and can be turned off under **For You feed**.
 - **Source fit labels:** a source's label also weighs how you reacted to its titles, with small samples pulled toward neutral, and a source whose search results carry no genres says **Cannot judge** instead of Weak.
-- **Trackers after a library update:** the tracker of each linked group is refreshed once after a library update when **Sync local tracking from trackers** is on, so progress made on any version reaches the others without opening them.
+- **Trackers after a library update:** the tracker of each linked group is refreshed once after a library update when **Sync reading progress from connected trackers** is on, so progress made on any version reaches the others without opening them.
 - **Minimum chapter count everywhere it can apply:** For You now checks every displayed title whose chapter count is unknown (before, the first 20, and none while saving data; saving data now checks the first 20), and a manga's and a group's Recommendations use and check the same counts. Known short titles stay hidden when you return, and each new count updates the screen as it arrives without waiting for slower sources. The library recommendation search lists titles from sites such as MangaUpdates and AniList, which have no chapter list, so it is not filtered. The For You **Focus** panel has a **Minimum chapter count** row, the same setting as under Your taste.
 - **Focus on small screens:** Saved modes, chapter limits and tags share one scrolling list, so long lists and larger text leave every choice reachable.
 - **Clearer rated lists:** Select, group management and export share the More actions menu, leaving more room for the collection's name. Search and switching collections stay on the toolbar.
-- **Covers survive a dead source:** a rated title with linked versions shows the next version's cover when the shown version's source is down or gone. Fallback uses the displayed cover request, avoiding a separate test load of the same image.
+- **Fallback covers on rated lists:** if the first cover fails to load, the app tries other available covers for the linked title. A placeholder appears if none loads.
 - **Primary version in Manage linked manga versions:** the primary version is listed first and marked, and **Set as primary** in a title's menu chooses it.
 - **Track other versions finds your existing group:** **Already in your groups** lists the groups with this title or another of its names; **Add here** joins one, and the versions you pick then join it instead of a new group.
-- **Group rating reaches every confirmed version:** changing a rating on a manga page, with the Group rating button, or from a rated list now also changes confirmed versions that are not in local tracking, and a newly confirmed version gets the group's rating whether or not it is tracked. A version you rated yourself still keeps its own rating when it joins, and unconfirmed versions are never changed.
+- **Group rating reaches every confirmed version:** changing a rating on a manga page, with the Group rating button, or from a rated list now also changes confirmed versions that are not in local tracking, and a newly confirmed version gets the group's rating whether or not it is tracked. With automatic rating sharing enabled, a version you rated yourself keeps that rating when it joins, and unconfirmed versions are never changed.
 - **Browse tabs fit a phone:** with For You, Browse has five tabs, and on a phone Sources and Extensions were cut short. The tab row now scrolls instead, so every name is whole; For You is at the end of the row.
 - **Dropped and On hold stay set:** copying a chapter from another version no longer changes a status you chose. Before, Dropped went back to Reading the next time a library update ran or you opened another version.
 - **Compare versions from the Reader:** the alternate-source chooser has **Compare versions**, which opens Best Version above the Reader. Each other version offers **Read from this version**. Nothing is migrated and your library is not changed. Back returns to the Reader.
@@ -47,13 +43,19 @@ These changes are in the source for the next version and are not part of the pub
 - **Track other versions and opening a manga touch only that manga:** they used to replay the saved progress of every tracked manga in your library each time. They now update only that manga's own record. A library update and a restore still refresh every group. No speed claim is made until it has been timed on a device.
 - **What you read lately counts for more on For You:** a tag you rated well and also read within your window now counts for the larger of its older weight and (half of it plus three times its recent weight). A little recent reading changes nothing and none of it ever lowers a tag, but a lot of it can lift the tag above an older rating. On one real library with 17 titles read in 16 days this changed 13 of the top 20 candidates, where before it changed 5. Blocked and disliked tags are still never boosted. See [How a title is scored](feature-guides/recommendations.md#how-a-title-is-scored).
 
+## Known limitations
+
+- MangaBaka sign-in is unavailable in the published build. Encrypted database upgrades and signed-in external tracker updates were outside the 0.8.25 release checks.
+- The signed upgrade from 0.8.24 retained a saved category in the test profile. A populated library and encrypted database were outside that check. Keep a current backup before updating.
+- The download queue can show source names even with **Hide technical names in screenshots** on. Some confirmed-version descriptions can show Markdown markers, and the reader timer’s **60 min** button can wrap on narrow screens.
+
 ## App Updates
 
-Download [Komikku FC v0.8.24](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.24) from this fork's Releases page. The previous release, [v0.8.23.1](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.23.1), remains available there. Choose the APK for your device and read its installation notes. Future updates are distributed through the same Releases page.
+Download [Komikku FC v0.8.25](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.25) from this fork’s Releases page. Choose an APK for your device and follow the installation notes. [v0.8.24](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.24) and [v0.8.23.1](https://github.com/FancyCorey/komikku-fc/releases/tag/v0.8.23.1) remain available. Google Drive sync is unavailable in the published v0.8.25 APKs. You can still [back up and restore locally](feature-guides/backups.md).
 
-### Updated to the latest Komikku in v0.8.24
+### Upstream Komikku changes in v0.8.24
 
-- **Komikku changes:** includes the latest Komikku changes, among them a new database engine with fixes for "database is locked" errors, cleanup of leftover rows in your database, screen transition and back gesture fixes, and newer libraries. Your library carries over when you update.
+- **Komikku changes:** includes upstream changes through 12 October 2026, including a new database engine with fixes for "database is locked" errors, cleanup of leftover rows in your database, screen transition and back gesture fixes, and newer libraries. Back up your library before updating.
 
 ### Added in v0.8.24
 
@@ -80,7 +82,7 @@ Download [Komikku FC v0.8.24](https://github.com/FancyCorey/komikku-fc/releases/
 - A source that is far slower than the others in the same refresh now ends as an error row with Try again. The time limit follows how long your other sources took, between 30 seconds and 3 minutes.
 - When a source's searches find nothing, For You now falls back to that source's Popular page. An empty earlier result is no longer reused from the cache.
 - One failed image or page list no longer makes the rest of a large download from that source fail. Reading and downloading are held back only when the extension itself is broken or incompatible.
-- Pulling down to refresh a tracked manga always uploads your newer reading progress. Opening a manga asks your trackers for progress at most once every 15 minutes, and not at all while offline.
+- Pulling down to refresh a tracked manga tries to upload newer reading progress. Opening a manga asks your trackers for progress at most once every 15 minutes, and not at all while offline.
 - Versions tracked on the same tracker entry now share their tracker progress and their private or public setting. Versions confirmed as the same manga through another version (A = B and B = C) share one local-tracking record.
 - Titles you rated, added, or read since an earlier For You refresh no longer reappear after Refresh.
 - Closing the Focus picker without Apply keeps your previous focus, and Clear focus always clears it.
@@ -106,7 +108,7 @@ Use **More > About > Check for updates** to check manually. Automatic discovery 
 Some older releases compare Komikku's version rather than the Komikku FC feature version and may miss a newer fork release. If no update appears, check the Releases page and read that release's installation instructions. Choose an APK compatible with your device and current installation. If Android reports an incompatible update, keep your existing installation and back up your data rather than uninstalling it to force the update.
 
 ## Komikku FC feature overview
-The overview below covers capabilities across releases; it is not a list of features shipped only in v0.8.24. The v0.8.24 changes listed above are available from the published v0.8.24 release. Expand a topic for details.
+This overview covers features introduced across multiple releases. Expand a topic for details.
 
 <details>
 <summary>For You, settings, and source checks</summary>
@@ -123,13 +125,13 @@ The overview below covers capabilities across releases; it is not a list of feat
 - A data-saving mode for recommendations can be set to Always or Never, or to Automatic, which saves data on metered or slow connections.
 - Recommendations based on rated or linked manga groups, with results appearing source by source, a configurable initial result count, and separate explanations for slow or failed sources.
 - Shareable recommendation bundles and an import review that identifies missing or uncertain matches before you choose what to add to your library.
-- Searchable Recommendation Settings with one entry per feature: Your taste, For You feed, Focus modes, Find new sources, Source evaluation, Speed and data, Linked versions and ratings, and Troubleshooting. Together they cover taste and tags, languages, known or rated manga, minimum chapters, source priority, matching, result limits, discovery, data saving, cache, and maintenance.
+- Searchable Recommendation Settings with one entry per feature: Your taste, For You feed, Focus modes, Find new sources, Try sources before installing, Speed and data, Linked versions and ratings, and Troubleshooting. Together they cover taste and tags, languages, known or rated manga, minimum chapters, source priority, matching, result limits, discovery, data saving, cache, and maintenance.
 - Focus modes list tags as grouped chips: format, demographic, and presentation and access first, then your own tags, then genres grouped by kind. Unrecognized tags are folded under More tags.
 - Rating-derived tag suggestions, taste diagnostics, source-quality marks and history, Source evaluation continuation and reassessment, an optional scheduled source check, and searchable or sortable Sources to Try.
 - Settings switches stay beside their labels while long labels and descriptions wrap within the available space.
 - Tracking and recommendation settings explain their effect in everyday language, including which linked manga versions are affected and whether progress comes from the app or a connected tracker.
 - Active For You tag filters continue searching eligible sources within the existing attempt limit when earlier results do not match, rather than stopping after enough unfiltered rows.
-- After a refresh, For You's minimum-chapter filter checks the chapter lists of up to 20 shown titles, removes those below the minimum, and remembers their counts for two weeks. A title whose count is still unknown stays eligible; it is not treated as having zero chapters.
+- When a minimum is set, For You checks visible titles with unknown chapter counts and removes titles below the minimum as their counts arrive. Data saving caps new checks at 20. Counts are remembered for up to two weeks, and titles whose counts remain unknown can still appear.
 - For You source diagnostics distinguish the current refresh count from the rolling Top Picks contribution behind a “Great fit” label.
 
 </details>
@@ -236,7 +238,7 @@ The [feature guides](feature-guides/README.md) cover recommendations, ratings, l
 
 ## Compatibility with Komikku
 
-Komikku FC v0.8.24 is up to date with Komikku's main branch as of 12 October 2026, which covers Komikku v1.14.1 and the changes made after it. Komikku FC continues to use Komikku's existing Library, Browse, Reader, Settings, backup, tracking, extension, and migration flows. Recoverable source failures can leave other sources available; not every fatal crash can be contained. Cancelling stops further work, but changes already completed or partially saved can remain. Cancellation is not rollback, including for changes in Android or on an outside service.
+The v0.8.24 release included Komikku v1.14.1 and subsequent upstream changes through 12 October 2026. Komikku FC continues to use Komikku's existing Library, Browse, Reader, Settings, backup, tracking, extension, and migration flows. Recoverable source failures can leave other sources available; not every fatal crash can be contained. Cancelling stops further work, but changes already completed or partially saved can remain. Cancellation is not rollback, including for changes in Android or on an outside service.
 
 ## Fork identity
 

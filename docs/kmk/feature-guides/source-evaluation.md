@@ -4,7 +4,7 @@ Source evaluation helps you decide which manga sources are worth using for recom
 
 ## Where you find it
 
-**In v0.8.25 (not yet released)** the three jobs this page used to hold are on the pages where you would look for them, not behind a row that opens another screen:
+In v0.8.25, the checks and their controls are grouped by what you need to do.
 
 | Job | Where it is |
 | --- | --- |
@@ -13,10 +13,10 @@ Source evaluation helps you decide which manga sources are worth using for recom
 | Check the sources you already use (**Source match**) | At the bottom of **Recommendation Settings > Your taste**. |
 | Diagnostics and **Reset and clear** | **Recommendation Settings > Troubleshooting**, at the top and directly below. |
 
-Before v0.8.25 all three were on one long Source evaluation page, with diagnostics and the reset buttons at the very bottom.
+Before v0.8.25, Source evaluation also held the installed-source check, installer controls, diagnostics and reset buttons.
 
 <p align="center"><img src="../visual-guide/v0.8.24/source-evaluation.png" width="260" alt="Source evaluation with run options, Start and the reason it is unavailable"></p>
-<p align="center"><em>Run options, Start, and the reason Start is unavailable.</em></p>
+<p align="center"><em>v0.8.24 layout showing the run options and the reason Start is unavailable.</em></p>
 
 The page is laid out in this order:
 
@@ -37,7 +37,7 @@ When **Start** cannot be used, a line under it says why:
 
 ## Update results
 
-**In v0.8.25 (not yet released):** **Update results**, under **Check older results again** on **Find new sources**, replaces three separate reassess buttons. It opens a short list of choices, each with a line saying what it does, and only the ones that apply are shown:
+**In v0.8.25:** **Update results**, under **Check older results again** on **Find new sources**, replaces three separate reassess buttons. It opens a short list of choices, each with a line saying what it does, and only the ones that apply are shown:
 
 - **Reassess sources** scores every result again with your current ratings.
 - **Reassess updated extensions** checks again the results whose extension has been updated.
@@ -54,12 +54,12 @@ When **Start** cannot be used, a line under it says why:
 
 ## Source match
 
-**In v0.8.25 (not yet released):** this is the check of the sources you already use. It tests whether For You's searches work on them, and it never installs anything. It sits at the bottom of **Your taste**, because it is about how your taste meets your sources. It works on sources that already have a result from **Try sources before installing**; if there are none it says so, with a button that opens **Try sources before installing**. That page's title bar reads **Try before installing** on a phone.
+**In v0.8.25:** this is the check of the sources you already use. It tests whether For You's searches work on them, and it never installs anything. It sits at the bottom of **Your taste**, because it is about how your taste meets your sources. It works on sources that already have a result from **Try sources before installing**; if there are none it says so, with a button that opens **Try sources before installing**. That page's title bar reads **Try before installing** on a phone.
 
 <p align="center"><img src="../visual-guide/v0.8.25/your-taste-source-match.png" width="260" alt="Your taste scrolled to its Source match section"></p>
 <p align="center"><em>Source match at the bottom of Your taste.</em></p>
 
-**In v0.8.25 (not yet released):** a source's **Great fit**, **Good fit** and similar tags on For You also take your own reactions into account: how many of its titles you loved or liked, and how many you disliked or marked Not interested. A handful of reactions never decides anything; with enough of them a Mixed source can show as a Good fit and a Good fit can drop to Mixed. Errors are never changed by reactions.
+**In v0.8.25:** a source's **Great fit**, **Good fit** and similar tags on For You also take your own reactions into account: how many of its titles you loved or liked, and how many you disliked or marked Not interested. A handful of reactions never decides anything; with enough of them a Mixed source can show as a Good fit and a Good fit can drop to Mixed. Errors are never changed by reactions.
 
 When a source's search works but most of its results come without genres, the check cannot tell whether it matches your taste. It then says **Cannot judge, results carry no genres** instead of Weak, and the source is not skipped by the automatic check.
 
@@ -69,10 +69,10 @@ An evaluation samples a source's popular and recent manga and compares their ava
 
 ## Before starting a check
 
-1. Under **Sources to check at once**, choose 10, 25, 50, or 100. This is the maximum number of sources checked before the app pauses for you to select **Continue**. For a short first check, choose 10.
+1. Under **Sources to check at once**, pick how many sources to try before stopping for a break. Choose **10** for a short first check. If more sources are waiting when it stops, select **Continue** to check the next set.
 2. Open **More setup options** if you want to change which sources are checked:
-   - **Skip already-evaluated sources** leaves sources with saved results out of this check. To update old results, use **Check older results again** below.
-   - **Include explicit/hentai candidates** lets this check consider sources marked as sexually explicit, even if your usual explicit-content filter excludes them. Leave it off to follow that filter. This option does not change what For You is allowed to show.
+   - **Skip already-evaluated sources** leaves sources with saved results out of this check. To update old results, open **Find new sources > Check older results again**.
+   - **Include explicit/hentai candidates** lets the check try sources marked as sexually explicit. With the option off, the check follows your usual explicit-content filter. For You keeps its own content settings.
 3. Review **Installer and cleanup**. Follow any setup instructions or warning before selecting **Start**.
 
 The installer chosen here applies only to source evaluation, not ordinary extension installation. Some methods need Android confirmation prompts or extra setup. If **Start** is unavailable, follow the reason shown beneath it.
@@ -83,7 +83,7 @@ The saved result shows how well the source fits, how much information supports t
 
 ## Reassess results
 
-An old result can stop describing the source well when your taste or the extension changes. In v0.8.25 (not yet released) the **Check older results again** section has one **Update results** button (see above), which offers the actions below that apply, each with a line saying what it does. Before v0.8.25 each was its own button:
+An old result can stop describing the source well when your taste or the extension changes. In v0.8.25 the **Check older results again** section has one **Update results** button (see above), which offers the actions below that apply, each with a line saying what it does. Before v0.8.25 each was its own button:
 
 | Action | When it appears | What it does |
 | --- | --- | --- |
@@ -103,7 +103,7 @@ Reassessment uses the same installer, warnings, and cleanup as a normal check.
 <p align="center"><img src="../visual-guide/v0.8.24/find-new-sources.png" width="260" alt="Automatic check settings under Find new sources"></p>
 <p align="center"><em>The automatic check settings are under Find new sources.</em></p>
 
-**In v0.8.25 (not yet released):** it also re-checks when your ratings changed by 100 or more since its last check, or when an extension was updated. The app stores one extra number for this, the count of rated titles at the last check, on your device only.
+**In v0.8.25:** it also re-checks when your ratings changed by 100 or more since its last check, or when an extension was updated. The app stores one extra number for this, the count of rated titles at the last check, on your device only.
 
 By default it waits for Wi-Fi and for the battery not to be low. These requirements apply for the whole check, not only when it starts. If they stop being met, the check stops, and a later scheduled check picks up the sources that are still out of date. Turning **Check automatically** off also stops a check it has already started. The automatic check never installs or removes a source and never changes your source order. A check you start yourself on this page is not affected by these settings.
 
@@ -158,7 +158,7 @@ Sort by Best fit, Newest, Source name, Extension name, For You compatibility, or
 
 ## Reset and clear
 
-**In v0.8.25 (not yet released):** these actions are on **Recommendation Settings > Troubleshooting**, below the diagnostics. Each row says what it does, and each asks before it runs, naming the action and saying it can't be undone. Cancel the confirmation if you want to keep the saved information.
+**In v0.8.25:** these actions are on **Recommendation Settings > Troubleshooting**, below the diagnostics. Each row says what it does, and each asks before it runs, naming the action and saying it can't be undone. Cancel the confirmation if you want to keep the saved information.
 
 | Action | What it clears or resets |
 | --- | --- |
@@ -171,7 +171,7 @@ None of these actions repairs an unavailable source or guarantees that new recom
 
 ## Diagnostics
 
-**In v0.8.25 (not yet released):** the diagnostics are at the top of **Recommendation Settings > Troubleshooting**, under **Source diagnostics**. **View evaluation warning** shows the installation and cleanup warning again without starting a check.
+**In v0.8.25:** the diagnostics are at the top of **Recommendation Settings > Troubleshooting**, under **Source diagnostics**. **View evaluation warning** shows the installation and cleanup warning again without starting a check.
 
 <p align="center"><img src="../visual-guide/v0.8.25/troubleshooting.png" width="260" alt="Troubleshooting with Source diagnostics at the top, then Reset and clear"></p>
 <p align="center"><em>Troubleshooting: the source-loading warning with Details, Copy diagnostics, then Reset and clear.</em></p>
